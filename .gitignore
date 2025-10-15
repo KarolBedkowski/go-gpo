@@ -1,0 +1,13 @@
+go-gpodder*
+*.swp
+tags
+*~
+.*
+stamp_*
+*.log
+*.orig
+/tmp/
+
+!.gitignore
+!.golangci.yml
+

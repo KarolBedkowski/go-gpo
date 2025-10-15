@@ -1,0 +1,85 @@
+version: "2"
+run:
+  build-tags:
+    - debug
+    - sdjournal
+
+linters:
+  default: all
+  disable:
+    - depguard
+    - exhaustruct
+    - forbidigo
+    - gochecknoglobals
+    - gochecknoinits
+    - ireturn
+    - tagliatelle
+  settings:
+    misspell:
+      locale: US
+      ignore-rules:
+        - routeros
+    varnamelen:
+      max-distance: 12
+      ignore-names:
+        - wg
+        - rx
+        - tx
+        - re
+        - ch
+      ignore-decls:
+        - t testing.T
+        - T any
+        - tr trace.Trace
+    wrapcheck:
+      ignore-sigs:
+        - .Errorf(
+        - errors.New(
+        - errors.Unwrap(
+        - .Wrap(
+        - .Wrapf(
+        - .WithMessage(
+        - .WithMessagef(
+        - .WithStack(
+        - multierror.Append(
+        - .ErrorOrNil()
+        - errors.Join(
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - .*_test.go$
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+#    - gofmt
+    - gofumpt
+#    - goimports
+    - golines
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+
+  settings:
+    gofumpt:
+      # Choose whether to use the extra rules.
+      # Default: false
+      extra-rules: true
+    golines:
+      # Target maximum line length.
+      # Default: 100
+      max-len: 120
+      # Shorten single-line comments.
+      # Default: false
+      shorten-comments: true
+      # Default: true
+      reformat-tags: false
