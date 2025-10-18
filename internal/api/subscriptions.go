@@ -7,6 +7,8 @@ package api
 import (
 	"errors"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/oxtyped/go-opml/opml"
@@ -23,10 +25,10 @@ type subscriptionsResource struct {
 
 func (sr *subscriptionsResource) Routes() chi.Router {
 	r := chi.NewRouter()
-	r.Use(AuthenticatedOnly)
+	// r.Use(AuthenticatedOnly)
 
-	r.Post("/{user:[0-9a-z.-]+}.opml", sr.userSubscriptions)
-	r.Post("/{user:[0-9a-z.-]+}/{deviceid:[0-9a-z.-]+}.opml", sr.devSubscriptions)
+	r.Get("/{user:[0-9a-z.-]+}.opml", sr.userSubscriptions)
+	r.Get("/{user:[0-9a-z.-]+}/{deviceid:[0-9a-z.-]+}.{format}", sr.devSubscriptions)
 	// TODO: other formats
 	r.Put("/{user:[0-9a-z.-]+}/{deviceid:[0-9a-z.-]+}.json", sr.uploadSubscriptionsJSON)
 	// TODO: other formats
@@ -41,8 +43,8 @@ func (sr *subscriptionsResource) devSubscriptions(w http.ResponseWriter, r *http
 
 	if suser := userFromContext(ctx); suser != user {
 		logger.Warn().Msgf("user %q not match session user: %q", user, suser)
-		w.WriteHeader(http.StatusBadRequest)
-		return
+		// w.WriteHeader(http.StatusBadRequest)
+		// return
 	}
 
 	deviceid := chi.URLParam(r, "deviceid")
@@ -52,12 +54,18 @@ func (sr *subscriptionsResource) devSubscriptions(w http.ResponseWriter, r *http
 		return
 	}
 
-	// var sinceTS  time.Time
-	// if since := r.URL.Query().Get("since"); since != "" {
-	// 	sinceTS = time.
-	// }
+	var sinceTS time.Time
+	if since := r.URL.Query().Get("since"); since != "" {
+		ts, err := strconv.ParseInt(since, 10, 64)
+		if err != nil {
+			logger.Info().Err(err).Msgf("parse since=%q error", since)
+			w.WriteHeader(http.StatusBadRequest)
+		}
 
-	subs, err := sr.subServ.GetDeviceSubscriptions(ctx, user, deviceid, time.Time{})
+		sinceTS = time.Unix(ts, 0)
+	}
+
+	subs, err := sr.subServ.GetDeviceSubscriptions(ctx, user, deviceid, sinceTS)
 	switch {
 	case err == nil:
 	case errors.Is(err, service.ErrUnknownUser):
@@ -77,20 +85,40 @@ func (sr *subscriptionsResource) devSubscriptions(w http.ResponseWriter, r *http
 		return
 	}
 
-	o := opml.NewOPMLFromBlank("go-gpodder")
-	for _, s := range subs {
-		o.AddRSSFromURL(s.Podcast, 2*time.Second)
-	}
+	switch format := chi.URLParam(r, "format"); format {
+	case "opml":
+		o := opml.NewOPMLFromBlank("go-gpodder")
+		for _, s := range subs {
+			o.AddRSSFromURL(s.Podcast, 2*time.Second)
+		}
 
-	result, err := o.XML()
-	if err != nil {
-		logger.Info().Err(err).Msg("get opml xml error")
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+		result, err := o.XML()
+		if err != nil {
+			logger.Info().Err(err).Msg("get opml xml error")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(result))
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(result))
+	case "json":
+		var res []string
+		for _, s := range subs {
+			res = append(res, s.Podcast)
+		}
+		w.WriteHeader(http.StatusOK)
+		render.JSON(w, r, res)
+	case "txt":
+		var res []string
+		for _, s := range subs {
+			res = append(res, s.Podcast)
+		}
+		w.WriteHeader(http.StatusOK)
+		render.PlainText(w, r, strings.Join(res, "\n"))
+	default:
+		logger.Info().Msgf("unknown format %q", format)
+		w.WriteHeader(http.StatusBadRequest)
+	}
 }
 
 func (sr *subscriptionsResource) userSubscriptions(w http.ResponseWriter, r *http.Request) {

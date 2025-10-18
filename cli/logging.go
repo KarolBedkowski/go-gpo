@@ -14,7 +14,7 @@ import (
 )
 
 // InitializeLogger set log level and optional log filename.
-func initializeLogger(level string, format string) {
+func initializeLogger(level, format string) {
 	var llog zerolog.Logger
 
 	switch format {

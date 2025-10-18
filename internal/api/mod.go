@@ -41,6 +41,7 @@ func Start(repo *repository.Repository) {
 
 	r.Use(middleware.RequestID)
 	r.Use(sess)
+	r.Use(authenticator{repo}.Authenticate)
 	r.Use(hlog.RequestIDHandler("req_id", "Request-Id"))
 	r.Use(middleware.RealIP)
 	r.Use(newLogMiddleware)
@@ -58,13 +59,15 @@ func Start(repo *repository.Repository) {
 
 	deviceSrv := service.NewDeviceService(repo)
 	subSrv := service.NewSubssService(repo)
+	usersSrv := service.NewUsersService(repo)
 
 	r.Mount("/subscriptions", (&simpleResource{repo, subSrv}).Routes())
 
 	r.Route("/api/2", func(r chi.Router) {
-		r.Mount("/auth", authResource{repo}.Routes())
+		r.Mount("/auth", authResource{usersSrv}.Routes())
 		r.Mount("/devices", deviceResource{deviceSrv}.Routes())
 		r.Mount("/subscriptions", (&subscriptionsResource{subSrv}).Routes())
+		r.Mount("/episodes", (&episodesResource{subSrv}).Routes())
 	})
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
@@ -79,15 +82,20 @@ func Start(repo *repository.Repository) {
 func AuthenticatedOnly(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		sess := session.GetSession(r)
-		suser, ok := sess.Get("user").(string)
-		if !ok || suser == "" {
-			http.Error(w, http.StatusText(403), 403)
+		logger := hlog.FromRequest(r)
+		logger.Debug().Interface("session", sess.Get("user")).Msg("AuthenticatedOnly")
+
+		if suser, ok := sess.Get("user").(string); ok && suser != "" {
+			ctx := context.WithValue(r.Context(), "user", suser)
+			next.ServeHTTP(w, r.WithContext(ctx))
 
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), "user", suser)
-		next.ServeHTTP(w, r.WithContext(ctx))
+		_ = sess.Set("user", "")
+
+		w.Header().Add("WWW-Authenticate", "Basic realm=\"go-gpodder\"")
+		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 	})
 }
 
@@ -111,14 +119,19 @@ func (a authenticator) Authenticate(next http.Handler) http.Handler {
 		if ok && password != "" && username != "" {
 			ctx := r.Context()
 			logger := hlog.FromRequest(r)
+
 			user, err := a.repo.GetUser(ctx, username)
 			if err != nil {
 				panic(err)
 			}
 
+			sess := session.GetSession(r)
+
 			if user == nil || !user.CheckPassword(password) {
-				logger.Info().Str("username", username).Msgf("no auth; user: %v", user)
-				next.ServeHTTP(w, r)
+				logger.Info().Str("username", username).Msgf("auth failed; user: %v", user)
+				w.Header().Add("WWW-Authenticate", "Basic realm=\"go-gpodder\"")
+				_ = sess.Set("user", "")
+				http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 
 				return
 			}
@@ -126,6 +139,8 @@ func (a authenticator) Authenticate(next http.Handler) http.Handler {
 			logger.Debug().Str("username", username).Msgf("user authenticated")
 			ctx = context.WithValue(ctx, "user", user.Name)
 			r = r.WithContext(ctx)
+
+			_ = sess.Set("user", user.Name)
 		}
 
 		next.ServeHTTP(w, r)
@@ -170,11 +185,11 @@ func newLogMiddleware(next http.Handler) http.Handler {
 		sess := session.GetSession(request)
 
 		llog.Info().
-			Str("uri", request.RequestURI).
+			Str("url", request.URL.Redacted()).
 			Str("remote", request.RemoteAddr).
 			Str("method", request.Method).
-			Strs("agent", request.Header["User-Agent"]).
-			Interface("headers", request.Header).
+			// Strs("agent", request.Header["User-Agent"]).
+			// Interface("headers", request.Header).
 			Str("sessionid", sess.ID()).
 			Msg("webhandler: request start")
 
@@ -189,6 +204,7 @@ func newLogMiddleware(next http.Handler) http.Handler {
 
 		llog.WithLevel(level).
 			Str("uri", request.RequestURI).
+			// Interface("resp_header", lrw.ResponseWriter.Header()).
 			Int("status", lrw.status).
 			Int("size", lrw.size).
 			Dur("duration", time.Since(start)).
@@ -245,7 +261,7 @@ func userFromsession(store session.Store) string {
 }
 
 func logRoutes(r chi.Routes) {
-	walkFunc := func(method string, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
+	walkFunc := func(method, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
 		route = strings.ReplaceAll(route, "/*/", "/")
 		log.Debug().Msgf("ROUTE: %s %s", method, route)
 		return nil

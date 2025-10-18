@@ -28,11 +28,67 @@ type simpleResource struct {
 func (s *simpleResource) Routes() chi.Router {
 	r := chi.NewRouter()
 	r.Use(authenticator{s.repo}.Authenticate)
+	r.Use(AuthenticatedOnly)
 
+	r.Get("/{user:[0-9a-z.-]+}.{format}", s.downloadAllSubscriptions)
 	r.Get("/{user:[0-9a-z.-]+}/{deviceid:[0-9a-z.-]+}.{format}", s.downloadSubscriptions)
 	r.Put("/{user:[0-9a-z.-]+}/{deviceid:[0-9a-z.-]+}.{format}", s.uploadSubscriptions)
 
 	return r
+}
+
+func (s *simpleResource) downloadAllSubscriptions(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	logger := hlog.FromRequest(r)
+	user := chi.URLParam(r, "user")
+
+	if suser := userFromContext(ctx); suser != user {
+		logger.Warn().Msgf("user %q not match session user: %q", user, suser)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	subs, err := s.subServ.GetUserSubscriptions(ctx, user, time.Time{})
+	switch {
+	case err == nil:
+	case errors.Is(err, service.ErrUnknownUser):
+		logger.Info().Msgf("unknown user: %q", user)
+		w.WriteHeader(http.StatusBadRequest)
+
+		return
+	default:
+		logger.Info().Err(err).Msg("update device error")
+		w.WriteHeader(http.StatusInternalServerError)
+
+		return
+	}
+
+	switch format := chi.URLParam(r, "format"); format {
+	case "opml":
+		o := opml.NewOPMLFromBlank("go-gpodder")
+		for _, s := range subs {
+			_ = o.AddRSSFromURL(s, 2*time.Second)
+		}
+
+		result, err := o.XML()
+		if err != nil {
+			logger.Info().Err(err).Msg("get opml xml error")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(result))
+	case "json":
+		w.WriteHeader(http.StatusOK)
+		render.JSON(w, r, subs)
+	case "txt":
+		w.WriteHeader(http.StatusOK)
+		render.PlainText(w, r, strings.Join(subs, "\n"))
+	default:
+		logger.Info().Msgf("unknown format %q", format)
+		w.WriteHeader(http.StatusBadRequest)
+	}
 }
 
 func (s *simpleResource) downloadSubscriptions(w http.ResponseWriter, r *http.Request) {

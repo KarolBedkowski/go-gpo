@@ -5,16 +5,17 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 
 	"gitea.com/go-chi/session"
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog/hlog"
-	"gitlab.com/kabes/go-gpodder/internal/repository"
+	"gitlab.com/kabes/go-gpodder/internal/service"
 )
 
 type authResource struct {
-	repo *repository.Repository
+	users *service.Users
 }
 
 func (ar authResource) Routes() chi.Router {
@@ -53,14 +54,17 @@ func (a *authResource) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := a.repo.GetUser(ctx, username)
-	if err != nil {
-		panic(err)
-	}
-
-	if user == nil || !user.CheckPassword(password) {
+	user, err := a.users.LoginUser(ctx, username, password)
+	switch {
+	case errors.Is(err, service.ErrUnauthorized) || errors.Is(err, service.ErrUnknownUser):
 		logger.Info().Str("username", username).Msgf("no auth; user: %v", user)
 		w.WriteHeader(http.StatusUnauthorized)
+
+		return
+	case err != nil:
+		logger.Warn().Err(err).Str("username", username).Msgf("login user error")
+		w.WriteHeader(http.StatusInternalServerError)
+
 		return
 	}
 

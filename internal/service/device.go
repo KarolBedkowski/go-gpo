@@ -45,7 +45,7 @@ func (d *Device) UpdateDevice(ctx context.Context, username, deviceID, caption, 
 
 	if device == nil {
 		// new device
-		device = &model.Device{
+		device = &model.DeviceDB{
 			UserID:  user.ID,
 			Name:    deviceID,
 			Caption: caption,
@@ -64,7 +64,7 @@ func (d *Device) UpdateDevice(ctx context.Context, username, deviceID, caption, 
 	return nil
 }
 
-func (d *Device) ListDevices(ctx context.Context, username string) ([]model.DeviceInfo, error) {
+func (d *Device) ListDevices(ctx context.Context, username string) ([]*model.Device, error) {
 	user, err := d.repo.GetUser(ctx, username)
 	if err != nil {
 		return nil, fmt.Errorf("get user error: %w", err)
@@ -78,5 +78,16 @@ func (d *Device) ListDevices(ctx context.Context, username string) ([]model.Devi
 		return nil, fmt.Errorf("get device error: %w", err)
 	}
 
-	return devices, nil
+	res := make([]*model.Device, 0, len(devices))
+	for _, d := range devices {
+		res = append(res, &model.Device{
+			User:          username,
+			Name:          d.Name,
+			DevType:       d.DevType,
+			Caption:       d.Caption,
+			Subscriptions: d.Subscriptions,
+		})
+	}
+
+	return res, nil
 }

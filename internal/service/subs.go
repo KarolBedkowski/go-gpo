@@ -45,7 +45,7 @@ func (s *Subs) GetUserSubscriptions(ctx context.Context, userID string, since ti
 }
 
 func (s *Subs) GetDeviceSubscriptions(ctx context.Context, userID, deviceID string, since time.Time,
-) ([]model.Subscription, error) {
+) ([]*model.Subscription, error) {
 	user, err := s.repo.GetUser(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("get user error: %w", err)
@@ -63,12 +63,22 @@ func (s *Subs) GetDeviceSubscriptions(ctx context.Context, userID, deviceID stri
 		return nil, ErrUnknownDevice
 	}
 
-	subs, err := s.repo.GetSubscriptions(ctx, device.ID, since)
+	subs, err := s.repo.GetSubscriptionChanges(ctx, device.ID, since)
 	if err != nil {
 		return nil, fmt.Errorf("get subscriptions error: %w", err)
 	}
 
-	return subs, nil
+	res := make([]*model.Subscription, 0, len(subs))
+	for _, s := range subs {
+		res = append(res, &model.Subscription{
+			Device:    deviceID,
+			Podcast:   s.PodcastURL,
+			Action:    s.Action,
+			UpdatedAt: s.UpdatedAt,
+		})
+	}
+
+	return res, nil
 }
 
 func (s *Subs) UpdateDeviceSubscriptions(ctx context.Context,
@@ -95,19 +105,29 @@ func (s *Subs) UpdateDeviceSubscriptions(ctx context.Context,
 		return fmt.Errorf("get subscriptions error: %w", err)
 	}
 
-	var changes []*model.Subscription
-	for _, s := range usubs {
-		if !slices.Contains(subs, s.Podcast) {
-			logger.Debug().Interface("sub", s).Msg("remove subscription")
-			changes = append(changes, s.NewAction(model.ActionUnsubscribe))
+	var changes []*model.SubscriptionDB
+
+	// removed
+	for _, sub := range usubs {
+		if !slices.Contains(subs, sub.PodcastURL) {
+			logger.Debug().Interface("sub", sub).Msg("remove subscription")
+			changes = append(changes, model.NewSubscriptionDB(device.ID, sub.PodcastID, model.ActionUnsubscribe))
 		}
 	}
 
-	for _, s := range subs {
-		if !hasSubscriptions(usubs, s) {
-			logger.Debug().Str("podcast", s).Msg("new subscription")
-			changes = append(changes, model.NewSubscription(device.ID, s, model.ActionSubscribe))
+	for _, sub := range subs {
+		if usubs.FindPodcastByURL(sub) != nil {
+			continue
 		}
+
+		logger.Debug().Str("podcast", sub).Msg("new subscription")
+
+		podcast, err := s.repo.GetOrCreatePodcast(ctx, user.ID, sub)
+		if err != nil {
+			return fmt.Errorf("create new podcast %q error: %w", sub, err)
+		}
+
+		changes = append(changes, model.NewSubscriptionDB(device.ID, podcast.ID, model.ActionSubscribe))
 	}
 
 	if err := s.repo.SaveSubscription(ctx, changes...); err != nil {
@@ -117,7 +137,11 @@ func (s *Subs) UpdateDeviceSubscriptions(ctx context.Context,
 	return nil
 }
 
-func (s *Subs) UpdateDeviceSubscriptionChanges(ctx context.Context, userID, deviceID string, added, removed []string) ([][]string, error) {
+func (s *Subs) UpdateDeviceSubscriptionChanges(
+	ctx context.Context,
+	userID, deviceID string,
+	added, removed []string,
+) ([][]string, error) {
 	// TODO: sanitize
 	logger := zerolog.Ctx(ctx)
 
@@ -136,19 +160,29 @@ func (s *Subs) UpdateDeviceSubscriptionChanges(ctx context.Context, userID, devi
 		return nil, fmt.Errorf("get subscriptions error: %w", err)
 	}
 
-	var changes []*model.Subscription
-	for _, s := range usubs {
-		if slices.Contains(removed, s.Podcast) {
-			logger.Debug().Interface("sub", s).Msg("remove subscription")
-			changes = append(changes, s.NewAction(model.ActionUnsubscribe))
+	var changes []*model.SubscriptionDB
+
+	// removed
+	for _, sub := range removed {
+		if podcast := usubs.FindPodcastByURL(sub); podcast != nil {
+			logger.Debug().Interface("sub", sub).Msg("remove subscription")
+			changes = append(changes, model.NewSubscriptionDB(device.ID, podcast.PodcastID, model.ActionUnsubscribe))
 		}
 	}
 
-	for _, s := range added {
-		if !hasSubscriptions(usubs, s) {
-			logger.Debug().Str("podcast", s).Msg("new subscription")
-			changes = append(changes, model.NewSubscription(device.ID, s, model.ActionSubscribe))
+	for _, sub := range added {
+		if usubs.FindPodcastByURL(sub) != nil {
+			continue
 		}
+
+		logger.Debug().Str("podcast", sub).Msg("new subscription")
+
+		podcast, err := s.repo.GetOrCreatePodcast(ctx, user.ID, sub)
+		if err != nil {
+			return nil, fmt.Errorf("create new podcast %q error: %w", sub, err)
+		}
+
+		changes = append(changes, model.NewSubscriptionDB(device.ID, podcast.ID, model.ActionSubscribe))
 	}
 
 	if err := s.repo.SaveSubscription(ctx, changes...); err != nil {
@@ -158,7 +192,9 @@ func (s *Subs) UpdateDeviceSubscriptionChanges(ctx context.Context, userID, devi
 	return nil, nil
 }
 
-func (s *Subs) getUser(ctx context.Context, userID string) (*model.User, error) {
+// ------------------------------------------------------
+
+func (s *Subs) getUser(ctx context.Context, userID string) (*model.UserDB, error) {
 	user, err := s.repo.GetUser(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("get user error: %w", err)
@@ -167,10 +203,10 @@ func (s *Subs) getUser(ctx context.Context, userID string) (*model.User, error) 
 		return nil, ErrUnknownUser
 	}
 
-	return user, err
+	return user, nil
 }
 
-func (s *Subs) getUserDevice(ctx context.Context, userID int, deviceID string) (*model.Device, error) {
+func (s *Subs) getUserDevice(ctx context.Context, userID int, deviceID string) (*model.DeviceDB, error) {
 	device, err := s.repo.GetDevice(ctx, userID, deviceID)
 	if err != nil {
 		return nil, fmt.Errorf("get device error: %w", err)
@@ -183,8 +219,8 @@ func (s *Subs) getUserDevice(ctx context.Context, userID int, deviceID string) (
 	return device, nil
 }
 
-func (s *Subs) createUserDevice(ctx context.Context, userID int, deviceID string) (*model.Device, error) {
-	device := model.Device{
+func (s *Subs) createUserDevice(ctx context.Context, userID int, deviceID string) (*model.DeviceDB, error) {
+	device := model.DeviceDB{
 		Name:   deviceID,
 		UserID: userID,
 	}
@@ -195,14 +231,4 @@ func (s *Subs) createUserDevice(ctx context.Context, userID int, deviceID string
 	}
 
 	return s.getUserDevice(ctx, userID, deviceID)
-}
-
-func hasSubscriptions(subs []model.Subscription, podcast string) bool {
-	for _, s := range subs {
-		if s.Podcast == podcast {
-			return true
-		}
-	}
-
-	return false
 }
