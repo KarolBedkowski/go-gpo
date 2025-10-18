@@ -38,6 +38,16 @@ func (p *PodcastDB) Clone() *PodcastDB {
 
 type PodcastsDB []*PodcastDB
 
+func (s PodcastsDB) FindSubscribedPodcastByURL(url string) *PodcastDB {
+	for _, sp := range s {
+		if sp.URL == url && sp.Subscribed {
+			return sp
+		}
+	}
+
+	return nil
+}
+
 func (s PodcastsDB) FindPodcastByURL(url string) *PodcastDB {
 	for _, sp := range s {
 		if sp.URL == url {
@@ -84,24 +94,6 @@ type Subscription struct {
 	UpdatedAt time.Time
 }
 
-type SubscribedPodcastDB struct {
-	SubscriptionID int    `db:"subscription_id"`
-	PodcastID      int    `db:"podcast_id"`
-	PodcastURL     string `db:"podcast_url"`
-}
-
-type SubscribedPodcastsDB []*SubscribedPodcastDB
-
-func (s SubscribedPodcastsDB) FindPodcastByURL(url string) *SubscribedPodcastDB {
-	for _, sp := range s {
-		if sp.PodcastURL == url {
-			return sp
-		}
-	}
-
-	return nil
-}
-
 type EpisodeDB struct {
 	ID        int64     `db:"id"`
 	PodcastID int64     `db:"podcast_id"`
@@ -109,9 +101,9 @@ type EpisodeDB struct {
 	Title     string    `db:"title"`
 	URL       string    `db:"url"`
 	Action    string    `db:"action"`
-	Started   int       `db:"started"`
-	Position  int       `db:"position"`
-	Total     int       `db:"total"`
+	Started   *int      `db:"started"`
+	Position  *int      `db:"position"`
+	Total     *int      `db:"total"`
 	CreatedAt time.Time `db:"created_at"`
 	UpdatedAt time.Time `db:"updated_at"`
 
@@ -125,7 +117,7 @@ type Episode struct {
 	Device    string
 	Action    string
 	Timestamp time.Time
-	Started   int
-	Position  int
-	Total     int
+	Started   *int
+	Position  *int
+	Total     *int
 }

@@ -22,7 +22,6 @@ CREATE TABLE devices (
     name VARCHAR NOT NULL,
     dev_type VARCHAR NOT NULL,
     caption VARCHAR,
-    subscriptions INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 

@@ -36,6 +36,8 @@ func (e *Episodes) SaveEpisodesActions(ctx context.Context, username string, act
 	episodes := make([]*model.EpisodeDB, 0, len(action))
 
 	for _, act := range action {
+		// TODO: validate
+
 		episodes = append(episodes, &model.EpisodeDB{
 			URL:        act.Episode,
 			Device:     act.Device,
@@ -95,16 +97,19 @@ func (e *Episodes) GetEpisodesActions(ctx context.Context, username, podcast, de
 	res := make([]*model.Episode, 0, len(episodes))
 
 	for _, e := range episodes {
-		res = append(res, &model.Episode{
+		ep := &model.Episode{
 			Podcast:   e.PodcastURL,
 			Device:    e.Device,
 			Episode:   e.URL,
 			Action:    e.Action,
 			Timestamp: e.UpdatedAt,
-			Started:   e.Started,
-			Position:  e.Position,
-			Total:     e.Total,
-		})
+		}
+		if e.Action == "play" {
+			ep.Started = e.Started
+			ep.Position = e.Position
+			ep.Total = e.Total
+		}
+		res = append(res, ep)
 	}
 
 	return res, nil

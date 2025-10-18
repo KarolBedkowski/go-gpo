@@ -8,7 +8,6 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/oxtyped/go-opml/opml"
@@ -28,7 +27,7 @@ func (sr *subscriptionsResource) Routes() chi.Router {
 	// r.Use(AuthenticatedOnly)
 
 	r.Get("/{user:[0-9a-z.-]+}.opml", sr.userSubscriptions)
-	r.Get("/{user:[0-9a-z.-]+}/{deviceid:[0-9a-z.-]+}.{format}", sr.devSubscriptions)
+	r.Get("/{user:[0-9a-z.-]+}/{deviceid:[0-9a-z.-]+}.json", sr.devSubscriptions)
 	// TODO: other formats
 	r.Put("/{user:[0-9a-z.-]+}/{deviceid:[0-9a-z.-]+}.json", sr.uploadSubscriptionsJSON)
 	// TODO: other formats
@@ -51,6 +50,7 @@ func (sr *subscriptionsResource) devSubscriptions(w http.ResponseWriter, r *http
 	if deviceid == "" {
 		logger.Info().Msgf("empty deviceId")
 		w.WriteHeader(http.StatusBadRequest)
+
 		return
 	}
 
@@ -65,7 +65,7 @@ func (sr *subscriptionsResource) devSubscriptions(w http.ResponseWriter, r *http
 		sinceTS = time.Unix(ts, 0)
 	}
 
-	subs, err := sr.subServ.GetDeviceSubscriptions(ctx, user, deviceid, sinceTS)
+	added, removed, err := sr.subServ.GetDeviceSubscriptionChanges(ctx, user, deviceid, sinceTS)
 	switch {
 	case err == nil:
 	case errors.Is(err, service.ErrUnknownUser):
@@ -85,40 +85,18 @@ func (sr *subscriptionsResource) devSubscriptions(w http.ResponseWriter, r *http
 		return
 	}
 
-	switch format := chi.URLParam(r, "format"); format {
-	case "opml":
-		o := opml.NewOPMLFromBlank("go-gpodder")
-		for _, s := range subs {
-			o.AddRSSFromURL(s.Podcast, 2*time.Second)
-		}
-
-		result, err := o.XML()
-		if err != nil {
-			logger.Info().Err(err).Msg("get opml xml error")
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(result))
-	case "json":
-		var res []string
-		for _, s := range subs {
-			res = append(res, s.Podcast)
-		}
-		w.WriteHeader(http.StatusOK)
-		render.JSON(w, r, res)
-	case "txt":
-		var res []string
-		for _, s := range subs {
-			res = append(res, s.Podcast)
-		}
-		w.WriteHeader(http.StatusOK)
-		render.PlainText(w, r, strings.Join(res, "\n"))
-	default:
-		logger.Info().Msgf("unknown format %q", format)
-		w.WriteHeader(http.StatusBadRequest)
+	res := struct {
+		Add       []string `json:"add"`
+		Remove    []string `json:"remove"`
+		Timestamp int64    `json:"timestamp"`
+	}{
+		Add:       emptyList(added),
+		Remove:    emptyList(removed),
+		Timestamp: time.Now().Unix(),
 	}
+
+	w.WriteHeader(http.StatusOK)
+	render.JSON(w, r, &res)
 }
 
 func (sr *subscriptionsResource) userSubscriptions(w http.ResponseWriter, r *http.Request) {
@@ -170,8 +148,8 @@ func (sr *subscriptionsResource) uploadSubscriptionsJSON(w http.ResponseWriter, 
 
 	if suser := userFromContext(ctx); suser != user {
 		logger.Warn().Msgf("user %q not match session user: %q", user, suser)
-		w.WriteHeader(http.StatusBadRequest)
-		return
+		// w.WriteHeader(http.StatusBadRequest)
+		// return
 	}
 
 	deviceid := chi.URLParam(r, "deviceid")
@@ -211,8 +189,8 @@ func (sr *subscriptionsResource) uploadSubscriptionChangesJSON(w http.ResponseWr
 
 	if suser := userFromContext(ctx); suser != user {
 		logger.Warn().Msgf("user %q not match session user: %q", user, suser)
-		w.WriteHeader(http.StatusBadRequest)
-		return
+		// w.WriteHeader(http.StatusBadRequest)
+		// return
 	}
 
 	deviceid := chi.URLParam(r, "deviceid")
@@ -248,6 +226,10 @@ func (sr *subscriptionsResource) uploadSubscriptionChangesJSON(w http.ResponseWr
 		return
 	}
 
+	if updatedURLs == nil {
+		updatedURLs = make([][]string, 0)
+	}
+
 	resp := struct {
 		Timestamp   int64      `json:"timestamp"`
 		UpdatedURLs [][]string `json:"update_urls"`
@@ -257,4 +239,12 @@ func (sr *subscriptionsResource) uploadSubscriptionChangesJSON(w http.ResponseWr
 	}
 
 	render.JSON(w, r, &resp)
+}
+
+func emptyList(inp []string) []string {
+	if inp == nil {
+		return make([]string, 0, 0)
+	}
+
+	return inp
 }

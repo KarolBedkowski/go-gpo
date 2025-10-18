@@ -26,14 +26,15 @@ func NewDeviceFromDeviceDB(d *DeviceDB) *Device {
 }
 
 type DeviceDB struct {
-	ID            int64     `db:"id"`
-	UserID        int64     `db:"user_id"`
-	Name          string    `db:"name"`
-	DevType       string    `db:"dev_type"`
-	Caption       string    `db:"caption"`
-	Subscriptions int       `db:"subscriptions"`
-	CreatedAt     time.Time `db:"created_at"`
-	UpdatedAt     time.Time `db:"updated_at"`
+	ID        int64     `db:"id"`
+	UserID    int64     `db:"user_id"`
+	Name      string    `db:"name"`
+	DevType   string    `db:"dev_type"`
+	Caption   string    `db:"caption"`
+	CreatedAt time.Time `db:"created_at"`
+	UpdatedAt time.Time `db:"updated_at"`
+
+	Subscriptions int `db:"-"`
 }
 
 type DevicesDB []*DeviceDB

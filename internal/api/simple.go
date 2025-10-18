@@ -133,7 +133,7 @@ func (s *simpleResource) downloadSubscriptions(w http.ResponseWriter, r *http.Re
 	case "opml":
 		o := opml.NewOPMLFromBlank("go-gpodder")
 		for _, s := range subs {
-			o.AddRSSFromURL(s.Podcast, 2*time.Second)
+			o.AddRSSFromURL(s, 2*time.Second)
 		}
 
 		result, err := o.XML()
@@ -146,19 +146,11 @@ func (s *simpleResource) downloadSubscriptions(w http.ResponseWriter, r *http.Re
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(result))
 	case "json":
-		var res []string
-		for _, s := range subs {
-			res = append(res, s.Podcast)
-		}
 		w.WriteHeader(http.StatusOK)
-		render.JSON(w, r, res)
+		render.JSON(w, r, subs)
 	case "txt":
-		var res []string
-		for _, s := range subs {
-			res = append(res, s.Podcast)
-		}
 		w.WriteHeader(http.StatusOK)
-		render.PlainText(w, r, strings.Join(res, "\n"))
+		render.PlainText(w, r, strings.Join(subs, "\n"))
 	default:
 		logger.Info().Msgf("unknown format %q", format)
 		w.WriteHeader(http.StatusBadRequest)

@@ -22,18 +22,18 @@ type episodesResource struct {
 	episodesServ *service.Episodes
 }
 
-type episodeAction struct {
+type episode struct {
 	Podcast   string `json:"podcast"`
 	Episode   string `json:"episode"`
 	Device    string `json:"device"`
 	Action    string `json:"action"`
 	Timestamp any    `json:"timestamp"`
-	Started   int    `json:"started"`
-	Position  int    `json:"position"`
-	Total     int    `json:"total"`
+	Started   *int   `json:"started,omitempty"`
+	Position  *int   `json:"position,omitempty"`
+	Total     *int   `json:"total,omitempty"`
 }
 
-func (e *episodeAction) getTimestamp() (time.Time, error) {
+func (e *episode) getTimestamp() (time.Time, error) {
 	switch v := e.Timestamp.(type) {
 	case int:
 		return time.Unix(int64(v), 0), nil
@@ -42,16 +42,9 @@ func (e *episodeAction) getTimestamp() (time.Time, error) {
 	case int32:
 		return time.Unix(int64(v), 0), nil
 	case string:
-		ts, err := time.Parse("2006-01-02T15:04:05", v)
-		if err == nil {
+		if ts, err := parseDate(v); err == nil {
 			return ts, nil
 		}
-
-		val, err := strconv.ParseInt(v, 10, 64)
-		if err != nil {
-			return time.Time{}, fmt.Errorf("parse timestamp %q error: %w", v, err)
-		}
-		return time.Unix(val, 0), nil
 	}
 
 	return time.Time{}, fmt.Errorf("cant parse timestamp %v", e.Timestamp)
@@ -78,7 +71,7 @@ func (er *episodesResource) uploadEpisodeActions(w http.ResponseWriter, r *http.
 		// return
 	}
 
-	var req []*episodeAction
+	var req []*episode
 
 	err := render.DecodeJSON(r.Body, &req)
 	if err != nil {
@@ -169,10 +162,10 @@ func (er *episodesResource) getEpisodeActions(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	actions := make([]*episodeAction, 0, len(res))
+	actions := make([]*episode, 0, len(res))
 
 	for _, r := range res {
-		episode := episodeAction{
+		episode := episode{
 			Podcast:   r.Podcast,
 			Episode:   r.Episode,
 			Device:    r.Device,
@@ -188,8 +181,8 @@ func (er *episodesResource) getEpisodeActions(w http.ResponseWriter, r *http.Req
 	}
 
 	resp := struct {
-		Actions   []*episodeAction `json:"actions"`
-		Timestamp int64            `json:"timestamp"`
+		Actions   []*episode `json:"actions"`
+		Timestamp int64      `json:"timestamp"`
 	}{
 		actions, time.Now().Unix(),
 	}

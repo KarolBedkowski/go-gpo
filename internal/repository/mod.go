@@ -24,6 +24,7 @@ import (
 type queryer interface {
 	sqlx.QueryerContext
 	SelectContext(ctx context.Context, dest any, query string, args ...any) error
+	GetContext(ctx context.Context, dest any, query string, args ...any) error
 }
 
 type Repository struct {
@@ -97,28 +98,49 @@ func (r *Repository) getDevice(
 ) (*model.DeviceDB, error) {
 	device := &model.DeviceDB{}
 	err := tx.QueryRowxContext(ctx,
-		"SELECT id, user_id, name, dev_type, caption, subscriptions, created_at, updated_at "+
+		"SELECT id, user_id, name, dev_type, caption, created_at, updated_at "+
 			"FROM devices WHERE user_id=? and name=?", userid, devicename).
 		StructScan(device)
 
-	switch {
-	case err == nil:
-		return device, nil
-	case errors.Is(err, sql.ErrNoRows):
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
-	default:
+	} else if err != nil {
 		return nil, fmt.Errorf("query device error: %w", err)
 	}
+
+	err = tx.GetContext(
+		ctx,
+		&device.Subscriptions,
+		"SELECT count(*) FROM podcasts where user_id=? and subscribed",
+		userid,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("count subscriptions error: %w", err)
+	}
+
+	return device, nil
 }
 
 func (r *Repository) getUserDevices(ctx context.Context, tx queryer, userid int64) (model.DevicesDB, error) {
 	res := []*model.DeviceDB{}
 
 	err := tx.SelectContext(ctx, &res,
-		"SELECT id, user_id, name, dev_type, caption, subscriptions, created_at, updated_at "+
+		"SELECT id, user_id, name, dev_type, caption, created_at, updated_at "+
 			"FROM devices WHERE user_id=?", userid)
 	if err != nil {
 		return nil, fmt.Errorf("query device error: %w", err)
+	}
+
+	// all device have the same number of subscriptions
+
+	var subscriptions int
+	err = tx.GetContext(ctx, &subscriptions, "SELECT count(*) FROM podcasts where user_id=? and subscribed", userid)
+	if err != nil {
+		return nil, fmt.Errorf("count subscriptions error: %w", err)
+	}
+
+	for _, r := range res {
+		r.Subscriptions = subscriptions
 	}
 
 	return res, nil
@@ -134,8 +156,8 @@ func (r *Repository) saveDevice(ctx context.Context, tx sqlx.ExecerContext, devi
 
 	if device.ID == 0 {
 		res, err := tx.ExecContext(ctx,
-			"INSERT INTO devices (user_id, name, dev_type, caption, subscriptions) VALUES(?, ?, ?, ?, ?)",
-			device.UserID, device.Name, device.DevType, device.Caption, device.Subscriptions)
+			"INSERT INTO devices (user_id, name, dev_type, caption) VALUES(?, ?, ?, ?)",
+			device.UserID, device.Name, device.DevType, device.Caption)
 		if err != nil {
 			return 0, fmt.Errorf("insert new device error: %w", err)
 		}
@@ -150,8 +172,8 @@ func (r *Repository) saveDevice(ctx context.Context, tx sqlx.ExecerContext, devi
 
 	// update
 	_, err := tx.ExecContext(ctx,
-		"UPDATE devices SET dev_type=?, caption=?, subscriptions=?, updated_at=current_timestamp WHERE id=?",
-		device.DevType, device.Caption, device.Subscriptions, device.ID)
+		"UPDATE devices SET dev_type=?, caption=?, updated_at=current_timestamp WHERE id=?",
+		device.DevType, device.Caption, device.ID)
 	if err != nil {
 		return device.ID, fmt.Errorf("update device error: %w", err)
 	}
@@ -166,7 +188,7 @@ func (r *Repository) ListDevices(ctx context.Context, userid int64) (model.Devic
 	res := []*model.DeviceDB{}
 
 	err := r.db.SelectContext(ctx, &res,
-		"SELECT id, user_id, name, dev_type, caption, subscriptions, created_at, updated_at "+
+		"SELECT id, user_id, name, dev_type, caption, created_at, updated_at "+
 			"FROM devices WHERE user_id=?", userid)
 	if err != nil {
 		return nil, fmt.Errorf("query devices error: %w", err)
@@ -201,6 +223,8 @@ func (r *Repository) getSubscribedPodcasts(
 	if err != nil {
 		return nil, fmt.Errorf("query subscriptions error: %w", err)
 	}
+
+	logger.Debug().Msgf("get podcasts: %d", len(res))
 
 	return res, nil
 }
@@ -263,7 +287,15 @@ func (r *Repository) SavePodcast(ctx context.Context, user, device string, podca
 }
 
 func (r *Repository) savePodcast(ctx context.Context, tx sqlx.ExecerContext, pod *model.PodcastDB) (int64, error) {
+	if pod.UpdatedAt.IsZero() {
+		pod.UpdatedAt = time.Now()
+	}
+
 	if pod.ID == 0 {
+		if pod.CreatedAt.IsZero() {
+			pod.CreatedAt = time.Now()
+		}
+
 		res, err := tx.ExecContext(
 			ctx,
 			"INSERT INTO podcasts (user_id, title, url, subscribed, created_at, updated_at) "+
