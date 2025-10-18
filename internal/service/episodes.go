@@ -33,33 +33,23 @@ func (e *Episodes) SaveEpisodesActions(ctx context.Context, username string, act
 		return ErrUnknownUser
 	}
 
-	podcasts, err := e.repo.GetPodcasts(ctx, user.ID, time.Time{})
-	if err != nil {
-		return fmt.Errorf("get podcasts error: %w", err)
-	}
-
-	podcastsmap := podcasts.ToMap()
 	episodes := make([]*model.EpisodeDB, 0, len(action))
 
 	for _, act := range action {
-		p, ok := podcastsmap[act.Podcast]
-		if !ok {
-			p = &model.PodcastDB{UserID: user.ID, URL: act.Podcast, Subscribed: true}
-		}
-
 		episodes = append(episodes, &model.EpisodeDB{
-			PodcastID: p.ID,
-			URL:       act.Episode,
-			Action:    act.Action,
-			UpdatedAt: act.Timestamp,
-			Started:   act.Started,
-			Position:  act.Position,
-			Total:     act.Total,
-			Podcast:   p,
+			URL:        act.Episode,
+			Device:     act.Device,
+			Action:     act.Action,
+			UpdatedAt:  act.Timestamp,
+			CreatedAt:  act.Timestamp,
+			Started:    act.Started,
+			Position:   act.Position,
+			Total:      act.Total,
+			PodcastURL: act.Podcast,
 		})
 	}
 
-	if err := e.repo.SaveEpisode(ctx, episodes...); err != nil {
+	if err := e.repo.SaveEpisode(ctx, user.ID, episodes...); err != nil {
 		return fmt.Errorf("save episodes error: %w", err)
 	}
 
@@ -77,7 +67,27 @@ func (e *Episodes) GetEpisodesActions(ctx context.Context, username, podcast, de
 		return nil, ErrUnknownUser
 	}
 
-	episodes, err := e.repo.GetEpisodes(ctx, user.ID, 0, since)
+	var deviceid int64
+	if devicename != "" {
+		device, err := e.repo.GetDevice(ctx, user.ID, devicename)
+		if err != nil {
+			return nil, ErrUnknownDevice
+		}
+
+		deviceid = device.ID
+	}
+
+	var podcastid int64
+	if podcast != "" {
+		p, err := e.repo.GetPodcast(ctx, user.ID, podcast)
+		if err != nil {
+			return nil, ErrUnknownPodcast
+		}
+
+		podcastid = p.ID
+	}
+
+	episodes, err := e.repo.GetEpisodes(ctx, user.ID, deviceid, podcastid, since, aggregated)
 	if err != nil {
 		return nil, fmt.Errorf("get episodes error: %w", err)
 	}
@@ -87,6 +97,7 @@ func (e *Episodes) GetEpisodesActions(ctx context.Context, username, podcast, de
 	for _, e := range episodes {
 		res = append(res, &model.Episode{
 			Podcast:   e.PodcastURL,
+			Device:    e.Device,
 			Episode:   e.URL,
 			Action:    e.Action,
 			Timestamp: e.UpdatedAt,

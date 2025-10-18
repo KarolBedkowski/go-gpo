@@ -19,6 +19,8 @@ import (
 	"gitlab.com/kabes/go-gpodder/internal/repository"
 )
 
+var ErrUnknownPodcast = errors.New("unknown podcast")
+
 type Subs struct {
 	repo *repository.Repository
 }

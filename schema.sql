@@ -46,6 +46,7 @@ CREATE TABLE podcasts (
 CREATE TABLE episodes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     podcast_id INTEGER NOT NULL,
+    device_id INTEGER NOT NULL,
     title VARCHAR NOT NULL,
     url VARCHAR NULL,
     action VARCHAR NOT NULL,
@@ -55,8 +56,10 @@ CREATE TABLE episodes (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-    FOREIGN KEY (podcast_id) REFERENCES podcasts (id)
+    FOREIGN KEY (podcast_id) REFERENCES podcasts (id),
+    FOREIGN KEY (device_id) REFERENCES devices (id)
 );
+
 
 
 

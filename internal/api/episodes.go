@@ -5,6 +5,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -26,10 +27,34 @@ type episodeAction struct {
 	Episode   string `json:"episode"`
 	Device    string `json:"device"`
 	Action    string `json:"action"`
-	Timestamp int64  `json:"timestamp"`
+	Timestamp any    `json:"timestamp"`
 	Started   int    `json:"started"`
 	Position  int    `json:"position"`
 	Total     int    `json:"total"`
+}
+
+func (e *episodeAction) getTimestamp() (time.Time, error) {
+	switch v := e.Timestamp.(type) {
+	case int:
+		return time.Unix(int64(v), 0), nil
+	case int64:
+		return time.Unix(v, 0), nil
+	case int32:
+		return time.Unix(int64(v), 0), nil
+	case string:
+		ts, err := time.Parse("2006-01-02T15:04:05", v)
+		if err == nil {
+			return ts, nil
+		}
+
+		val, err := strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			return time.Time{}, fmt.Errorf("parse timestamp %q error: %w", v, err)
+		}
+		return time.Unix(val, 0), nil
+	}
+
+	return time.Time{}, fmt.Errorf("cant parse timestamp %v", e.Timestamp)
 }
 
 func (er *episodesResource) Routes() chi.Router {
@@ -66,16 +91,27 @@ func (er *episodesResource) uploadEpisodeActions(w http.ResponseWriter, r *http.
 	actions := make([]*model.Episode, 0, len(req))
 
 	for _, r := range req {
-		actions = append(actions, &model.Episode{
+		ts, err := r.getTimestamp()
+		if err != nil {
+			logger.Warn().Err(err).Msgf("parse json error")
+			w.WriteHeader(http.StatusBadRequest)
+
+			return
+		}
+
+		episode := model.Episode{
 			Podcast:   r.Podcast,
 			Episode:   r.Episode,
 			Device:    r.Device,
 			Action:    r.Action,
-			Timestamp: time.Unix(r.Timestamp, 0),
+			Timestamp: ts,
 			Started:   r.Started,
 			Position:  r.Position,
 			Total:     r.Total,
-		})
+		}
+		actions = append(actions, &episode)
+
+		logger.Debug().Interface("episode", &episode).Msg("new episode")
 	}
 
 	if err = er.episodesServ.SaveEpisodesActions(ctx, user, actions...); err != nil {
@@ -136,16 +172,19 @@ func (er *episodesResource) getEpisodeActions(w http.ResponseWriter, r *http.Req
 	actions := make([]*episodeAction, 0, len(res))
 
 	for _, r := range res {
-		actions = append(actions, &episodeAction{
+		episode := episodeAction{
 			Podcast:   r.Podcast,
 			Episode:   r.Episode,
 			Device:    r.Device,
 			Action:    r.Action,
-			Timestamp: r.Timestamp.Unix(),
+			Timestamp: r.Timestamp.Format("2006-01-02T15:04:05"),
 			Started:   r.Started,
 			Position:  r.Position,
 			Total:     r.Total,
-		})
+		}
+		actions = append(actions, &episode)
+
+		logger.Debug().Interface("episode", &episode).Msg("found episode")
 	}
 
 	resp := struct {

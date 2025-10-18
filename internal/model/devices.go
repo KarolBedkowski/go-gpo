@@ -47,3 +47,13 @@ func (d DevicesDB) ToMap() map[string]*DeviceDB {
 
 	return devices
 }
+
+func (d DevicesDB) ToIDsMap() map[string]int64 {
+	devices := make(map[string]int64)
+
+	for _, dev := range d {
+		devices[dev.Name] = dev.ID
+	}
+
+	return devices
+}

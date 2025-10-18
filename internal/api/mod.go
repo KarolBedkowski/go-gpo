@@ -30,7 +30,7 @@ func Start(repo *repository.Repository) {
 		ProviderConfig: "./tmp/",
 		CookieName:     "sessionid",
 		SameSite:       http.SameSiteLaxMode,
-		Maxlifetime:    5 * 60,
+		Maxlifetime:    60 * 60 * 24,
 	})
 	if err != nil {
 		panic(err.Error())

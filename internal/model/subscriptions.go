@@ -67,6 +67,16 @@ func (s PodcastsDB) ToMap() map[string]*PodcastDB {
 	return res
 }
 
+func (s PodcastsDB) ToIDsMap() map[string]int64 {
+	res := make(map[string]int64)
+
+	for _, p := range s {
+		res[p.URL] = p.ID
+	}
+
+	return res
+}
+
 type Subscription struct {
 	Device    string
 	Podcast   string
@@ -95,6 +105,7 @@ func (s SubscribedPodcastsDB) FindPodcastByURL(url string) *SubscribedPodcastDB 
 type EpisodeDB struct {
 	ID        int64     `db:"id"`
 	PodcastID int64     `db:"podcast_id"`
+	DeviceID  int64     `db:"device_id"`
 	Title     string    `db:"title"`
 	URL       string    `db:"url"`
 	Action    string    `db:"action"`
@@ -104,8 +115,8 @@ type EpisodeDB struct {
 	CreatedAt time.Time `db:"created_at"`
 	UpdatedAt time.Time `db:"updated_at"`
 
-	PodcastURL string     `db:"podcast_url"`
-	Podcast    *PodcastDB `db:"-"`
+	PodcastURL string `db:"podcast_url"`
+	Device     string `db:"device_name"`
 }
 
 type Episode struct {
