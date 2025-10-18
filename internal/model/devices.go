@@ -26,12 +26,24 @@ func NewDeviceFromDeviceDB(d *DeviceDB) *Device {
 }
 
 type DeviceDB struct {
-	ID            int       `db:"id"`
-	UserID        int       `db:"user_id"`
+	ID            int64     `db:"id"`
+	UserID        int64     `db:"user_id"`
 	Name          string    `db:"name"`
 	DevType       string    `db:"dev_type"`
 	Caption       string    `db:"caption"`
 	Subscriptions int       `db:"subscriptions"`
 	CreatedAt     time.Time `db:"created_at"`
 	UpdatedAt     time.Time `db:"updated_at"`
+}
+
+type DevicesDB []*DeviceDB
+
+func (d DevicesDB) ToMap() map[string]*DeviceDB {
+	devices := make(map[string]*DeviceDB)
+
+	for _, dev := range d {
+		devices[dev.Name] = dev
+	}
+
+	return devices
 }

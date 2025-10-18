@@ -18,7 +18,6 @@ import (
 	"gitea.com/go-chi/session"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/hlog"
 	"github.com/rs/zerolog/log"
 	"gitlab.com/kabes/go-gpodder/internal/repository"
@@ -60,6 +59,7 @@ func Start(repo *repository.Repository) {
 	deviceSrv := service.NewDeviceService(repo)
 	subSrv := service.NewSubssService(repo)
 	usersSrv := service.NewUsersService(repo)
+	episodesSrv := service.NewEpisodesService(repo)
 
 	r.Mount("/subscriptions", (&simpleResource{repo, subSrv}).Routes())
 
@@ -67,7 +67,7 @@ func Start(repo *repository.Repository) {
 		r.Mount("/auth", authResource{usersSrv}.Routes())
 		r.Mount("/devices", deviceResource{deviceSrv}.Routes())
 		r.Mount("/subscriptions", (&subscriptionsResource{subSrv}).Routes())
-		r.Mount("/episodes", (&episodesResource{subSrv}).Routes())
+		r.Mount("/episodes", (&episodesResource{episodesSrv}).Routes())
 	})
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
@@ -197,12 +197,20 @@ func newLogMiddleware(next http.Handler) http.Handler {
 
 		next.ServeHTTP(&lrw, request)
 
-		level := zerolog.InfoLevel
 		if lrw.status >= 400 && lrw.status != 404 {
-			level = zerolog.WarnLevel
+			llog.Error().
+				Str("uri", request.RequestURI).
+				Interface("req_headers", request.Header).
+				Interface("resp_header", lrw.ResponseWriter.Header()).
+				Int("status", lrw.status).
+				Int("size", lrw.size).
+				Dur("duration", time.Since(start)).
+				Msg("webhandler: request finished")
+
+			return
 		}
 
-		llog.WithLevel(level).
+		llog.Debug().
 			Str("uri", request.RequestURI).
 			// Interface("resp_header", lrw.ResponseWriter.Header()).
 			Int("status", lrw.status).

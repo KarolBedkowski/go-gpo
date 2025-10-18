@@ -28,7 +28,7 @@ type simpleResource struct {
 func (s *simpleResource) Routes() chi.Router {
 	r := chi.NewRouter()
 	r.Use(authenticator{s.repo}.Authenticate)
-	r.Use(AuthenticatedOnly)
+	// r.Use(AuthenticatedOnly)
 
 	r.Get("/{user:[0-9a-z.-]+}.{format}", s.downloadAllSubscriptions)
 	r.Get("/{user:[0-9a-z.-]+}/{deviceid:[0-9a-z.-]+}.{format}", s.downloadSubscriptions)

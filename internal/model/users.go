@@ -23,7 +23,7 @@ func NewUserFromUserDB(u *UserDB) *User {
 }
 
 type UserDB struct {
-	ID        int       `db:"id"`
+	ID        int64     `db:"id"`
 	Username  string    `db:"username"`
 	Password  string    `db:"password"`
 	Email     string    `db:"email"`
