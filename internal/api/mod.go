@@ -8,9 +8,11 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -193,30 +195,46 @@ func newLogMiddleware(next http.Handler) http.Handler {
 			Str("sessionid", sess.ID()).
 			Msg("webhandler: request start")
 
-		lrw := logResponseWriter{ResponseWriter: writer, status: 0, size: 0}
+		var reqBody bytes.Buffer
+		request.Body = io.NopCloser(io.TeeReader(request.Body, &reqBody))
 
-		next.ServeHTTP(&lrw, request)
+		lrw := middleware.NewWrapResponseWriter(writer, request.ProtoMajor)
+		// lrw := logResponseWriter{ResponseWriter: writer, status: 0, size: 0}
 
-		if lrw.status >= 400 && lrw.status != 404 {
-			llog.Error().
+		var respBody bytes.Buffer
+		lrw.Tee(&respBody)
+
+		defer func() {
+			llog.Debug().Str("request_body", reqBody.String()).
+				Str("req-content-type", request.Header.Get("content-type")).
+				Msg("request")
+			llog.Debug().Str("response_body", respBody.String()).
+				Str("resp-content-type", lrw.Header().Get("content-type")).
+				Msg("response")
+
+			if lrw.Status() >= 400 && lrw.Status() != 404 {
+				llog.Error().
+					Str("uri", request.RequestURI).
+					Interface("req_headers", request.Header).
+					Interface("resp_header", lrw.Header()).
+					Int("status", lrw.Status()).
+					Int("size", lrw.BytesWritten()).
+					Dur("duration", time.Since(start)).
+					Msg("webhandler: request finished")
+
+				return
+			}
+
+			llog.Debug().
 				Str("uri", request.RequestURI).
-				Interface("req_headers", request.Header).
-				Interface("resp_header", lrw.ResponseWriter.Header()).
-				Int("status", lrw.status).
-				Int("size", lrw.size).
+				// Interface("resp_header", lrw.ResponseWriter.Header()).
+				Int("status", lrw.Status()).
+				Int("size", lrw.BytesWritten()).
 				Dur("duration", time.Since(start)).
 				Msg("webhandler: request finished")
+		}()
 
-			return
-		}
-
-		llog.Debug().
-			Str("uri", request.RequestURI).
-			// Interface("resp_header", lrw.ResponseWriter.Header()).
-			Int("status", lrw.status).
-			Int("size", lrw.size).
-			Dur("duration", time.Since(start)).
-			Msg("webhandler: request finished")
+		next.ServeHTTP(lrw, request)
 	}
 
 	return http.HandlerFunc(logFn)

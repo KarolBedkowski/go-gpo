@@ -305,14 +305,14 @@ func (r *Repository) GetEpisodes(
 	aggregated bool,
 ) ([]*model.EpisodeDB, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Int64("userid", userid).Int64("podcastid", podcastid).Time("since", since).Msg("get podcasts")
+	logger.Debug().Int64("userid", userid).Int64("podcastid", podcastid).
+		Int64("deviceid", deviceid).Bool("aggregated", aggregated).
+		Time("since", since).Msg("get podcasts")
 
-	res := []*model.EpisodeDB{}
-
-	query := "SELECT e.id, e.podcast_id, e.url, e.title, e.action, e.started, e.position, e.total, e.created_at, e.updated_at, " +
-		"p.url as podcast_url, d.name as device_name " +
+	query := "SELECT e.id, e.podcast_id, e.url, e.title, e.action, e.started, e.position, e.total, " +
+		"e.created_at, e.updated_at, p.url as podcast_url, d.name as device_name " +
 		"FROM episodes e JOIN podcasts p on p.id = e.podcast_id JOIN devices d on d.id=e.device_id " +
-		"WHERE p.user_id=? AND p.updated_at > ? ORDER BY e.updated_at"
+		"WHERE p.user_id=? AND e.updated_at > ? ORDER BY e.updated_at"
 	args := []any{userid, since}
 
 	if deviceid > 0 {
@@ -325,10 +325,15 @@ func (r *Repository) GetEpisodes(
 		args = append(args, podcastid)
 	}
 
+	logger.Debug().Str("query", query).Interface("args", args).Msg("query")
+
+	res := []*model.EpisodeDB{}
 	err := r.db.SelectContext(ctx, &res, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("query episodes error: %w", err)
 	}
+
+	logger.Debug().Msgf("query result len=%d", len(res))
 
 	if !aggregated {
 		return res, nil

@@ -45,7 +45,7 @@ func main() {
 	log.Logger.Log().Msg("Starting...")
 
 	re := &repository.Repository{}
-	re.Connect("sqlite3", "database.sqlite")
+	re.Connect("sqlite3", "database.sqlite?_fk=true")
 
 	api.Start(re)
 }
