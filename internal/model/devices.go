@@ -4,7 +4,11 @@
 // Distributed under terms of the GPLv3 license.
 package model
 
-import "time"
+import (
+	"time"
+
+	"gitlab.com/kabes/go-gpodder/internal/repository"
+)
 
 type Device struct {
 	User          string
@@ -15,7 +19,7 @@ type Device struct {
 	UpdatedAt     time.Time
 }
 
-func NewDeviceFromDeviceDB(d *DeviceDB) *Device {
+func NewDeviceFromDeviceDB(d *repository.DeviceDB) *Device {
 	return &Device{
 		Name:          d.Name,
 		DevType:       d.DevType,
@@ -23,38 +27,4 @@ func NewDeviceFromDeviceDB(d *DeviceDB) *Device {
 		Subscriptions: d.Subscriptions,
 		UpdatedAt:     d.UpdatedAt,
 	}
-}
-
-type DeviceDB struct {
-	ID        int64     `db:"id"`
-	UserID    int64     `db:"user_id"`
-	Name      string    `db:"name"`
-	DevType   string    `db:"dev_type"`
-	Caption   string    `db:"caption"`
-	CreatedAt time.Time `db:"created_at"`
-	UpdatedAt time.Time `db:"updated_at"`
-
-	Subscriptions int `db:"-"`
-}
-
-type DevicesDB []*DeviceDB
-
-func (d DevicesDB) ToMap() map[string]*DeviceDB {
-	devices := make(map[string]*DeviceDB)
-
-	for _, dev := range d {
-		devices[dev.Name] = dev
-	}
-
-	return devices
-}
-
-func (d DevicesDB) ToIDsMap() map[string]int64 {
-	devices := make(map[string]int64)
-
-	for _, dev := range d {
-		devices[dev.Name] = dev.ID
-	}
-
-	return devices
 }

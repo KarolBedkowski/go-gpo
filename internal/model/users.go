@@ -4,7 +4,7 @@
 // Distributed under terms of the GPLv3 license.
 package model
 
-import "time"
+import "gitlab.com/kabes/go-gpodder/internal/repository"
 
 type User struct {
 	Username string
@@ -13,26 +13,11 @@ type User struct {
 	Name     string
 }
 
-func NewUserFromUserDB(u *UserDB) *User {
+func NewUserFromUserDB(u *repository.UserDB) *User {
 	return &User{
 		Username: u.Username,
 		Password: u.Password,
 		Email:    u.Email,
 		Name:     u.Name,
 	}
-}
-
-type UserDB struct {
-	ID        int64     `db:"id"`
-	Username  string    `db:"username"`
-	Password  string    `db:"password"`
-	Email     string    `db:"email"`
-	Name      string    `db:"name"`
-	CreatedAt time.Time `db:"created_at"`
-	UpdatedAt time.Time `db:"updated_at"`
-}
-
-func (u *UserDB) CheckPassword(pass string) bool {
-	// TODO: hash
-	return pass == u.Password
 }

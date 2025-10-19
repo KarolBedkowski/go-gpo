@@ -34,12 +34,12 @@ func (e *Episodes) SaveEpisodesActions(ctx context.Context, username string, act
 		return ErrUnknownUser
 	}
 
-	episodes := make([]*model.EpisodeDB, 0, len(action))
+	episodes := make([]*repository.EpisodeDB, 0, len(action))
 
 	for _, act := range action {
 		// TODO: validate
 
-		episodes = append(episodes, &model.EpisodeDB{
+		episodes = append(episodes, &repository.EpisodeDB{
 			URL:        act.Episode,
 			Device:     act.Device,
 			Action:     act.Action,

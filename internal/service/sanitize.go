@@ -1,16 +1,16 @@
-package service
-
-import (
-	"net/url"
-	"strings"
-)
-
 //
 // sanitize.go
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
 //
 // Distributed under terms of the GPLv3 license.
 //
+
+package service
+
+import (
+	"net/url"
+	"strings"
+)
 
 func SanitizeURLs(urls []string) ([]string, [][]string) {
 	res := make([]string, 0, len(urls))

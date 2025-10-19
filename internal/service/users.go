@@ -36,7 +36,8 @@ func (u *Users) LoginUser(ctx context.Context, username, password string) (*mode
 		return nil, ErrUnknownUser
 	}
 
-	if !user.CheckPassword(password) {
+	// TODO
+	if user.Password != password {
 		return nil, ErrUnauthorized
 	}
 

@@ -45,7 +45,7 @@ func (d *Device) UpdateDevice(ctx context.Context, username, deviceID, caption, 
 
 	if device == nil {
 		// new device
-		device = &model.DeviceDB{
+		device = &repository.DeviceDB{
 			UserID:  user.ID,
 			Name:    deviceID,
 			Caption: caption,
