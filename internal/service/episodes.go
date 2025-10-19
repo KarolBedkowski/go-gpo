@@ -9,7 +9,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -62,6 +61,61 @@ func (e *Episodes) SaveEpisodesActions(ctx context.Context, username string, act
 func (e *Episodes) GetEpisodesActions(ctx context.Context, username, podcast, devicename string,
 	since time.Time, aggregated bool,
 ) ([]*model.Episode, error) {
+	episodes, err := e.getEpisodesActions(ctx, username, podcast, devicename, since, aggregated)
+	if err != nil {
+		return nil, fmt.Errorf("get episodes error: %w", err)
+	}
+
+	res := make([]*model.Episode, 0, len(episodes))
+
+	for _, e := range episodes {
+		ep := &model.Episode{
+			Podcast:   e.PodcastURL,
+			Device:    e.Device,
+			Episode:   e.URL,
+			Action:    e.Action,
+			Timestamp: e.UpdatedAt,
+		}
+		if e.Action == "play" {
+			ep.Started = e.Started
+			ep.Position = e.Position
+			ep.Total = e.Total
+		}
+		res = append(res, ep)
+	}
+
+	return res, nil
+}
+
+func (e *Episodes) GetEpisodesUpdates(ctx context.Context, username, devicename string, since time.Time,
+	includeActions bool,
+) ([]*model.EpisodeUpdate, error) {
+	episodes, err := e.getEpisodesActions(ctx, username, "", devicename, since, true)
+	if err != nil {
+		return nil, fmt.Errorf("get episodes error: %w", err)
+	}
+
+	res := make([]*model.EpisodeUpdate, 0, len(episodes))
+
+	for _, e := range episodes {
+		ep := &model.EpisodeUpdate{
+			Title:        e.Title,
+			URL:          e.URL,
+			PodcastTitle: e.PodcastTitle,
+			PodcastURL:   e.PodcastURL,
+			Status:       e.Action,
+			// do not tracking released time; use updated time
+			Released: e.UpdatedAt,
+		}
+		res = append(res, ep)
+	}
+
+	return res, nil
+}
+
+func (e *Episodes) getEpisodesActions(ctx context.Context, username, podcast, devicename string,
+	since time.Time, aggregated bool,
+) ([]*repository.EpisodeDB, error) {
 	user, err := e.repo.GetUser(ctx, username)
 	if err != nil {
 		return nil, fmt.Errorf("get user error: %w", err)
@@ -95,30 +149,5 @@ func (e *Episodes) GetEpisodesActions(ctx context.Context, username, podcast, de
 		return nil, fmt.Errorf("get episodes error: %w", err)
 	}
 
-	res := make([]*model.Episode, 0, len(episodes))
-
-	for _, e := range episodes {
-		ep := &model.Episode{
-			Podcast:   e.PodcastURL,
-			Device:    e.Device,
-			Episode:   e.URL,
-			Action:    e.Action,
-			Timestamp: e.UpdatedAt,
-		}
-		if e.Action == "play" {
-			ep.Started = e.Started
-			ep.Position = e.Position
-			ep.Total = e.Total
-		}
-		res = append(res, ep)
-	}
-
-	return res, nil
-}
-
-func (e *Episodes) GetEpisodesUpdates(ctx context.Context, username, devicename string, since time.Time,
-	includeActions bool,
-) ([]*model.EpisodeUpdate, error) {
-	// TODO
-	return nil, errors.New("not implemented")
+	return episodes, nil
 }

@@ -341,7 +341,7 @@ func (r *Repository) GetEpisodes(
 		Time("since", since).Msg("get podcasts")
 
 	query := "SELECT e.id, e.podcast_id, e.url, e.title, e.action, e.started, e.position, e.total, " +
-		"e.created_at, e.updated_at, p.url as podcast_url, d.name as device_name " +
+		"e.created_at, e.updated_at, p.url as podcast_url, p.title as podcast_title, d.name as device_name " +
 		"FROM episodes e JOIN podcasts p on p.id = e.podcast_id JOIN devices d on d.id=e.device_id " +
 		"WHERE p.user_id=? AND e.updated_at > ? ORDER BY e.updated_at"
 	args := []any{userid, since}

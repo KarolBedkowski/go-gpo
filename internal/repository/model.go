@@ -126,8 +126,9 @@ type EpisodeDB struct {
 	CreatedAt time.Time `db:"created_at"`
 	UpdatedAt time.Time `db:"updated_at"`
 
-	PodcastURL string `db:"podcast_url"`
-	Device     string `db:"device_name"`
+	PodcastURL   string `db:"podcast_url"`
+	PodcastTitle string `db:"podcast_title"`
+	Device       string `db:"device_name"`
 }
 
 type UserDB struct {

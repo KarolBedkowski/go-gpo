@@ -79,7 +79,7 @@ For other options / commands:
 
 [x] Update Device Data `POST /api/2/devices/(username)/(deviceid).json`
 [x] List Devices [DONE] `GET /api/2/devices/(username).json`
-[1] Get Device Updates `GET /api/2/updates/(username)/(deviceid).json`
+[x] Get Device Updates `GET /api/2/updates/(username)/(deviceid).json`
 
 #### Subscriptions API
 

@@ -6,6 +6,7 @@ package api
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/rs/zerolog/hlog"
 	"gitlab.com/kabes/go-gpodder/internal/model"
@@ -72,13 +73,15 @@ func (u *updatesResource) getUpdates(w http.ResponseWriter, r *http.Request) {
 	}
 
 	result := struct {
-		Add     []*model.Podcast       `json:"add"`
-		Remove  []string               `json:"remove"`
-		Updates []*model.EpisodeUpdate `json:"updates"`
+		Add        []*model.Podcast       `json:"add"`
+		Remove     []string               `json:"remove"`
+		Updates    []*model.EpisodeUpdate `json:"updates"`
+		Timestamps int64                  `json:"timestamp"`
 	}{
-		Add:     added,
-		Remove:  removed,
-		Updates: updates,
+		Add:        added,
+		Remove:     removed,
+		Updates:    updates,
+		Timestamps: time.Now().Unix(),
 	}
 
 	render.JSON(w, r, &result)
