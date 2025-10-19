@@ -25,6 +25,7 @@ require (
 	github.com/modern-go/reflect2 v0.0.0-20180701023420-4b7aa43c6742 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/unknwon/com v1.0.1 // indirect
+	github.com/urfave/cli/v3 v3.4.1 // indirect
 	golang.org/x/net v0.0.0-20201006153459-a7d1128ccaa0 // indirect
 	golang.org/x/sys v0.34.0 // indirect
 	golang.org/x/text v0.3.3 // indirect

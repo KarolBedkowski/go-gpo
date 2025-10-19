@@ -10,5 +10,5 @@ stamp_*
 
 !.gitignore
 !.golangci.yml
-!.air
+!.air.toml
 

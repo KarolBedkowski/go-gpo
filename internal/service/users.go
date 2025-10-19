@@ -11,12 +11,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"gitlab.com/kabes/go-gpodder/internal/model"
 	"gitlab.com/kabes/go-gpodder/internal/repository"
 )
 
-var ErrUnauthorized = errors.New("unauthorized")
+var (
+	ErrUnauthorized = errors.New("unauthorized")
+	ErrUserExists   = errors.New("user already exists")
+)
 
 type Users struct {
 	repo *repository.Repository
@@ -42,6 +46,33 @@ func (u *Users) LoginUser(ctx context.Context, username, password string) (*mode
 	}
 
 	return model.NewUserFromUserDB(user), nil
+}
+
+func (u *Users) AddUser(ctx context.Context, user *model.User) (int64, error) {
+	// is user exists?
+	if eu, err := u.repo.GetUser(ctx, user.Username); err != nil {
+		return 0, fmt.Errorf("check user exists error: %w", err)
+	} else if eu != nil {
+		return 0, ErrUserExists
+	}
+
+	now := time.Now()
+
+	udb := repository.UserDB{
+		Username:  user.Username,
+		Password:  user.Password,
+		Email:     user.Email,
+		Name:      user.Name,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+
+	id, err := u.repo.SaveUser(ctx, &udb)
+	if err != nil {
+		return 0, fmt.Errorf("save user error: %w", err)
+	}
+
+	return id, nil
 }
 
 //-----------------

@@ -30,7 +30,7 @@ type Repository struct {
 	db *sqlx.DB
 }
 
-func (r *Repository) Connect(driver, connstr string) error {
+func (r *Repository) Connect(ctx context.Context, driver, connstr string) error {
 	var err error
 
 	r.db, err = sqlx.Open(driver, connstr)
@@ -38,7 +38,7 @@ func (r *Repository) Connect(driver, connstr string) error {
 		return fmt.Errorf("open database error: %w", err)
 	}
 
-	if err := r.db.PingContext(context.Background()); err != nil {
+	if err := r.db.PingContext(ctx); err != nil {
 		return fmt.Errorf("ping database error: %w", err)
 	}
 
@@ -66,6 +66,7 @@ func (r *Repository) inTransaction(ctx context.Context, f func(tx *sqlx.Tx) erro
 	return nil
 }
 
+// -----------------------
 func (r *Repository) GetUser(ctx context.Context, username string) (*UserDB, error) {
 	user := &UserDB{}
 
@@ -84,6 +85,40 @@ func (r *Repository) GetUser(ctx context.Context, username string) (*UserDB, err
 		return nil, fmt.Errorf("get user error: %w", err)
 	}
 }
+
+func (r *Repository) SaveUser(ctx context.Context, user *UserDB) (int64, error) {
+	logger := log.Ctx(ctx)
+	logger.Debug().Interface("user", user).Msg("save user")
+
+	if user.ID == 0 {
+		res, err := r.db.ExecContext(ctx,
+			"INSERT INTO users (username, password, email, name, created_at, updated_at) "+
+				"VALUES(?, ?, ?, ?, ?, ?)",
+			user.Username, user.Password, user.Email, user.Name, user.CreatedAt, user.UpdatedAt)
+		if err != nil {
+			return 0, fmt.Errorf("insert new user error: %w", err)
+		}
+
+		id, err := res.LastInsertId()
+		if err != nil {
+			return 0, fmt.Errorf("get last id error: %w", err)
+		}
+
+		return id, nil
+	}
+
+	// update
+	_, err := r.db.ExecContext(ctx,
+		"UPDATE users SET password=?, email=?, name=?, updated_at=? WHERE id=?",
+		user.Password, user.Email, user.Name, user.UpdatedAt, user.ID)
+	if err != nil {
+		return user.ID, fmt.Errorf("update user error: %w", err)
+	}
+
+	return user.ID, nil
+}
+
+//-----------------------
 
 func (r *Repository) GetDevice(ctx context.Context, userid int64, devicename string) (*DeviceDB, error) {
 	return r.getDevice(ctx, r.db, userid, devicename)

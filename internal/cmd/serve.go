@@ -1,0 +1,44 @@
+//
+// serve.go
+// Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
+//
+// Distributed under terms of the GPLv3 license.
+//
+
+package cmd
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/rs/zerolog/log"
+
+	"gitlab.com/kabes/go-gpodder/internal/api"
+	"gitlab.com/kabes/go-gpodder/internal/repository"
+)
+
+type Server struct {
+	NoAuth   bool
+	Database string
+	Listen   string
+}
+
+func (s *Server) Start(ctx context.Context) error {
+	log.Logger.Log().Msg("Starting server...")
+
+	re := &repository.Repository{}
+	if err := re.Connect(ctx, "sqlite3", s.Database+"?_fk=true"); err != nil {
+		return fmt.Errorf("connect to database error: %w", err)
+	}
+
+	cfg := api.Configuration{
+		NoAuth: s.NoAuth,
+		Listen: s.Listen,
+	}
+
+	if err := api.Start(re, &cfg); err != nil {
+		return fmt.Errorf("start server error: %w", err)
+	}
+
+	return nil
+}

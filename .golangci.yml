@@ -14,7 +14,7 @@ linters:
     - gochecknoinits
     - ireturn
     - tagliatelle
-    - noinlinerror
+    - wsl
   settings:
     misspell:
       locale: US
@@ -45,6 +45,10 @@ linters:
         - multierror.Append(
         - .ErrorOrNil()
         - errors.Join(
+    wsl_v5:
+      allow-first-in-block: true
+      allow-whole-block: false
+      branch-max-lines: 2
   exclusions:
     generated: lax
     presets:

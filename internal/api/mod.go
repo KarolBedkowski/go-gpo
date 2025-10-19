@@ -27,11 +27,11 @@ import (
 )
 
 type Configuration struct {
-	cfg    *Configuration
 	NoAuth bool
+	Listen string
 }
 
-func Start(repo *repository.Repository, cfg *Configuration) {
+func Start(repo *repository.Repository, cfg *Configuration) error {
 	sess, err := session.Sessioner(session.Options{
 		Provider:       "file",
 		ProviderConfig: "./tmp/",
@@ -76,7 +76,11 @@ func Start(repo *repository.Repository, cfg *Configuration) {
 
 	logRoutes(r)
 
-	http.ListenAndServe(":3000", r)
+	if err := http.ListenAndServe(cfg.Listen, r); err != nil {
+		return fmt.Errorf("start listen error: %w", err)
+	}
+
+	return nil
 }
 
 func AuthenticatedOnly(next http.Handler) http.Handler {
