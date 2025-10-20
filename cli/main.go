@@ -96,6 +96,15 @@ func main() {
 						},
 						Action: addUserAction,
 					},
+					{
+						Name:  "password",
+						Usage: "set new user password",
+						Flags: []cli.Flag{
+							&cli.StringFlag{Name: "username", Required: true},
+							&cli.StringFlag{Name: "password", Required: true},
+						},
+						Action: changeUserPasswordAction,
+					},
 				},
 			},
 		},
@@ -124,6 +133,17 @@ func addUserAction(ctx context.Context, c *cli.Command) error {
 		Name:     c.String("name"),
 		Password: c.String("password"),
 		Email:    c.String("email"),
+		Username: c.String("username"),
+	}
+
+	return s.Start(ctx)
+}
+
+func changeUserPasswordAction(ctx context.Context, c *cli.Command) error {
+	initializeLogger(c.String("log.level"), c.String("log.format"))
+	s := cmd.ChangeUserPassword{
+		Database: c.String("database"),
+		Password: c.String("password"),
 		Username: c.String("username"),
 	}
 

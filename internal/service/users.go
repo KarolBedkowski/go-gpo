@@ -15,6 +15,7 @@ import (
 
 	"gitlab.com/kabes/go-gpodder/internal/model"
 	"gitlab.com/kabes/go-gpodder/internal/repository"
+	"golang.org/x/crypto/bcrypt"
 )
 
 var (
@@ -23,11 +24,12 @@ var (
 )
 
 type Users struct {
-	repo *repository.Repository
+	repo       *repository.Repository
+	passHasher PasswordHasher
 }
 
 func NewUsersService(repo *repository.Repository) *Users {
-	return &Users{repo}
+	return &Users{repo, BCryptPasswordHasher{}}
 }
 
 func (u *Users) LoginUser(ctx context.Context, username, password string) (*model.User, error) {
@@ -40,8 +42,7 @@ func (u *Users) LoginUser(ctx context.Context, username, password string) (*mode
 		return nil, ErrUnknownUser
 	}
 
-	// TODO
-	if user.Password != password {
+	if !u.passHasher.CheckPassword(password, user.Password) {
 		return nil, ErrUnauthorized
 	}
 
@@ -56,11 +57,15 @@ func (u *Users) AddUser(ctx context.Context, user *model.User) (int64, error) {
 		return 0, ErrUserExists
 	}
 
-	now := time.Now()
+	hashedPass, err := u.passHasher.HashPassword(user.Password)
+	if err != nil {
+		return 0, fmt.Errorf("hash password error: %w", err)
+	}
 
+	now := time.Now()
 	udb := repository.UserDB{
 		Username:  user.Username,
-		Password:  user.Password,
+		Password:  hashedPass,
 		Email:     user.Email,
 		Name:      user.Name,
 		CreatedAt: now,
@@ -68,6 +73,30 @@ func (u *Users) AddUser(ctx context.Context, user *model.User) (int64, error) {
 	}
 
 	id, err := u.repo.SaveUser(ctx, &udb)
+	if err != nil {
+		return 0, fmt.Errorf("save user error: %w", err)
+	}
+
+	return id, nil
+}
+
+func (u *Users) ChangePassword(ctx context.Context, user *model.User) (int64, error) {
+	// is user exists?
+	udb, err := u.repo.GetUser(ctx, user.Username)
+	if err != nil {
+		return 0, fmt.Errorf("get user error: %w", err)
+	} else if udb == nil {
+		return 0, ErrUnknownUser
+	}
+
+	udb.Password, err = u.passHasher.HashPassword(user.Password)
+	if err != nil {
+		return 0, fmt.Errorf("hash password error: %w", err)
+	}
+
+	udb.UpdatedAt = time.Now()
+
+	id, err := u.repo.SaveUser(ctx, udb)
 	if err != nil {
 		return 0, fmt.Errorf("save user error: %w", err)
 	}
@@ -90,4 +119,23 @@ func ContextUser(ctx context.Context) string {
 
 func ContextWithUser(ctx context.Context, username string) context.Context {
 	return context.WithValue(ctx, CtxUserKey, username)
+}
+
+//---------------------------
+
+type PasswordHasher interface {
+	HashPassword(password string) (string, error)
+	CheckPassword(password, hash string) bool
+}
+
+type BCryptPasswordHasher struct{}
+
+func (BCryptPasswordHasher) HashPassword(password string) (string, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+
+	return string(hash), err
+}
+
+func (BCryptPasswordHasher) CheckPassword(password, hash string) bool {
+	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) == nil
 }

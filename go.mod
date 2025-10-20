@@ -10,6 +10,8 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.22
 	github.com/oxtyped/go-opml v1.0.1-0.20221107150308-9d80cf9bb5f9
 	github.com/rs/zerolog v1.34.0
+	github.com/urfave/cli/v3 v3.4.1
+	golang.org/x/crypto v0.43.0
 )
 
 require (
@@ -25,8 +27,7 @@ require (
 	github.com/modern-go/reflect2 v0.0.0-20180701023420-4b7aa43c6742 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/unknwon/com v1.0.1 // indirect
-	github.com/urfave/cli/v3 v3.4.1 // indirect
-	golang.org/x/net v0.0.0-20201006153459-a7d1128ccaa0 // indirect
-	golang.org/x/sys v0.34.0 // indirect
-	golang.org/x/text v0.3.3 // indirect
+	golang.org/x/net v0.45.0 // indirect
+	golang.org/x/sys v0.37.0 // indirect
+	golang.org/x/text v0.30.0 // indirect
 )
