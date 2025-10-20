@@ -77,7 +77,7 @@ func main() {
 				Usage: "start server",
 				Flags: []cli.Flag{
 					&cli.BoolFlag{Name: "noauth", Value: false, Usage: "disable authentication"},
-					&cli.StringFlag{Name: "address", Value: "127.0.0.1:3000", Usage: "listen address"},
+					&cli.StringFlag{Name: "address", Value: ":8080", Usage: "listen address"},
 				},
 				Action: startServerAction,
 			},

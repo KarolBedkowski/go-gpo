@@ -89,8 +89,8 @@ func (er *episodesResource) Routes() chi.Router {
 		r.Use(checkUserMiddleware)
 	}
 
-	r.Post("/{user:[0-9a-z.-]+}.json", er.uploadEpisodeActions)
-	r.Get("/{user:[0-9a-z.-]+}.json", er.getEpisodeActions)
+	r.Post("/{user:[0-9a-z_.-]+}.json", er.uploadEpisodeActions)
+	r.Get("/{user:[0-9a-z_.-]+}.json", er.getEpisodeActions)
 	return r
 }
 
@@ -117,8 +117,15 @@ func (er *episodesResource) uploadEpisodeActions(w http.ResponseWriter, r *http.
 			changedurls = append(changedurls, curls...)
 		}
 
+		// skip invalid (non http*) podcasts)
+		if r.Podcast == "" {
+			logger.Debug().Interface("req", r).Msgf("skipped episode")
+
+			continue
+		}
+
 		if err := r.validate(); err != nil {
-			logger.Warn().Err(err).Msgf("validate error")
+			logger.Warn().Err(err).Interface("req", r).Msgf("validate error")
 			w.WriteHeader(http.StatusBadRequest)
 
 			return

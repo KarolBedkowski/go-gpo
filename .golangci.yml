@@ -15,6 +15,9 @@ linters:
     - ireturn
     - tagliatelle
     - wsl
+    - noinlineerr
+    # tmp
+    - errcheck
   settings:
     misspell:
       locale: US
@@ -32,6 +35,8 @@ linters:
         - t testing.T
         - T any
         - tr trace.Trace
+        - w http.ResponseWriter
+        - r *http.Request
     wrapcheck:
       ignore-sigs:
         - .Errorf(

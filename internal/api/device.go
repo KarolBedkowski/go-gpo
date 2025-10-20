@@ -20,19 +20,20 @@ type deviceResource struct {
 	deviceSrv *service.Device
 }
 
-func (dr deviceResource) Routes() chi.Router {
+func (d deviceResource) Routes() chi.Router {
 	r := chi.NewRouter()
-	if !dr.cfg.NoAuth {
+	if !d.cfg.NoAuth {
 		r.Use(AuthenticatedOnly)
 		r.Use(checkUserMiddleware)
 	}
 
-	r.Get("/{user:[0-9a-z.-]+}.json", dr.list)
-	r.Post("/{user:[0-9a-z.-]+}/{deviceid:[0-9a-z.-]+}.json", dr.update)
+	r.Get("/{user:[0-9a-z._-]+}.json", d.list)
+	r.Post("/{user:[0-9a-z_.-]+}/{deviceid:[0-9a-z_.-]+}.json", d.update)
+
 	return r
 }
 
-func (d *deviceResource) update(w http.ResponseWriter, r *http.Request) {
+func (d deviceResource) update(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	logger := hlog.FromRequest(r)
 	user := chi.URLParam(r, "user")
@@ -41,6 +42,7 @@ func (d *deviceResource) update(w http.ResponseWriter, r *http.Request) {
 	if deviceid == "" {
 		logger.Info().Msgf("empty deviceId")
 		w.WriteHeader(http.StatusBadRequest)
+
 		return
 	}
 
@@ -50,17 +52,17 @@ func (d *deviceResource) update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	udd := updateDeviceData{}
-	err := render.DecodeJSON(r.Body, &udd)
-	if err != nil {
+	if err := render.DecodeJSON(r.Body, &udd); err != nil {
 		logger.Info().Err(err).Msg("error decoding json payload")
 		w.WriteHeader(http.StatusBadRequest)
+
 		return
 	}
 
-	err = d.deviceSrv.UpdateDevice(ctx, user, deviceid, udd.Caption, udd.Type)
+	err := d.deviceSrv.UpdateDevice(ctx, user, deviceid, udd.Caption, udd.Type)
 	switch {
 	case err == nil:
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 	case errors.Is(err, service.ErrUnknownUser):
 		logger.Info().Msgf("unknown user: %q", user)
 		w.WriteHeader(http.StatusBadRequest)
@@ -73,7 +75,7 @@ func (d *deviceResource) update(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (d *deviceResource) list(w http.ResponseWriter, r *http.Request) {
+func (d deviceResource) list(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	logger := hlog.FromRequest(r)
 	user := chi.URLParam(r, "user")

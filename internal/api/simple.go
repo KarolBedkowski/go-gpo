@@ -35,9 +35,9 @@ func (s *simpleResource) Routes() chi.Router {
 		r.Use(checkUserMiddleware)
 	}
 
-	r.Get("/{user:[0-9a-z.-]+}.{format}", s.downloadAllSubscriptions)
-	r.Get("/{user:[0-9a-z.-]+}/{deviceid:[0-9a-z.-]+}.{format}", s.downloadSubscriptions)
-	r.Put("/{user:[0-9a-z.-]+}/{deviceid:[0-9a-z.-]+}.{format}", s.uploadSubscriptions)
+	r.Get("/{user:[0-9a-z._-]+}.{format}", s.downloadAllSubscriptions)
+	r.Get("/{user:[0-9a-z._-]+}/{deviceid:[0-9a-z._-]+}.{format}", s.downloadSubscriptions)
+	r.Put("/{user:[0-9a-z._-]+}/{deviceid:[0-9a-z._-]+}.{format}", s.uploadSubscriptions)
 
 	return r
 }
@@ -66,13 +66,14 @@ func (s *simpleResource) downloadAllSubscriptions(w http.ResponseWriter, r *http
 	case "opml":
 		o := opml.NewOPMLFromBlank("go-gpodder")
 		for _, s := range subs {
-			_ = o.AddRSSFromURL(s, 2*time.Second)
+			o.AddRSSFromURL(s, 2*time.Second)
 		}
 
 		result, err := o.XML()
 		if err != nil {
 			logger.Info().Err(err).Msg("get opml xml error")
 			w.WriteHeader(http.StatusInternalServerError)
+
 			return
 		}
 
@@ -99,6 +100,7 @@ func (s *simpleResource) downloadSubscriptions(w http.ResponseWriter, r *http.Re
 	if deviceid == "" {
 		logger.Info().Msgf("empty deviceId")
 		w.WriteHeader(http.StatusBadRequest)
+
 		return
 	}
 
@@ -133,6 +135,7 @@ func (s *simpleResource) downloadSubscriptions(w http.ResponseWriter, r *http.Re
 		if err != nil {
 			logger.Info().Err(err).Msg("get opml xml error")
 			w.WriteHeader(http.StatusInternalServerError)
+
 			return
 		}
 
@@ -168,6 +171,7 @@ func (s *simpleResource) uploadSubscriptions(w http.ResponseWriter, r *http.Requ
 	case "opml":
 		// TODO need tests
 		var buf bytes.Buffer
+
 		count, err := io.Copy(&buf, r.Body)
 		if err != nil {
 			logger.Warn().Err(err).Msgf("parse opml - copy body - error")
@@ -213,6 +217,7 @@ func (s *simpleResource) uploadSubscriptions(w http.ResponseWriter, r *http.Requ
 			logger.Warn().Err(err).Msgf("read body error")
 			w.WriteHeader(http.StatusBadRequest)
 		}
+
 		subs = slices.Collect(strings.Lines(string(body)))
 	default:
 		logger.Info().Msgf("unknown format %q", format)

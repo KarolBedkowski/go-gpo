@@ -9,7 +9,6 @@ package api
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -30,6 +29,8 @@ type Configuration struct {
 	NoAuth bool
 	Listen string
 }
+
+const connectioTimeout = 60 * time.Second
 
 func Start(repo *repository.Repository, cfg *Configuration) error {
 	sess, err := session.Sessioner(session.Options{
@@ -58,20 +59,20 @@ func Start(repo *repository.Repository, cfg *Configuration) error {
 	r.Use(sess)
 	r.Use(authenticator{usersSrv}.Authenticate)
 	r.Use(newRecoverMiddleware)
-	r.Use(middleware.Timeout(60 * time.Second))
+	r.Use(middleware.Timeout(connectioTimeout))
 
 	r.Mount("/subscriptions", (&simpleResource{cfg, repo, subSrv}).Routes())
 
 	r.Route("/api/2", func(r chi.Router) {
-		r.Mount("/auth", authResource{cfg, usersSrv}.Routes())
-		r.Mount("/devices", deviceResource{cfg, deviceSrv}.Routes())
+		r.Mount("/auth", (&authResource{cfg, usersSrv}).Routes())
+		r.Mount("/devices", (&deviceResource{cfg, deviceSrv}).Routes())
 		r.Mount("/subscriptions", (&subscriptionsResource{cfg, subSrv}).Routes())
 		r.Mount("/episodes", (&episodesResource{cfg, episodesSrv}).Routes())
 		r.Mount("/updates", (&updatesResource{cfg, subSrv, episodesSrv}).Routes())
 	})
 
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("go-gpodder"))
+	r.Get("/", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("go-gpodder"))
 	})
 
 	logRoutes(r)
@@ -98,14 +99,14 @@ func AuthenticatedOnly(next http.Handler) http.Handler {
 			return
 		}
 
-		sess.Destroy(w, r)
+		_ = sess.Destroy(w, r)
+
 		w.Header().Add("WWW-Authenticate", "Basic realm=\"go-gpodder\"")
 		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 	})
 }
 
 type authenticator struct {
-	// TODO: service
 	usersSrv *service.Users
 }
 
@@ -121,7 +122,9 @@ func (a authenticator) Authenticate(next http.Handler) http.Handler {
 			if errors.Is(err, service.ErrUnauthorized) || errors.Is(err, service.ErrUnknownUser) {
 				logger.Info().Err(err).Str("username", username).Msgf("auth failed; user: %v", user)
 				w.Header().Add("WWW-Authenticate", "Basic realm=\"go-gpodder\"")
-				sess.Destroy(w, r)
+
+				_ = sess.Destroy(w, r)
+
 				http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 
 				return
@@ -130,9 +133,8 @@ func (a authenticator) Authenticate(next http.Handler) http.Handler {
 			}
 
 			logger.Debug().Str("username", username).Msgf("user authenticated")
-			ctx = context.WithValue(ctx, "user", user.Name)
-			r = r.WithContext(ctx)
 
+			r = r.WithContext(service.ContextWithUser(ctx, user.Name))
 			_ = sess.Set("user", user.Name)
 		}
 
@@ -140,32 +142,32 @@ func (a authenticator) Authenticate(next http.Handler) http.Handler {
 	})
 }
 
-type (
-	// our http.ResponseWriter implementation.
-	logResponseWriter struct {
-		http.ResponseWriter // compose original http.ResponseWriter
+// type (
+// 	// our http.ResponseWriter implementation.
+// 	logResponseWriter struct {
+// 		http.ResponseWriter // compose original http.ResponseWriter
 
-		status int // http status
-		size   int // response size
-	}
-)
+// 		status int // http status
+// 		size   int // response size
+// 	}
+// )
 
-func (r *logResponseWriter) Write(b []byte) (int, error) {
-	size, err := r.ResponseWriter.Write(b) // write response using original http.ResponseWriter
-	r.size += size                         // capture size
+// func (r *logResponseWriter) Write(b []byte) (int, error) {
+// 	size, err := r.ResponseWriter.Write(b) // write response using original http.ResponseWriter
+// 	r.size += size                         // capture size
 
-	if err != nil {
-		return size, fmt.Errorf("write response error: %w", err)
-	}
+// 	if err != nil {
+// 		return size, fmt.Errorf("write response error: %w", err)
+// 	}
 
-	return size, nil
-}
+// 	return size, nil
+// }
 
-func (r *logResponseWriter) WriteHeader(status int) {
-	r.ResponseWriter.WriteHeader(status)
+// func (r *logResponseWriter) WriteHeader(status int) {
+// 	r.ResponseWriter.WriteHeader(status)
 
-	r.status = status
-}
+// 	r.status = status
+// }
 
 // newLogMiddleware create new logging middleware.
 func newLogMiddleware(next http.Handler) http.Handler {
@@ -185,6 +187,7 @@ func newLogMiddleware(next http.Handler) http.Handler {
 			Msg("webhandler: request start")
 
 		var reqBody bytes.Buffer
+
 		request.Body = io.NopCloser(io.TeeReader(request.Body, &reqBody))
 
 		lrw := middleware.NewWrapResponseWriter(writer, request.ProtoMajor)
@@ -241,6 +244,7 @@ func newRecoverMiddleware(next http.Handler) http.Handler {
 			}
 
 			logger := log.Ctx(req.Context())
+
 			switch t := rec.(type) {
 			case error:
 				if errors.Is(t, http.ErrAbortHandler) {
@@ -269,6 +273,7 @@ func newRecoverMiddleware(next http.Handler) http.Handler {
 
 func sessionUser(store session.Store) string {
 	log.Debug().Interface("session", store).Msg("session")
+
 	suserint := store.Get("user")
 	if username, ok := suserint.(string); ok {
 		return username
@@ -295,6 +300,8 @@ func checkUserMiddleware(next http.Handler) http.Handler {
 
 func logRoutes(r chi.Routes) {
 	walkFunc := func(method, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
+		_ = handler
+		_ = middlewares
 		route = strings.ReplaceAll(route, "/*/", "/")
 		log.Debug().Msgf("ROUTE: %s %s", method, route)
 		return nil

@@ -33,12 +33,11 @@ func (sr *subscriptionsResource) Routes() chi.Router {
 		r.Use(checkUserMiddleware)
 	}
 
-	r.Get("/{user:[0-9a-z.-]+}.opml", sr.userSubscriptions)
-	r.Get("/{user:[0-9a-z.-]+}/{deviceid:[0-9a-z.-]+}.json", sr.devSubscriptions)
-	// TODO: other formats
-	r.Put("/{user:[0-9a-z.-]+}/{deviceid:[0-9a-z.-]+}.json", sr.uploadSubscriptions)
-	// TODO: other formats
-	r.Post("/{user:[0-9a-z.-]+}/{deviceid:[0-9a-z.-]+}.json", sr.uploadSubscriptionChanges)
+	r.Get("/{user:[0-9a-z._-]+}.opml", sr.userSubscriptions)
+	r.Get("/{user:[0-9a-z._-]+}/{deviceid:[0-9a-z._-]+}.json", sr.devSubscriptions)
+	r.Put("/{user:[0-9a-z._-]+}/{deviceid:[0-9a-z._-]+}.json", sr.uploadSubscriptions)
+	r.Post("/{user:[0-9a-z._-]+}/{deviceid:[0-9a-z._-]+}.json", sr.uploadSubscriptionChanges)
+
 	return r
 }
 
@@ -56,6 +55,7 @@ func (sr *subscriptionsResource) devSubscriptions(w http.ResponseWriter, r *http
 	}
 
 	var sinceTS time.Time
+
 	if since := r.URL.Query().Get("since"); since != "" {
 		ts, err := strconv.ParseInt(since, 10, 64)
 		if err != nil {

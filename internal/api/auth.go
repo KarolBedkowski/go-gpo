@@ -19,7 +19,7 @@ type authResource struct {
 	users *service.Users
 }
 
-func (ar authResource) Routes() chi.Router {
+func (ar *authResource) Routes() chi.Router {
 	r := chi.NewRouter()
 	r.Post("/{user}/login.json", ar.login)
 	r.Post("/{user}/logout.json", ar.logout)
@@ -27,7 +27,7 @@ func (ar authResource) Routes() chi.Router {
 	return r
 }
 
-func (a *authResource) login(w http.ResponseWriter, r *http.Request) {
+func (ar *authResource) login(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	logger := hlog.FromRequest(r)
 	paramUser := chi.URLParam(r, "user")
@@ -41,10 +41,12 @@ func (a *authResource) login(w http.ResponseWriter, r *http.Request) {
 	case paramUser:
 		logger.Debug().Msgf("user match session user %q", u)
 		w.WriteHeader(http.StatusOK)
+
 		return
 	default:
 		logger.Info().Msgf("user not match session user %q", u)
 		w.WriteHeader(http.StatusBadRequest)
+
 		return
 	}
 
@@ -52,10 +54,11 @@ func (a *authResource) login(w http.ResponseWriter, r *http.Request) {
 	if !ok || paramUser == "" || password == "" || username != paramUser {
 		logger.Info().Str("username", username).Msg("bad basic auth")
 		w.WriteHeader(http.StatusUnauthorized)
+
 		return
 	}
 
-	user, err := a.users.LoginUser(ctx, username, password)
+	user, err := ar.users.LoginUser(ctx, username, password)
 	switch {
 	case errors.Is(err, service.ErrUnauthorized) || errors.Is(err, service.ErrUnknownUser):
 		logger.Info().Str("username", username).Msgf("no auth; user: %v", user)
@@ -71,7 +74,7 @@ func (a *authResource) login(w http.ResponseWriter, r *http.Request) {
 
 	logger.Info().Str("user", username).Msg("user authenticated")
 
-	sess.Set("user", username)
+	_ = sess.Set("user", username)
 
 	// 	expire := time.Now().Add(5 * time.Minute)
 	// 	cookie := http.Cookie{Name: "sessionid", Value: "", Path: "/", SameSite: http.SameSiteLaxMode, Expires: expire}
@@ -80,7 +83,7 @@ func (a *authResource) login(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (authResource) logout(w http.ResponseWriter, r *http.Request) {
+func (*authResource) logout(w http.ResponseWriter, r *http.Request) {
 	logger := hlog.FromRequest(r)
 	user := chi.URLParam(r, "user")
 	sess := session.GetSession(r)
@@ -90,11 +93,12 @@ func (authResource) logout(w http.ResponseWriter, r *http.Request) {
 
 	if username != "" && user != username {
 		logger.Info().Str("user", user).Msgf("logout user error; session user %q not match user", username)
-		w.WriteHeader(400)
+		w.WriteHeader(http.StatusBadRequest)
 
 		return
 	}
 
-	sess.Destroy(w, r)
-	w.WriteHeader(200)
+	_ = sess.Destroy(w, r)
+
+	w.WriteHeader(http.StatusOK)
 }

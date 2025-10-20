@@ -28,6 +28,8 @@ CREATE TABLE devices (
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
+CREATE INDEX devices_user_id_idx ON devices (user_id);
+
 
 CREATE TABLE podcasts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -40,6 +42,9 @@ CREATE TABLE podcasts (
 
     FOREIGN KEY (user_id) REFERENCES users (id)
 );
+
+CREATE INDEX podcasts_user_id_idx ON podcasts (user_id);
+CREATE INDEX podcasts_idx1 ON podcasts (updated_at, subscribed);
 
 
 CREATE TABLE episodes (
@@ -59,10 +64,14 @@ CREATE TABLE episodes (
     FOREIGN KEY (device_id) REFERENCES devices (id)
 );
 
+CREATE INDEX episodes_device_id_idx ON episodes (device_id);
+CREATE INDEX episodes_podcast_id_idx ON episodes (podcast_id);
+CREATE INDEX episodes_idx1 ON episodes (podcast_id, device_id, updated_at);
 
 
 
 insert into users (username, password, email, name) values ('k', 'q1w2e3', 'k@localhost', 'k');
+
 
 
 

@@ -22,14 +22,14 @@ type updatesResource struct {
 	episodesServ *service.Episodes
 }
 
-func (u updatesResource) Routes() chi.Router {
+func (u *updatesResource) Routes() chi.Router {
 	r := chi.NewRouter()
 	if !u.cfg.NoAuth {
 		r.Use(AuthenticatedOnly)
 		r.Use(checkUserMiddleware)
 	}
 
-	r.Get("/{user:[0-9a-z.-]+}/{deviceid:[0-9a-z.-]+}.json", u.getUpdates)
+	r.Get("/{user:[0-9a-z._-]+}/{deviceid:[0-9a-z._-]+}.json", u.getUpdates)
 	return r
 }
 
