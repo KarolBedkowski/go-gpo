@@ -22,6 +22,8 @@ import (
 	"gitlab.com/kabes/go-gpodder/internal/service"
 )
 
+const opmlDeadline = 5 * time.Second
+
 type simpleResource struct {
 	cfg     *Configuration
 	repo    *repository.Repository
@@ -66,7 +68,7 @@ func (s *simpleResource) downloadAllSubscriptions(w http.ResponseWriter, r *http
 	case "opml":
 		o := opml.NewOPMLFromBlank("go-gpodder")
 		for _, s := range subs {
-			o.AddRSSFromURL(s, 2*time.Second)
+			o.AddRSSFromURL(s, opmlDeadline)
 		}
 
 		result, err := o.XML()
@@ -128,7 +130,7 @@ func (s *simpleResource) downloadSubscriptions(w http.ResponseWriter, r *http.Re
 	case "opml":
 		o := opml.NewOPMLFromBlank("go-gpodder")
 		for _, s := range subs {
-			o.AddRSSFromURL(s, 2*time.Second)
+			o.AddRSSFromURL(s, opmlDeadline)
 		}
 
 		result, err := o.XML()
@@ -162,6 +164,7 @@ func (s *simpleResource) uploadSubscriptions(w http.ResponseWriter, r *http.Requ
 	if deviceid == "" {
 		logger.Info().Msgf("empty deviceId")
 		w.WriteHeader(http.StatusBadRequest)
+
 		return
 	}
 
@@ -202,6 +205,7 @@ func (s *simpleResource) uploadSubscriptions(w http.ResponseWriter, r *http.Requ
 		}
 
 		w.WriteHeader(http.StatusInternalServerError)
+
 		return
 
 	case "json":
@@ -222,6 +226,7 @@ func (s *simpleResource) uploadSubscriptions(w http.ResponseWriter, r *http.Requ
 	default:
 		logger.Info().Msgf("unknown format %q", format)
 		w.WriteHeader(http.StatusBadRequest)
+
 		return
 	}
 

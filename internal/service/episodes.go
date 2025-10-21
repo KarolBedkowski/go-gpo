@@ -9,6 +9,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -24,21 +25,18 @@ func NewEpisodesService(repo *repository.Repository) *Episodes {
 	return &Episodes{repo}
 }
 
-func (e *Episodes) SaveEpisodesActions(ctx context.Context, username string, action ...*model.Episode) error {
+func (e *Episodes) SaveEpisodesActions(ctx context.Context, username string, action ...model.Episode) error {
 	user, err := e.repo.GetUser(ctx, username)
-	if err != nil {
+	if errors.Is(err, repository.ErrNoData) {
+		return ErrUnknownUser
+	} else if err != nil {
 		return fmt.Errorf("get user error: %w", err)
 	}
-	if user == nil {
-		return ErrUnknownUser
-	}
 
-	episodes := make([]*repository.EpisodeDB, 0, len(action))
+	episodes := make([]repository.EpisodeDB, 0, len(action))
 
 	for _, act := range action {
-		// TODO: validate
-
-		episodes = append(episodes, &repository.EpisodeDB{
+		episodes = append(episodes, repository.EpisodeDB{
 			URL:        act.Episode,
 			Device:     act.Device,
 			Action:     act.Action,
@@ -60,16 +58,16 @@ func (e *Episodes) SaveEpisodesActions(ctx context.Context, username string, act
 
 func (e *Episodes) GetEpisodesActions(ctx context.Context, username, podcast, devicename string,
 	since time.Time, aggregated bool,
-) ([]*model.Episode, error) {
+) ([]model.Episode, error) {
 	episodes, err := e.getEpisodesActions(ctx, username, podcast, devicename, since, aggregated)
 	if err != nil {
 		return nil, fmt.Errorf("get episodes error: %w", err)
 	}
 
-	res := make([]*model.Episode, 0, len(episodes))
+	res := make([]model.Episode, 0, len(episodes))
 
 	for _, e := range episodes {
-		ep := &model.Episode{
+		episode := model.Episode{
 			Podcast:   e.PodcastURL,
 			Device:    e.Device,
 			Episode:   e.URL,
@@ -77,11 +75,12 @@ func (e *Episodes) GetEpisodesActions(ctx context.Context, username, podcast, de
 			Timestamp: e.UpdatedAt,
 		}
 		if e.Action == "play" {
-			ep.Started = e.Started
-			ep.Position = e.Position
-			ep.Total = e.Total
+			episode.Started = e.Started
+			episode.Position = e.Position
+			episode.Total = e.Total
 		}
-		res = append(res, ep)
+
+		res = append(res, episode)
 	}
 
 	return res, nil
@@ -90,6 +89,8 @@ func (e *Episodes) GetEpisodesActions(ctx context.Context, username, podcast, de
 func (e *Episodes) GetEpisodesUpdates(ctx context.Context, username, devicename string, since time.Time,
 	includeActions bool,
 ) ([]*model.EpisodeUpdate, error) {
+	_ = includeActions
+
 	episodes, err := e.getEpisodesActions(ctx, username, "", devicename, since, true)
 	if err != nil {
 		return nil, fmt.Errorf("get episodes error: %w", err)
@@ -117,14 +118,14 @@ func (e *Episodes) getEpisodesActions(ctx context.Context, username, podcast, de
 	since time.Time, aggregated bool,
 ) ([]*repository.EpisodeDB, error) {
 	user, err := e.repo.GetUser(ctx, username)
-	if err != nil {
-		return nil, fmt.Errorf("get user error: %w", err)
-	}
-	if user == nil {
+	if errors.Is(err, repository.ErrNoData) {
 		return nil, ErrUnknownUser
+	} else if err != nil {
+		return nil, fmt.Errorf("get user error: %w", err)
 	}
 
 	var deviceid int64
+
 	if devicename != "" {
 		device, err := e.repo.GetDevice(ctx, user.ID, devicename)
 		if err != nil {
@@ -135,6 +136,7 @@ func (e *Episodes) getEpisodesActions(ctx context.Context, username, podcast, de
 	}
 
 	var podcastid int64
+
 	if podcast != "" {
 		p, err := e.repo.GetPodcast(ctx, user.ID, podcast)
 		if err != nil {

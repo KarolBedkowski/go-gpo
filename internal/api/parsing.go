@@ -1,3 +1,10 @@
+//
+// parsing.go
+// Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
+//
+// Distributed under terms of the GPLv3 license.
+//
+
 package api
 
 import (
@@ -7,12 +14,33 @@ import (
 	"time"
 )
 
-//
-// parsing.go
-// Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
-//
-// Distributed under terms of the GPLv3 license.
-//
+type ValidationError struct {
+	msg string
+}
+
+func NewValidationError(msg string, args ...any) ValidationError {
+	return ValidationError{fmt.Sprintf(msg, args...)}
+}
+
+func (v ValidationError) Error() string {
+	return v.msg
+}
+
+// ---------------------------------------
+
+type ParseError struct {
+	msg string
+}
+
+func NewParseError(msg string, args ...any) ParseError {
+	return ParseError{fmt.Sprintf(msg, args...)}
+}
+
+func (p ParseError) Error() string {
+	return p.msg
+}
+
+// ---------------------------------------
 
 var dateFormats = []string{
 	"2006-01-02T15:04:05",
@@ -35,11 +63,12 @@ func parseDate(str string) (time.Time, error) {
 		return time.Unix(val, 0), nil
 	}
 
-	return time.Time{}, fmt.Errorf("cant parse %q as date", str)
+	return time.Time{}, NewParseError("cant parse %q as date", str)
 }
 
 func sinceFromParameter(r *http.Request) (time.Time, error) {
 	since := time.Time{}
+
 	if s := r.URL.Query().Get("since"); s != "" {
 		se, err := strconv.ParseInt(s, 10, 64)
 		if err != nil {

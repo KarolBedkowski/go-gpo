@@ -50,20 +50,20 @@ func Start(repo *repository.Repository, cfg *Configuration) error {
 	usersSrv := service.NewUsersService(repo)
 	episodesSrv := service.NewEpisodesService(repo)
 
-	r := chi.NewRouter()
+	router := chi.NewRouter()
 
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
-	r.Use(hlog.RequestIDHandler("req_id", "Request-Id"))
-	r.Use(newLogMiddleware)
-	r.Use(sess)
-	r.Use(authenticator{usersSrv}.Authenticate)
-	r.Use(newRecoverMiddleware)
-	r.Use(middleware.Timeout(connectioTimeout))
+	router.Use(middleware.RequestID)
+	router.Use(middleware.RealIP)
+	router.Use(hlog.RequestIDHandler("req_id", "Request-Id"))
+	router.Use(newLogMiddleware)
+	router.Use(sess)
+	router.Use(authenticator{usersSrv}.Authenticate)
+	router.Use(newRecoverMiddleware)
+	router.Use(middleware.Timeout(connectioTimeout))
 
-	r.Mount("/subscriptions", (&simpleResource{cfg, repo, subSrv}).Routes())
+	router.Mount("/subscriptions", (&simpleResource{cfg, repo, subSrv}).Routes())
 
-	r.Route("/api/2", func(r chi.Router) {
+	router.Route("/api/2", func(r chi.Router) {
 		r.Mount("/auth", (&authResource{cfg, usersSrv}).Routes())
 		r.Mount("/devices", (&deviceResource{cfg, deviceSrv}).Routes())
 		r.Mount("/subscriptions", (&subscriptionsResource{cfg, subSrv}).Routes())
@@ -71,13 +71,13 @@ func Start(repo *repository.Repository, cfg *Configuration) error {
 		r.Mount("/updates", (&updatesResource{cfg, subSrv, episodesSrv}).Routes())
 	})
 
-	r.Get("/", func(w http.ResponseWriter, _ *http.Request) {
+	router.Get("/", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("go-gpodder"))
 	})
 
-	logRoutes(r)
+	logRoutes(router)
 
-	if err := http.ListenAndServe(cfg.Listen, r); err != nil {
+	if err := http.ListenAndServe(cfg.Listen, router); err != nil {
 		return fmt.Errorf("start listen error: %w", err)
 	}
 
@@ -198,11 +198,11 @@ func newLogMiddleware(next http.Handler) http.Handler {
 
 		defer func() {
 			llog.Debug().Str("request_body", reqBody.String()).
-				Str("req-content-type", request.Header.Get("content-type")).
+				Str("req-content-type", request.Header.Get("Content-Type")).
 				Interface("req-headers", request.Header).
 				Msg("request")
 			llog.Debug().Str("response_body", respBody.String()).
-				Str("resp-content-type", lrw.Header().Get("content-type")).
+				Str("resp-content-type", lrw.Header().Get("Content-Type")).
 				Interface("resp-headers", lrw.Header()).
 				Msg("response")
 
@@ -236,7 +236,7 @@ func newLogMiddleware(next http.Handler) http.Handler {
 
 func newRecoverMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		defer func() { //nolint:contextcheck
+		defer func() {
 			rec := recover()
 
 			if rec == nil {
@@ -304,6 +304,7 @@ func logRoutes(r chi.Routes) {
 		_ = middlewares
 		route = strings.ReplaceAll(route, "/*/", "/")
 		log.Debug().Msgf("ROUTE: %s %s", method, route)
+
 		return nil
 	}
 

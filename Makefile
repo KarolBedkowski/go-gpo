@@ -23,7 +23,16 @@ LDFLAGS="\
 .PHONY: build
 build:
 	go build $(GOTAGS) -v -o go-gpodder -ldflags $(LDFLAGS) \
-		gitlab.com/kabes/go-gpodder/cli
+		./cli
+
+.PHONY: build
+build_arm64:
+	CGO_ENABLED=1 \
+	GOGCCFLAGS="-fPIC -O4 -Ofast -pipe -march=native -s" \
+		GOARCH=arm64 GOOS=linux \
+		go build -v -o go-gpodder-arm64 --ldflags $(LDFLAGS) \
+		./cli
+
 
 .PHONY: run
 run:

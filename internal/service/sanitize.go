@@ -14,7 +14,7 @@ import (
 
 func SanitizeURLs(urls []string) ([]string, [][]string) {
 	res := make([]string, 0, len(urls))
-	var changes [][]string
+	changes := make([][]string, 0)
 
 	for _, u := range urls {
 		su := SanitizeURL(u)
@@ -29,11 +29,13 @@ func SanitizeURLs(urls []string) ([]string, [][]string) {
 
 		res = append(res, su)
 	}
+
 	return res, changes
 }
 
 func SanitizeURL(u string) string {
 	su := strings.TrimSpace(u)
+
 	url, err := url.Parse(su)
 	if err != nil || (url.Scheme != "http" && url.Scheme != "https") {
 		return ""

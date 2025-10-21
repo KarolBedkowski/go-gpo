@@ -35,7 +35,7 @@ func (a *ChangeUserPassword) Start(ctx context.Context) error {
 
 	userv := service.NewUsersService(re)
 
-	id, err := userv.ChangePassword(ctx, &user)
+	id, err := userv.ChangePassword(ctx, user)
 	if err != nil {
 		return fmt.Errorf("change user password error: %w", err)
 	}

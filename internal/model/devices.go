@@ -10,13 +10,14 @@ import (
 	"gitlab.com/kabes/go-gpodder/internal/repository"
 )
 
+// FIXME: no json there
 type Device struct {
-	User          string
-	Name          string `json:"id"`
-	DevType       string
-	Caption       string
-	Subscriptions int
-	UpdatedAt     time.Time
+	User          string    `json:"user"`
+	Name          string    `json:"id"`
+	DevType       string    `json:"type"`
+	Caption       string    `json:"caption"`
+	Subscriptions int       `json:"subscriptions"`
+	UpdatedAt     time.Time `json:"-"`
 }
 
 func NewDeviceFromDeviceDB(d *repository.DeviceDB) *Device {

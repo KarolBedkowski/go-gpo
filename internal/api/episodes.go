@@ -6,10 +6,7 @@
 package api
 
 import (
-	"errors"
-	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/rs/zerolog/hlog"
@@ -34,6 +31,8 @@ type episode struct {
 	Started   *int   `json:"started,omitempty"`
 	Position  *int   `json:"position,omitempty"`
 	Total     *int   `json:"total,omitempty"`
+
+	ts time.Time `json:"-"`
 }
 
 func (e *episode) sanitize() [][]string {
@@ -56,10 +55,18 @@ func (e *episode) sanitize() [][]string {
 
 func (e *episode) validate() error {
 	if e.Podcast == "" {
-		return errors.New("empty `podcast`")
+		return NewValidationError("empty `podcast`")
 	}
+
 	if e.Episode == "" {
-		return errors.New("empty `episode`")
+		return NewValidationError("empty `episode`")
+	}
+
+	var err error
+
+	e.ts, err = e.getTimestamp()
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -79,8 +86,23 @@ func (e *episode) getTimestamp() (time.Time, error) {
 		}
 	}
 
-	return time.Time{}, fmt.Errorf("cant parse timestamp %v", e.Timestamp)
+	return time.Time{}, NewParseError("cant parse timestamp %v", e.Timestamp)
 }
+
+func (e *episode) toModel() model.Episode {
+	return model.Episode{
+		Podcast:   e.Podcast,
+		Episode:   e.Episode,
+		Device:    e.Device,
+		Action:    e.Action,
+		Timestamp: e.ts,
+		Started:   e.Started,
+		Position:  e.Position,
+		Total:     e.Total,
+	}
+}
+
+// -----------------------------
 
 func (er *episodesResource) Routes() chi.Router {
 	r := chi.NewRouter()
@@ -91,6 +113,7 @@ func (er *episodesResource) Routes() chi.Router {
 
 	r.Post("/{user:[0-9a-z_.-]+}.json", er.uploadEpisodeActions)
 	r.Get("/{user:[0-9a-z_.-]+}.json", er.getEpisodeActions)
+
 	return r
 }
 
@@ -99,9 +122,9 @@ func (er *episodesResource) uploadEpisodeActions(w http.ResponseWriter, r *http.
 	logger := hlog.FromRequest(r)
 	user := chi.URLParam(r, "user")
 
-	var req []*episode
+	var reqData []episode
 
-	err := render.DecodeJSON(r.Body, &req)
+	err := render.DecodeJSON(r.Body, &reqData)
 	if err != nil {
 		logger.Warn().Err(err).Msgf("parse json error")
 		w.WriteHeader(http.StatusBadRequest)
@@ -109,53 +132,37 @@ func (er *episodesResource) uploadEpisodeActions(w http.ResponseWriter, r *http.
 		return
 	}
 
-	actions := make([]*model.Episode, 0, len(req))
+	actions := make([]model.Episode, 0, len(reqData))
 	changedurls := make([][]string, 0)
 
-	for _, r := range req {
-		if curls := r.sanitize(); len(curls) > 0 {
+	for _, reqEpisode := range reqData {
+		if curls := reqEpisode.sanitize(); len(curls) > 0 {
 			changedurls = append(changedurls, curls...)
 		}
 
 		// skip invalid (non http*) podcasts)
-		if r.Podcast == "" {
-			logger.Debug().Interface("req", r).Msgf("skipped episode")
+		if reqEpisode.Podcast == "" {
+			logger.Debug().Interface("req", reqEpisode).Msgf("skipped episode")
 
 			continue
 		}
 
-		if err := r.validate(); err != nil {
-			logger.Warn().Err(err).Interface("req", r).Msgf("validate error")
+		if err := reqEpisode.validate(); err != nil {
+			logger.Warn().Err(err).Interface("req", reqEpisode).Msgf("validate error")
 			w.WriteHeader(http.StatusBadRequest)
 
 			return
 		}
 
-		ts, err := r.getTimestamp()
-		if err != nil {
-			logger.Warn().Err(err).Msgf("parse date  error")
-			w.WriteHeader(http.StatusBadRequest)
-
-			return
-		}
-
-		episode := model.Episode{
-			Podcast:   r.Podcast,
-			Episode:   r.Episode,
-			Device:    r.Device,
-			Action:    r.Action,
-			Timestamp: ts,
-			Started:   r.Started,
-			Position:  r.Position,
-			Total:     r.Total,
-		}
-		actions = append(actions, &episode)
+		episode := reqEpisode.toModel()
 
 		logger.Debug().Interface("episode", &episode).Msg("new episode")
+
+		actions = append(actions, episode)
 	}
 
 	if err = er.episodesServ.SaveEpisodesActions(ctx, user, actions...); err != nil {
-		logger.Debug().Interface("req", req).Msg("save episodes error")
+		logger.Debug().Interface("req", reqData).Msg("save episodes error")
 		logger.Warn().Err(err).Msg("save episodes error")
 		w.WriteHeader(http.StatusInternalServerError)
 
@@ -181,17 +188,12 @@ func (er *episodesResource) getEpisodeActions(w http.ResponseWriter, r *http.Req
 	device := r.URL.Query().Get("device")
 	aggregated := r.URL.Query().Get("aggregated") == "true"
 
-	since := time.Time{}
-	if s := r.URL.Query().Get("since"); s != "" {
-		se, err := strconv.ParseInt(s, 10, 64)
-		if err != nil {
-			logger.Debug().Err(err).Msgf("parse since parameter %q to time error", s)
-			w.WriteHeader(http.StatusBadRequest)
+	since, err := sinceFromParameter(r)
+	if err != nil {
+		logger.Debug().Err(err).Msgf("parse since parameter to time error")
+		w.WriteHeader(http.StatusBadRequest)
 
-			return
-		}
-
-		since = time.Unix(se, 0)
+		return
 	}
 
 	res, err := er.episodesServ.GetEpisodesActions(ctx, user, podcast, device, since, aggregated)

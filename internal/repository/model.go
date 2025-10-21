@@ -62,26 +62,26 @@ func (p *PodcastDB) Clone() *PodcastDB {
 	}
 }
 
-type PodcastsDB []*PodcastDB
+type PodcastsDB []PodcastDB
 
-func (s PodcastsDB) FindSubscribedPodcastByURL(url string) *PodcastDB {
+func (s PodcastsDB) FindSubscribedPodcastByURL(url string) (PodcastDB, bool) {
 	for _, sp := range s {
 		if sp.URL == url && sp.Subscribed {
-			return sp
+			return sp, true
 		}
 	}
 
-	return nil
+	return PodcastDB{}, false
 }
 
-func (s PodcastsDB) FindPodcastByURL(url string) *PodcastDB {
+func (s PodcastsDB) FindPodcastByURL(url string) (PodcastDB, bool) {
 	for _, sp := range s {
 		if sp.URL == url {
-			return sp
+			return sp, true
 		}
 	}
 
-	return nil
+	return PodcastDB{}, false
 }
 
 func (s PodcastsDB) ToURLs() []string {
@@ -93,8 +93,8 @@ func (s PodcastsDB) ToURLs() []string {
 	return res
 }
 
-func (s PodcastsDB) ToMap() map[string]*PodcastDB {
-	res := make(map[string]*PodcastDB)
+func (s PodcastsDB) ToMap() map[string]PodcastDB {
+	res := make(map[string]PodcastDB)
 
 	for _, p := range s {
 		res[p.URL] = p
@@ -139,4 +139,9 @@ type UserDB struct {
 	Name      string    `db:"name"`
 	CreatedAt time.Time `db:"created_at"`
 	UpdatedAt time.Time `db:"updated_at"`
+}
+
+type UserAlias struct {
+	UserID   int64  `db:"user_id"`
+	Username string `db:"username"`
 }

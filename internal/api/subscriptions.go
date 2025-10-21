@@ -7,7 +7,6 @@ package api
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"slices"
 	"strconv"
@@ -120,15 +119,18 @@ func (sr *subscriptionsResource) userSubscriptions(w http.ResponseWriter, r *htt
 		return
 	}
 
+	const deadline = 5 * time.Second
+
 	o := opml.NewOPMLFromBlank("go-gpodder")
 	for _, s := range subs {
-		o.AddRSSFromURL(s, 2*time.Second)
+		o.AddRSSFromURL(s, deadline)
 	}
 
 	result, err := o.XML()
 	if err != nil {
 		logger.Info().Err(err).Msg("get opml xml error")
 		w.WriteHeader(http.StatusInternalServerError)
+
 		return
 	}
 
@@ -143,14 +145,16 @@ func (sr *subscriptionsResource) uploadSubscriptions(w http.ResponseWriter, r *h
 
 	if suser := service.ContextUser(ctx); suser != user {
 		logger.Warn().Msgf("user %q not match session user: %q", user, suser)
-		// w.WriteHeader(http.StatusBadRequest)
-		// return
+		w.WriteHeader(http.StatusBadRequest)
+
+		return
 	}
 
 	deviceid := chi.URLParam(r, "deviceid")
 	if deviceid == "" {
 		logger.Info().Msgf("empty deviceId")
 		w.WriteHeader(http.StatusBadRequest)
+
 		return
 	}
 
@@ -186,6 +190,7 @@ func (sr *subscriptionsResource) uploadSubscriptionChanges(w http.ResponseWriter
 	if deviceid == "" {
 		logger.Info().Msgf("empty deviceId")
 		w.WriteHeader(http.StatusBadRequest)
+
 		return
 	}
 
@@ -253,7 +258,7 @@ func (s *subscriptionChangesRequest) validate() error {
 
 	for _, i := range s.Add {
 		if slices.Contains(s.Remove, i) {
-			return fmt.Errorf("duplicated url: %s", i)
+			return NewValidationError("duplicated url: %s", i)
 		}
 	}
 

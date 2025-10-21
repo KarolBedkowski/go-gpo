@@ -18,6 +18,8 @@ linters:
     - noinlineerr
     # tmp
     - errcheck
+    - godoclint
+    - godox
   settings:
     misspell:
       locale: US

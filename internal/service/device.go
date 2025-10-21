@@ -31,32 +31,27 @@ func NewDeviceService(repo *repository.Repository) *Device {
 
 func (d *Device) UpdateDevice(ctx context.Context, username, deviceID, caption, devtype string) error {
 	user, err := d.repo.GetUser(ctx, username)
-	if err != nil {
-		return fmt.Errorf("get user error: %w", err)
-	}
-	if user == nil {
+	if errors.Is(err, repository.ErrNoData) {
 		return ErrUnknownUser
+	} else if err != nil {
+		return fmt.Errorf("get user error: %w", err)
 	}
 
 	device, err := d.repo.GetDevice(ctx, user.ID, deviceID)
-	if err != nil {
+	if errors.Is(err, repository.ErrNoData) {
+		// new device
+		device = repository.DeviceDB{
+			UserID: user.ID,
+			Name:   deviceID,
+		}
+	} else if err != nil {
 		return fmt.Errorf("get device error: %w", err)
 	}
 
-	if device == nil {
-		// new device
-		device = &repository.DeviceDB{
-			UserID:  user.ID,
-			Name:    deviceID,
-			Caption: caption,
-			DevType: devtype,
-		}
-	} else {
-		device.Caption = caption
-		device.DevType = devtype
-	}
+	device.Caption = caption
+	device.DevType = devtype
 
-	_, err = d.repo.SaveDevice(ctx, device)
+	_, err = d.repo.SaveDevice(ctx, &device)
 	if err != nil {
 		return fmt.Errorf("save device error: %w", err)
 	}
@@ -66,11 +61,10 @@ func (d *Device) UpdateDevice(ctx context.Context, username, deviceID, caption, 
 
 func (d *Device) ListDevices(ctx context.Context, username string) ([]*model.Device, error) {
 	user, err := d.repo.GetUser(ctx, username)
-	if err != nil {
-		return nil, fmt.Errorf("get user error: %w", err)
-	}
-	if user == nil {
+	if errors.Is(err, repository.ErrNoData) {
 		return nil, ErrUnknownUser
+	} else if err != nil {
+		return nil, fmt.Errorf("get user error: %w", err)
 	}
 
 	devices, err := d.repo.ListDevices(ctx, user.ID)

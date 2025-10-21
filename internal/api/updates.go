@@ -30,6 +30,7 @@ func (u *updatesResource) Routes() chi.Router {
 	}
 
 	r.Get("/{user:[0-9a-z._-]+}/{deviceid:[0-9a-z._-]+}.json", u.getUpdates)
+
 	return r
 }
 

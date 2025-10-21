@@ -13,8 +13,8 @@ type User struct {
 	Name     string
 }
 
-func NewUserFromUserDB(u *repository.UserDB) *User {
-	return &User{
+func NewUserFromUserDB(u *repository.UserDB) User {
+	return User{
 		Username: u.Username,
 		Password: u.Password,
 		Email:    u.Email,

@@ -20,6 +20,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+var ErrNoData = errors.New("no result")
+
 type queryer interface {
 	sqlx.QueryerContext
 	SelectContext(ctx context.Context, dest any, query string, args ...any) error
@@ -67,22 +69,23 @@ func (r *Repository) inTransaction(ctx context.Context, f func(tx *sqlx.Tx) erro
 }
 
 // -----------------------
-func (r *Repository) GetUser(ctx context.Context, username string) (*UserDB, error) {
-	user := &UserDB{}
+
+func (r *Repository) GetUser(ctx context.Context, username string) (UserDB, error) {
+	user := UserDB{}
 
 	err := r.db.QueryRowxContext(ctx,
 		"SELECT id, username, password, email, name, created_at, updated_at "+
 			"FROM users WHERE username=?",
 		username).
-		StructScan(user)
+		StructScan(&user)
 
 	switch {
 	case err == nil:
 		return user, nil
 	case errors.Is(err, sql.ErrNoRows):
-		return nil, nil
+		return user, ErrNoData
 	default:
-		return nil, fmt.Errorf("get user error: %w", err)
+		return user, fmt.Errorf("get user error: %w", err)
 	}
 }
 
@@ -120,7 +123,7 @@ func (r *Repository) SaveUser(ctx context.Context, user *UserDB) (int64, error) 
 
 //-----------------------
 
-func (r *Repository) GetDevice(ctx context.Context, userid int64, devicename string) (*DeviceDB, error) {
+func (r *Repository) GetDevice(ctx context.Context, userid int64, devicename string) (DeviceDB, error) {
 	return r.getDevice(ctx, r.db, userid, devicename)
 }
 
@@ -129,17 +132,17 @@ func (r *Repository) getDevice(
 	tx queryer,
 	userid int64,
 	devicename string,
-) (*DeviceDB, error) {
-	device := &DeviceDB{}
+) (DeviceDB, error) {
+	device := DeviceDB{}
 	err := tx.QueryRowxContext(ctx,
 		"SELECT id, user_id, name, dev_type, caption, created_at, updated_at "+
 			"FROM devices WHERE user_id=? and name=?", userid, devicename).
-		StructScan(device)
+		StructScan(&device)
 
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, nil
+		return device, ErrNoData
 	} else if err != nil {
-		return nil, fmt.Errorf("query device error: %w", err)
+		return device, fmt.Errorf("query device error: %w", err)
 	}
 
 	err = tx.GetContext(
@@ -149,7 +152,7 @@ func (r *Repository) getDevice(
 		userid,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("count subscriptions error: %w", err)
+		return device, fmt.Errorf("count subscriptions error: %w", err)
 	}
 
 	return device, nil
@@ -166,8 +169,8 @@ func (r *Repository) getUserDevices(ctx context.Context, tx queryer, userid int6
 	}
 
 	// all device have the same number of subscriptions
-
 	var subscriptions int
+
 	err = tx.GetContext(ctx, &subscriptions, "SELECT count(*) FROM podcasts where user_id=? and subscribed", userid)
 	if err != nil {
 		return nil, fmt.Errorf("count subscriptions error: %w", err)
@@ -248,7 +251,7 @@ func (r *Repository) getSubscribedPodcasts(
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("userid", userid).Time("since", since).Msg("get podcasts")
 
-	res := []*PodcastDB{}
+	res := []PodcastDB{}
 
 	err := db.SelectContext(ctx, &res,
 		"SELECT p.id, p.user_id, p.url, p.title, p.subscribed, p.created_at, p.updated_at "+
@@ -271,7 +274,7 @@ func (r *Repository) GetPodcasts(
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("userid", userid).Time("since", since).Msg("get podcasts")
 
-	res := []*PodcastDB{}
+	res := []PodcastDB{}
 
 	err := r.db.SelectContext(ctx, &res,
 		"SELECT p.id, p.user_id, p.url, p.title, p.subscribed, p.created_at, p.updated_at "+
@@ -284,33 +287,36 @@ func (r *Repository) GetPodcasts(
 	return res, nil
 }
 
-func (r *Repository) GetPodcast(ctx context.Context, userid int64, podcasturl string) (*PodcastDB, error) {
+func (r *Repository) GetPodcast(ctx context.Context, userid int64, podcasturl string) (PodcastDB, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("userid", userid).Str("podcasturl", podcasturl).Msg("get podcast")
 
-	podcast := &PodcastDB{}
+	podcast := PodcastDB{}
 	err := r.db.QueryRowxContext(ctx,
 		"SELECT p.id, p.user_id, p.url, p.title, p.subscribed, p.created_at, p.updated_at "+
 			"FROM podcasts p "+
 			"WHERE p.user_id=? AND p.url = ?", userid, podcasturl).
-		StructScan(podcast)
+		StructScan(&podcast)
 
 	switch {
 	case err == nil:
 		return podcast, nil
 	case errors.Is(err, sql.ErrNoRows):
-		return nil, nil
+		return podcast, ErrNoData
 	default:
-		return nil, fmt.Errorf("query podcast %q error: %w", podcasturl, err)
+		return podcast, fmt.Errorf("query podcast %q error: %w", podcasturl, err)
 	}
 }
 
-func (r *Repository) SavePodcast(ctx context.Context, user, device string, podcast ...*PodcastDB) error {
+func (r *Repository) SavePodcast(ctx context.Context, user, device string, podcast ...PodcastDB) error {
+	_ = user
+	_ = device
 	logger := log.Ctx(ctx)
 
 	return r.inTransaction(ctx, func(tx *sqlx.Tx) error {
 		for _, pod := range podcast {
 			logger.Debug().Interface("podcast", pod).Msg("save podcast")
+
 			if _, err := r.savePodcast(ctx, tx, pod); err != nil {
 				return err
 			}
@@ -320,7 +326,7 @@ func (r *Repository) SavePodcast(ctx context.Context, user, device string, podca
 	})
 }
 
-func (r *Repository) savePodcast(ctx context.Context, tx sqlx.ExecerContext, pod *PodcastDB) (int64, error) {
+func (r *Repository) savePodcast(ctx context.Context, tx sqlx.ExecerContext, pod PodcastDB) (int64, error) {
 	if pod.UpdatedAt.IsZero() {
 		pod.UpdatedAt = time.Now()
 	}
@@ -383,17 +389,18 @@ func (r *Repository) GetEpisodes(
 
 	if deviceid > 0 {
 		query += " AND e.device_id = ?"
-		args = append(args, deviceid)
+		args = append(args, deviceid) //nolint:wsl_v5
 	}
 
 	if podcastid > 0 {
 		query += " AND e.podcast_id = ?"
-		args = append(args, podcastid)
+		args = append(args, podcastid) //nolint:wsl_v5
 	}
 
 	logger.Debug().Str("query", query).Interface("args", args).Msg("query")
 
 	res := []*EpisodeDB{}
+
 	err := r.db.SelectContext(ctx, &res, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("query episodes error: %w", err)
@@ -414,7 +421,7 @@ func (r *Repository) GetEpisodes(
 	return slices.Collect(maps.Values(agr)), nil
 }
 
-func (r *Repository) SaveEpisode(ctx context.Context, userid int64, episode ...*EpisodeDB) error {
+func (r *Repository) SaveEpisode(ctx context.Context, userid int64, episode ...EpisodeDB) error {
 	logger := log.Ctx(ctx)
 
 	return r.inTransaction(ctx, func(tx *sqlx.Tx) error {
@@ -441,7 +448,8 @@ func (r *Repository) SaveEpisode(ctx context.Context, userid int64, episode ...*
 			} else {
 				// insert podcast
 				podcast := PodcastDB{UserID: userid, URL: e.PodcastURL, Subscribed: true}
-				id, err := r.savePodcast(ctx, tx, &podcast)
+
+				id, err := r.savePodcast(ctx, tx, podcast)
 				if err != nil {
 					return fmt.Errorf("save new podcast %q error: %w", podcast.URL, err)
 				}
@@ -455,6 +463,7 @@ func (r *Repository) SaveEpisode(ctx context.Context, userid int64, episode ...*
 			} else {
 				// create device
 				dev := DeviceDB{UserID: userid, Name: e.Device, DevType: "computer"}
+
 				did, err := r.saveDevice(ctx, tx, &dev)
 				if err != nil {
 					return fmt.Errorf("save new device %q error: %w", e.Device, err)
@@ -473,7 +482,7 @@ func (r *Repository) SaveEpisode(ctx context.Context, userid int64, episode ...*
 	})
 }
 
-func (r *Repository) saveEpisode(ctx context.Context, tx sqlx.ExecerContext, episode *EpisodeDB) error {
+func (r *Repository) saveEpisode(ctx context.Context, tx sqlx.ExecerContext, episode EpisodeDB) error {
 	_, err := tx.ExecContext(
 		ctx,
 		"INSERT INTO episodes (podcast_id, device_id, title, url, action, started, position, total, "+
@@ -494,5 +503,6 @@ func (r *Repository) saveEpisode(ctx context.Context, tx sqlx.ExecerContext, epi
 		return fmt.Errorf("insert new podcast %d episode %q error: %w", episode.PodcastID,
 			episode.URL, err)
 	}
+
 	return nil
 }

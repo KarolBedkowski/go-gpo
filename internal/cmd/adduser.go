@@ -39,7 +39,7 @@ func (a *AddUser) Start(ctx context.Context) error {
 
 	userv := service.NewUsersService(re)
 
-	id, err := userv.AddUser(ctx, &user)
+	id, err := userv.AddUser(ctx, user)
 	if err != nil {
 		return fmt.Errorf("add user error: %w", err)
 	}

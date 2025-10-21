@@ -32,28 +32,26 @@ func NewUsersService(repo *repository.Repository) *Users {
 	return &Users{repo, BCryptPasswordHasher{}}
 }
 
-func (u *Users) LoginUser(ctx context.Context, username, password string) (*model.User, error) {
+func (u *Users) LoginUser(ctx context.Context, username, password string) (model.User, error) {
 	user, err := u.repo.GetUser(ctx, username)
-	if err != nil {
-		return nil, fmt.Errorf("get user error: %w", err)
-	}
-
-	if user == nil {
-		return nil, ErrUnknownUser
+	if errors.Is(err, repository.ErrNoData) {
+		return model.User{}, ErrUnknownUser
+	} else if err != nil {
+		return model.User{}, fmt.Errorf("get user error: %w", err)
 	}
 
 	if !u.passHasher.CheckPassword(password, user.Password) {
-		return nil, ErrUnauthorized
+		return model.User{}, ErrUnauthorized
 	}
 
-	return model.NewUserFromUserDB(user), nil
+	return model.NewUserFromUserDB(&user), nil
 }
 
-func (u *Users) AddUser(ctx context.Context, user *model.User) (int64, error) {
+func (u *Users) AddUser(ctx context.Context, user model.User) (int64, error) {
 	// is user exists?
-	if eu, err := u.repo.GetUser(ctx, user.Username); err != nil {
+	if _, err := u.repo.GetUser(ctx, user.Username); err != nil && !errors.Is(err, repository.ErrNoData) {
 		return 0, fmt.Errorf("check user exists error: %w", err)
-	} else if eu != nil {
+	} else if err == nil {
 		return 0, ErrUserExists
 	}
 
@@ -80,13 +78,13 @@ func (u *Users) AddUser(ctx context.Context, user *model.User) (int64, error) {
 	return id, nil
 }
 
-func (u *Users) ChangePassword(ctx context.Context, user *model.User) (int64, error) {
+func (u *Users) ChangePassword(ctx context.Context, user model.User) (int64, error) {
 	// is user exists?
 	udb, err := u.repo.GetUser(ctx, user.Username)
-	if err != nil {
-		return 0, fmt.Errorf("get user error: %w", err)
-	} else if udb == nil {
+	if errors.Is(err, repository.ErrNoData) {
 		return 0, ErrUnknownUser
+	} else if err != nil {
+		return 0, fmt.Errorf("get user error: %w", err)
 	}
 
 	udb.Password, err = u.passHasher.HashPassword(user.Password)
@@ -96,7 +94,7 @@ func (u *Users) ChangePassword(ctx context.Context, user *model.User) (int64, er
 
 	udb.UpdatedAt = time.Now()
 
-	id, err := u.repo.SaveUser(ctx, udb)
+	id, err := u.repo.SaveUser(ctx, &udb)
 	if err != nil {
 		return 0, fmt.Errorf("save user error: %w", err)
 	}
@@ -106,7 +104,7 @@ func (u *Users) ChangePassword(ctx context.Context, user *model.User) (int64, er
 
 //-----------------
 
-const CtxUserKey = "CtxUserKey"
+var CtxUserKey = any("CtxUserKey")
 
 func ContextUser(ctx context.Context) string {
 	suser, ok := ctx.Value(CtxUserKey).(string)
