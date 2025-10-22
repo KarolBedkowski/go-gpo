@@ -21,10 +21,11 @@ type Server struct {
 	NoAuth   bool
 	Database string
 	Listen   string
+	LogBody  bool
 }
 
 func (s *Server) Start(ctx context.Context) error {
-	log.Logger.Log().Msg("Starting server...")
+	log.Logger.Log().Msgf("Starting server on %q...", s.Listen)
 
 	re := &repository.Repository{}
 	if err := re.Connect(ctx, "sqlite3", s.Database+"?_fk=true"); err != nil {
@@ -32,8 +33,9 @@ func (s *Server) Start(ctx context.Context) error {
 	}
 
 	cfg := api.Configuration{
-		NoAuth: s.NoAuth,
-		Listen: s.Listen,
+		NoAuth:  s.NoAuth,
+		Listen:  s.Listen,
+		LogBody: s.LogBody,
 	}
 
 	if err := api.Start(re, &cfg); err != nil {

@@ -1,16 +1,19 @@
+package api
+
 // auth.go
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
 //
 // Distributed under terms of the GPLv3 license.
-package api
 
 import (
+	"context"
 	"errors"
 	"net/http"
 
 	"gitea.com/go-chi/session"
 	"github.com/go-chi/chi/v5"
-	"github.com/rs/zerolog/hlog"
+	"github.com/rs/zerolog"
+	"gitlab.com/kabes/go-gpodder/internal"
 	"gitlab.com/kabes/go-gpodder/internal/service"
 )
 
@@ -21,47 +24,42 @@ type authResource struct {
 
 func (ar *authResource) Routes() chi.Router {
 	r := chi.NewRouter()
-	r.Post("/{user}/login.json", ar.login)
-	r.Post("/{user}/logout.json", ar.logout)
+	r.Post("/{user}/login.json", wrap(ar.login))
+	r.Post("/{user}/logout.json", wrap(ar.logout))
 
 	return r
 }
 
-func (ar *authResource) login(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	logger := hlog.FromRequest(r)
-	paramUser := chi.URLParam(r, "user")
+func (ar *authResource) login(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
 	sess := session.GetSession(r)
+	user := internal.ContextUser(ctx)
 
 	logger.Debug().Str("sessionid", sess.ID()).Msg("login")
 
-	switch u := sessionUser(sess); u {
-	case "":
-		// not logged; continue
-	case paramUser:
-		logger.Debug().Msgf("user match session user %q", u)
-		w.WriteHeader(http.StatusOK)
-
-		return
-	default:
-		logger.Info().Msgf("user not match session user %q", u)
-		w.WriteHeader(http.StatusBadRequest)
+	if u := sessionUser(sess); u != "" {
+		if u == user {
+			logger.Debug().Msgf("user match session user %q", u)
+			w.WriteHeader(http.StatusOK)
+		} else {
+			logger.Info().Msgf("user not match session user %q", u)
+			w.WriteHeader(http.StatusBadRequest)
+		}
 
 		return
 	}
 
 	username, password, ok := r.BasicAuth()
-	if !ok || paramUser == "" || password == "" || username != paramUser {
+	if !ok || user == "" || password == "" || username != user {
 		logger.Info().Str("username", username).Msg("bad basic auth")
 		w.WriteHeader(http.StatusUnauthorized)
 
 		return
 	}
 
-	user, err := ar.users.LoginUser(ctx, username, password)
+	u, err := ar.users.LoginUser(ctx, username, password)
 	switch {
 	case errors.Is(err, service.ErrUnauthorized) || errors.Is(err, service.ErrUnknownUser):
-		logger.Info().Str("username", username).Msgf("no auth; user: %v", user)
+		logger.Info().Str("username", username).Msgf("no auth; user: %v", u)
 		w.WriteHeader(http.StatusUnauthorized)
 
 		return
@@ -83,10 +81,9 @@ func (ar *authResource) login(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (*authResource) logout(w http.ResponseWriter, r *http.Request) {
-	logger := hlog.FromRequest(r)
-	user := chi.URLParam(r, "user")
+func (*authResource) logout(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
 	sess := session.GetSession(r)
+	user := internal.ContextUser(ctx)
 	username := sessionUser(sess)
 
 	logger.Info().Str("user", user).Msg("logout user")

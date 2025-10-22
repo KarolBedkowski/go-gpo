@@ -1,16 +1,31 @@
+package api
+
 //
-// sanitize.go
+// validators.go
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
 //
 // Distributed under terms of the GPLv3 license.
 //
 
-package service
-
 import (
+	"fmt"
 	"net/url"
 	"strings"
 )
+
+type ValidationError struct {
+	msg string
+}
+
+func NewValidationError(msg string, args ...any) ValidationError {
+	return ValidationError{fmt.Sprintf(msg, args...)}
+}
+
+func (v ValidationError) Error() string {
+	return v.msg
+}
+
+// --------------------------------
 
 func SanitizeURLs(urls []string) ([]string, [][]string) {
 	res := make([]string, 0, len(urls))

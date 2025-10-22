@@ -1,14 +1,17 @@
-// auth.go
+package api
+
+// device.go
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
 //
 // Distributed under terms of the GPLv3 license.
-package api
 
 import (
+	"context"
 	"errors"
 	"net/http"
 
-	"github.com/rs/zerolog/hlog"
+	"github.com/rs/zerolog"
+	"gitlab.com/kabes/go-gpodder/internal"
 	"gitlab.com/kabes/go-gpodder/internal/service"
 
 	"github.com/go-chi/chi/v5"
@@ -24,34 +27,27 @@ func (d deviceResource) Routes() chi.Router {
 	r := chi.NewRouter()
 	if !d.cfg.NoAuth {
 		r.Use(AuthenticatedOnly)
-		r.Use(checkUserMiddleware)
 	}
 
-	r.Get("/{user:[0-9a-z._-]+}.json", d.list)
-	r.Post("/{user:[0-9a-z_.-]+}/{deviceid:[0-9a-z_.-]+}.json", d.update)
+	r.With(checkUserMiddleware).
+		Get("/{user:[0-9a-z._-]+}.json", wrap(d.list))
+	r.With(checkUserMiddleware, checkDeviceMiddleware).
+		Post("/{user:[0-9a-z_.-]+}/{deviceid:[0-9a-z_.-]+}.json", wrap(d.update))
 
 	return r
 }
 
-func (d deviceResource) update(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	logger := hlog.FromRequest(r)
-	user := chi.URLParam(r, "user")
+// udpdate device data.
+func (d deviceResource) update(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
+	user := internal.ContextUser(ctx)
+	deviceid := internal.ContextDevice(ctx)
 
-	deviceid := chi.URLParam(r, "deviceid")
-	if deviceid == "" {
-		logger.Info().Msgf("empty deviceId")
-		w.WriteHeader(http.StatusBadRequest)
-
-		return
-	}
-
-	type updateDeviceData struct {
+	// update device data
+	var udd struct {
 		Caption string `json:"caption"`
 		Type    string `json:"type"`
 	}
 
-	udd := updateDeviceData{}
 	if err := render.DecodeJSON(r.Body, &udd); err != nil {
 		logger.Info().Err(err).Msg("error decoding json payload")
 		w.WriteHeader(http.StatusBadRequest)
@@ -75,15 +71,16 @@ func (d deviceResource) update(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (d deviceResource) list(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	logger := hlog.FromRequest(r)
-	user := chi.URLParam(r, "user")
+// list devices.
+func (d deviceResource) list(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
+	user := internal.ContextUser(ctx)
+	// device is not used
+	// deviceid := internal.ContextDevice(ctx)
 
 	devices, err := d.deviceSrv.ListDevices(ctx, user)
 	switch {
 	case err == nil:
-		render.JSON(w, r, devices)
+		render.JSON(w, r, ensureList(devices))
 	case errors.Is(err, service.ErrUnknownUser):
 		logger.Info().Msgf("unknown user: %q", user)
 		w.WriteHeader(http.StatusBadRequest)

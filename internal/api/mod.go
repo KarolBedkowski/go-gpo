@@ -8,10 +8,7 @@
 package api
 
 import (
-	"bytes"
-	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -26,8 +23,9 @@ import (
 )
 
 type Configuration struct {
-	NoAuth bool
-	Listen string
+	NoAuth  bool
+	Listen  string
+	LogBody bool
 }
 
 const connectioTimeout = 60 * time.Second
@@ -55,7 +53,13 @@ func Start(repo *repository.Repository, cfg *Configuration) error {
 	router.Use(middleware.RequestID)
 	router.Use(middleware.RealIP)
 	router.Use(hlog.RequestIDHandler("req_id", "Request-Id"))
-	router.Use(newLogMiddleware)
+
+	if cfg.LogBody {
+		router.Use(newLogMiddleware)
+	} else {
+		router.Use(newSimpleLogMiddleware)
+	}
+
 	router.Use(sess)
 	router.Use(authenticator{usersSrv}.Authenticate)
 	router.Use(newRecoverMiddleware)
@@ -82,220 +86,6 @@ func Start(repo *repository.Repository, cfg *Configuration) error {
 	}
 
 	return nil
-}
-
-func AuthenticatedOnly(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		logger := hlog.FromRequest(r)
-		sess := session.GetSession(r)
-		user := sessionUser(sess)
-
-		logger.Debug().Interface("session_user", user).Msg("AuthenticatedOnly")
-
-		if user != "" {
-			ctx := service.ContextWithUser(r.Context(), user)
-			next.ServeHTTP(w, r.WithContext(ctx))
-
-			return
-		}
-
-		_ = sess.Destroy(w, r)
-
-		w.Header().Add("WWW-Authenticate", "Basic realm=\"go-gpodder\"")
-		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
-	})
-}
-
-type authenticator struct {
-	usersSrv *service.Users
-}
-
-func (a authenticator) Authenticate(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		username, password, ok := r.BasicAuth()
-		if ok && password != "" && username != "" {
-			ctx := r.Context()
-			logger := hlog.FromRequest(r)
-			sess := session.GetSession(r)
-
-			user, err := a.usersSrv.LoginUser(ctx, username, password)
-			if errors.Is(err, service.ErrUnauthorized) || errors.Is(err, service.ErrUnknownUser) {
-				logger.Info().Err(err).Str("username", username).Msgf("auth failed; user: %v", user)
-				w.Header().Add("WWW-Authenticate", "Basic realm=\"go-gpodder\"")
-
-				_ = sess.Destroy(w, r)
-
-				http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
-
-				return
-			} else if err != nil {
-				panic(err)
-			}
-
-			logger.Debug().Str("username", username).Msgf("user authenticated")
-
-			r = r.WithContext(service.ContextWithUser(ctx, user.Name))
-			_ = sess.Set("user", user.Name)
-		}
-
-		next.ServeHTTP(w, r)
-	})
-}
-
-// type (
-// 	// our http.ResponseWriter implementation.
-// 	logResponseWriter struct {
-// 		http.ResponseWriter // compose original http.ResponseWriter
-
-// 		status int // http status
-// 		size   int // response size
-// 	}
-// )
-
-// func (r *logResponseWriter) Write(b []byte) (int, error) {
-// 	size, err := r.ResponseWriter.Write(b) // write response using original http.ResponseWriter
-// 	r.size += size                         // capture size
-
-// 	if err != nil {
-// 		return size, fmt.Errorf("write response error: %w", err)
-// 	}
-
-// 	return size, nil
-// }
-
-// func (r *logResponseWriter) WriteHeader(status int) {
-// 	r.ResponseWriter.WriteHeader(status)
-
-// 	r.status = status
-// }
-
-// newLogMiddleware create new logging middleware.
-func newLogMiddleware(next http.Handler) http.Handler {
-	logFn := func(writer http.ResponseWriter, request *http.Request) {
-		start := time.Now()
-		ctx := request.Context()
-		requestID, _ := hlog.IDFromCtx(ctx)
-		llog := log.With().Logger().With().Str("req_id", requestID.String()).Logger()
-		request = request.WithContext(llog.WithContext(ctx))
-
-		llog.Info().
-			Str("url", request.URL.Redacted()).
-			Str("remote", request.RemoteAddr).
-			Str("method", request.Method).
-			// Strs("agent", request.Header["User-Agent"]).
-			// Interface("headers", request.Header).
-			Msg("webhandler: request start")
-
-		var reqBody bytes.Buffer
-
-		request.Body = io.NopCloser(io.TeeReader(request.Body, &reqBody))
-
-		lrw := middleware.NewWrapResponseWriter(writer, request.ProtoMajor)
-		// lrw := logResponseWriter{ResponseWriter: writer, status: 0, size: 0}
-
-		var respBody bytes.Buffer
-		lrw.Tee(&respBody)
-
-		defer func() {
-			llog.Debug().Str("request_body", reqBody.String()).
-				Str("req-content-type", request.Header.Get("Content-Type")).
-				Interface("req-headers", request.Header).
-				Msg("request")
-			llog.Debug().Str("response_body", respBody.String()).
-				Str("resp-content-type", lrw.Header().Get("Content-Type")).
-				Interface("resp-headers", lrw.Header()).
-				Msg("response")
-
-			if lrw.Status() >= 400 && lrw.Status() != 404 {
-				llog.Error().
-					Str("uri", request.RequestURI).
-					Interface("req_headers", request.Header).
-					Interface("resp_header", lrw.Header()).
-					Int("status", lrw.Status()).
-					Int("size", lrw.BytesWritten()).
-					Dur("duration", time.Since(start)).
-					Msg("webhandler: request finished")
-
-				return
-			}
-
-			llog.Debug().
-				Str("uri", request.RequestURI).
-				// Interface("resp_header", lrw.ResponseWriter.Header()).
-				Int("status", lrw.Status()).
-				Int("size", lrw.BytesWritten()).
-				Dur("duration", time.Since(start)).
-				Msg("webhandler: request finished")
-		}()
-
-		next.ServeHTTP(lrw, request)
-	}
-
-	return http.HandlerFunc(logFn)
-}
-
-func newRecoverMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		defer func() {
-			rec := recover()
-
-			if rec == nil {
-				return
-			}
-
-			logger := log.Ctx(req.Context())
-
-			switch t := rec.(type) {
-			case error:
-				if errors.Is(t, http.ErrAbortHandler) {
-					panic(t)
-				}
-
-				logger.Error().Err(t).Msg("panic when handling request")
-			case string:
-				logger.Error().Str("err", t).Msg("panic when handling request")
-			default:
-				logger.Error().Str("err", "unknown error").Msg("panic when handling request")
-			}
-
-			if req.Header.Get("Connection") != "Upgrade" {
-				w.WriteHeader(http.StatusInternalServerError)
-
-				return
-			}
-
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		}()
-
-		next.ServeHTTP(w, req)
-	})
-}
-
-func sessionUser(store session.Store) string {
-	log.Debug().Interface("session", store).Msg("session")
-
-	suserint := store.Get("user")
-	if username, ok := suserint.(string); ok {
-		return username
-	}
-
-	return ""
-}
-
-func checkUserMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		if user := chi.URLParam(req, "user"); user != "" {
-			if suser := service.ContextUser(req.Context()); suser != user {
-				logger := hlog.FromRequest(req)
-				logger.Warn().Msgf("user %q not match session user: %q", user, suser)
-				w.WriteHeader(http.StatusBadRequest)
-
-				return
-			}
-		}
-
-		next.ServeHTTP(w, req)
-	})
 }
 
 func logRoutes(r chi.Routes) {

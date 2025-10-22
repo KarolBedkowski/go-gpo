@@ -88,7 +88,7 @@ func (e *Episodes) GetEpisodesActions(ctx context.Context, username, podcast, de
 
 func (e *Episodes) GetEpisodesUpdates(ctx context.Context, username, devicename string, since time.Time,
 	includeActions bool,
-) ([]*model.EpisodeUpdate, error) {
+) ([]model.EpisodeUpdate, error) {
 	_ = includeActions
 
 	episodes, err := e.getEpisodesActions(ctx, username, "", devicename, since, true)
@@ -96,10 +96,10 @@ func (e *Episodes) GetEpisodesUpdates(ctx context.Context, username, devicename 
 		return nil, fmt.Errorf("get episodes error: %w", err)
 	}
 
-	res := make([]*model.EpisodeUpdate, 0, len(episodes))
+	res := make([]model.EpisodeUpdate, 0, len(episodes))
 
 	for _, e := range episodes {
-		ep := &model.EpisodeUpdate{
+		ep := model.EpisodeUpdate{
 			Title:        e.Title,
 			URL:          e.URL,
 			PodcastTitle: e.PodcastTitle,
@@ -116,7 +116,7 @@ func (e *Episodes) GetEpisodesUpdates(ctx context.Context, username, devicename 
 
 func (e *Episodes) getEpisodesActions(ctx context.Context, username, podcast, devicename string,
 	since time.Time, aggregated bool,
-) ([]*repository.EpisodeDB, error) {
+) ([]repository.EpisodeDB, error) {
 	user, err := e.repo.GetUser(ctx, username)
 	if errors.Is(err, repository.ErrNoData) {
 		return nil, ErrUnknownUser

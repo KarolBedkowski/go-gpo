@@ -10,7 +10,6 @@ import (
 	"gitlab.com/kabes/go-gpodder/internal/repository"
 )
 
-// FIXME: no json there
 type Device struct {
 	User          string    `json:"user"`
 	Name          string    `json:"id"`

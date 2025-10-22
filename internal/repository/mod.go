@@ -375,7 +375,7 @@ func (r *Repository) GetEpisodes(
 	userid, deviceid, podcastid int64,
 	since time.Time,
 	aggregated bool,
-) ([]*EpisodeDB, error) {
+) ([]EpisodeDB, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("userid", userid).Int64("podcastid", podcastid).
 		Int64("deviceid", deviceid).Bool("aggregated", aggregated).
@@ -399,7 +399,7 @@ func (r *Repository) GetEpisodes(
 
 	logger.Debug().Str("query", query).Interface("args", args).Msg("query")
 
-	res := []*EpisodeDB{}
+	res := []EpisodeDB{}
 
 	err := r.db.SelectContext(ctx, &res, query, args...)
 	if err != nil {
@@ -413,7 +413,7 @@ func (r *Repository) GetEpisodes(
 	}
 
 	// TODO: refactor; load only last entries from db
-	agr := make(map[int64]*EpisodeDB)
+	agr := make(map[int64]EpisodeDB)
 	for _, r := range res {
 		agr[r.PodcastID] = r
 	}

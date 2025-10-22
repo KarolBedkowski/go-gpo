@@ -102,23 +102,6 @@ func (u *Users) ChangePassword(ctx context.Context, user model.User) (int64, err
 	return id, nil
 }
 
-//-----------------
-
-var CtxUserKey = any("CtxUserKey")
-
-func ContextUser(ctx context.Context) string {
-	suser, ok := ctx.Value(CtxUserKey).(string)
-	if ok {
-		return suser
-	}
-
-	return ""
-}
-
-func ContextWithUser(ctx context.Context, username string) context.Context {
-	return context.WithValue(ctx, CtxUserKey, username)
-}
-
 //---------------------------
 
 type PasswordHasher interface {

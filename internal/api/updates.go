@@ -5,15 +5,17 @@
 package api
 
 import (
+	"context"
 	"net/http"
 	"time"
 
-	"github.com/rs/zerolog/hlog"
+	"gitlab.com/kabes/go-gpodder/internal"
 	"gitlab.com/kabes/go-gpodder/internal/model"
 	"gitlab.com/kabes/go-gpodder/internal/service"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
+	"github.com/rs/zerolog"
 )
 
 type updatesResource struct {
@@ -26,26 +28,17 @@ func (u *updatesResource) Routes() chi.Router {
 	r := chi.NewRouter()
 	if !u.cfg.NoAuth {
 		r.Use(AuthenticatedOnly)
-		r.Use(checkUserMiddleware)
 	}
 
-	r.Get("/{user:[0-9a-z._-]+}/{deviceid:[0-9a-z._-]+}.json", u.getUpdates)
+	r.With(checkUserMiddleware, checkDeviceMiddleware).
+		Get("/{user:[0-9a-z._-]+}/{deviceid:[0-9a-z._-]+}.json", wrap(u.getUpdates))
 
 	return r
 }
 
-func (u *updatesResource) getUpdates(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	logger := hlog.FromRequest(r)
-	user := chi.URLParam(r, "user")
-
-	deviceid := chi.URLParam(r, "deviceid")
-	if deviceid == "" {
-		logger.Info().Msgf("empty deviceId")
-		w.WriteHeader(http.StatusBadRequest)
-
-		return
-	}
+func (u *updatesResource) getUpdates(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
+	user := internal.ContextUser(ctx)
+	deviceid := internal.ContextDevice(ctx)
 
 	since, err := sinceFromParameter(r)
 	if err != nil {
@@ -74,10 +67,10 @@ func (u *updatesResource) getUpdates(w http.ResponseWriter, r *http.Request) {
 	}
 
 	result := struct {
-		Add        []*model.Podcast       `json:"add"`
-		Remove     []string               `json:"remove"`
-		Updates    []*model.EpisodeUpdate `json:"updates"`
-		Timestamps int64                  `json:"timestamp"`
+		Add        []model.Podcast       `json:"add"`
+		Remove     []string              `json:"remove"`
+		Updates    []model.EpisodeUpdate `json:"updates"`
+		Timestamps int64                 `json:"timestamp"`
 	}{
 		Add:        added,
 		Remove:     removed,

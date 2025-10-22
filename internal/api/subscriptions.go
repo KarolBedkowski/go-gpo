@@ -6,6 +6,7 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"slices"
@@ -13,7 +14,8 @@ import (
 	"time"
 
 	"github.com/oxtyped/go-opml/opml"
-	"github.com/rs/zerolog/hlog"
+	"github.com/rs/zerolog"
+	"gitlab.com/kabes/go-gpodder/internal"
 	"gitlab.com/kabes/go-gpodder/internal/service"
 
 	"github.com/go-chi/chi/v5"
@@ -29,29 +31,23 @@ func (sr *subscriptionsResource) Routes() chi.Router {
 	r := chi.NewRouter()
 	if !sr.cfg.NoAuth {
 		r.Use(AuthenticatedOnly)
-		r.Use(checkUserMiddleware)
 	}
 
-	r.Get("/{user:[0-9a-z._-]+}.opml", sr.userSubscriptions)
-	r.Get("/{user:[0-9a-z._-]+}/{deviceid:[0-9a-z._-]+}.json", sr.devSubscriptions)
-	r.Put("/{user:[0-9a-z._-]+}/{deviceid:[0-9a-z._-]+}.json", sr.uploadSubscriptions)
-	r.Post("/{user:[0-9a-z._-]+}/{deviceid:[0-9a-z._-]+}.json", sr.uploadSubscriptionChanges)
+	r.With(checkUserMiddleware).
+		Get("/{user:[0-9a-z._-]+}.opml", wrap(sr.userSubscriptions))
+	r.With(checkUserMiddleware, checkDeviceMiddleware).
+		Get("/{user:[0-9a-z._-]+}/{deviceid:[0-9a-z._-]+}.json", wrap(sr.devSubscriptions))
+	r.With(checkUserMiddleware, checkDeviceMiddleware).
+		Put("/{user:[0-9a-z._-]+}/{deviceid:[0-9a-z._-]+}.json", wrap(sr.uploadSubscriptions))
+	r.With(checkUserMiddleware, checkDeviceMiddleware).
+		Post("/{user:[0-9a-z._-]+}/{deviceid:[0-9a-z._-]+}.json", wrap(sr.uploadSubscriptionChanges))
 
 	return r
 }
 
-func (sr *subscriptionsResource) devSubscriptions(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	logger := hlog.FromRequest(r)
-	user := chi.URLParam(r, "user")
-
-	deviceid := chi.URLParam(r, "deviceid")
-	if deviceid == "" {
-		logger.Info().Msgf("empty deviceId")
-		w.WriteHeader(http.StatusBadRequest)
-
-		return
-	}
+func (sr *subscriptionsResource) devSubscriptions(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
+	user := internal.ContextUser(ctx)
+	deviceid := internal.ContextDevice(ctx)
 
 	var sinceTS time.Time
 
@@ -99,10 +95,9 @@ func (sr *subscriptionsResource) devSubscriptions(w http.ResponseWriter, r *http
 	render.JSON(w, r, &res)
 }
 
-func (sr *subscriptionsResource) userSubscriptions(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	logger := hlog.FromRequest(r)
-	user := chi.URLParam(r, "user")
+func (sr *subscriptionsResource) userSubscriptions(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
+	_ = r
+	user := internal.ContextUser(ctx)
 
 	subs, err := sr.subServ.GetUserSubscriptions(ctx, user, time.Time{})
 	switch {
@@ -138,27 +133,9 @@ func (sr *subscriptionsResource) userSubscriptions(w http.ResponseWriter, r *htt
 	w.Write([]byte(result))
 }
 
-func (sr *subscriptionsResource) uploadSubscriptions(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	user := chi.URLParam(r, "user")
-	logger := hlog.FromRequest(r).With().Str("user", user).Logger()
-
-	if suser := service.ContextUser(ctx); suser != user {
-		logger.Warn().Msgf("user %q not match session user: %q", user, suser)
-		w.WriteHeader(http.StatusBadRequest)
-
-		return
-	}
-
-	deviceid := chi.URLParam(r, "deviceid")
-	if deviceid == "" {
-		logger.Info().Msgf("empty deviceId")
-		w.WriteHeader(http.StatusBadRequest)
-
-		return
-	}
-
-	logger = logger.With().Str("device_id", deviceid).Logger()
+func (sr *subscriptionsResource) uploadSubscriptions(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
+	user := internal.ContextUser(ctx)
+	deviceid := internal.ContextDevice(ctx)
 
 	var subs []string
 
@@ -181,20 +158,9 @@ func (sr *subscriptionsResource) uploadSubscriptions(w http.ResponseWriter, r *h
 	w.WriteHeader(http.StatusOK)
 }
 
-func (sr *subscriptionsResource) uploadSubscriptionChanges(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	user := chi.URLParam(r, "user")
-	logger := hlog.FromRequest(r).With().Str("user", user).Logger()
-
-	deviceid := chi.URLParam(r, "deviceid")
-	if deviceid == "" {
-		logger.Info().Msgf("empty deviceId")
-		w.WriteHeader(http.StatusBadRequest)
-
-		return
-	}
-
-	logger = logger.With().Str("device_id", deviceid).Logger()
+func (sr *subscriptionsResource) uploadSubscriptionChanges(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
+	user := internal.ContextUser(ctx)
+	deviceid := internal.ContextDevice(ctx)
 
 	changes := subscriptionChangesRequest{}
 	if err := render.DecodeJSON(r.Body, &changes); err != nil {
@@ -238,13 +204,7 @@ func (sr *subscriptionsResource) uploadSubscriptionChanges(w http.ResponseWriter
 	render.JSON(w, r, &resp)
 }
 
-func ensureNotNilList(inp []string) []string {
-	if inp == nil {
-		return make([]string, 0)
-	}
-
-	return inp
-}
+// -----------------------------
 
 type subscriptionChangesRequest struct {
 	Add    []string `json:"add"`
@@ -268,8 +228,8 @@ func (s *subscriptionChangesRequest) validate() error {
 func (s *subscriptionChangesRequest) sanitize() [][]string {
 	var chAdd, chRem [][]string
 
-	s.Add, chAdd = service.SanitizeURLs(s.Add)
-	s.Remove, chRem = service.SanitizeURLs(s.Remove)
+	s.Add, chAdd = SanitizeURLs(s.Add)
+	s.Remove, chRem = SanitizeURLs(s.Remove)
 
 	changes := make([][]string, 0)
 	changes = append(changes, chAdd...)

@@ -221,19 +221,19 @@ func (s *Subs) UpdateDeviceSubscriptionChanges(
 }
 
 func (s *Subs) GetSubsciptionChanges(ctx context.Context, username, devicename string, since time.Time) (
-	[]*model.Podcast, []string, error,
+	[]model.Podcast, []string, error,
 ) {
 	podcasts, err := s.getPodcasts(ctx, username, devicename, since)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get subscriptions error: %w", err)
 	}
 
-	added := make([]*model.Podcast, 0)
+	added := make([]model.Podcast, 0)
 	removed := make([]string, 0)
 
 	for _, p := range podcasts {
 		if p.Subscribed {
-			added = append(added, &model.Podcast{
+			added = append(added, model.Podcast{
 				Title: p.Title,
 				URL:   p.URL,
 			})

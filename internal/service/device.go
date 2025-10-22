@@ -29,7 +29,7 @@ func NewDeviceService(repo *repository.Repository) *Device {
 	return &Device{repo}
 }
 
-func (d *Device) UpdateDevice(ctx context.Context, username, deviceID, caption, devtype string) error {
+func (d *Device) UpdateDevice(ctx context.Context, username, deviceid, caption, devtype string) error {
 	user, err := d.repo.GetUser(ctx, username)
 	if errors.Is(err, repository.ErrNoData) {
 		return ErrUnknownUser
@@ -37,15 +37,12 @@ func (d *Device) UpdateDevice(ctx context.Context, username, deviceID, caption, 
 		return fmt.Errorf("get user error: %w", err)
 	}
 
-	device, err := d.repo.GetDevice(ctx, user.ID, deviceID)
+	device, err := d.repo.GetDevice(ctx, user.ID, deviceid)
 	if errors.Is(err, repository.ErrNoData) {
 		// new device
-		device = repository.DeviceDB{
-			UserID: user.ID,
-			Name:   deviceID,
-		}
+		device = repository.DeviceDB{UserID: user.ID, Name: deviceid}
 	} else if err != nil {
-		return fmt.Errorf("get device error: %w", err)
+		return fmt.Errorf("get device %q for user %q error: %w", deviceid, username, err)
 	}
 
 	device.Caption = caption
@@ -59,7 +56,7 @@ func (d *Device) UpdateDevice(ctx context.Context, username, deviceID, caption, 
 	return nil
 }
 
-func (d *Device) ListDevices(ctx context.Context, username string) ([]*model.Device, error) {
+func (d *Device) ListDevices(ctx context.Context, username string) ([]model.Device, error) {
 	user, err := d.repo.GetUser(ctx, username)
 	if errors.Is(err, repository.ErrNoData) {
 		return nil, ErrUnknownUser
@@ -72,9 +69,9 @@ func (d *Device) ListDevices(ctx context.Context, username string) ([]*model.Dev
 		return nil, fmt.Errorf("get device error: %w", err)
 	}
 
-	res := make([]*model.Device, 0, len(devices))
+	res := make([]model.Device, 0, len(devices))
 	for _, d := range devices {
-		res = append(res, &model.Device{
+		res = append(res, model.Device{
 			User:          username,
 			Name:          d.Name,
 			DevType:       d.DevType,

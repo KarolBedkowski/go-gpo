@@ -78,6 +78,7 @@ func main() {
 				Flags: []cli.Flag{
 					&cli.BoolFlag{Name: "noauth", Value: false, Usage: "disable authentication"},
 					&cli.StringFlag{Name: "address", Value: ":8080", Usage: "listen address"},
+					&cli.BoolFlag{Name: "verbose", Value: false, Usage: "enable logging request nd responses"},
 				},
 				Action: startServerAction,
 			},
@@ -121,6 +122,7 @@ func startServerAction(ctx context.Context, c *cli.Command) error {
 		NoAuth:   c.Bool("noauth"),
 		Database: c.String("database"),
 		Listen:   c.String("address"),
+		LogBody:  c.Bool("verbose"),
 	}
 
 	return s.Start(ctx)
