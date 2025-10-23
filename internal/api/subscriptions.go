@@ -45,7 +45,12 @@ func (sr *subscriptionsResource) Routes() chi.Router {
 	return r
 }
 
-func (sr *subscriptionsResource) devSubscriptions(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
+func (sr *subscriptionsResource) devSubscriptions(
+	ctx context.Context,
+	w http.ResponseWriter,
+	r *http.Request,
+	logger *zerolog.Logger,
+) {
 	user := internal.ContextUser(ctx)
 	deviceid := internal.ContextDevice(ctx)
 
@@ -95,7 +100,12 @@ func (sr *subscriptionsResource) devSubscriptions(ctx context.Context, w http.Re
 	render.JSON(w, r, &res)
 }
 
-func (sr *subscriptionsResource) userSubscriptions(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
+func (sr *subscriptionsResource) userSubscriptions(
+	ctx context.Context,
+	w http.ResponseWriter,
+	r *http.Request,
+	logger *zerolog.Logger,
+) {
 	_ = r
 	user := internal.ContextUser(ctx)
 
@@ -133,7 +143,12 @@ func (sr *subscriptionsResource) userSubscriptions(ctx context.Context, w http.R
 	w.Write([]byte(result))
 }
 
-func (sr *subscriptionsResource) uploadSubscriptions(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
+func (sr *subscriptionsResource) uploadSubscriptions(
+	ctx context.Context,
+	w http.ResponseWriter,
+	r *http.Request,
+	logger *zerolog.Logger,
+) {
 	user := internal.ContextUser(ctx)
 	deviceid := internal.ContextDevice(ctx)
 
@@ -158,7 +173,12 @@ func (sr *subscriptionsResource) uploadSubscriptions(ctx context.Context, w http
 	w.WriteHeader(http.StatusOK)
 }
 
-func (sr *subscriptionsResource) uploadSubscriptionChanges(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
+func (sr *subscriptionsResource) uploadSubscriptionChanges(
+	ctx context.Context,
+	w http.ResponseWriter,
+	r *http.Request,
+	logger *zerolog.Logger,
+) {
 	user := internal.ContextUser(ctx)
 	deviceid := internal.ContextDevice(ctx)
 

@@ -12,7 +12,6 @@ import (
 	"fmt"
 
 	"github.com/rs/zerolog/log"
-
 	"gitlab.com/kabes/go-gpodder/internal/api"
 	"gitlab.com/kabes/go-gpodder/internal/repository"
 )
@@ -25,7 +24,10 @@ type Server struct {
 }
 
 func (s *Server) Start(ctx context.Context) error {
-	log.Logger.Log().Msgf("Starting server on %q...", s.Listen)
+	logger := log.Logger
+	ctx = logger.WithContext(ctx)
+
+	logger.Log().Msgf("Starting server on %q...", s.Listen)
 
 	re := &repository.Repository{}
 	if err := re.Connect(ctx, "sqlite3", s.Database+"?_fk=true"); err != nil {

@@ -36,7 +36,12 @@ func (er *episodesResource) Routes() chi.Router {
 	return r
 }
 
-func (er *episodesResource) uploadEpisodeActions(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
+func (er *episodesResource) uploadEpisodeActions(
+	ctx context.Context,
+	w http.ResponseWriter,
+	r *http.Request,
+	logger *zerolog.Logger,
+) {
 	user := internal.ContextUser(ctx)
 
 	var request []episode
@@ -92,7 +97,12 @@ func (er *episodesResource) uploadEpisodeActions(ctx context.Context, w http.Res
 	render.JSON(w, r, &res)
 }
 
-func (er *episodesResource) getEpisodeActions(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
+func (er *episodesResource) getEpisodeActions(
+	ctx context.Context,
+	w http.ResponseWriter,
+	r *http.Request,
+	logger *zerolog.Logger,
+) {
 	user := internal.ContextUser(ctx)
 	podcast := r.URL.Query().Get("podcast")
 	device := r.URL.Query().Get("device")

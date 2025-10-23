@@ -36,7 +36,12 @@ func (u *updatesResource) Routes() chi.Router {
 	return r
 }
 
-func (u *updatesResource) getUpdates(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
+func (u *updatesResource) getUpdates(
+	ctx context.Context,
+	w http.ResponseWriter,
+	r *http.Request,
+	logger *zerolog.Logger,
+) {
 	user := internal.ContextUser(ctx)
 	deviceid := internal.ContextDevice(ctx)
 

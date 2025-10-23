@@ -33,7 +33,14 @@ func NewUsersService(repo *repository.Repository) *Users {
 }
 
 func (u *Users) LoginUser(ctx context.Context, username, password string) (model.User, error) {
-	user, err := u.repo.GetUser(ctx, username)
+	tx, err := u.repo.Begin(ctx)
+	if err != nil {
+		return model.User{}, fmt.Errorf("start tx error: %w", err)
+	}
+
+	defer tx.Close()
+
+	user, err := tx.GetUser(ctx, username)
 	if errors.Is(err, repository.ErrNoData) {
 		return model.User{}, ErrUnknownUser
 	} else if err != nil {
@@ -48,8 +55,15 @@ func (u *Users) LoginUser(ctx context.Context, username, password string) (model
 }
 
 func (u *Users) AddUser(ctx context.Context, user model.User) (int64, error) {
+	tx, err := u.repo.Begin(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("start tx error: %w", err)
+	}
+
+	defer tx.Close()
+
 	// is user exists?
-	if _, err := u.repo.GetUser(ctx, user.Username); err != nil && !errors.Is(err, repository.ErrNoData) {
+	if _, err := tx.GetUser(ctx, user.Username); err != nil && !errors.Is(err, repository.ErrNoData) {
 		return 0, fmt.Errorf("check user exists error: %w", err)
 	} else if err == nil {
 		return 0, ErrUserExists
@@ -70,17 +84,28 @@ func (u *Users) AddUser(ctx context.Context, user model.User) (int64, error) {
 		UpdatedAt: now,
 	}
 
-	id, err := u.repo.SaveUser(ctx, &udb)
+	id, err := tx.SaveUser(ctx, &udb)
 	if err != nil {
 		return 0, fmt.Errorf("save user error: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("commit error: %w", err)
 	}
 
 	return id, nil
 }
 
 func (u *Users) ChangePassword(ctx context.Context, user model.User) (int64, error) {
+	tx, err := u.repo.Begin(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("start tx error: %w", err)
+	}
+
+	defer tx.Close()
+
 	// is user exists?
-	udb, err := u.repo.GetUser(ctx, user.Username)
+	udb, err := tx.GetUser(ctx, user.Username)
 	if errors.Is(err, repository.ErrNoData) {
 		return 0, ErrUnknownUser
 	} else if err != nil {
@@ -94,9 +119,13 @@ func (u *Users) ChangePassword(ctx context.Context, user model.User) (int64, err
 
 	udb.UpdatedAt = time.Now()
 
-	id, err := u.repo.SaveUser(ctx, &udb)
+	id, err := tx.SaveUser(ctx, &udb)
 	if err != nil {
 		return 0, fmt.Errorf("save user error: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("commit error: %w", err)
 	}
 
 	return id, nil

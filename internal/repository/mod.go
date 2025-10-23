@@ -35,6 +35,9 @@ type Repository struct {
 func (r *Repository) Connect(ctx context.Context, driver, connstr string) error {
 	var err error
 
+	logger := log.Ctx(ctx)
+	logger.Info().Msgf("connecting to %s/%s", connstr, driver)
+
 	r.db, err = sqlx.Open(driver, connstr)
 	if err != nil {
 		return fmt.Errorf("open database error: %w", err)
@@ -47,33 +50,67 @@ func (r *Repository) Connect(ctx context.Context, driver, connstr string) error 
 	return nil
 }
 
-func (r *Repository) inTransaction(ctx context.Context, f func(tx *sqlx.Tx) error) error {
+func (r *Repository) Begin(ctx context.Context) (Transaction, error) {
 	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("begin tx error: %w", err)
+		return Transaction{}, fmt.Errorf("begin tx error: %w", err)
 	}
 
-	if err := f(tx); err != nil {
-		if rerr := tx.Rollback(); rerr != nil {
-			return fmt.Errorf("%w; with rollback error: %w", err, rerr)
+	return Transaction{tx, false}, nil
+}
+
+type Transaction struct {
+	tx        *sqlx.Tx
+	committed bool
+}
+
+func (t *Transaction) Close() error {
+	if !t.committed {
+		if err := t.tx.Rollback(); err != nil {
+			return fmt.Errorf("rollback error: %w", err)
 		}
-
-		return err
-	}
-
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit tx error: %w", err)
 	}
 
 	return nil
 }
 
+func (t *Transaction) Commit() error {
+	if err := t.tx.Commit(); err != nil {
+		return fmt.Errorf("commit error: %w", err)
+	}
+
+	t.committed = true
+
+	return nil
+}
+
+// func (r *Repository) inTransaction(ctx context.Context, f func(tx *sqlx.Tx) error) error {
+// 	tx, err := r.db.BeginTxx(ctx, nil)
+// 	if err != nil {
+// 		return fmt.Errorf("begin tx error: %w", err)
+// 	}
+
+// 	if err := f(tx); err != nil {
+// 		if rerr := tx.Rollback(); rerr != nil {
+// 			return fmt.Errorf("%w; with rollback error: %w", err, rerr)
+// 		}
+
+// 		return err
+// 	}
+
+// 	if err := tx.Commit(); err != nil {
+// 		return fmt.Errorf("commit tx error: %w", err)
+// 	}
+
+// 	return nil
+// }
+
 // -----------------------
 
-func (r *Repository) GetUser(ctx context.Context, username string) (UserDB, error) {
+func (r *Transaction) GetUser(ctx context.Context, username string) (UserDB, error) {
 	user := UserDB{}
 
-	err := r.db.QueryRowxContext(ctx,
+	err := r.tx.QueryRowxContext(ctx,
 		"SELECT id, username, password, email, name, created_at, updated_at "+
 			"FROM users WHERE username=?",
 		username).
@@ -89,12 +126,12 @@ func (r *Repository) GetUser(ctx context.Context, username string) (UserDB, erro
 	}
 }
 
-func (r *Repository) SaveUser(ctx context.Context, user *UserDB) (int64, error) {
+func (r *Transaction) SaveUser(ctx context.Context, user *UserDB) (int64, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Interface("user", user).Msg("save user")
 
 	if user.ID == 0 {
-		res, err := r.db.ExecContext(ctx,
+		res, err := r.tx.ExecContext(ctx,
 			"INSERT INTO users (username, password, email, name, created_at, updated_at) "+
 				"VALUES(?, ?, ?, ?, ?, ?)",
 			user.Username, user.Password, user.Email, user.Name, user.CreatedAt, user.UpdatedAt)
@@ -111,7 +148,7 @@ func (r *Repository) SaveUser(ctx context.Context, user *UserDB) (int64, error) 
 	}
 
 	// update
-	_, err := r.db.ExecContext(ctx,
+	_, err := r.tx.ExecContext(ctx,
 		"UPDATE users SET password=?, email=?, name=?, updated_at=? WHERE id=?",
 		user.Password, user.Email, user.Name, user.UpdatedAt, user.ID)
 	if err != nil {
@@ -123,18 +160,9 @@ func (r *Repository) SaveUser(ctx context.Context, user *UserDB) (int64, error) 
 
 //-----------------------
 
-func (r *Repository) GetDevice(ctx context.Context, userid int64, devicename string) (DeviceDB, error) {
-	return r.getDevice(ctx, r.db, userid, devicename)
-}
-
-func (r *Repository) getDevice(
-	ctx context.Context,
-	tx queryer,
-	userid int64,
-	devicename string,
-) (DeviceDB, error) {
+func (r *Transaction) GetDevice(ctx context.Context, userid int64, devicename string) (DeviceDB, error) {
 	device := DeviceDB{}
-	err := tx.QueryRowxContext(ctx,
+	err := r.tx.QueryRowxContext(ctx,
 		"SELECT id, user_id, name, dev_type, caption, created_at, updated_at "+
 			"FROM devices WHERE user_id=? and name=?", userid, devicename).
 		StructScan(&device)
@@ -145,7 +173,7 @@ func (r *Repository) getDevice(
 		return device, fmt.Errorf("query device error: %w", err)
 	}
 
-	err = tx.GetContext(
+	err = r.tx.GetContext(
 		ctx,
 		&device.Subscriptions,
 		"SELECT count(*) FROM podcasts where user_id=? and subscribed",
@@ -158,10 +186,10 @@ func (r *Repository) getDevice(
 	return device, nil
 }
 
-func (r *Repository) getUserDevices(ctx context.Context, tx queryer, userid int64) (DevicesDB, error) {
+func (r *Transaction) getUserDevices(ctx context.Context, userid int64) (DevicesDB, error) {
 	res := []*DeviceDB{}
 
-	err := tx.SelectContext(ctx, &res,
+	err := r.tx.SelectContext(ctx, &res,
 		"SELECT id, user_id, name, dev_type, caption, created_at, updated_at "+
 			"FROM devices WHERE user_id=?", userid)
 	if err != nil {
@@ -171,7 +199,7 @@ func (r *Repository) getUserDevices(ctx context.Context, tx queryer, userid int6
 	// all device have the same number of subscriptions
 	var subscriptions int
 
-	err = tx.GetContext(ctx, &subscriptions, "SELECT count(*) FROM podcasts where user_id=? and subscribed", userid)
+	err = r.tx.GetContext(ctx, &subscriptions, "SELECT count(*) FROM podcasts where user_id=? and subscribed", userid)
 	if err != nil {
 		return nil, fmt.Errorf("count subscriptions error: %w", err)
 	}
@@ -183,16 +211,16 @@ func (r *Repository) getUserDevices(ctx context.Context, tx queryer, userid int6
 	return res, nil
 }
 
-func (r *Repository) SaveDevice(ctx context.Context, device *DeviceDB) (int64, error) {
-	return r.saveDevice(ctx, r.db, device)
+func (r *Transaction) SaveDevice(ctx context.Context, device *DeviceDB) (int64, error) {
+	return r.saveDevice(ctx, device)
 }
 
-func (r *Repository) saveDevice(ctx context.Context, tx sqlx.ExecerContext, device *DeviceDB) (int64, error) {
+func (r *Transaction) saveDevice(ctx context.Context, device *DeviceDB) (int64, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Interface("device", device).Msg("update device")
 
 	if device.ID == 0 {
-		res, err := tx.ExecContext(ctx,
+		res, err := r.tx.ExecContext(ctx,
 			"INSERT INTO devices (user_id, name, dev_type, caption) VALUES(?, ?, ?, ?)",
 			device.UserID, device.Name, device.DevType, device.Caption)
 		if err != nil {
@@ -208,7 +236,7 @@ func (r *Repository) saveDevice(ctx context.Context, tx sqlx.ExecerContext, devi
 	}
 
 	// update
-	_, err := tx.ExecContext(ctx,
+	_, err := r.tx.ExecContext(ctx,
 		"UPDATE devices SET dev_type=?, caption=?, updated_at=current_timestamp WHERE id=?",
 		device.DevType, device.Caption, device.ID)
 	if err != nil {
@@ -218,13 +246,13 @@ func (r *Repository) saveDevice(ctx context.Context, tx sqlx.ExecerContext, devi
 	return device.ID, nil
 }
 
-func (r *Repository) ListDevices(ctx context.Context, userid int64) (DevicesDB, error) {
+func (r *Transaction) ListDevices(ctx context.Context, userid int64) (DevicesDB, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msg("list devices")
 
 	res := []*DeviceDB{}
 
-	err := r.db.SelectContext(ctx, &res,
+	err := r.tx.SelectContext(ctx, &res,
 		"SELECT id, user_id, name, dev_type, caption, created_at, updated_at "+
 			"FROM devices WHERE user_id=?", userid)
 	if err != nil {
@@ -234,17 +262,8 @@ func (r *Repository) ListDevices(ctx context.Context, userid int64) (DevicesDB, 
 	return res, nil
 }
 
-func (r *Repository) GetSubscribedPodcasts(
+func (r *Transaction) GetSubscribedPodcasts(
 	ctx context.Context,
-	userid int64,
-	since time.Time,
-) (PodcastsDB, error) {
-	return r.getSubscribedPodcasts(ctx, r.db, userid, since)
-}
-
-func (r *Repository) getSubscribedPodcasts(
-	ctx context.Context,
-	db queryer,
 	userid int64,
 	since time.Time,
 ) (PodcastsDB, error) {
@@ -253,7 +272,7 @@ func (r *Repository) getSubscribedPodcasts(
 
 	res := []PodcastDB{}
 
-	err := db.SelectContext(ctx, &res,
+	err := r.tx.SelectContext(ctx, &res,
 		"SELECT p.id, p.user_id, p.url, p.title, p.subscribed, p.created_at, p.updated_at "+
 			"FROM podcasts p "+
 			"WHERE p.user_id=? AND p.updated_at > ? and subscribed", userid, since)
@@ -266,7 +285,7 @@ func (r *Repository) getSubscribedPodcasts(
 	return res, nil
 }
 
-func (r *Repository) GetPodcasts(
+func (r *Transaction) GetPodcasts(
 	ctx context.Context,
 	userid int64,
 	since time.Time,
@@ -276,7 +295,7 @@ func (r *Repository) GetPodcasts(
 
 	res := []PodcastDB{}
 
-	err := r.db.SelectContext(ctx, &res,
+	err := r.tx.SelectContext(ctx, &res,
 		"SELECT p.id, p.user_id, p.url, p.title, p.subscribed, p.created_at, p.updated_at "+
 			"FROM podcasts p "+
 			"WHERE p.user_id=? AND p.updated_at > ?", userid, since)
@@ -287,12 +306,12 @@ func (r *Repository) GetPodcasts(
 	return res, nil
 }
 
-func (r *Repository) GetPodcast(ctx context.Context, userid int64, podcasturl string) (PodcastDB, error) {
+func (r *Transaction) GetPodcast(ctx context.Context, userid int64, podcasturl string) (PodcastDB, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("userid", userid).Str("podcasturl", podcasturl).Msg("get podcast")
 
 	podcast := PodcastDB{}
-	err := r.db.QueryRowxContext(ctx,
+	err := r.tx.QueryRowxContext(ctx,
 		"SELECT p.id, p.user_id, p.url, p.title, p.subscribed, p.created_at, p.updated_at "+
 			"FROM podcasts p "+
 			"WHERE p.user_id=? AND p.url = ?", userid, podcasturl).
@@ -308,25 +327,23 @@ func (r *Repository) GetPodcast(ctx context.Context, userid int64, podcasturl st
 	}
 }
 
-func (r *Repository) SavePodcast(ctx context.Context, user, device string, podcast ...PodcastDB) error {
+func (r *Transaction) SavePodcast(ctx context.Context, user, device string, podcast ...PodcastDB) error {
 	_ = user
 	_ = device
 	logger := log.Ctx(ctx)
 
-	return r.inTransaction(ctx, func(tx *sqlx.Tx) error {
-		for _, pod := range podcast {
-			logger.Debug().Interface("podcast", pod).Msg("save podcast")
+	for _, pod := range podcast {
+		logger.Debug().Interface("podcast", pod).Msg("save podcast")
 
-			if _, err := r.savePodcast(ctx, tx, pod); err != nil {
-				return err
-			}
+		if _, err := r.savePodcast(ctx, pod); err != nil {
+			return err
 		}
+	}
 
-		return nil
-	})
+	return nil
 }
 
-func (r *Repository) savePodcast(ctx context.Context, tx sqlx.ExecerContext, pod PodcastDB) (int64, error) {
+func (r *Transaction) savePodcast(ctx context.Context, pod PodcastDB) (int64, error) {
 	if pod.UpdatedAt.IsZero() {
 		pod.UpdatedAt = time.Now()
 	}
@@ -336,7 +353,7 @@ func (r *Repository) savePodcast(ctx context.Context, tx sqlx.ExecerContext, pod
 			pod.CreatedAt = time.Now()
 		}
 
-		res, err := tx.ExecContext(
+		res, err := r.tx.ExecContext(
 			ctx,
 			"INSERT INTO podcasts (user_id, title, url, subscribed, created_at, updated_at) "+
 				"VALUES(?, ?, ?, ?, ?, ?)",
@@ -360,7 +377,7 @@ func (r *Repository) savePodcast(ctx context.Context, tx sqlx.ExecerContext, pod
 	}
 
 	// update
-	_, err := tx.ExecContext(ctx,
+	_, err := r.tx.ExecContext(ctx,
 		"UPDATE podcasts SET subscribed=?, title=?, url=?, updated_at=? WHERE id=?",
 		pod.Subscribed, pod.Title, pod.URL, pod.UpdatedAt, pod.ID)
 	if err != nil {
@@ -370,7 +387,7 @@ func (r *Repository) savePodcast(ctx context.Context, tx sqlx.ExecerContext, pod
 	return pod.ID, nil
 }
 
-func (r *Repository) GetEpisodes(
+func (r *Transaction) GetEpisodes(
 	ctx context.Context,
 	userid, deviceid, podcastid int64,
 	since time.Time,
@@ -401,7 +418,7 @@ func (r *Repository) GetEpisodes(
 
 	res := []EpisodeDB{}
 
-	err := r.db.SelectContext(ctx, &res, query, args...)
+	err := r.tx.SelectContext(ctx, &res, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("query episodes error: %w", err)
 	}
@@ -421,69 +438,85 @@ func (r *Repository) GetEpisodes(
 	return slices.Collect(maps.Values(agr)), nil
 }
 
-func (r *Repository) SaveEpisode(ctx context.Context, userid int64, episode ...EpisodeDB) error {
+func (r *Transaction) SaveEpisode(ctx context.Context, userid int64, episode ...EpisodeDB) error {
 	logger := log.Ctx(ctx)
 
-	return r.inTransaction(ctx, func(tx *sqlx.Tx) error {
-		podcasts, err := r.getSubscribedPodcasts(ctx, tx, userid, time.Time{})
-		if err != nil {
+	podcasts, err := r.GetSubscribedPodcasts(ctx, userid, time.Time{})
+	if err != nil {
+		return err
+	}
+
+	podcastsmap := podcasts.ToIDsMap()
+
+	devices, err := r.getUserDevices(ctx, userid)
+	if err != nil {
+		return err
+	}
+
+	devicesmap := devices.ToIDsMap()
+
+	for _, e := range episode {
+		logger.Debug().Interface("episode", e).Msg("save episode")
+
+		if pid, ok := podcastsmap[e.PodcastURL]; ok {
+			// podcast already created
+			e.PodcastID = pid
+		} else {
+			// insert podcast
+			id, err := r.createNewPodcast(ctx, userid, e.PodcastURL)
+			if err != nil {
+				return fmt.Errorf("save new podcast %q error: %w", e.PodcastURL, err)
+			}
+
+			e.PodcastID = id
+			podcastsmap[e.PodcastURL] = id
+		}
+
+		if did, ok := devicesmap[e.Device]; ok {
+			e.DeviceID = did
+		} else {
+			// create device
+			did, err := r.createNewDevice(ctx, userid, e.Device)
+			if err != nil {
+				return fmt.Errorf("save new device %q error: %w", e.Device, err)
+			}
+
+			e.DeviceID = did
+			devicesmap[e.Device] = did
+		}
+
+		if err := r.saveEpisode(ctx, e); err != nil {
 			return err
 		}
+	}
 
-		podcastsmap := podcasts.ToIDsMap()
-
-		devices, err := r.getUserDevices(ctx, tx, userid)
-		if err != nil {
-			return err
-		}
-
-		devicesmap := devices.ToIDsMap()
-
-		for _, e := range episode {
-			logger.Debug().Interface("episode", e).Msg("save episode")
-
-			if pid, ok := podcastsmap[e.PodcastURL]; ok {
-				// podcast already created
-				e.PodcastID = pid
-			} else {
-				// insert podcast
-				podcast := PodcastDB{UserID: userid, URL: e.PodcastURL, Subscribed: true}
-
-				id, err := r.savePodcast(ctx, tx, podcast)
-				if err != nil {
-					return fmt.Errorf("save new podcast %q error: %w", podcast.URL, err)
-				}
-
-				e.PodcastID = id
-				podcastsmap[e.PodcastURL] = id
-			}
-
-			if did, ok := devicesmap[e.Device]; ok {
-				e.DeviceID = did
-			} else {
-				// create device
-				dev := DeviceDB{UserID: userid, Name: e.Device, DevType: "computer"}
-
-				did, err := r.saveDevice(ctx, tx, &dev)
-				if err != nil {
-					return fmt.Errorf("save new device %q error: %w", e.Device, err)
-				}
-
-				e.DeviceID = did
-				devicesmap[e.Device] = did
-			}
-
-			if err := r.saveEpisode(ctx, tx, e); err != nil {
-				return err
-			}
-		}
-
-		return nil
-	})
+	return nil
 }
 
-func (r *Repository) saveEpisode(ctx context.Context, tx sqlx.ExecerContext, episode EpisodeDB) error {
-	_, err := tx.ExecContext(
+func (r *Transaction) createNewPodcast(ctx context.Context, userid int64, url string) (int64, error) {
+	podcast := PodcastDB{UserID: userid, URL: url, Subscribed: true}
+
+	id, err := r.savePodcast(ctx, podcast)
+	if err != nil {
+		return 0, err
+	}
+
+	return id, nil
+}
+
+func (r *Transaction) createNewDevice(ctx context.Context, userid int64, devicename string) (int64, error) {
+	dev := DeviceDB{UserID: userid, Name: devicename, DevType: "computer"}
+
+	id, err := r.saveDevice(ctx, &dev)
+	if err != nil {
+		return 0, err
+	}
+
+	return id, nil
+}
+
+func (r *Transaction) saveEpisode(ctx context.Context, episode EpisodeDB) error {
+	_, err := r.tx.ExecContext(
 		ctx,
 		"INSERT INTO episodes (podcast_id, device_id, title, url, action, started, position, total, "+
 			"created_at, updated_at) "+

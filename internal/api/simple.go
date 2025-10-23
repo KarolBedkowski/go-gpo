@@ -48,7 +48,12 @@ func (s *simpleResource) Routes() chi.Router {
 	return r
 }
 
-func (s *simpleResource) downloadAllSubscriptions(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
+func (s *simpleResource) downloadAllSubscriptions(
+	ctx context.Context,
+	w http.ResponseWriter,
+	r *http.Request,
+	logger *zerolog.Logger,
+) {
 	user := internal.ContextUser(ctx)
 
 	subs, err := s.subServ.GetUserSubscriptions(ctx, user, time.Time{})
@@ -93,7 +98,12 @@ func (s *simpleResource) downloadAllSubscriptions(ctx context.Context, w http.Re
 	}
 }
 
-func (s *simpleResource) downloadSubscriptions(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
+func (s *simpleResource) downloadSubscriptions(
+	ctx context.Context,
+	w http.ResponseWriter,
+	r *http.Request,
+	logger *zerolog.Logger,
+) {
 	user := internal.ContextUser(ctx)
 	deviceid := internal.ContextDevice(ctx)
 
@@ -141,7 +151,12 @@ func (s *simpleResource) downloadSubscriptions(ctx context.Context, w http.Respo
 	}
 }
 
-func (s *simpleResource) uploadSubscriptions(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
+func (s *simpleResource) uploadSubscriptions(
+	ctx context.Context,
+	w http.ResponseWriter,
+	r *http.Request,
+	logger *zerolog.Logger,
+) {
 	user := internal.ContextUser(ctx)
 	deviceid := internal.ContextDevice(ctx)
 

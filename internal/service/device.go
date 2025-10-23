@@ -30,14 +30,21 @@ func NewDeviceService(repo *repository.Repository) *Device {
 }
 
 func (d *Device) UpdateDevice(ctx context.Context, username, deviceid, caption, devtype string) error {
-	user, err := d.repo.GetUser(ctx, username)
+	tx, err := d.repo.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("start tx error: %w", err)
+	}
+
+	defer tx.Close()
+
+	user, err := tx.GetUser(ctx, username)
 	if errors.Is(err, repository.ErrNoData) {
 		return ErrUnknownUser
 	} else if err != nil {
 		return fmt.Errorf("get user error: %w", err)
 	}
 
-	device, err := d.repo.GetDevice(ctx, user.ID, deviceid)
+	device, err := tx.GetDevice(ctx, user.ID, deviceid)
 	if errors.Is(err, repository.ErrNoData) {
 		// new device
 		device = repository.DeviceDB{UserID: user.ID, Name: deviceid}
@@ -48,23 +55,34 @@ func (d *Device) UpdateDevice(ctx context.Context, username, deviceid, caption, 
 	device.Caption = caption
 	device.DevType = devtype
 
-	_, err = d.repo.SaveDevice(ctx, &device)
+	_, err = tx.SaveDevice(ctx, &device)
 	if err != nil {
 		return fmt.Errorf("save device error: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit error: %w", err)
 	}
 
 	return nil
 }
 
 func (d *Device) ListDevices(ctx context.Context, username string) ([]model.Device, error) {
-	user, err := d.repo.GetUser(ctx, username)
+	tx, err := d.repo.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("start tx error: %w", err)
+	}
+
+	defer tx.Close()
+
+	user, err := tx.GetUser(ctx, username)
 	if errors.Is(err, repository.ErrNoData) {
 		return nil, ErrUnknownUser
 	} else if err != nil {
 		return nil, fmt.Errorf("get user error: %w", err)
 	}
 
-	devices, err := d.repo.ListDevices(ctx, user.ID)
+	devices, err := tx.ListDevices(ctx, user.ID)
 	if err != nil {
 		return nil, fmt.Errorf("get device error: %w", err)
 	}

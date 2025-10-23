@@ -31,14 +31,21 @@ func NewSubssService(repo *repository.Repository) *Subs {
 
 // GetUserSubscriptions is simple api.
 func (s *Subs) GetUserSubscriptions(ctx context.Context, username string, since time.Time) ([]string, error) {
-	user, err := s.repo.GetUser(ctx, username)
+	tx, err := s.repo.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("start tx error: %w", err)
+	}
+
+	defer tx.Close()
+
+	user, err := tx.GetUser(ctx, username)
 	if errors.Is(err, repository.ErrNoData) {
 		return nil, ErrUnknownUser
 	} else if err != nil {
 		return nil, fmt.Errorf("get user error: %w", err)
 	}
 
-	subs, err := s.repo.GetSubscribedPodcasts(ctx, user.ID, since)
+	subs, err := tx.GetSubscribedPodcasts(ctx, user.ID, since)
 	if err != nil {
 		return nil, fmt.Errorf("get subscriptions error: %w", err)
 	}
@@ -49,21 +56,28 @@ func (s *Subs) GetUserSubscriptions(ctx context.Context, username string, since 
 // GetDeviceSubscriptions is simple api.
 func (s *Subs) GetDeviceSubscriptions(ctx context.Context, username, devicename string, since time.Time,
 ) ([]string, error) {
-	user, err := s.repo.GetUser(ctx, username)
+	tx, err := s.repo.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("start tx error: %w", err)
+	}
+
+	defer tx.Close()
+
+	user, err := tx.GetUser(ctx, username)
 	if errors.Is(err, repository.ErrNoData) {
 		return nil, ErrUnknownUser
 	} else if err != nil {
 		return nil, fmt.Errorf("get user error: %w", err)
 	}
 
-	_, err = s.repo.GetDevice(ctx, user.ID, devicename)
+	_, err = tx.GetDevice(ctx, user.ID, devicename)
 	if errors.Is(err, repository.ErrNoData) {
 		return nil, ErrUnknownDevice
 	} else if err != nil {
 		return nil, fmt.Errorf("get device error: %w", err)
 	}
 
-	podcasts, err := s.repo.GetSubscribedPodcasts(ctx, user.ID, since)
+	podcasts, err := tx.GetSubscribedPodcasts(ctx, user.ID, since)
 	if err != nil {
 		return nil, fmt.Errorf("get subscriptions error: %w", err)
 	}
@@ -73,7 +87,14 @@ func (s *Subs) GetDeviceSubscriptions(ctx context.Context, username, devicename 
 
 func (s *Subs) GetDeviceSubscriptionChanges(ctx context.Context, username, devicename string, since time.Time,
 ) ([]string, []string, error) {
-	podcasts, err := s.getPodcasts(ctx, username, devicename, since)
+	tx, err := s.repo.Begin(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("start tx error: %w", err)
+	}
+
+	defer tx.Close()
+
+	podcasts, err := s.getPodcasts(ctx, tx, username, devicename, since)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get subscriptions error: %w", err)
 	}
@@ -97,14 +118,21 @@ func (s *Subs) UpdateDeviceSubscriptions(ctx context.Context,
 	_ = ts
 	logger := zerolog.Ctx(ctx)
 
-	user, err := s.getUser(ctx, username)
+	tx, err := s.repo.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("start tx error: %w", err)
+	}
+
+	defer tx.Close()
+
+	user, err := s.getUser(ctx, tx, username)
 	if err != nil {
 		return err
 	}
 
-	device, err := s.getUserDevice(ctx, user.ID, devicename)
+	device, err := s.getUserDevice(ctx, tx, user.ID, devicename)
 	if errors.Is(err, ErrUnknownDevice) {
-		device, err = s.createUserDevice(ctx, user.ID, devicename)
+		device, err = s.createUserDevice(ctx, tx, user.ID, devicename)
 	}
 
 	if err != nil {
@@ -113,7 +141,7 @@ func (s *Subs) UpdateDeviceSubscriptions(ctx context.Context,
 
 	logger.Debug().Interface("device", device).Strs("subs", subs).Msg("update dev subscriptions")
 
-	subscribed, err := s.repo.GetPodcasts(ctx, user.ID, time.Time{})
+	subscribed, err := tx.GetPodcasts(ctx, user.ID, time.Time{})
 	if err != nil {
 		return fmt.Errorf("get subscriptions error: %w", err)
 	}
@@ -151,8 +179,12 @@ func (s *Subs) UpdateDeviceSubscriptions(ctx context.Context,
 		logger.Debug().Interface("podcast", podcast).Str("sub", sub).Msg("new subscription")
 	}
 
-	if err := s.repo.SavePodcast(ctx, username, devicename, changes...); err != nil {
+	if err := tx.SavePodcast(ctx, username, devicename, changes...); err != nil {
 		return fmt.Errorf("save subscriptions error: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit error: %w", err)
 	}
 
 	return nil
@@ -166,17 +198,24 @@ func (s *Subs) UpdateDeviceSubscriptionChanges(
 	// TODO: sanitize
 	logger := zerolog.Ctx(ctx)
 
-	user, err := s.getUser(ctx, username)
+	tx, err := s.repo.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("start tx error: %w", err)
+	}
+
+	defer tx.Close()
+
+	user, err := s.getUser(ctx, tx, username)
 	if err != nil {
 		return err
 	}
 
-	device, err := s.getUserDevice(ctx, user.ID, devicename)
+	device, err := s.getUserDevice(ctx, tx, user.ID, devicename)
 	if err != nil {
 		return err
 	}
 
-	subscribed, err := s.repo.GetPodcasts(ctx, device.ID, time.Time{})
+	subscribed, err := tx.GetPodcasts(ctx, device.ID, time.Time{})
 	if err != nil {
 		return fmt.Errorf("get subscriptions error: %w", err)
 	}
@@ -213,8 +252,12 @@ func (s *Subs) UpdateDeviceSubscriptionChanges(
 		logger.Debug().Interface("podcast", podcast).Str("sub", sub).Msg("new subscription")
 	}
 
-	if err := s.repo.SavePodcast(ctx, username, devicename, changes...); err != nil {
+	if err := tx.SavePodcast(ctx, username, devicename, changes...); err != nil {
 		return fmt.Errorf("save subscriptions error: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit error: %w", err)
 	}
 
 	return nil
@@ -223,7 +266,14 @@ func (s *Subs) UpdateDeviceSubscriptionChanges(
 func (s *Subs) GetSubsciptionChanges(ctx context.Context, username, devicename string, since time.Time) (
 	[]model.Podcast, []string, error,
 ) {
-	podcasts, err := s.getPodcasts(ctx, username, devicename, since)
+	tx, err := s.repo.Begin(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("start tx error: %w", err)
+	}
+
+	defer tx.Close()
+
+	podcasts, err := s.getPodcasts(ctx, tx, username, devicename, since)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get subscriptions error: %w", err)
 	}
@@ -247,8 +297,8 @@ func (s *Subs) GetSubsciptionChanges(ctx context.Context, username, devicename s
 
 // ------------------------------------------------------
 
-func (s *Subs) getUser(ctx context.Context, username string) (repository.UserDB, error) {
-	user, err := s.repo.GetUser(ctx, username)
+func (s *Subs) getUser(ctx context.Context, tx repository.Transaction, username string) (repository.UserDB, error) {
+	user, err := tx.GetUser(ctx, username)
 	if errors.Is(err, repository.ErrNoData) {
 		return user, ErrUnknownUser
 	} else if err != nil {
@@ -258,8 +308,13 @@ func (s *Subs) getUser(ctx context.Context, username string) (repository.UserDB,
 	return user, nil
 }
 
-func (s *Subs) getUserDevice(ctx context.Context, username int64, devicename string) (repository.DeviceDB, error) {
-	device, err := s.repo.GetDevice(ctx, username, devicename)
+func (s *Subs) getUserDevice(
+	ctx context.Context,
+	tx repository.Transaction,
+	username int64,
+	devicename string,
+) (repository.DeviceDB, error) {
+	device, err := tx.GetDevice(ctx, username, devicename)
 	if errors.Is(err, repository.ErrNoData) {
 		return device, ErrUnknownDevice
 	} else if err != nil {
@@ -269,38 +324,48 @@ func (s *Subs) getUserDevice(ctx context.Context, username int64, devicename str
 	return device, nil
 }
 
-func (s *Subs) createUserDevice(ctx context.Context, username int64, devicename string) (repository.DeviceDB, error) {
+func (s *Subs) createUserDevice(
+	ctx context.Context,
+	tx repository.Transaction,
+	username int64,
+	devicename string,
+) (repository.DeviceDB, error) {
 	device := repository.DeviceDB{
 		Name:   devicename,
 		UserID: username,
 	}
 
-	_, err := s.repo.SaveDevice(ctx, &device)
+	_, err := tx.SaveDevice(ctx, &device)
 	if err != nil {
 		return device, fmt.Errorf("save new device error: %w", err)
 	}
 
-	return s.getUserDevice(ctx, username, devicename)
+	return s.getUserDevice(ctx, tx, username, devicename)
 }
 
-func (s *Subs) getPodcasts(ctx context.Context, username, devicename string, since time.Time) (
+func (s *Subs) getPodcasts(
+	ctx context.Context,
+	tx repository.Transaction,
+	username, devicename string,
+	since time.Time,
+) (
 	[]repository.PodcastDB, error,
 ) {
-	user, err := s.repo.GetUser(ctx, username)
+	user, err := tx.GetUser(ctx, username)
 	if errors.Is(err, repository.ErrNoData) {
 		return nil, fmt.Errorf("get user error: %w", err)
 	} else if err != nil {
 		return nil, ErrUnknownUser
 	}
 
-	_, err = s.repo.GetDevice(ctx, user.ID, devicename)
+	_, err = tx.GetDevice(ctx, user.ID, devicename)
 	if errors.Is(err, repository.ErrNoData) {
 		return nil, ErrUnknownDevice
 	} else if err != nil {
 		return nil, fmt.Errorf("get device error: %w", err)
 	}
 
-	podcasts, err := s.repo.GetPodcasts(ctx, user.ID, since)
+	podcasts, err := tx.GetPodcasts(ctx, user.ID, since)
 	if err != nil {
 		return nil, fmt.Errorf("get subscriptions error: %w", err)
 	}
