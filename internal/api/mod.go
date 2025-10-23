@@ -31,8 +31,10 @@ type Configuration struct {
 const connectioTimeout = 60 * time.Second
 
 func Start(repo *repository.Repository, cfg *Configuration) error {
+	session.RegisterFn("db", func() session.Provider { return repository.NewSessionProvider(repo) })
+
 	sess, err := session.Sessioner(session.Options{
-		Provider:       "file",
+		Provider:       "db",
 		ProviderConfig: "./tmp/",
 		CookieName:     "sessionid",
 		// Secure:         true,

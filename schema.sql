@@ -70,6 +70,14 @@ CREATE INDEX episodes_idx1 ON episodes (podcast_id, device_id, updated_at);
 
 
 
+
+CREATE TABLE sessions (
+    key VARCHAR NOT NULL PRIMARY KEY,
+    created_at TIMESTAMP NOT NULL,
+    data BLOB
+);
+
+
 insert into users (username, password, email, name) values ('k', 'q1w2e3', 'k@localhost', 'k');
 
 
