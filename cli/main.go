@@ -83,6 +83,11 @@ func main() {
 				Action: startServerAction,
 			},
 			{
+				Name:   "migrate",
+				Usage:  "update database",
+				Action: migrateAction,
+			},
+			{
 				Name:  "user",
 				Usage: "manage users",
 				Commands: []*cli.Command{
@@ -147,6 +152,15 @@ func changeUserPasswordAction(ctx context.Context, c *cli.Command) error {
 		Database: c.String("database"),
 		Password: c.String("password"),
 		Username: c.String("username"),
+	}
+
+	return s.Start(ctx)
+}
+
+func migrateAction(ctx context.Context, c *cli.Command) error {
+	initializeLogger(c.String("log.level"), c.String("log.format"))
+	s := cmd.Migrate{
+		Database: c.String("database"),
 	}
 
 	return s.Start(ctx)

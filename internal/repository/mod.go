@@ -10,6 +10,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"embed"
 	"errors"
 	"fmt"
 	"maps"
@@ -17,6 +18,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/pressly/goose/v3"
 	"github.com/rs/zerolog/log"
 )
 
@@ -58,6 +60,22 @@ func (r *Repository) Begin(ctx context.Context) (Transaction, error) {
 
 	return Transaction{tx, false}, nil
 }
+
+func (r *Repository) Migrate(ctx context.Context, driver string, em embed.FS) error {
+	goose.SetBaseFS(em)
+
+	if err := goose.SetDialect(driver); err != nil {
+		panic(err)
+	}
+
+	if err := goose.UpContext(ctx, r.db.DB, "migrations"); err != nil {
+		return fmt.Errorf("migrate up error:: %w", err)
+	}
+
+	return nil
+}
+
+// -----------------------
 
 type Transaction struct {
 	tx        *sqlx.Tx

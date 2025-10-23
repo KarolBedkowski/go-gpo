@@ -61,7 +61,8 @@ format:
 database.sqlite: schema.sql
 	sqlite3 database.sqlite ".read schema.sql"
 
-
+migrate:
+	goose -dir ./internal/cmd/migrations/ sqlite3 ./database.sqlite up
 
 
 # vim:ft=make
