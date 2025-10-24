@@ -16,6 +16,8 @@ import (
 	"gitea.com/go-chi/session"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog/hlog"
 	"github.com/rs/zerolog/log"
 	"gitlab.com/kabes/go-gpodder/internal/repository"
@@ -52,6 +54,8 @@ func Start(repo *repository.Repository, cfg *Configuration) error {
 
 	router := chi.NewRouter()
 
+	router.Use(newPromMiddleware("api", nil).Handler)
+
 	router.Use(middleware.RequestID)
 	router.Use(middleware.RealIP)
 	router.Use(hlog.RequestIDHandler("req_id", "Request-Id"))
@@ -66,6 +70,11 @@ func Start(repo *repository.Repository, cfg *Configuration) error {
 	router.Use(authenticator{usersSrv}.Authenticate)
 	router.Use(newRecoverMiddleware)
 	router.Use(middleware.Timeout(connectioTimeout))
+
+	router.Handle("/metrics", promhttp.InstrumentMetricHandler(
+		prometheus.DefaultRegisterer,
+		promhttp.HandlerFor(prometheus.DefaultGatherer, promhttp.HandlerOpts{DisableCompression: true}),
+	))
 
 	router.Mount("/subscriptions", (&simpleResource{cfg, repo, subSrv}).Routes())
 
