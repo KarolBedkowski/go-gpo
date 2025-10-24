@@ -161,7 +161,7 @@ func (p *SessionProvider) Destroy(sid string) error {
 }
 
 // Regenerate regenerates a session store from old session ID to new one.
-func (p *SessionProvider) Regenerate(oldsid, sid string) (session.RawStore, error) {
+func (p *SessionProvider) Regenerate(oldsid, sid string) (session.RawStore, error) { //nolint:cyclop
 	ctx := context.Background()
 
 	tx, err := p.db.BeginTxx(ctx, nil)
@@ -183,14 +183,16 @@ func (p *SessionProvider) Regenerate(oldsid, sid string) (session.RawStore, erro
 	}
 
 	if !exist {
-		if _, err = tx.ExecContext(ctx, "INSERT INTO sessions(key, data, created_at) VALUES(?, '', ?)",
-			oldsid, time.Now()); err != nil {
+		_, err := tx.ExecContext(ctx, "INSERT INTO sessions(key, data, created_at) VALUES(?, '', ?)",
+			oldsid, time.Now())
+		if err != nil {
 			return nil, fmt.Errorf("insert new session into db error: %w", err)
 		}
-	}
-
-	if _, err := tx.ExecContext(ctx, "UPDATE sessions SET key=? WHERE key=?", sid, oldsid); err != nil {
-		return nil, fmt.Errorf("update session in db error; %w", err)
+	} else {
+		_, err := tx.ExecContext(ctx, "UPDATE sessions SET key=? WHERE key=?", sid, oldsid)
+		if err != nil {
+			return nil, fmt.Errorf("update session in db error; %w", err)
+		}
 	}
 
 	data, err := p.read(ctx, tx, sid)
@@ -209,7 +211,7 @@ func (p *SessionProvider) Regenerate(oldsid, sid string) (session.RawStore, erro
 func (p *SessionProvider) Count() (int, error) {
 	var total int
 
-	if err := p.db.QueryRow("SELECT COUNT(*) AS num FROM sessions").Scan(&total); err != nil { //nolint: noctx
+	if err := p.db.Get(&total, "SELECT COUNT(*) AS num FROM sessions"); err != nil {
 		return 0, fmt.Errorf("error counting records: %w", err)
 	}
 
@@ -229,12 +231,16 @@ func (p *SessionProvider) GC() {
 func (p *SessionProvider) exist(ctx context.Context, tx queryer, sid string) (bool, error) {
 	var data int
 
-	err := tx.QueryRowxContext(ctx, "SELECT 1 FROM sessions WHERE key=?", sid).Scan(&data)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	err := tx.GetContext(ctx, &data, "SELECT 1 FROM sessions WHERE key=?", sid)
+
+	switch {
+	case err == nil:
+		return true, nil
+	case errors.Is(err, sql.ErrNoRows):
+		return false, nil
+	default:
 		return false, fmt.Errorf("error checking existence: %w", err)
 	}
-
-	return !errors.Is(err, sql.ErrNoRows), nil
 }
 
 func (p *SessionProvider) read(ctx context.Context, tx queryer, sid string) (session.RawStore, error) {
@@ -247,7 +253,8 @@ func (p *SessionProvider) read(ctx context.Context, tx queryer, sid string) (ses
 
 	err := tx.QueryRowxContext(ctx, "SELECT data, created_at FROM sessions WHERE key=?", sid).Scan(&data, &createdat)
 	if errors.Is(err, sql.ErrNoRows) {
-		_, err := p.db.ExecContext(ctx, "INSERT INTO sessions(key, data, created_at) VALUES(?, '', ?)", sid, now)
+		// create empty session
+		_, err := p.db.ExecContext(ctx, "INSERT INTO sessions(key, created_at) VALUES(?, ?)", sid, now)
 		if err != nil {
 			return nil, fmt.Errorf("insert session into db error: %w", err)
 		}
