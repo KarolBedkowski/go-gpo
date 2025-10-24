@@ -7,7 +7,11 @@
 
 package model
 
-import "time"
+import (
+	"time"
+
+	"github.com/rs/zerolog"
+)
 
 const (
 	ActionUnsubscribe = "unsubscribe"
@@ -40,6 +44,26 @@ type Episode struct {
 	Started   *int
 	Position  *int
 	Total     *int
+}
+
+func (e Episode) MarshalZerologObject(event *zerolog.Event) {
+	event.Str("podcast", e.Podcast).
+		Str("episode", e.Episode).
+		Str("device", e.Device).
+		Str("action", e.Action).
+		Time("timestamp", e.Timestamp)
+
+	if e.Started != nil {
+		event.Int("started", *e.Started)
+	}
+
+	if e.Position != nil {
+		event.Int("position", *e.Position)
+	}
+
+	if e.Total != nil {
+		event.Int("total", *e.Total)
+	}
 }
 
 type EpisodeUpdate struct {

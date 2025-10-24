@@ -88,7 +88,7 @@ func (t *Transaction) SavePodcast(ctx context.Context, user, device string, podc
 	logger := log.Ctx(ctx)
 
 	for _, pod := range podcast {
-		logger.Debug().Interface("podcast", pod).Msg("save podcast")
+		logger.Debug().Object("podcast", pod).Msg("save podcast")
 
 		if _, err := t.savePodcast(ctx, pod); err != nil {
 			return err

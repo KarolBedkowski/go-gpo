@@ -139,7 +139,7 @@ func (s *Subs) UpdateDeviceSubscriptions(ctx context.Context, //nolint:cyclop,fu
 		return err
 	}
 
-	logger.Debug().Interface("device", device).Strs("subs", subs).Msg("update dev subscriptions")
+	logger.Debug().Object("device", device).Strs("subs", subs).Msg("update dev subscriptions")
 
 	subscribed, err := tx.GetPodcasts(ctx, user.ID, time.Time{})
 	if err != nil {

@@ -59,7 +59,7 @@ func wrap(handler func(ctx context.Context, w http.ResponseWriter, r *http.Reque
 }
 
 func sessionUser(store session.Store) string {
-	log.Debug().Interface("session_id", store.ID()).Msg("session id")
+	log.Debug().Str("session_id", store.ID()).Msg("session id")
 
 	suserint := store.Get("user")
 	if username, ok := suserint.(string); ok {

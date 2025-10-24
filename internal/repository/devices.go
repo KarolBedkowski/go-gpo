@@ -18,10 +18,9 @@ import (
 
 func (t *Transaction) GetDevice(ctx context.Context, userid int64, devicename string) (DeviceDB, error) {
 	device := DeviceDB{}
-	err := t.tx.QueryRowxContext(ctx,
+	err := t.tx.GetContext(ctx, &device,
 		"SELECT id, user_id, name, dev_type, caption, created_at, updated_at "+
-			"FROM devices WHERE user_id=? and name=?", userid, devicename).
-		StructScan(&device)
+			"FROM devices WHERE user_id=? and name=?", userid, devicename)
 
 	if errors.Is(err, sql.ErrNoRows) {
 		return device, ErrNoData
@@ -73,7 +72,7 @@ func (t *Transaction) SaveDevice(ctx context.Context, device *DeviceDB) (int64, 
 
 func (t *Transaction) saveDevice(ctx context.Context, device *DeviceDB) (int64, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Interface("device", device).Msg("update device")
+	logger.Debug().Object("device", device).Msg("update device")
 
 	if device.ID == 0 {
 		res, err := t.tx.ExecContext(ctx,

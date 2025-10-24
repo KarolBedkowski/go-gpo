@@ -130,11 +130,7 @@ func NewSessionProvider(r *Repository) *SessionProvider {
 
 // Init initializes postgres session provider.
 func (p *SessionProvider) Init(maxlifetime int64, config string) error {
-	log.Logger.Info().Int64("maxlifetime", maxlifetime).
-		Str("config", config).
-		Interface("db", p.db).
-		Msg("session provider init")
-
+	_ = config
 	p.maxlifetime = maxlifetime
 
 	return nil

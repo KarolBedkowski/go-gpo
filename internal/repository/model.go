@@ -4,7 +4,11 @@
 // Distributed under terms of the GPLv3 license.
 package repository
 
-import "time"
+import (
+	"time"
+
+	"github.com/rs/zerolog"
+)
 
 type DeviceDB struct {
 	ID        int64     `db:"id"`
@@ -16,6 +20,17 @@ type DeviceDB struct {
 	UpdatedAt time.Time `db:"updated_at"`
 
 	Subscriptions int `db:"-"`
+}
+
+func (d DeviceDB) MarshalZerologObject(event *zerolog.Event) {
+	event.Int64("id", d.ID).
+		Int64("user_id", d.UserID).
+		Str("name", d.Name).
+		Str("type", d.DevType).
+		Str("caption", d.Caption).
+		Time("created_at", d.CreatedAt).
+		Time("updated_at", d.UpdatedAt).
+		Int("subscriptions", d.Subscriptions)
 }
 
 type DevicesDB []*DeviceDB
@@ -50,16 +65,14 @@ type PodcastDB struct {
 	UpdatedAt  time.Time `db:"updated_at"`
 }
 
-func (p *PodcastDB) Clone() *PodcastDB {
-	return &PodcastDB{
-		ID:         p.ID,
-		UserID:     p.UserID,
-		Title:      p.Title,
-		URL:        p.URL,
-		Subscribed: p.Subscribed,
-		CreatedAt:  p.CreatedAt,
-		UpdatedAt:  p.UpdatedAt,
-	}
+func (p PodcastDB) MarshalZerologObject(event *zerolog.Event) {
+	event.Int64("id", p.ID).
+		Int64("user_id", p.UserID).
+		Str("title", p.Title).
+		Str("url", p.URL).
+		Bool("subscribed", p.Subscribed).
+		Time("created_at", p.CreatedAt).
+		Time("updated_at", p.UpdatedAt)
 }
 
 type PodcastsDB []PodcastDB
@@ -131,6 +144,36 @@ type EpisodeDB struct {
 	Device       string `db:"device_name"`
 }
 
+func (e EpisodeDB) MarshalZerologObject(event *zerolog.Event) {
+	event.Int64("id", e.ID).
+		Int64("podcast_id", e.PodcastID).
+		Int64("device_id", e.DeviceID).
+		Str("title", e.Title).
+		Str("url", e.URL).
+		Str("action", e.Action)
+
+	if e.Started != nil {
+		event.Int("started", *e.Started)
+	}
+
+	if e.Position != nil {
+		event.Int("position", *e.Position)
+	}
+
+	if e.Total != nil {
+		event.Int("total", *e.Total)
+	}
+
+	event.Time("created_at", e.CreatedAt).
+		Time("updated_at", e.UpdatedAt)
+
+	event.Dict("podcast", zerolog.Dict().
+		Str("podcast_url", e.PodcastURL).
+		Str("podcast_title", e.PodcastTitle))
+
+	event.Str("device", e.Device)
+}
+
 type UserDB struct {
 	ID        int64     `db:"id"`
 	Username  string    `db:"username"`
@@ -139,6 +182,21 @@ type UserDB struct {
 	Name      string    `db:"name"`
 	CreatedAt time.Time `db:"created_at"`
 	UpdatedAt time.Time `db:"updated_at"`
+}
+
+func (u UserDB) MarshalZerologObject(event *zerolog.Event) {
+	pass := ""
+	if u.Password != "" {
+		pass = "***"
+	}
+
+	event.Int64("id", u.ID).
+		Str("username", u.Username).
+		Str("Password", pass).
+		Str("email", u.Email).
+		Str("name", u.Name).
+		Time("created_at", u.CreatedAt).
+		Time("updated_at", u.UpdatedAt)
 }
 
 type UserAlias struct {

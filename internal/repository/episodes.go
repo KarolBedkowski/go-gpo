@@ -86,7 +86,7 @@ func (t *Transaction) SaveEpisode(ctx context.Context, userid int64, episode ...
 	devicesmap := devices.ToIDsMap()
 
 	for _, eps := range episode {
-		logger.Debug().Interface("episode", eps).Msg("save episode")
+		logger.Debug().Object("episode", eps).Msg("save episode")
 
 		if pid, ok := podcastsmap[eps.PodcastURL]; ok {
 			// podcast already created

@@ -32,7 +32,7 @@ func AuthenticatedOnly(next http.Handler) http.Handler {
 		sess := session.GetSession(r)
 		user := sessionUser(sess)
 
-		logger.Debug().Interface("session_user", user).Msg("AuthenticatedOnly")
+		logger.Debug().Str("session_user", user).Msg("AuthenticatedOnly")
 
 		if user != "" {
 			ctx := internal.ContextWithUser(r.Context(), user)

@@ -37,7 +37,7 @@ func (t *Transaction) GetUser(ctx context.Context, username string) (UserDB, err
 
 func (t *Transaction) SaveUser(ctx context.Context, user *UserDB) (int64, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Interface("user", user).Msg("save user")
+	logger.Debug().Object("user", user).Msg("save user")
 
 	if user.ID == 0 {
 		res, err := t.tx.ExecContext(ctx,
