@@ -9,6 +9,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -213,14 +214,13 @@ func newLogMiddleware(next http.Handler) http.Handler {
 
 func newRecoverMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		defer func() {
+		defer func(ctx context.Context) {
 			rec := recover()
-
 			if rec == nil {
 				return
 			}
 
-			logger := log.Ctx(req.Context())
+			logger := log.Ctx(ctx)
 
 			switch t := rec.(type) {
 			case error:
@@ -242,7 +242,7 @@ func newRecoverMiddleware(next http.Handler) http.Handler {
 			}
 
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		}()
+		}(req.Context())
 
 		next.ServeHTTP(w, req)
 	})

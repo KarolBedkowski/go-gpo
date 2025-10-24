@@ -57,8 +57,8 @@ func parseDate(str string) (time.Time, error) {
 	return time.Time{}, NewParseError("cant parse %q as date", str)
 }
 
-func parseTimestamp(ts any) (time.Time, error) {
-	switch v := ts.(type) {
+func parseTimestamp(timestamp any) (time.Time, error) {
+	switch v := timestamp.(type) {
 	case int:
 		return time.Unix(int64(v), 0), nil
 	case int64:
@@ -71,7 +71,7 @@ func parseTimestamp(ts any) (time.Time, error) {
 		}
 	}
 
-	return time.Time{}, NewParseError("cant parse timestamp %v", ts)
+	return time.Time{}, NewParseError("cant parse timestamp %v", timestamp)
 }
 
 func parseOPML(r io.Reader) ([]string, error) {

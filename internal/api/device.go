@@ -37,7 +37,7 @@ func (d deviceResource) Routes() chi.Router {
 	return r
 }
 
-// udpdate device data.
+// update device data.
 func (d deviceResource) update(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
 	user := internal.ContextUser(ctx)
 	deviceid := internal.ContextDevice(ctx)

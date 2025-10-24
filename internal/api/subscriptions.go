@@ -28,21 +28,21 @@ type subscriptionsResource struct {
 }
 
 func (sr *subscriptionsResource) Routes() chi.Router {
-	r := chi.NewRouter()
+	router := chi.NewRouter()
 	if !sr.cfg.NoAuth {
-		r.Use(AuthenticatedOnly)
+		router.Use(AuthenticatedOnly)
 	}
 
-	r.With(checkUserMiddleware).
+	router.With(checkUserMiddleware).
 		Get("/{user:[0-9a-z._-]+}.opml", wrap(sr.userSubscriptions))
-	r.With(checkUserMiddleware, checkDeviceMiddleware).
+	router.With(checkUserMiddleware, checkDeviceMiddleware).
 		Get("/{user:[0-9a-z._-]+}/{deviceid:[0-9a-z._-]+}.json", wrap(sr.devSubscriptions))
-	r.With(checkUserMiddleware, checkDeviceMiddleware).
+	router.With(checkUserMiddleware, checkDeviceMiddleware).
 		Put("/{user:[0-9a-z._-]+}/{deviceid:[0-9a-z._-]+}.json", wrap(sr.uploadSubscriptions))
-	r.With(checkUserMiddleware, checkDeviceMiddleware).
+	router.With(checkUserMiddleware, checkDeviceMiddleware).
 		Post("/{user:[0-9a-z._-]+}/{deviceid:[0-9a-z._-]+}.json", wrap(sr.uploadSubscriptionChanges))
 
-	return r
+	return router
 }
 
 func (sr *subscriptionsResource) devSubscriptions(

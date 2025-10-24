@@ -97,7 +97,7 @@ func startServerCmd() *cli.Command {
 		Flags: []cli.Flag{
 			&cli.BoolFlag{Name: "noauth", Value: false, Usage: "disable authentication"},
 			&cli.StringFlag{Name: "address", Value: ":8080", Usage: "listen address"},
-			&cli.BoolFlag{Name: "verbose", Value: false, Usage: "enable logging request nd responses"},
+			&cli.BoolFlag{Name: "verbose", Value: false, Usage: "enable logging request and responses"},
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
 			initializeLogger(c.String("log.level"), c.String("log.format"))

@@ -55,7 +55,7 @@ func (u *updatesResource) getUpdates(
 
 	includeActions := chi.URLParam(r, "include_actions") == "true"
 
-	added, removed, err := u.subSrv.GetSubsciptionChanges(ctx, user, deviceid, since)
+	added, removed, err := u.subSrv.GetSubscriptionChanges(ctx, user, deviceid, since)
 	if err != nil {
 		logger.Info().Err(err).Msgf("load subscription changes error")
 		w.WriteHeader(http.StatusInternalServerError)

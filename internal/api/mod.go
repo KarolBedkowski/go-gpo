@@ -83,7 +83,7 @@ func Start(repo *repository.Repository, cfg *Configuration) error {
 
 	logRoutes(router)
 
-	if err := http.ListenAndServe(cfg.Listen, router); err != nil {
+	if err := http.ListenAndServe(cfg.Listen, router); err != nil { //nolint:gosec
 		return fmt.Errorf("start listen error: %w", err)
 	}
 

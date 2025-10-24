@@ -70,7 +70,7 @@ func (s *simpleResource) downloadAllSubscriptions(
 	}
 
 	switch format := chi.URLParam(r, "format"); format {
-	case "opml":
+	case "opml": //nolint:goconst
 		o := opml.NewOPMLFromBlank("go-gpodder")
 		for _, s := range subs {
 			o.AddRSSFromURL(s, opmlDeadline)
@@ -86,10 +86,10 @@ func (s *simpleResource) downloadAllSubscriptions(
 
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(result))
-	case "json":
+	case "json": //nolint:goconst
 		w.WriteHeader(http.StatusOK)
 		render.JSON(w, r, subs)
-	case "txt":
+	case "txt": //nolint:goconst
 		w.WriteHeader(http.StatusOK)
 		render.PlainText(w, r, strings.Join(subs, "\n"))
 	default:

@@ -112,7 +112,7 @@ func (s *Subs) GetDeviceSubscriptionChanges(ctx context.Context, username, devic
 	return added, removed, nil
 }
 
-func (s *Subs) UpdateDeviceSubscriptions(ctx context.Context,
+func (s *Subs) UpdateDeviceSubscriptions(ctx context.Context, //nolint:cyclop,funlen
 	username, devicename string, subs []string, ts time.Time,
 ) error {
 	_ = ts
@@ -149,13 +149,7 @@ func (s *Subs) UpdateDeviceSubscriptions(ctx context.Context,
 	changes := make([]repository.PodcastDB, 0, len(subs))
 	// removed
 	for _, sub := range subscribed {
-		if !sub.Subscribed {
-			continue
-		}
-
-		if !slices.Contains(subs, sub.URL) {
-			logger.Debug().Interface("sub", sub).Msg("remove subscription")
-
+		if sub.Subscribed && !slices.Contains(subs, sub.URL) {
 			sub.Subscribed = false
 			changes = append(changes, sub)
 		}
@@ -164,19 +158,19 @@ func (s *Subs) UpdateDeviceSubscriptions(ctx context.Context,
 	// added
 	for _, sub := range subs {
 		podcast, ok := subscribed.FindPodcastByURL(sub)
-		if ok && podcast.Subscribed {
+		switch {
+		case ok && podcast.Subscribed:
 			// ignore already subscribed podcasts
 			continue
-		}
-
-		if !ok {
+		case !ok:
+			// exists but not subscribed
 			podcast = repository.PodcastDB{UserID: user.ID, URL: sub, Subscribed: true}
+		default:
+			// not subscribed
+			podcast.Subscribed = true
 		}
 
-		podcast.Subscribed = true
 		changes = append(changes, podcast)
-
-		logger.Debug().Interface("podcast", podcast).Str("sub", sub).Msg("new subscription")
 	}
 
 	if err := tx.SavePodcast(ctx, username, devicename, changes...); err != nil {
@@ -190,14 +184,11 @@ func (s *Subs) UpdateDeviceSubscriptions(ctx context.Context,
 	return nil
 }
 
-func (s *Subs) UpdateDeviceSubscriptionChanges(
+func (s *Subs) UpdateDeviceSubscriptionChanges( //nolint:cyclop
 	ctx context.Context,
 	username, devicename string,
 	added, removed []string,
 ) error {
-	// TODO: sanitize
-	logger := zerolog.Ctx(ctx)
-
 	tx, err := s.repo.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("start tx error: %w", err)
@@ -225,8 +216,6 @@ func (s *Subs) UpdateDeviceSubscriptionChanges(
 	// removed
 	for _, sub := range removed {
 		if podcast, ok := subscribed.FindPodcastByURL(sub); ok && podcast.Subscribed {
-			logger.Debug().Interface("sub", sub).Msg("remove subscription")
-
 			podcast.Subscribed = false
 			changes = append(changes, podcast)
 		}
@@ -234,22 +223,17 @@ func (s *Subs) UpdateDeviceSubscriptionChanges(
 
 	for _, sub := range added {
 		podcast, ok := subscribed.FindPodcastByURL(sub)
-		if ok && podcast.Subscribed {
+		switch {
+		case ok && podcast.Subscribed:
 			// skip already subscribed
 			continue
-		}
-
-		logger.Debug().Str("podcast", sub).Msg("new subscription")
-
-		if !ok {
+		case !ok:
 			podcast = repository.PodcastDB{UserID: user.ID, URL: sub}
+		default:
+			podcast.Subscribed = true
 		}
-
-		podcast.Subscribed = true
 
 		changes = append(changes, podcast)
-
-		logger.Debug().Interface("podcast", podcast).Str("sub", sub).Msg("new subscription")
 	}
 
 	if err := tx.SavePodcast(ctx, username, devicename, changes...); err != nil {
@@ -263,7 +247,7 @@ func (s *Subs) UpdateDeviceSubscriptionChanges(
 	return nil
 }
 
-func (s *Subs) GetSubsciptionChanges(ctx context.Context, username, devicename string, since time.Time) (
+func (s *Subs) GetSubscriptionChanges(ctx context.Context, username, devicename string, since time.Time) (
 	[]model.Podcast, []string, error,
 ) {
 	tx, err := s.repo.Begin(ctx)
