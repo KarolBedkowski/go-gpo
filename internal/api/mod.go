@@ -66,7 +66,7 @@ func Start(repo *repository.Repository, cfg *Configuration) error {
 		router.Use(newSimpleLogMiddleware)
 	}
 
-	router.Use(sess)
+	router.Use((&sessionMiddleware{sess}).handle)
 	router.Use(authenticator{usersSrv}.Authenticate)
 	router.Use(newRecoverMiddleware)
 	router.Use(middleware.Timeout(connectioTimeout))

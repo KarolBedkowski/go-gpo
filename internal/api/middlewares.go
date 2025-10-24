@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"gitea.com/go-chi/session"
@@ -113,6 +114,12 @@ func (r *logResponseWriter) WriteHeader(status int) {
 
 func newSimpleLogMiddleware(next http.Handler) http.Handler {
 	logFn := func(writer http.ResponseWriter, request *http.Request) {
+		if strings.HasPrefix(request.URL.Path, "/metrics") {
+			next.ServeHTTP(writer, request)
+
+			return
+		}
+
 		start := time.Now()
 		ctx := request.Context()
 		requestID, _ := hlog.IDFromCtx(ctx)
@@ -150,6 +157,12 @@ func newSimpleLogMiddleware(next http.Handler) http.Handler {
 // newLogMiddleware create new logging middleware.
 func newLogMiddleware(next http.Handler) http.Handler {
 	logFn := func(writer http.ResponseWriter, request *http.Request) {
+		if strings.HasPrefix(request.URL.Path, "/metrics") {
+			next.ServeHTTP(writer, request)
+
+			return
+		}
+
 		start := time.Now()
 		ctx := request.Context()
 		requestID, _ := hlog.IDFromCtx(ctx)
@@ -299,5 +312,21 @@ func checkDeviceMiddleware(next http.Handler) http.Handler {
 
 		logger.Debug().Msgf("found device %q in params", deviceid)
 		next.ServeHTTP(w, req.WithContext(ctx))
+	})
+}
+
+type sessionMiddleware struct {
+	sess func(next http.Handler) http.Handler
+}
+
+func (s *sessionMiddleware) handle(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if strings.HasPrefix(req.URL.Path, "/metrics") {
+			next.ServeHTTP(w, req)
+
+			return
+		}
+
+		s.sess(next).ServeHTTP(w, req)
 	})
 }
