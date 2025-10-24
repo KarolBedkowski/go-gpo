@@ -72,45 +72,14 @@ func main() {
 			&cli.StringFlag{Name: "log.format", Value: "logfmt", Usage: "Log format (logfmt, json)"},
 		},
 		Commands: []*cli.Command{
-			{
-				Name:  "serve",
-				Usage: "start server",
-				Flags: []cli.Flag{
-					&cli.BoolFlag{Name: "noauth", Value: false, Usage: "disable authentication"},
-					&cli.StringFlag{Name: "address", Value: ":8080", Usage: "listen address"},
-					&cli.BoolFlag{Name: "verbose", Value: false, Usage: "enable logging request nd responses"},
-				},
-				Action: startServerAction,
-			},
-			{
-				Name:   "migrate",
-				Usage:  "update database",
-				Action: migrateAction,
-			},
+			startServerCmd(),
+			migrateCmd(),
 			{
 				Name:  "user",
 				Usage: "manage users",
 				Commands: []*cli.Command{
-					{
-						Name:  "add",
-						Usage: "add new user",
-						Flags: []cli.Flag{
-							&cli.StringFlag{Name: "username", Required: true},
-							&cli.StringFlag{Name: "password", Required: true},
-							&cli.StringFlag{Name: "email"},
-							&cli.StringFlag{Name: "name"},
-						},
-						Action: addUserAction,
-					},
-					{
-						Name:  "password",
-						Usage: "set new user password",
-						Flags: []cli.Flag{
-							&cli.StringFlag{Name: "username", Required: true},
-							&cli.StringFlag{Name: "password", Required: true},
-						},
-						Action: changeUserPasswordAction,
-					},
+					addUserCmd(),
+					changeUserPasswordCmd(),
 				},
 			},
 		},
@@ -121,47 +90,86 @@ func main() {
 	}
 }
 
-func startServerAction(ctx context.Context, c *cli.Command) error {
-	initializeLogger(c.String("log.level"), c.String("log.format"))
-	s := cmd.Server{
-		NoAuth:   c.Bool("noauth"),
-		Database: c.String("database"),
-		Listen:   c.String("address"),
-		LogBody:  c.Bool("verbose"),
-	}
+func startServerCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "serve",
+		Usage: "start server",
+		Flags: []cli.Flag{
+			&cli.BoolFlag{Name: "noauth", Value: false, Usage: "disable authentication"},
+			&cli.StringFlag{Name: "address", Value: ":8080", Usage: "listen address"},
+			&cli.BoolFlag{Name: "verbose", Value: false, Usage: "enable logging request nd responses"},
+		},
+		Action: func(ctx context.Context, c *cli.Command) error {
+			initializeLogger(c.String("log.level"), c.String("log.format"))
+			s := cmd.Server{
+				NoAuth:   c.Bool("noauth"),
+				Database: c.String("database"),
+				Listen:   c.String("address"),
+				LogBody:  c.Bool("verbose"),
+			}
 
-	return s.Start(ctx)
+			return s.Start(ctx)
+		},
+	}
 }
 
-func addUserAction(ctx context.Context, c *cli.Command) error {
-	initializeLogger(c.String("log.level"), c.String("log.format"))
-	s := cmd.AddUser{
-		Database: c.String("database"),
-		Name:     c.String("name"),
-		Password: c.String("password"),
-		Email:    c.String("email"),
-		Username: c.String("username"),
-	}
+func addUserCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "add",
+		Usage: "add new user",
+		Flags: []cli.Flag{
+			&cli.StringFlag{Name: "username", Required: true},
+			&cli.StringFlag{Name: "password", Required: true},
+			&cli.StringFlag{Name: "email"},
+			&cli.StringFlag{Name: "name"},
+		},
+		Action: func(ctx context.Context, c *cli.Command) error {
+			initializeLogger(c.String("log.level"), c.String("log.format"))
+			s := cmd.AddUser{
+				Database: c.String("database"),
+				Name:     c.String("name"),
+				Password: c.String("password"),
+				Email:    c.String("email"),
+				Username: c.String("username"),
+			}
 
-	return s.Start(ctx)
+			return s.Start(ctx)
+		},
+	}
 }
 
-func changeUserPasswordAction(ctx context.Context, c *cli.Command) error {
-	initializeLogger(c.String("log.level"), c.String("log.format"))
-	s := cmd.ChangeUserPassword{
-		Database: c.String("database"),
-		Password: c.String("password"),
-		Username: c.String("username"),
-	}
+func changeUserPasswordCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "password",
+		Usage: "set new user password",
+		Flags: []cli.Flag{
+			&cli.StringFlag{Name: "username", Required: true},
+			&cli.StringFlag{Name: "password", Required: true},
+		},
+		Action: func(ctx context.Context, c *cli.Command) error {
+			initializeLogger(c.String("log.level"), c.String("log.format"))
+			s := cmd.ChangeUserPassword{
+				Database: c.String("database"),
+				Password: c.String("password"),
+				Username: c.String("username"),
+			}
 
-	return s.Start(ctx)
+			return s.Start(ctx)
+		},
+	}
 }
 
-func migrateAction(ctx context.Context, c *cli.Command) error {
-	initializeLogger(c.String("log.level"), c.String("log.format"))
-	s := cmd.Migrate{
-		Database: c.String("database"),
-	}
+func migrateCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "migrate",
+		Usage: "update database",
+		Action: func(ctx context.Context, c *cli.Command) error {
+			initializeLogger(c.String("log.level"), c.String("log.format"))
+			s := cmd.Migrate{
+				Database: c.String("database"),
+			}
 
-	return s.Start(ctx)
+			return s.Start(ctx)
+		},
+	}
 }
