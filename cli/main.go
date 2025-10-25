@@ -74,6 +74,7 @@ func main() {
 		Commands: []*cli.Command{
 			startServerCmd(),
 			migrateCmd(),
+			listCmd(),
 			{
 				Name:  "user",
 				Usage: "manage users",
@@ -167,6 +168,29 @@ func migrateCmd() *cli.Command {
 			initializeLogger(c.String("log.level"), c.String("log.format"))
 			s := cmd.Migrate{
 				Database: c.String("database"),
+			}
+
+			return s.Start(ctx)
+		},
+	}
+}
+
+func listCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "list",
+		Usage: "list user objects.",
+		Flags: []cli.Flag{
+			&cli.StringFlag{Name: "username", Required: true},
+			&cli.StringFlag{Name: "object", Required: true, Usage: "object to list (devices, subs)"},
+			&cli.StringFlag{Name: "device"},
+		},
+		Action: func(ctx context.Context, c *cli.Command) error {
+			initializeLogger(c.String("log.level"), c.String("log.format"))
+			s := cmd.List{
+				Database: c.String("database"),
+				Username: c.String("username"),
+				DeviceID: c.String("device"),
+				Object:   c.String("object"),
 			}
 
 			return s.Start(ctx)
