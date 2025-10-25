@@ -49,7 +49,7 @@ func (er *episodesResource) uploadEpisodeActions(
 	err := render.DecodeJSON(r.Body, &request)
 	if err != nil {
 		logger.Warn().Err(err).Msgf("parse json error")
-		w.WriteHeader(http.StatusBadRequest)
+		http.Error(w, "invalid request data", http.StatusBadRequest)
 
 		return
 	}
@@ -71,7 +71,7 @@ func (er *episodesResource) uploadEpisodeActions(
 
 		if err := reqEpisode.validate(); err != nil {
 			logger.Warn().Err(err).Interface("req", reqEpisode).Msgf("validate error")
-			w.WriteHeader(http.StatusBadRequest)
+			http.Error(w, "validate request data failed", http.StatusBadRequest)
 
 			return
 		}
@@ -82,7 +82,7 @@ func (er *episodesResource) uploadEpisodeActions(
 	if err = er.episodesServ.SaveEpisodesActions(ctx, user, actions...); err != nil {
 		logger.Debug().Interface("req", request).Msg("save episodes error")
 		logger.Warn().Err(err).Msg("save episodes error")
-		w.WriteHeader(http.StatusInternalServerError)
+		writeError(w, r, http.StatusInternalServerError, nil)
 
 		return
 	}
@@ -111,7 +111,7 @@ func (er *episodesResource) getEpisodeActions(
 	since, err := sinceFromParameter(r)
 	if err != nil {
 		logger.Debug().Err(err).Msgf("parse since parameter to time error")
-		w.WriteHeader(http.StatusBadRequest)
+		writeError(w, r, http.StatusBadRequest, nil)
 
 		return
 	}
@@ -119,7 +119,7 @@ func (er *episodesResource) getEpisodeActions(
 	res, err := er.episodesServ.GetEpisodesActions(ctx, user, podcast, device, since, aggregated)
 	if err != nil {
 		logger.Info().Err(err).Msgf("get episodes error")
-		w.WriteHeader(http.StatusInternalServerError)
+		writeError(w, r, http.StatusInternalServerError, nil)
 
 		return
 	}

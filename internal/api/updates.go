@@ -48,7 +48,7 @@ func (u *updatesResource) getUpdates(
 	since, err := sinceFromParameter(r)
 	if err != nil {
 		logger.Info().Err(err).Msgf("parse since error")
-		w.WriteHeader(http.StatusBadRequest)
+		writeError(w, r, http.StatusBadRequest, nil)
 
 		return
 	}
@@ -58,7 +58,7 @@ func (u *updatesResource) getUpdates(
 	added, removed, err := u.subSrv.GetSubscriptionChanges(ctx, user, deviceid, since)
 	if err != nil {
 		logger.Info().Err(err).Msgf("load subscription changes error")
-		w.WriteHeader(http.StatusInternalServerError)
+		writeError(w, r, http.StatusInternalServerError, nil)
 
 		return
 	}
@@ -66,7 +66,7 @@ func (u *updatesResource) getUpdates(
 	updates, err := u.episodesServ.GetEpisodesUpdates(ctx, user, deviceid, since, includeActions)
 	if err != nil {
 		logger.Info().Err(err).Msgf("load episodes updates error")
-		w.WriteHeader(http.StatusInternalServerError)
+		writeError(w, r, http.StatusInternalServerError, nil)
 
 		return
 	}

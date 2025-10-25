@@ -5,10 +5,16 @@
 package model
 
 import (
+	"fmt"
+	"slices"
+	"strings"
 	"time"
 
+	"gitlab.com/kabes/go-gpodder/internal/errors"
 	"gitlab.com/kabes/go-gpodder/internal/repository"
 )
+
+var ValidDevTypes = []string{"desktop", "laptop", "mobile", "server", "other"}
 
 type Device struct {
 	User          string    `json:"user"`
@@ -27,4 +33,26 @@ func NewDeviceFromDeviceDB(d *repository.DeviceDB) *Device {
 		Subscriptions: d.Subscriptions,
 		UpdatedAt:     d.UpdatedAt,
 	}
+}
+
+func (d Device) Validate() error {
+	var errs []string
+
+	if d.Name == "" {
+		errs = append(errs, "empty name")
+	}
+
+	if d.User == "" {
+		errs = append(errs, "empty user")
+	}
+
+	if !slices.Contains(ValidDevTypes, d.DevType) {
+		errs = append(errs, fmt.Sprintf("invalid device type %q", d.DevType))
+	}
+
+	if len(errs) > 0 {
+		return errors.NewAppError(strings.Join(errs, ";")).WithCategory(errors.ValidationError)
+	}
+
+	return nil
 }

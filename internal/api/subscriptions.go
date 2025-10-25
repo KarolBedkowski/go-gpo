@@ -71,17 +71,17 @@ func (sr *subscriptionsResource) devSubscriptions(
 	case err == nil:
 	case errors.Is(err, service.ErrUnknownUser):
 		logger.Info().Msgf("unknown user: %q", user)
-		w.WriteHeader(http.StatusBadRequest)
+		writeError(w, r, http.StatusBadRequest, nil)
 
 		return
 	case errors.Is(err, service.ErrUnknownDevice):
 		logger.Info().Msgf("unknown device: %q", deviceid)
-		w.WriteHeader(http.StatusBadRequest)
+		writeError(w, r, http.StatusBadRequest, nil)
 
 		return
 	default:
 		logger.Info().Err(err).Msg("update device error")
-		w.WriteHeader(http.StatusInternalServerError)
+		writeError(w, r, http.StatusInternalServerError, nil)
 
 		return
 	}
@@ -114,12 +114,12 @@ func (sr *subscriptionsResource) userSubscriptions(
 	case err == nil:
 	case errors.Is(err, service.ErrUnknownUser):
 		logger.Info().Msgf("unknown user: %q", user)
-		w.WriteHeader(http.StatusBadRequest)
+		writeError(w, r, http.StatusBadRequest, nil)
 
 		return
 	default:
 		logger.Info().Err(err).Msg("update device error")
-		w.WriteHeader(http.StatusInternalServerError)
+		writeError(w, r, http.StatusInternalServerError, nil)
 
 		return
 	}
@@ -134,7 +134,7 @@ func (sr *subscriptionsResource) userSubscriptions(
 	result, err := o.XML()
 	if err != nil {
 		logger.Info().Err(err).Msg("get opml xml error")
-		w.WriteHeader(http.StatusInternalServerError)
+		writeError(w, r, http.StatusInternalServerError, nil)
 
 		return
 	}
@@ -156,7 +156,7 @@ func (sr *subscriptionsResource) uploadSubscriptions(
 
 	if err := render.DecodeJSON(r.Body, &subs); err != nil {
 		logger.Warn().Err(err).Msgf("parse json error")
-		w.WriteHeader(http.StatusBadRequest)
+		writeError(w, r, http.StatusBadRequest, nil)
 
 		return
 	}
@@ -164,8 +164,7 @@ func (sr *subscriptionsResource) uploadSubscriptions(
 	if err := sr.subServ.UpdateDeviceSubscriptions(ctx, user, deviceid, subs, time.Now()); err != nil {
 		logger.Debug().Strs("subs", subs).Msg("update subscriptions data")
 		logger.Warn().Err(err).Msg("update subscriptions error")
-
-		w.WriteHeader(http.StatusBadRequest)
+		writeError(w, r, http.StatusBadRequest, nil)
 
 		return
 	}
@@ -185,7 +184,7 @@ func (sr *subscriptionsResource) uploadSubscriptionChanges(
 	changes := subscriptionChangesRequest{}
 	if err := render.DecodeJSON(r.Body, &changes); err != nil {
 		logger.Warn().Err(err).Msgf("parse json error")
-		w.WriteHeader(http.StatusBadRequest)
+		writeError(w, r, http.StatusBadRequest, nil)
 
 		return
 	}
@@ -194,7 +193,7 @@ func (sr *subscriptionsResource) uploadSubscriptionChanges(
 
 	if err := changes.validate(); err != nil {
 		logger.Debug().Err(err).Msg("validate request error")
-		w.WriteHeader(http.StatusBadRequest)
+		writeError(w, r, http.StatusBadRequest, nil)
 
 		return
 	}
@@ -203,8 +202,7 @@ func (sr *subscriptionsResource) uploadSubscriptionChanges(
 	if err != nil {
 		logger.Debug().Interface("changes", changes).Msg("update subscriptions data")
 		logger.Warn().Err(err).Msg("update subscriptions error")
-
-		w.WriteHeader(http.StatusBadRequest)
+		writeError(w, r, http.StatusBadRequest, nil)
 
 		return
 	}

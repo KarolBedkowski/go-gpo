@@ -16,6 +16,7 @@ import (
 	"gitea.com/go-chi/session"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/render"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog/hlog"
@@ -112,4 +113,25 @@ func logRoutes(r chi.Routes) {
 	if err := chi.Walk(r, walkFunc); err != nil {
 		log.Error().Err(err).Msg("routers walk error")
 	}
+}
+
+func writeError(w http.ResponseWriter, r *http.Request, code int, err error) {
+	var msg string
+	if err == nil {
+		msg = http.StatusText(code)
+	} else {
+		msg = err.Error()
+	}
+
+	if strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
+		res := struct {
+			Error string `json:"error"`
+		}{msg}
+
+		render.Status(r, code)
+		render.JSON(w, r, &res)
+		return
+	}
+
+	http.Error(w, msg, code)
 }

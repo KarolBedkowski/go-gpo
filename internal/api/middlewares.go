@@ -61,9 +61,9 @@ func (a authenticator) Authenticate(next http.Handler) http.Handler {
 			logger := hlog.FromRequest(r)
 			sess := session.GetSession(r)
 
-			user, err := a.usersSrv.LoginUser(ctx, username, password)
+			_, err := a.usersSrv.LoginUser(ctx, username, password)
 			if errors.Is(err, service.ErrUnauthorized) || errors.Is(err, service.ErrUnknownUser) {
-				logger.Info().Err(err).Str("username", username).Msgf("auth failed; user: %v", user)
+				logger.Info().Err(err).Str("username", username).Msg("auth failed")
 				w.Header().Add("WWW-Authenticate", "Basic realm=\"go-gpodder\"")
 
 				_ = sess.Destroy(w, r)
@@ -80,8 +80,8 @@ func (a authenticator) Authenticate(next http.Handler) http.Handler {
 
 			lloger.Debug().Msgf("user authenticated")
 
-			r = r.WithContext(internal.ContextWithUser(ctx, user.Name))
-			_ = sess.Set("user", user.Name)
+			r = r.WithContext(internal.ContextWithUser(ctx, username))
+			_ = sess.Set("user", username)
 		}
 
 		next.ServeHTTP(w, r)

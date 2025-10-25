@@ -65,6 +65,30 @@ func (r *Repository) Migrate(ctx context.Context, driver string, em embed.FS) er
 	return nil
 }
 
+func (r *Repository) InTransaction(ctx context.Context, f func(*Transaction) error) error {
+	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx error: %w", err)
+	}
+
+	t := Transaction{tx, false}
+
+	err = f(&t)
+	if err != nil {
+		if err := t.tx.Rollback(); err != nil {
+			return errors.Join(err, fmt.Errorf("commit error: %w", err))
+		}
+
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit error: %w", err)
+	}
+
+	return nil
+}
+
 //---------------------------
 
 type Transaction struct {

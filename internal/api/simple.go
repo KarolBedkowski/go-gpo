@@ -60,10 +60,10 @@ func (s *simpleResource) downloadAllSubscriptions(
 	if err != nil {
 		if errors.Is(err, service.ErrUnknownUser) {
 			logger.Info().Msgf("unknown user: %q", user)
-			w.WriteHeader(http.StatusBadRequest)
+			writeError(w, r, http.StatusBadRequest, nil)
 		} else {
 			logger.Info().Err(err).Msg("update device error")
-			w.WriteHeader(http.StatusInternalServerError)
+			writeError(w, r, http.StatusInternalServerError, nil)
 		}
 
 		return
@@ -79,7 +79,7 @@ func (s *simpleResource) downloadAllSubscriptions(
 		result, err := o.XML()
 		if err != nil {
 			logger.Info().Err(err).Msg("get opml xml error")
-			w.WriteHeader(http.StatusInternalServerError)
+			writeError(w, r, http.StatusInternalServerError, nil)
 
 			return
 		}
@@ -94,7 +94,7 @@ func (s *simpleResource) downloadAllSubscriptions(
 		render.PlainText(w, r, strings.Join(subs, "\n"))
 	default:
 		logger.Info().Msgf("unknown format %q", format)
-		w.WriteHeader(http.StatusBadRequest)
+		writeError(w, r, http.StatusBadRequest, nil)
 	}
 }
 
@@ -112,17 +112,17 @@ func (s *simpleResource) downloadSubscriptions(
 	case err == nil:
 	case errors.Is(err, service.ErrUnknownUser):
 		logger.Info().Msgf("unknown user: %q", user)
-		w.WriteHeader(http.StatusBadRequest)
+		writeError(w, r, http.StatusBadRequest, nil)
 
 		return
 	case errors.Is(err, service.ErrUnknownDevice):
 		logger.Info().Msgf("unknown device: %q", deviceid)
-		w.WriteHeader(http.StatusBadRequest)
+		writeError(w, r, http.StatusBadRequest, nil)
 
 		return
 	default:
 		logger.Info().Err(err).Msg("update device error")
-		w.WriteHeader(http.StatusInternalServerError)
+		writeError(w, r, http.StatusBadRequest, nil)
 
 		return
 	}
@@ -132,7 +132,7 @@ func (s *simpleResource) downloadSubscriptions(
 		result, err := formatOMPL(subs)
 		if err != nil {
 			logger.Info().Err(err).Msg("build opml error")
-			w.WriteHeader(http.StatusInternalServerError)
+			writeError(w, r, http.StatusInternalServerError, nil)
 
 			return
 		}
@@ -147,7 +147,7 @@ func (s *simpleResource) downloadSubscriptions(
 		render.PlainText(w, r, strings.Join(subs, "\n"))
 	default:
 		logger.Info().Msgf("unknown format %q", format)
-		w.WriteHeader(http.StatusBadRequest)
+		writeError(w, r, http.StatusBadRequest, nil)
 	}
 }
 
@@ -180,14 +180,14 @@ func (s *simpleResource) uploadSubscriptions(
 		}
 	default:
 		logger.Info().Msgf("unknown format %q", format)
-		w.WriteHeader(http.StatusBadRequest)
+		writeError(w, r, http.StatusBadRequest, nil)
 
 		return
 	}
 
 	if err != nil {
 		logger.Warn().Err(err).Msgf("parse %q error", format)
-		w.WriteHeader(http.StatusBadRequest)
+		writeError(w, r, http.StatusBadRequest, nil)
 
 		return
 	}
@@ -195,7 +195,7 @@ func (s *simpleResource) uploadSubscriptions(
 	if err := s.subServ.UpdateDeviceSubscriptions(ctx, user, deviceid, subs, time.Now()); err != nil {
 		logger.Debug().Strs("subs", subs).Msg("update subscriptions data")
 		logger.Warn().Err(err).Msg("update subscriptions error")
-		w.WriteHeader(http.StatusBadRequest)
+		writeError(w, r, http.StatusInternalServerError, nil)
 	} else {
 		w.WriteHeader(http.StatusOK)
 	}

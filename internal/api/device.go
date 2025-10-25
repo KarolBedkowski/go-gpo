@@ -9,9 +9,12 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"slices"
 
 	"github.com/rs/zerolog"
 	"gitlab.com/kabes/go-gpodder/internal"
+	apperrors "gitlab.com/kabes/go-gpodder/internal/errors"
+	"gitlab.com/kabes/go-gpodder/internal/model"
 	"gitlab.com/kabes/go-gpodder/internal/service"
 
 	"github.com/go-chi/chi/v5"
@@ -37,20 +40,37 @@ func (d deviceResource) Routes() chi.Router {
 	return r
 }
 
+type updateDeviceReq struct {
+	Caption string `json:"caption"`
+	Type    string `json:"type"`
+}
+
+func (u updateDeviceReq) validate() error {
+	if !slices.Contains(model.ValidDevTypes, u.Type) {
+		return apperrors.NewAppError("invalid device type %q", u.Type).WithCategory(apperrors.ValidationError)
+	}
+
+	return nil
+}
+
 // update device data.
 func (d deviceResource) update(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
 	user := internal.ContextUser(ctx)
 	deviceid := internal.ContextDevice(ctx)
 
 	// update device data
-	var udd struct {
-		Caption string `json:"caption"`
-		Type    string `json:"type"`
-	}
+	var udd updateDeviceReq
 
 	if err := render.DecodeJSON(r.Body, &udd); err != nil {
 		logger.Info().Err(err).Msg("error decoding json payload")
-		w.WriteHeader(http.StatusBadRequest)
+		writeError(w, r, http.StatusBadRequest, nil)
+
+		return
+	}
+
+	if err := udd.validate(); err != nil {
+		logger.Info().Msgf("unknown device: %q", deviceid)
+		writeError(w, r, http.StatusBadRequest, err)
 
 		return
 	}
@@ -61,31 +81,30 @@ func (d deviceResource) update(ctx context.Context, w http.ResponseWriter, r *ht
 		w.WriteHeader(http.StatusOK)
 	case errors.Is(err, service.ErrUnknownUser):
 		logger.Info().Msgf("unknown user: %q", user)
-		w.WriteHeader(http.StatusBadRequest)
+		writeError(w, r, http.StatusBadRequest, nil)
 	case errors.Is(err, service.ErrUnknownDevice):
 		logger.Info().Msgf("unknown device: %q", deviceid)
-		w.WriteHeader(http.StatusBadRequest)
+		writeError(w, r, http.StatusBadRequest, nil)
 	default:
 		logger.Info().Err(err).Msg("update device error")
-		w.WriteHeader(http.StatusInternalServerError)
+		writeError(w, r, http.StatusInternalServerError, nil)
 	}
 }
 
 // list devices.
 func (d deviceResource) list(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
 	user := internal.ContextUser(ctx)
-	// device is not used
-	// deviceid := internal.ContextDevice(ctx)
 
 	devices, err := d.deviceSrv.ListDevices(ctx, user)
 	switch {
 	case err == nil:
+		render.Status(r, http.StatusOK)
 		render.JSON(w, r, ensureList(devices))
 	case errors.Is(err, service.ErrUnknownUser):
 		logger.Info().Msgf("unknown user: %q", user)
-		w.WriteHeader(http.StatusBadRequest)
+		writeError(w, r, http.StatusBadRequest, nil)
 	default:
 		logger.Info().Err(err).Msg("update device error")
-		w.WriteHeader(http.StatusInternalServerError)
+		writeError(w, r, http.StatusInternalServerError, nil)
 	}
 }

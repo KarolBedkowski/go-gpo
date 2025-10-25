@@ -11,7 +11,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
+	apperrors "gitlab.com/kabes/go-gpodder/internal/errors"
 	"gitlab.com/kabes/go-gpodder/internal/model"
 	"gitlab.com/kabes/go-gpodder/internal/repository"
 )
@@ -30,38 +32,38 @@ func NewDeviceService(repo *repository.Repository) *Device {
 }
 
 func (d *Device) UpdateDevice(ctx context.Context, username, deviceid, caption, devtype string) error {
-	tx, err := d.repo.Begin(ctx)
+	if username == "" || deviceid == "" || !slices.Contains(model.ValidDevTypes, devtype) {
+		return apperrors.NewAppError("invalid data").WithCategory(apperrors.ValidationError)
+	}
+
+	err := d.repo.InTransaction(ctx, func(tx *repository.Transaction) error {
+		user, err := tx.GetUser(ctx, username)
+		if errors.Is(err, repository.ErrNoData) {
+			return ErrUnknownUser
+		} else if err != nil {
+			return fmt.Errorf("get user error: %w", err)
+		}
+
+		device, err := tx.GetDevice(ctx, user.ID, deviceid)
+		if errors.Is(err, repository.ErrNoData) {
+			// new device
+			device = repository.DeviceDB{UserID: user.ID, Name: deviceid, DevType: "other"}
+		} else if err != nil {
+			return fmt.Errorf("get device %q for user %q error: %w", deviceid, username, err)
+		}
+
+		device.Caption = caption
+		device.DevType = devtype
+
+		_, err = tx.SaveDevice(ctx, &device)
+		if err != nil {
+			return fmt.Errorf("save device error: %w", err)
+		}
+
+		return nil
+	})
 	if err != nil {
-		return fmt.Errorf("start tx error: %w", err)
-	}
-
-	defer tx.Close()
-
-	user, err := tx.GetUser(ctx, username)
-	if errors.Is(err, repository.ErrNoData) {
-		return ErrUnknownUser
-	} else if err != nil {
-		return fmt.Errorf("get user error: %w", err)
-	}
-
-	device, err := tx.GetDevice(ctx, user.ID, deviceid)
-	if errors.Is(err, repository.ErrNoData) {
-		// new device
-		device = repository.DeviceDB{UserID: user.ID, Name: deviceid}
-	} else if err != nil {
-		return fmt.Errorf("get device %q for user %q error: %w", deviceid, username, err)
-	}
-
-	device.Caption = caption
-	device.DevType = devtype
-
-	_, err = tx.SaveDevice(ctx, &device)
-	if err != nil {
-		return fmt.Errorf("save device error: %w", err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit error: %w", err)
+		return fmt.Errorf("update device error: %w", err)
 	}
 
 	return nil

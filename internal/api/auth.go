@@ -7,7 +7,6 @@ package api
 
 import (
 	"context"
-	"errors"
 	"net/http"
 
 	"gitea.com/go-chi/session"
@@ -34,51 +33,16 @@ func (ar *authResource) login(ctx context.Context, w http.ResponseWriter, r *htt
 	sess := session.GetSession(r)
 	user := internal.ContextUser(ctx)
 
-	logger.Debug().Str("sessionid", sess.ID()).Msg("login")
-
-	if u := sessionUser(sess); u != "" {
-		if u == user {
-			logger.Debug().Msgf("user match session user %q", u)
-			w.WriteHeader(http.StatusOK)
-		} else {
-			logger.Info().Msgf("user not match session user %q", u)
-			w.WriteHeader(http.StatusBadRequest)
-		}
-
-		return
+	switch u := sessionUser(sess); u {
+	case "":
+		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+	case user:
+		logger.Debug().Msgf("user match session user %q", u)
+		w.WriteHeader(http.StatusOK)
+	default:
+		logger.Info().Msgf("user not match session user %q", u)
+		w.WriteHeader(http.StatusBadRequest)
 	}
-
-	username, password, ok := r.BasicAuth()
-	if !ok || user == "" || password == "" || username != user {
-		logger.Info().Str("username", username).Msg("bad basic auth")
-		w.WriteHeader(http.StatusUnauthorized)
-
-		return
-	}
-
-	u, err := ar.users.LoginUser(ctx, username, password)
-	switch {
-	case errors.Is(err, service.ErrUnauthorized) || errors.Is(err, service.ErrUnknownUser):
-		logger.Info().Str("username", username).Msgf("no auth; user: %v", u)
-		w.WriteHeader(http.StatusUnauthorized)
-
-		return
-	case err != nil:
-		logger.Warn().Err(err).Str("username", username).Msgf("login user error")
-		w.WriteHeader(http.StatusInternalServerError)
-
-		return
-	}
-
-	logger.Info().Str("user", username).Msg("user authenticated")
-
-	_ = sess.Set("user", username)
-
-	// 	expire := time.Now().Add(5 * time.Minute)
-	// 	cookie := http.Cookie{Name: "sessionid", Value: "", Path: "/", SameSite: http.SameSiteLaxMode, Expires: expire}
-
-	// http.SetCookie(w, &cookie)
-	w.WriteHeader(http.StatusOK)
 }
 
 func (*authResource) logout(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
@@ -90,7 +54,7 @@ func (*authResource) logout(ctx context.Context, w http.ResponseWriter, r *http.
 
 	if username != "" && user != username {
 		logger.Info().Str("user", user).Msgf("logout user error; session user %q not match user", username)
-		w.WriteHeader(http.StatusBadRequest)
+		writeError(w, r, http.StatusBadRequest, nil)
 
 		return
 	}
