@@ -33,9 +33,9 @@ func (d deviceResource) Routes() chi.Router {
 	}
 
 	r.With(checkUserMiddleware).
-		Get("/{user:[0-9a-z._-]+}.json", wrap(d.list))
+		Get(`/{user:[\w+.-]+}.json`, wrap(d.list))
 	r.With(checkUserMiddleware, checkDeviceMiddleware).
-		Post("/{user:[0-9a-z_.-]+}/{deviceid:[0-9a-z_.-]+}.json", wrap(d.update))
+		Post(`/{user:[\w+.-]+}/{deviceid:[\w.-]+}.json`, wrap(d.update))
 
 	return r
 }

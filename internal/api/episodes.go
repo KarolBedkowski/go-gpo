@@ -29,9 +29,9 @@ func (er *episodesResource) Routes() chi.Router {
 	}
 
 	r.With(checkUserMiddleware).
-		Post("/{user:[0-9a-z_.-]+}.json", wrap(er.uploadEpisodeActions))
+		Post(`/{user:[\w+.-]+}.json`, wrap(er.uploadEpisodeActions))
 	r.With(checkUserMiddleware).
-		Get("/{user:[0-9a-z_.-]+}.json", wrap(er.getEpisodeActions))
+		Get(`/{user:[\w+.-]+}.json`, wrap(er.getEpisodeActions))
 
 	return r
 }

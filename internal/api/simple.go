@@ -39,11 +39,11 @@ func (s *simpleResource) Routes() chi.Router {
 	}
 
 	r.With(checkUserMiddleware).
-		Get("/{user:[0-9a-z._-]+}.{format}", wrap(s.downloadAllSubscriptions))
+		Get(`/{user:[\w+.-]+}.{format}`, wrap(s.downloadAllSubscriptions))
 	r.With(checkUserMiddleware, checkDeviceMiddleware).
-		Get("/{user:[0-9a-z._-]+}/{deviceid:[0-9a-z._-]+}.{format}", wrap(s.downloadSubscriptions))
+		Get(`/{user:[\w+.-]+}/{deviceid:[\w.-]+}.{format}`, wrap(s.downloadSubscriptions))
 	r.With(checkUserMiddleware, checkDeviceMiddleware).
-		Put("/{user:[0-9a-z._-]+}/{deviceid:[0-9a-z._-]+}.{format}", wrap(s.uploadSubscriptions))
+		Put(`/{user:[\w+.-]+}/{deviceid:[\w.-]+}.{format}`, wrap(s.uploadSubscriptions))
 
 	return r
 }

@@ -34,13 +34,13 @@ func (sr *subscriptionsResource) Routes() chi.Router {
 	}
 
 	router.With(checkUserMiddleware).
-		Get("/{user:[0-9a-z._-]+}.opml", wrap(sr.userSubscriptions))
+		Get(`/{user:[\w+.-]+}.opml`, wrap(sr.userSubscriptions))
 	router.With(checkUserMiddleware, checkDeviceMiddleware).
-		Get("/{user:[0-9a-z._-]+}/{deviceid:[0-9a-z._-]+}.json", wrap(sr.devSubscriptions))
+		Get(`/{user:[\w+.-]+}/{deviceid:[\w.-]+}.json`, wrap(sr.devSubscriptions))
 	router.With(checkUserMiddleware, checkDeviceMiddleware).
-		Put("/{user:[0-9a-z._-]+}/{deviceid:[0-9a-z._-]+}.json", wrap(sr.uploadSubscriptions))
+		Put(`/{user:[\w+.-]+}/{deviceid:[\w.-]+}.json`, wrap(sr.uploadSubscriptions))
 	router.With(checkUserMiddleware, checkDeviceMiddleware).
-		Post("/{user:[0-9a-z._-]+}/{deviceid:[0-9a-z._-]+}.json", wrap(sr.uploadSubscriptionChanges))
+		Post(`/{user:[\w+.-]+}/{deviceid:[\w.-]+}.json`, wrap(sr.uploadSubscriptionChanges))
 
 	return router
 }

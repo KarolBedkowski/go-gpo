@@ -23,8 +23,8 @@ type authResource struct {
 
 func (ar *authResource) Routes() chi.Router {
 	r := chi.NewRouter()
-	r.Post("/{user}/login.json", wrap(ar.login))
-	r.Post("/{user}/logout.json", wrap(ar.logout))
+	r.Post(`/{user:[\w.+-]}/login.json`, wrap(ar.login))
+	r.Post(`/{user:[\w.+-]}/logout.json`, wrap(ar.logout))
 
 	return r
 }
