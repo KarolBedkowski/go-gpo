@@ -45,7 +45,7 @@ func AuthenticatedOnly(next http.Handler) http.Handler {
 		_ = sess.Destroy(w, r)
 
 		w.Header().Add("WWW-Authenticate", "Basic realm=\"go-gpodder\"")
-		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 	})
 }
 
@@ -68,7 +68,7 @@ func (a authenticator) Authenticate(next http.Handler) http.Handler {
 
 				_ = sess.Destroy(w, r)
 
-				http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 
 				return
 			} else if err != nil {
