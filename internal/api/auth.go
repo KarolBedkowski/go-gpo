@@ -15,6 +15,7 @@ import (
 )
 
 type authResource struct {
+	cfg   *Configuration
 	users *service.Users
 }
 
@@ -34,7 +35,7 @@ func (a *authResource) login(w http.ResponseWriter, r *http.Request) {
 
 	logger.Debug().Str("sessionid", sess.ID()).Msg("login")
 
-	switch u := userFromsession(sess); u {
+	switch u := sessionUser(sess); u {
 	case "":
 		// not logged; continue
 	case paramUser:
@@ -83,7 +84,7 @@ func (authResource) logout(w http.ResponseWriter, r *http.Request) {
 	logger := hlog.FromRequest(r)
 	user := chi.URLParam(r, "user")
 	sess := session.GetSession(r)
-	username := userFromsession(sess)
+	username := sessionUser(sess)
 
 	logger.Info().Str("user", user).Msg("logout user")
 

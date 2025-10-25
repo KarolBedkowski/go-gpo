@@ -184,23 +184,23 @@ func (s *Subs) UpdateDeviceSubscriptionChanges(
 	ctx context.Context,
 	username, devicename string,
 	added, removed []string,
-) ([][]string, error) {
+) error {
 	// TODO: sanitize
 	logger := zerolog.Ctx(ctx)
 
 	user, err := s.getUser(ctx, username)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	device, err := s.getUserDevice(ctx, user.ID, devicename)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	subscribed, err := s.repo.GetPodcasts(ctx, device.ID, time.Time{})
 	if err != nil {
-		return nil, fmt.Errorf("get subscriptions error: %w", err)
+		return fmt.Errorf("get subscriptions error: %w", err)
 	}
 
 	var changes []*model.PodcastDB
@@ -237,10 +237,17 @@ func (s *Subs) UpdateDeviceSubscriptionChanges(
 	}
 
 	if err := s.repo.SavePodcast(ctx, username, devicename, changes...); err != nil {
-		return nil, fmt.Errorf("save subscriptions error: %w", err)
+		return fmt.Errorf("save subscriptions error: %w", err)
 	}
 
-	return nil, nil
+	return nil
+}
+
+func (s *Subs) GetSubsciptionChanges(ctx context.Context, username, devicename string, since time.Time) (
+	[]*model.Podcast, []string, error,
+) {
+	// TODO
+	return nil, nil, errors.New("not implemented")
 }
 
 // ------------------------------------------------------

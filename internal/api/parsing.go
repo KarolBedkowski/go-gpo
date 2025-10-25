@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"net/http"
 	"strconv"
 	"time"
 )
@@ -35,4 +36,18 @@ func parseDate(str string) (time.Time, error) {
 	}
 
 	return time.Time{}, fmt.Errorf("cant parse %q as date", str)
+}
+
+func sinceFromParameter(r *http.Request) (time.Time, error) {
+	since := time.Time{}
+	if s := r.URL.Query().Get("since"); s != "" {
+		se, err := strconv.ParseInt(s, 10, 64)
+		if err != nil {
+			return since, fmt.Errorf("parse since %q error: %w", s, err)
+		}
+
+		since = time.Unix(se, 0)
+	}
+
+	return since, nil
 }

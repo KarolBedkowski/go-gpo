@@ -1,10 +1,12 @@
 // simple.go
+// /subscriptions/
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
 //
 // Distributed under terms of the GPLv3 license.
 package api
 
 import (
+	"bytes"
 	"errors"
 	"io"
 	"net/http"
@@ -21,14 +23,17 @@ import (
 )
 
 type simpleResource struct {
+	cfg     *Configuration
 	repo    *repository.Repository
 	subServ *service.Subs
 }
 
 func (s *simpleResource) Routes() chi.Router {
 	r := chi.NewRouter()
-	r.Use(authenticator{s.repo}.Authenticate)
-	// r.Use(AuthenticatedOnly)
+	if !s.cfg.NoAuth {
+		r.Use(AuthenticatedOnly)
+		r.Use(checkUserMiddleware)
+	}
 
 	r.Get("/{user:[0-9a-z.-]+}.{format}", s.downloadAllSubscriptions)
 	r.Get("/{user:[0-9a-z.-]+}/{deviceid:[0-9a-z.-]+}.{format}", s.downloadSubscriptions)
@@ -41,12 +46,6 @@ func (s *simpleResource) downloadAllSubscriptions(w http.ResponseWriter, r *http
 	ctx := r.Context()
 	logger := hlog.FromRequest(r)
 	user := chi.URLParam(r, "user")
-
-	if suser := userFromContext(ctx); suser != user {
-		logger.Warn().Msgf("user %q not match session user: %q", user, suser)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
 
 	subs, err := s.subServ.GetUserSubscriptions(ctx, user, time.Time{})
 	switch {
@@ -95,12 +94,6 @@ func (s *simpleResource) downloadSubscriptions(w http.ResponseWriter, r *http.Re
 	ctx := r.Context()
 	logger := hlog.FromRequest(r)
 	user := chi.URLParam(r, "user")
-
-	if suser := userFromContext(ctx); suser != user {
-		logger.Warn().Msgf("user %q not match session user: %q", user, suser)
-		// w.WriteHeader(http.StatusBadRequest)
-		// return
-	}
 
 	deviceid := chi.URLParam(r, "deviceid")
 	if deviceid == "" {
@@ -162,12 +155,6 @@ func (s *simpleResource) uploadSubscriptions(w http.ResponseWriter, r *http.Requ
 	logger := hlog.FromRequest(r)
 	user := chi.URLParam(r, "user")
 
-	if suser := userFromContext(ctx); suser != user {
-		logger.Warn().Msgf("user %q not match session user: %q", user, suser)
-		// w.WriteHeader(http.StatusBadRequest)
-		// return
-	}
-
 	deviceid := chi.URLParam(r, "deviceid")
 	if deviceid == "" {
 		logger.Info().Msgf("empty deviceId")
@@ -179,7 +166,37 @@ func (s *simpleResource) uploadSubscriptions(w http.ResponseWriter, r *http.Requ
 
 	switch format := chi.URLParam(r, "format"); format {
 	case "opml":
-		// TODO
+		// TODO need tests
+		var buf bytes.Buffer
+		count, err := io.Copy(&buf, r.Body)
+		if err != nil {
+			logger.Warn().Err(err).Msgf("parse opml - copy body - error")
+			w.WriteHeader(http.StatusBadRequest)
+
+			return
+		}
+
+		if count == 0 {
+			logger.Debug().Msgf("parse opml error - empty body")
+			w.WriteHeader(http.StatusBadRequest)
+
+			return
+		}
+
+		o, err := opml.NewOPML(buf.Bytes())
+		if err != nil {
+			logger.Warn().Err(err).Msgf("parse opml error")
+			w.WriteHeader(http.StatusBadRequest)
+
+			return
+		}
+
+		for _, i := range o.Outlines() {
+			if url := i.XMLURL; url != "" {
+				subs = append(subs, url)
+			}
+		}
+
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 

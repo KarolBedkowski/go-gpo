@@ -30,7 +30,13 @@ var (
 	Branch    = ""
 )
 
-var showVersion = flag.Bool("version", false, "Print version information.")
+var (
+	showVersion = flag.Bool("version", false, "Print version information.")
+	noauth      = flag.Bool("no-auth", false, "Disable authentication.")
+	database    = flag.String("database", "database.sqlite", "Database file.")
+	loglevel    = flag.String("log.level", "info", "Log level (debug, info, warn, error).")
+	logformat   = flag.String("log.format", "logfmt", "Log format (logfmt, json).")
+)
 
 func main() {
 	flag.Parse()
@@ -40,12 +46,16 @@ func main() {
 		os.Exit(0)
 	}
 
-	initializeLogger("debug", "logfmt")
+	initializeLogger(*loglevel, *logformat)
 
 	log.Logger.Log().Msg("Starting...")
 
 	re := &repository.Repository{}
-	re.Connect("sqlite3", "database.sqlite?_fk=true")
+	re.Connect("sqlite3", (*database)+"?_fk=true")
 
-	api.Start(re)
+	cfg := api.Configuration{
+		NoAuth: *noauth,
+	}
+
+	api.Start(re, &cfg)
 }

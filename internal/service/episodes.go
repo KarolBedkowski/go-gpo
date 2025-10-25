@@ -9,6 +9,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -113,4 +114,11 @@ func (e *Episodes) GetEpisodesActions(ctx context.Context, username, podcast, de
 	}
 
 	return res, nil
+}
+
+func (e *Episodes) GetEpisodesUpdates(ctx context.Context, username, devicename string, since time.Time,
+	includeActions bool,
+) ([]*model.EpisodeUpdate, error) {
+	// TODO
+	return nil, errors.New("not implemented")
 }

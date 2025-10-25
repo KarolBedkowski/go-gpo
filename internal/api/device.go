@@ -16,12 +16,16 @@ import (
 )
 
 type deviceResource struct {
+	cfg       *Configuration
 	deviceSrv *service.Device
 }
 
 func (dr deviceResource) Routes() chi.Router {
 	r := chi.NewRouter()
-	// r.Use(AuthenticatedOnly)
+	if !dr.cfg.NoAuth {
+		r.Use(AuthenticatedOnly)
+		r.Use(checkUserMiddleware)
+	}
 
 	r.Get("/{user:[0-9a-z.-]+}.json", dr.list)
 	r.Post("/{user:[0-9a-z.-]+}/{deviceid:[0-9a-z.-]+}.json", dr.update)
@@ -32,12 +36,6 @@ func (d *deviceResource) update(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	logger := hlog.FromRequest(r)
 	user := chi.URLParam(r, "user")
-	suser := userFromContext(ctx)
-	if suser != user {
-		logger.Warn().Msgf("user %q not match session user: %q", user, suser)
-		// w.WriteHeader(http.StatusBadRequest)
-		// return
-	}
 
 	deviceid := chi.URLParam(r, "deviceid")
 	if deviceid == "" {
@@ -79,12 +77,6 @@ func (d *deviceResource) list(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	logger := hlog.FromRequest(r)
 	user := chi.URLParam(r, "user")
-
-	if suser := userFromContext(ctx); suser != user {
-		logger.Warn().Msgf("user %q not match session user: %q", user, suser)
-		// w.WriteHeader(http.StatusBadRequest)
-		// return
-	}
 
 	devices, err := d.deviceSrv.ListDevices(ctx, user)
 	switch {

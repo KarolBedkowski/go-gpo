@@ -1,4 +1,5 @@
-// auth.go
+// subscriptions.go
+// /api/2/subscriptions
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
 //
 // Distributed under terms of the GPLv3 license.
@@ -6,7 +7,9 @@ package api
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
+	"slices"
 	"strconv"
 	"time"
 
@@ -19,19 +22,23 @@ import (
 )
 
 type subscriptionsResource struct {
+	cfg     *Configuration
 	subServ *service.Subs
 }
 
 func (sr *subscriptionsResource) Routes() chi.Router {
 	r := chi.NewRouter()
-	// r.Use(AuthenticatedOnly)
+	if !sr.cfg.NoAuth {
+		r.Use(AuthenticatedOnly)
+		r.Use(checkUserMiddleware)
+	}
 
 	r.Get("/{user:[0-9a-z.-]+}.opml", sr.userSubscriptions)
 	r.Get("/{user:[0-9a-z.-]+}/{deviceid:[0-9a-z.-]+}.json", sr.devSubscriptions)
 	// TODO: other formats
-	r.Put("/{user:[0-9a-z.-]+}/{deviceid:[0-9a-z.-]+}.json", sr.uploadSubscriptionsJSON)
+	r.Put("/{user:[0-9a-z.-]+}/{deviceid:[0-9a-z.-]+}.json", sr.uploadSubscriptions)
 	// TODO: other formats
-	r.Post("/{user:[0-9a-z.-]+}/{deviceid:[0-9a-z.-]+}.json", sr.uploadSubscriptionChangesJSON)
+	r.Post("/{user:[0-9a-z.-]+}/{deviceid:[0-9a-z.-]+}.json", sr.uploadSubscriptionChanges)
 	return r
 }
 
@@ -39,12 +46,6 @@ func (sr *subscriptionsResource) devSubscriptions(w http.ResponseWriter, r *http
 	ctx := r.Context()
 	logger := hlog.FromRequest(r)
 	user := chi.URLParam(r, "user")
-
-	if suser := userFromContext(ctx); suser != user {
-		logger.Warn().Msgf("user %q not match session user: %q", user, suser)
-		// w.WriteHeader(http.StatusBadRequest)
-		// return
-	}
 
 	deviceid := chi.URLParam(r, "deviceid")
 	if deviceid == "" {
@@ -90,8 +91,8 @@ func (sr *subscriptionsResource) devSubscriptions(w http.ResponseWriter, r *http
 		Remove    []string `json:"remove"`
 		Timestamp int64    `json:"timestamp"`
 	}{
-		Add:       emptyList(added),
-		Remove:    emptyList(removed),
+		Add:       ensureNotNilList(added),
+		Remove:    ensureNotNilList(removed),
 		Timestamp: time.Now().Unix(),
 	}
 
@@ -103,12 +104,6 @@ func (sr *subscriptionsResource) userSubscriptions(w http.ResponseWriter, r *htt
 	ctx := r.Context()
 	logger := hlog.FromRequest(r)
 	user := chi.URLParam(r, "user")
-
-	if suser := userFromContext(ctx); suser != user {
-		logger.Warn().Msgf("user %q not match session user: %q", user, suser)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
 
 	subs, err := sr.subServ.GetUserSubscriptions(ctx, user, time.Time{})
 	switch {
@@ -141,12 +136,12 @@ func (sr *subscriptionsResource) userSubscriptions(w http.ResponseWriter, r *htt
 	w.Write([]byte(result))
 }
 
-func (sr *subscriptionsResource) uploadSubscriptionsJSON(w http.ResponseWriter, r *http.Request) {
+func (sr *subscriptionsResource) uploadSubscriptions(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := chi.URLParam(r, "user")
 	logger := hlog.FromRequest(r).With().Str("user", user).Logger()
 
-	if suser := userFromContext(ctx); suser != user {
+	if suser := service.ContextUser(ctx); suser != user {
 		logger.Warn().Msgf("user %q not match session user: %q", user, suser)
 		// w.WriteHeader(http.StatusBadRequest)
 		// return
@@ -182,16 +177,10 @@ func (sr *subscriptionsResource) uploadSubscriptionsJSON(w http.ResponseWriter, 
 	w.WriteHeader(http.StatusOK)
 }
 
-func (sr *subscriptionsResource) uploadSubscriptionChangesJSON(w http.ResponseWriter, r *http.Request) {
+func (sr *subscriptionsResource) uploadSubscriptionChanges(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := chi.URLParam(r, "user")
 	logger := hlog.FromRequest(r).With().Str("user", user).Logger()
-
-	if suser := userFromContext(ctx); suser != user {
-		logger.Warn().Msgf("user %q not match session user: %q", user, suser)
-		// w.WriteHeader(http.StatusBadRequest)
-		// return
-	}
 
 	deviceid := chi.URLParam(r, "deviceid")
 	if deviceid == "" {
@@ -202,21 +191,24 @@ func (sr *subscriptionsResource) uploadSubscriptionChangesJSON(w http.ResponseWr
 
 	logger = logger.With().Str("device_id", deviceid).Logger()
 
-	var changes struct {
-		Add    []string `json:"add"`
-		Remove []string `json:"remove"`
-	}
-
+	changes := subscriptionChangesRequest{}
 	if err := render.DecodeJSON(r.Body, &changes); err != nil {
 		logger.Warn().Err(err).Msgf("parse json error")
 		w.WriteHeader(http.StatusBadRequest)
 
 		return
 	}
-	// TODO: 400 Bad Request – the same feed has been added and removed in the same request
-	// TODO: sanitize
 
-	updatedURLs, err := sr.subServ.UpdateDeviceSubscriptionChanges(ctx, user, deviceid, changes.Add, changes.Remove)
+	updatedURLs := changes.sanitize()
+
+	if err := changes.validate(); err != nil {
+		logger.Debug().Err(err).Msg("validate request error")
+		w.WriteHeader(http.StatusBadRequest)
+
+		return
+	}
+
+	err := sr.subServ.UpdateDeviceSubscriptionChanges(ctx, user, deviceid, changes.Add, changes.Remove)
 	if err != nil {
 		logger.Debug().Interface("changes", changes).Msg("update subscriptions data")
 		logger.Warn().Err(err).Msg("update subscriptions error")
@@ -241,10 +233,42 @@ func (sr *subscriptionsResource) uploadSubscriptionChangesJSON(w http.ResponseWr
 	render.JSON(w, r, &resp)
 }
 
-func emptyList(inp []string) []string {
+func ensureNotNilList(inp []string) []string {
 	if inp == nil {
-		return make([]string, 0, 0)
+		return make([]string, 0)
 	}
 
 	return inp
+}
+
+type subscriptionChangesRequest struct {
+	Add    []string `json:"add"`
+	Remove []string `json:"remove"`
+}
+
+func (s *subscriptionChangesRequest) validate() error {
+	if len(s.Add) == 0 || len(s.Remove) == 0 {
+		return nil
+	}
+
+	for _, i := range s.Add {
+		if slices.Contains(s.Remove, i) {
+			return fmt.Errorf("duplicated url: %s", i)
+		}
+	}
+
+	return nil
+}
+
+func (s *subscriptionChangesRequest) sanitize() [][]string {
+	var chAdd, chRem [][]string
+
+	s.Add, chAdd = service.SanitizeURLs(s.Add)
+	s.Remove, chRem = service.SanitizeURLs(s.Remove)
+
+	changes := make([][]string, 0)
+	changes = append(changes, chAdd...)
+	changes = append(changes, chRem...)
+
+	return changes
 }

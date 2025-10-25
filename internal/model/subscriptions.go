@@ -87,6 +87,16 @@ func (s PodcastsDB) ToIDsMap() map[string]int64 {
 	return res
 }
 
+type Podcast struct {
+	Title       string `json:"title"`
+	URL         string `json:"url"`
+	Description string `json:"description"`
+	Subscribers int    `json:"subscribers"`
+	LogoURL     string `json:"logo_url"`
+	Website     string `json:"website"`
+	MygpoLink   string `json:"mygpo_link"`
+}
+
 type Subscription struct {
 	Device    string
 	Podcast   string
@@ -120,4 +130,15 @@ type Episode struct {
 	Started   *int
 	Position  *int
 	Total     *int
+}
+
+type EpisodeUpdate struct {
+	Title        string    `json:"title"`
+	URL          string    `json:"url"`
+	PodcastTitle string    `json:"podcast_title"`
+	PodcastURL   string    `json:"podcast_url"`
+	Website      string    `json:"website"`
+	MygpoLink    string    `json:"mygpo_link"`
+	Released     time.Time `json:"released"`
+	Status       string    `json:"status"`
 }

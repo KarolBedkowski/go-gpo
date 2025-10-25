@@ -1,10 +1,12 @@
 // episodes.go
+// /api/2/episodes/
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
 //
 // Distributed under terms of the GPLv3 license.
 package api
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -19,6 +21,7 @@ import (
 )
 
 type episodesResource struct {
+	cfg          *Configuration
 	episodesServ *service.Episodes
 }
 
@@ -31,6 +34,35 @@ type episode struct {
 	Started   *int   `json:"started,omitempty"`
 	Position  *int   `json:"position,omitempty"`
 	Total     *int   `json:"total,omitempty"`
+}
+
+func (e *episode) sanitize() [][]string {
+	var changes [][]string
+
+	spodcast := service.SanitizeURL(e.Podcast)
+	if spodcast != e.Podcast {
+		changes = append(changes, []string{e.Podcast, spodcast})
+		e.Podcast = spodcast
+	}
+
+	sepisode := service.SanitizeURL(e.Episode)
+	if sepisode != e.Episode {
+		changes = append(changes, []string{e.Episode, sepisode})
+		e.Episode = sepisode
+	}
+
+	return changes
+}
+
+func (e *episode) validate() error {
+	if e.Podcast == "" {
+		return errors.New("empty `podcast`")
+	}
+	if e.Episode == "" {
+		return errors.New("empty `episode`")
+	}
+
+	return nil
 }
 
 func (e *episode) getTimestamp() (time.Time, error) {
@@ -52,7 +84,10 @@ func (e *episode) getTimestamp() (time.Time, error) {
 
 func (er *episodesResource) Routes() chi.Router {
 	r := chi.NewRouter()
-	// r.Use(AuthenticatedOnly)
+	if !er.cfg.NoAuth {
+		r.Use(AuthenticatedOnly)
+		r.Use(checkUserMiddleware)
+	}
 
 	r.Post("/{user:[0-9a-z.-]+}.json", er.uploadEpisodeActions)
 	r.Get("/{user:[0-9a-z.-]+}.json", er.getEpisodeActions)
@@ -63,13 +98,6 @@ func (er *episodesResource) uploadEpisodeActions(w http.ResponseWriter, r *http.
 	ctx := r.Context()
 	logger := hlog.FromRequest(r)
 	user := chi.URLParam(r, "user")
-
-	if suser := userFromContext(ctx); suser != user {
-		logger.Warn().Msgf("user %q not match session user: %q", user, suser)
-		// w.WriteHeader(http.StatusBadRequest)
-
-		// return
-	}
 
 	var req []*episode
 
@@ -82,11 +110,23 @@ func (er *episodesResource) uploadEpisodeActions(w http.ResponseWriter, r *http.
 	}
 
 	actions := make([]*model.Episode, 0, len(req))
+	changedurls := make([][]string, 0)
 
 	for _, r := range req {
+		if curls := r.sanitize(); len(curls) > 0 {
+			changedurls = append(changedurls, curls...)
+		}
+
+		if err := r.validate(); err != nil {
+			logger.Warn().Err(err).Msgf("validate error")
+			w.WriteHeader(http.StatusBadRequest)
+
+			return
+		}
+
 		ts, err := r.getTimestamp()
 		if err != nil {
-			logger.Warn().Err(err).Msgf("parse json error")
+			logger.Warn().Err(err).Msgf("parse date  error")
 			w.WriteHeader(http.StatusBadRequest)
 
 			return
@@ -119,7 +159,8 @@ func (er *episodesResource) uploadEpisodeActions(w http.ResponseWriter, r *http.
 		Timestamp   int64      `json:"timestamp"`
 		UpdatedURLs [][]string `json:"update_urls"`
 	}{
-		Timestamp: time.Now().Unix(),
+		Timestamp:   time.Now().Unix(),
+		UpdatedURLs: changedurls,
 	}
 
 	render.JSON(w, r, &res)
@@ -129,14 +170,6 @@ func (er *episodesResource) getEpisodeActions(w http.ResponseWriter, r *http.Req
 	ctx := r.Context()
 	logger := hlog.FromRequest(r)
 	user := chi.URLParam(r, "user")
-
-	if suser := userFromContext(ctx); suser != user {
-		logger.Warn().Msgf("user %q not match session user: %q", user, suser)
-		// w.WriteHeader(http.StatusBadRequest)
-
-		// return
-	}
-
 	podcast := r.URL.Query().Get("podcast")
 	device := r.URL.Query().Get("device")
 	aggregated := r.URL.Query().Get("aggregated") == "true"

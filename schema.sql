@@ -62,7 +62,7 @@ CREATE TABLE episodes (
 
 
 
-insert into users (username, password, email, name) values ('k', 'k', 'k@localhost', 'k');
+insert into users (username, password, email, name) values ('k', 'q1w2e3', 'k@localhost', 'k');
 
 
 

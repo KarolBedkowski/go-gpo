@@ -42,3 +42,20 @@ func (u *Users) LoginUser(ctx context.Context, username, password string) (*mode
 
 	return model.NewUserFromUserDB(user), nil
 }
+
+//-----------------
+
+const CtxUserKey = "CtxUserKey"
+
+func ContextUser(ctx context.Context) string {
+	suser, ok := ctx.Value(CtxUserKey).(string)
+	if ok {
+		return suser
+	}
+
+	return ""
+}
+
+func ContextWithUser(ctx context.Context, username string) context.Context {
+	return context.WithValue(ctx, CtxUserKey, username)
+}

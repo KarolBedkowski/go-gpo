@@ -26,54 +26,52 @@ import (
 	"gitlab.com/kabes/go-gpodder/internal/service"
 )
 
-func Start(repo *repository.Repository) {
+type Configuration struct {
+	cfg    *Configuration
+	NoAuth bool
+}
+
+func Start(repo *repository.Repository, cfg *Configuration) {
 	sess, err := session.Sessioner(session.Options{
 		Provider:       "file",
 		ProviderConfig: "./tmp/",
 		CookieName:     "sessionid",
-		SameSite:       http.SameSiteLaxMode,
-		Maxlifetime:    60 * 60 * 24,
+		// Secure:         true,
+		// SameSite:       http.SameSiteLaxMode,
+		// Maxlifetime: 60 * 60 * 24 * 365,
 	})
 	if err != nil {
 		panic(err.Error())
 	}
-
-	r := chi.NewRouter()
-
-	r.Use(middleware.RequestID)
-	r.Use(sess)
-	r.Use(authenticator{repo}.Authenticate)
-	r.Use(hlog.RequestIDHandler("req_id", "Request-Id"))
-	r.Use(middleware.RealIP)
-	r.Use(newLogMiddleware)
-	// r.Use(httplog.RequestLogger(logger, &httplog.Options{
-	// 	Level: slog.LevelDebug,
-	// 	RecoverPanics: true,
-	// 	LogRequestHeaders:  []string{"Cookie", "Authentication"},
-	// 	LogResponseHeaders: []string{"Cookie"},
-	// 	LogRequestBody:  isDebugHeaderSet,
-	// 	LogResponseBody: isDebugHeaderSet,
-	// }))
-
-	r.Use(newRecoverMiddleware)
-	r.Use(middleware.Timeout(60 * time.Second))
 
 	deviceSrv := service.NewDeviceService(repo)
 	subSrv := service.NewSubssService(repo)
 	usersSrv := service.NewUsersService(repo)
 	episodesSrv := service.NewEpisodesService(repo)
 
-	r.Mount("/subscriptions", (&simpleResource{repo, subSrv}).Routes())
+	r := chi.NewRouter()
+
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
+	r.Use(hlog.RequestIDHandler("req_id", "Request-Id"))
+	r.Use(newLogMiddleware)
+	r.Use(sess)
+	r.Use(authenticator{usersSrv}.Authenticate)
+	r.Use(newRecoverMiddleware)
+	r.Use(middleware.Timeout(60 * time.Second))
+
+	r.Mount("/subscriptions", (&simpleResource{cfg, repo, subSrv}).Routes())
 
 	r.Route("/api/2", func(r chi.Router) {
-		r.Mount("/auth", authResource{usersSrv}.Routes())
-		r.Mount("/devices", deviceResource{deviceSrv}.Routes())
-		r.Mount("/subscriptions", (&subscriptionsResource{subSrv}).Routes())
-		r.Mount("/episodes", (&episodesResource{episodesSrv}).Routes())
+		r.Mount("/auth", authResource{cfg, usersSrv}.Routes())
+		r.Mount("/devices", deviceResource{cfg, deviceSrv}.Routes())
+		r.Mount("/subscriptions", (&subscriptionsResource{cfg, subSrv}).Routes())
+		r.Mount("/episodes", (&episodesResource{cfg, episodesSrv}).Routes())
+		r.Mount("/updates", (&updatesResource{cfg, subSrv, episodesSrv}).Routes())
 	})
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("welcome"))
+		w.Write([]byte("go-gpodder"))
 	})
 
 	logRoutes(r)
@@ -83,36 +81,28 @@ func Start(repo *repository.Repository) {
 
 func AuthenticatedOnly(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		sess := session.GetSession(r)
 		logger := hlog.FromRequest(r)
-		logger.Debug().Interface("session", sess.Get("user")).Msg("AuthenticatedOnly")
+		sess := session.GetSession(r)
+		user := sessionUser(sess)
 
-		if suser, ok := sess.Get("user").(string); ok && suser != "" {
-			ctx := context.WithValue(r.Context(), "user", suser)
+		logger.Debug().Interface("session_user", user).Msg("AuthenticatedOnly")
+
+		if user != "" {
+			ctx := service.ContextWithUser(r.Context(), user)
 			next.ServeHTTP(w, r.WithContext(ctx))
 
 			return
 		}
 
-		_ = sess.Set("user", "")
-
+		sess.Destroy(w, r)
 		w.Header().Add("WWW-Authenticate", "Basic realm=\"go-gpodder\"")
 		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 	})
 }
 
-func userFromContext(ctx context.Context) string {
-	suser, ok := ctx.Value("user").(string)
-	if ok {
-		return suser
-	}
-
-	return ""
-}
-
 type authenticator struct {
 	// TODO: service
-	repo *repository.Repository
+	usersSrv *service.Users
 }
 
 func (a authenticator) Authenticate(next http.Handler) http.Handler {
@@ -121,21 +111,18 @@ func (a authenticator) Authenticate(next http.Handler) http.Handler {
 		if ok && password != "" && username != "" {
 			ctx := r.Context()
 			logger := hlog.FromRequest(r)
-
-			user, err := a.repo.GetUser(ctx, username)
-			if err != nil {
-				panic(err)
-			}
-
 			sess := session.GetSession(r)
 
-			if user == nil || !user.CheckPassword(password) {
-				logger.Info().Str("username", username).Msgf("auth failed; user: %v", user)
+			user, err := a.usersSrv.LoginUser(ctx, username, password)
+			if errors.Is(err, service.ErrUnauthorized) || errors.Is(err, service.ErrUnknownUser) {
+				logger.Info().Err(err).Str("username", username).Msgf("auth failed; user: %v", user)
 				w.Header().Add("WWW-Authenticate", "Basic realm=\"go-gpodder\"")
-				_ = sess.Set("user", "")
+				sess.Destroy(w, r)
 				http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 
 				return
+			} else if err != nil {
+				panic(err)
 			}
 
 			logger.Debug().Str("username", username).Msgf("user authenticated")
@@ -184,7 +171,6 @@ func newLogMiddleware(next http.Handler) http.Handler {
 		requestID, _ := hlog.IDFromCtx(ctx)
 		llog := log.With().Logger().With().Str("req_id", requestID.String()).Logger()
 		request = request.WithContext(llog.WithContext(ctx))
-		sess := session.GetSession(request)
 
 		llog.Info().
 			Str("url", request.URL.Redacted()).
@@ -192,7 +178,6 @@ func newLogMiddleware(next http.Handler) http.Handler {
 			Str("method", request.Method).
 			// Strs("agent", request.Header["User-Agent"]).
 			// Interface("headers", request.Header).
-			Str("sessionid", sess.ID()).
 			Msg("webhandler: request start")
 
 		var reqBody bytes.Buffer
@@ -207,9 +192,11 @@ func newLogMiddleware(next http.Handler) http.Handler {
 		defer func() {
 			llog.Debug().Str("request_body", reqBody.String()).
 				Str("req-content-type", request.Header.Get("content-type")).
+				Interface("req-headers", request.Header).
 				Msg("request")
 			llog.Debug().Str("response_body", respBody.String()).
 				Str("resp-content-type", lrw.Header().Get("content-type")).
+				Interface("resp-headers", lrw.Header()).
 				Msg("response")
 
 			if lrw.Status() >= 400 && lrw.Status() != 404 {
@@ -276,7 +263,7 @@ func newRecoverMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func userFromsession(store session.Store) string {
+func sessionUser(store session.Store) string {
 	log.Debug().Interface("session", store).Msg("session")
 	suserint := store.Get("user")
 	if username, ok := suserint.(string); ok {
@@ -284,6 +271,22 @@ func userFromsession(store session.Store) string {
 	}
 
 	return ""
+}
+
+func checkUserMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if user := chi.URLParam(req, "user"); user != "" {
+			if suser := service.ContextUser(req.Context()); suser != user {
+				logger := hlog.FromRequest(req)
+				logger.Warn().Msgf("user %q not match session user: %q", user, suser)
+				w.WriteHeader(http.StatusBadRequest)
+
+				return
+			}
+		}
+
+		next.ServeHTTP(w, req)
+	})
 }
 
 func logRoutes(r chi.Routes) {
