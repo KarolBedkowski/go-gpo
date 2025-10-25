@@ -17,6 +17,7 @@ Missing features from mygpo:
 * favorites api
 * device synchronization api (all user devices are synchronized)
 * webgui
+* not supported formats: jsonp, xml
 
 ## Building and running
 
@@ -96,8 +97,8 @@ For other options / commands:
 
 #### Settings API
 
-[?] Save Settings `POST /api/2/settings/(username)/(scope).json`
-[?] Get Settings `GET /api/2/settings/(username)/(scope).json`
+[x] Save Settings `POST /api/2/settings/(username)/(scope).json`
+[x] Get Settings `GET /api/2/settings/(username)/(scope).json`
 
 #### Favorites API
 

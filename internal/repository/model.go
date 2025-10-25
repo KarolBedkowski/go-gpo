@@ -203,3 +203,10 @@ type UserAlias struct {
 	UserID   int64  `db:"user_id"`
 	Username string `db:"username"`
 }
+
+type SettingsDB struct {
+	UserID int64  `db:"user_id"`
+	Scope  string `db:"scope"`
+	Key    string `db:"key"`
+	Value  string `db:"value"`
+}

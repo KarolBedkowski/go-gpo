@@ -52,6 +52,7 @@ func Start(repo *repository.Repository, cfg *Configuration) error {
 	subSrv := service.NewSubssService(repo)
 	usersSrv := service.NewUsersService(repo)
 	episodesSrv := service.NewEpisodesService(repo)
+	settingsSrv := service.NewSettingsService(repo)
 
 	router := chi.NewRouter()
 
@@ -85,6 +86,7 @@ func Start(repo *repository.Repository, cfg *Configuration) error {
 		r.Mount("/subscriptions", (&subscriptionsResource{cfg, subSrv}).Routes())
 		r.Mount("/episodes", (&episodesResource{cfg, episodesSrv}).Routes())
 		r.Mount("/updates", (&updatesResource{cfg, subSrv, episodesSrv}).Routes())
+		r.Mount("/settings", (&settingsResource{cfg, settingsSrv}).Routes())
 	})
 
 	router.Get("/", func(w http.ResponseWriter, _ *http.Request) {
