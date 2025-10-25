@@ -216,9 +216,16 @@ func (p *SessionProvider) Count() (int, error) {
 
 // GC calls GC to clean expired sessions.
 func (p *SessionProvider) GC() {
-	maxage := time.Now().Add(time.Duration(-p.maxlifetime) * time.Second)
+	_, err := p.db.Exec("DELETE FROM sessions WHERE created_at < ?", //nolint: noctx
+		time.Now().Add(time.Duration(-p.maxlifetime)*time.Second))
+	if err != nil {
+		log.Logger.Error().Err(err).Msg("error delete old sessions")
+	}
 
-	if _, err := p.db.Exec("DELETE FROM sessions WHERE created_at < ?", maxage); err != nil { //nolint: noctx
+	// remove empty session older than 2 hour
+	_, err = p.db.Exec("DELETE FROM sessions WHERE created_at < ? AND data is null", //nolint: noctx
+		time.Now().Add(time.Duration(-2)*time.Hour))
+	if err != nil {
 		log.Logger.Error().Err(err).Msg("error delete old sessions")
 	}
 }
