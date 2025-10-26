@@ -18,50 +18,48 @@ import (
 )
 
 type Episodes struct {
-	repo *repository.Repository
+	repo *repository.Database
 }
 
-func NewEpisodesService(repo *repository.Repository) *Episodes {
+func NewEpisodesService(repo *repository.Database) *Episodes {
 	return &Episodes{repo}
 }
 
 func (e *Episodes) SaveEpisodesActions(ctx context.Context, username string, action ...model.Episode) error {
-	tx, err := e.repo.Begin(ctx)
+	err := e.repo.InTransaction(ctx, func(db repository.DBContext) error {
+		repo := e.repo.GetRepository(db)
+
+		user, err := repo.GetUser(ctx, username)
+		if errors.Is(err, repository.ErrNoData) {
+			return ErrUnknownUser
+		} else if err != nil {
+			return fmt.Errorf("get user error: %w", err)
+		}
+
+		episodes := make([]repository.EpisodeDB, 0, len(action))
+
+		for _, act := range action {
+			episodes = append(episodes, repository.EpisodeDB{
+				URL:        act.Episode,
+				Device:     act.Device,
+				Action:     act.Action,
+				UpdatedAt:  act.Timestamp,
+				CreatedAt:  act.Timestamp,
+				Started:    act.Started,
+				Position:   act.Position,
+				Total:      act.Total,
+				PodcastURL: act.Podcast,
+			})
+		}
+
+		if err := repo.SaveEpisode(ctx, user.ID, episodes...); err != nil {
+			return fmt.Errorf("save episodes error: %w", err)
+		}
+
+		return nil
+	})
 	if err != nil {
-		return fmt.Errorf("start tx error: %w", err)
-	}
-
-	defer tx.Close()
-
-	user, err := tx.GetUser(ctx, username)
-	if errors.Is(err, repository.ErrNoData) {
-		return ErrUnknownUser
-	} else if err != nil {
-		return fmt.Errorf("get user error: %w", err)
-	}
-
-	episodes := make([]repository.EpisodeDB, 0, len(action))
-
-	for _, act := range action {
-		episodes = append(episodes, repository.EpisodeDB{
-			URL:        act.Episode,
-			Device:     act.Device,
-			Action:     act.Action,
-			UpdatedAt:  act.Timestamp,
-			CreatedAt:  act.Timestamp,
-			Started:    act.Started,
-			Position:   act.Position,
-			Total:      act.Total,
-			PodcastURL: act.Podcast,
-		})
-	}
-
-	if err := tx.SaveEpisode(ctx, user.ID, episodes...); err != nil {
 		return fmt.Errorf("save episodes error: %w", err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit error: %w", err)
 	}
 
 	return nil
@@ -70,14 +68,16 @@ func (e *Episodes) SaveEpisodesActions(ctx context.Context, username string, act
 func (e *Episodes) GetEpisodesActions(ctx context.Context, username, podcast, devicename string,
 	since time.Time, aggregated bool,
 ) ([]model.Episode, error) {
-	tx, err := e.repo.Begin(ctx)
+	conn, err := e.repo.GetConnection(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("start tx error: %w", err)
+		return nil, fmt.Errorf("get connection error: %w", err)
 	}
 
-	defer tx.Close()
+	defer conn.Close()
 
-	episodes, err := e.getEpisodesActions(ctx, tx, username, podcast, devicename, since, aggregated)
+	repo := e.repo.GetRepository(conn)
+
+	episodes, err := e.getEpisodesActions(ctx, repo, username, podcast, devicename, since, aggregated)
 	if err != nil {
 		return nil, fmt.Errorf("get episodes error: %w", err)
 	}
@@ -109,14 +109,14 @@ func (e *Episodes) GetEpisodesUpdates(ctx context.Context, username, devicename 
 ) ([]model.EpisodeUpdate, error) {
 	_ = includeActions
 
-	tx, err := e.repo.Begin(ctx)
+	conn, err := e.repo.GetConnection(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("start tx error: %w", err)
+		return nil, fmt.Errorf("get connection error: %w", err)
 	}
 
-	defer tx.Close()
+	repo := e.repo.GetRepository(conn)
 
-	episodes, err := e.getEpisodesActions(ctx, tx, username, "", devicename, since, true)
+	episodes, err := e.getEpisodesActions(ctx, repo, username, "", devicename, since, true)
 	if err != nil {
 		return nil, fmt.Errorf("get episodes error: %w", err)
 	}
@@ -141,19 +141,12 @@ func (e *Episodes) GetEpisodesUpdates(ctx context.Context, username, devicename 
 
 func (e *Episodes) getEpisodesActions(
 	ctx context.Context,
-	tx repository.Transaction,
+	repo repository.Repository,
 	username, podcast, devicename string,
 	since time.Time,
 	aggregated bool,
 ) ([]repository.EpisodeDB, error) {
-	tx, err := e.repo.Begin(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("start tx error: %w", err)
-	}
-
-	defer tx.Close()
-
-	user, err := tx.GetUser(ctx, username)
+	user, err := repo.GetUser(ctx, username)
 	if errors.Is(err, repository.ErrNoData) {
 		return nil, ErrUnknownUser
 	} else if err != nil {
@@ -163,7 +156,7 @@ func (e *Episodes) getEpisodesActions(
 	var deviceid int64
 
 	if devicename != "" {
-		device, err := tx.GetDevice(ctx, user.ID, devicename)
+		device, err := repo.GetDevice(ctx, user.ID, devicename)
 		if err != nil {
 			return nil, ErrUnknownDevice
 		}
@@ -174,7 +167,7 @@ func (e *Episodes) getEpisodesActions(
 	var podcastid int64
 
 	if podcast != "" {
-		p, err := tx.GetPodcast(ctx, user.ID, podcast)
+		p, err := repo.GetPodcast(ctx, user.ID, podcast)
 		if err != nil {
 			return nil, ErrUnknownPodcast
 		}
@@ -182,7 +175,7 @@ func (e *Episodes) getEpisodesActions(
 		podcastid = p.ID
 	}
 
-	episodes, err := tx.GetEpisodes(ctx, user.ID, deviceid, podcastid, since, aggregated)
+	episodes, err := repo.GetEpisodes(ctx, user.ID, deviceid, podcastid, since, aggregated)
 	if err != nil {
 		return nil, fmt.Errorf("get episodes error: %w", err)
 	}

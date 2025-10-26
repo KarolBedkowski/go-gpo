@@ -23,7 +23,7 @@ type Migrate struct {
 }
 
 func (a *Migrate) Start(ctx context.Context) error {
-	re := &repository.Repository{}
+	re := &repository.Database{}
 	if err := re.Connect(ctx, "sqlite3", a.Database+"?_fk=true"); err != nil {
 		return fmt.Errorf("connect to database error: %w", err)
 	}

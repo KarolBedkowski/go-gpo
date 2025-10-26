@@ -16,9 +16,9 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func (t *Transaction) GetDevice(ctx context.Context, userid int64, devicename string) (DeviceDB, error) {
+func (s sqliteRepository) GetDevice(ctx context.Context, userid int64, devicename string) (DeviceDB, error) {
 	device := DeviceDB{}
-	err := t.tx.GetContext(ctx, &device,
+	err := s.db.GetContext(ctx, &device,
 		"SELECT id, user_id, name, dev_type, caption, created_at, updated_at "+
 			"FROM devices WHERE user_id=? and name=?", userid, devicename)
 
@@ -28,7 +28,7 @@ func (t *Transaction) GetDevice(ctx context.Context, userid int64, devicename st
 		return device, fmt.Errorf("query device error: %w", err)
 	}
 
-	err = t.tx.GetContext(
+	err = s.db.GetContext(
 		ctx,
 		&device.Subscriptions,
 		"SELECT count(*) FROM podcasts where user_id=? and subscribed",
@@ -41,10 +41,10 @@ func (t *Transaction) GetDevice(ctx context.Context, userid int64, devicename st
 	return device, nil
 }
 
-func (t *Transaction) getUserDevices(ctx context.Context, userid int64) (DevicesDB, error) {
+func (s sqliteRepository) GetUserDevices(ctx context.Context, userid int64) (DevicesDB, error) {
 	res := []*DeviceDB{}
 
-	err := t.tx.SelectContext(ctx, &res,
+	err := s.db.SelectContext(ctx, &res,
 		"SELECT id, user_id, name, dev_type, caption, created_at, updated_at "+
 			"FROM devices WHERE user_id=?", userid)
 	if err != nil {
@@ -54,7 +54,7 @@ func (t *Transaction) getUserDevices(ctx context.Context, userid int64) (Devices
 	// all device have the same number of subscriptions
 	var subscriptions int
 
-	err = t.tx.GetContext(ctx, &subscriptions, "SELECT count(*) FROM podcasts where user_id=? and subscribed", userid)
+	err = s.db.GetContext(ctx, &subscriptions, "SELECT count(*) FROM podcasts where user_id=? and subscribed", userid)
 	if err != nil {
 		return nil, fmt.Errorf("count subscriptions error: %w", err)
 	}
@@ -66,16 +66,12 @@ func (t *Transaction) getUserDevices(ctx context.Context, userid int64) (Devices
 	return res, nil
 }
 
-func (t *Transaction) SaveDevice(ctx context.Context, device *DeviceDB) (int64, error) {
-	return t.saveDevice(ctx, device)
-}
-
-func (t *Transaction) saveDevice(ctx context.Context, device *DeviceDB) (int64, error) {
+func (s sqliteRepository) SaveDevice(ctx context.Context, device *DeviceDB) (int64, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Object("device", device).Msg("update device")
 
 	if device.ID == 0 {
-		res, err := t.tx.ExecContext(ctx,
+		res, err := s.db.ExecContext(ctx,
 			"INSERT INTO devices (user_id, name, dev_type, caption) VALUES(?, ?, ?, ?)",
 			device.UserID, device.Name, device.DevType, device.Caption)
 		if err != nil {
@@ -91,7 +87,7 @@ func (t *Transaction) saveDevice(ctx context.Context, device *DeviceDB) (int64, 
 	}
 
 	// update
-	_, err := t.tx.ExecContext(ctx,
+	_, err := s.db.ExecContext(ctx,
 		"UPDATE devices SET dev_type=?, caption=?, updated_at=current_timestamp WHERE id=?",
 		device.DevType, device.Caption, device.ID)
 	if err != nil {
@@ -101,13 +97,13 @@ func (t *Transaction) saveDevice(ctx context.Context, device *DeviceDB) (int64, 
 	return device.ID, nil
 }
 
-func (t *Transaction) ListDevices(ctx context.Context, userid int64) (DevicesDB, error) {
+func (s sqliteRepository) ListDevices(ctx context.Context, userid int64) (DevicesDB, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msg("list devices")
 
 	res := []*DeviceDB{}
 
-	err := t.tx.SelectContext(ctx, &res,
+	err := s.db.SelectContext(ctx, &res,
 		"SELECT id, user_id, name, dev_type, caption, created_at, updated_at "+
 			"FROM devices WHERE user_id=?", userid)
 	if err != nil {
@@ -115,15 +111,4 @@ func (t *Transaction) ListDevices(ctx context.Context, userid int64) (DevicesDB,
 	}
 
 	return res, nil
-}
-
-func (t *Transaction) createNewDevice(ctx context.Context, userid int64, devicename string) (int64, error) {
-	dev := DeviceDB{UserID: userid, Name: devicename, DevType: "computer"}
-
-	id, err := t.saveDevice(ctx, &dev)
-	if err != nil {
-		return 0, err
-	}
-
-	return id, nil
 }

@@ -24,10 +24,10 @@ var (
 )
 
 type Device struct {
-	repo *repository.Repository
+	repo *repository.Database
 }
 
-func NewDeviceService(repo *repository.Repository) *Device {
+func NewDeviceService(repo *repository.Database) *Device {
 	return &Device{repo}
 }
 
@@ -36,15 +36,17 @@ func (d *Device) UpdateDevice(ctx context.Context, username, deviceid, caption, 
 		return apperrors.NewAppError("invalid data").WithCategory(apperrors.ValidationError)
 	}
 
-	err := d.repo.InTransaction(ctx, func(tx *repository.Transaction) error {
-		user, err := tx.GetUser(ctx, username)
+	err := d.repo.InTransaction(ctx, func(tx repository.DBContext) error {
+		repo := d.repo.GetRepository(tx)
+
+		user, err := repo.GetUser(ctx, username)
 		if errors.Is(err, repository.ErrNoData) {
 			return ErrUnknownUser
 		} else if err != nil {
 			return fmt.Errorf("get user error: %w", err)
 		}
 
-		device, err := tx.GetDevice(ctx, user.ID, deviceid)
+		device, err := repo.GetDevice(ctx, user.ID, deviceid)
 		if errors.Is(err, repository.ErrNoData) {
 			// new device
 			device = repository.DeviceDB{UserID: user.ID, Name: deviceid, DevType: "other"}
@@ -55,7 +57,7 @@ func (d *Device) UpdateDevice(ctx context.Context, username, deviceid, caption, 
 		device.Caption = caption
 		device.DevType = devtype
 
-		_, err = tx.SaveDevice(ctx, &device)
+		_, err = repo.SaveDevice(ctx, &device)
 		if err != nil {
 			return fmt.Errorf("save device error: %w", err)
 		}
@@ -70,21 +72,23 @@ func (d *Device) UpdateDevice(ctx context.Context, username, deviceid, caption, 
 }
 
 func (d *Device) ListDevices(ctx context.Context, username string) ([]model.Device, error) {
-	tx, err := d.repo.Begin(ctx)
+	conn, err := d.repo.GetConnection(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("start tx error: %w", err)
+		return nil, fmt.Errorf("get connection error: %w", err)
 	}
 
-	defer tx.Close()
+	defer conn.Close()
 
-	user, err := tx.GetUser(ctx, username)
+	repo := d.repo.GetRepository(conn)
+
+	user, err := repo.GetUser(ctx, username)
 	if errors.Is(err, repository.ErrNoData) {
 		return nil, ErrUnknownUser
 	} else if err != nil {
 		return nil, fmt.Errorf("get user error: %w", err)
 	}
 
-	devices, err := tx.ListDevices(ctx, user.ID)
+	devices, err := repo.ListDevices(ctx, user.ID)
 	if err != nil {
 		return nil, fmt.Errorf("get device error: %w", err)
 	}

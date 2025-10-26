@@ -116,7 +116,7 @@ type SessionProvider struct {
 	maxlifetime int64
 }
 
-func NewSessionProvider(r *Repository) *SessionProvider {
+func NewSessionProvider(r *Database) *SessionProvider {
 	if r == nil {
 		panic("repository is nil")
 	}

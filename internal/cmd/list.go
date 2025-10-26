@@ -24,7 +24,7 @@ type List struct {
 }
 
 func (a *List) Start(ctx context.Context) error {
-	re := &repository.Repository{}
+	re := &repository.Database{}
 	if err := re.Connect(ctx, "sqlite3", a.Database+"?_fk=true"); err != nil {
 		return fmt.Errorf("connect to database error: %w", err)
 	}
@@ -40,7 +40,7 @@ func (a *List) Start(ctx context.Context) error {
 	}
 }
 
-func (a *List) listDevices(ctx context.Context, re *repository.Repository) error {
+func (a *List) listDevices(ctx context.Context, re *repository.Database) error {
 	devsrv := service.NewDeviceService(re)
 
 	devices, err := devsrv.ListDevices(ctx, a.Username)
@@ -55,7 +55,7 @@ func (a *List) listDevices(ctx context.Context, re *repository.Repository) error
 	return nil
 }
 
-func (a *List) listSubscriptions(ctx context.Context, re *repository.Repository) error {
+func (a *List) listSubscriptions(ctx context.Context, re *repository.Database) error {
 	subssrv := service.NewSubssService(re)
 
 	subs, err := subssrv.GetUserSubscriptions(ctx, a.Username, time.Time{})

@@ -20,11 +20,11 @@ import (
 
 var ErrNoData = errors.New("no result")
 
-type Repository struct {
+type Database struct {
 	db *sqlx.DB
 }
 
-func (r *Repository) Connect(ctx context.Context, driver, connstr string) error {
+func (r *Database) Connect(ctx context.Context, driver, connstr string) error {
 	var err error
 
 	logger := log.Ctx(ctx)
@@ -42,16 +42,7 @@ func (r *Repository) Connect(ctx context.Context, driver, connstr string) error 
 	return nil
 }
 
-func (r *Repository) Begin(ctx context.Context) (Transaction, error) {
-	tx, err := r.db.BeginTxx(ctx, nil)
-	if err != nil {
-		return Transaction{}, fmt.Errorf("begin tx error: %w", err)
-	}
-
-	return Transaction{tx, false}, nil
-}
-
-func (r *Repository) Migrate(ctx context.Context, driver string, em embed.FS) error {
+func (r *Database) Migrate(ctx context.Context, driver string, em embed.FS) error {
 	goose.SetBaseFS(em)
 
 	if err := goose.SetDialect(driver); err != nil {
@@ -65,17 +56,33 @@ func (r *Repository) Migrate(ctx context.Context, driver string, em embed.FS) er
 	return nil
 }
 
-func (r *Repository) InTransaction(ctx context.Context, f func(*Transaction) error) error {
+func (r *Database) GetConnection(ctx context.Context) (*sqlx.Conn, error) {
+	conn, err := r.db.Connx(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("open connection error: %w", err)
+	}
+
+	return conn, nil
+}
+
+func (r *Database) Begin(ctx context.Context) (*sqlx.Tx, error) {
+	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("get transaction error: %w", err)
+	}
+
+	return tx, nil
+}
+
+func (r *Database) InTransaction(ctx context.Context, f func(DBContext) error) error {
 	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin tx error: %w", err)
 	}
 
-	t := Transaction{tx, false}
-
-	err = f(&t)
+	err = f(tx)
 	if err != nil {
-		if err := t.tx.Rollback(); err != nil {
+		if err := tx.Rollback(); err != nil {
 			return errors.Join(err, fmt.Errorf("commit error: %w", err))
 		}
 
@@ -89,37 +96,6 @@ func (r *Repository) InTransaction(ctx context.Context, f func(*Transaction) err
 	return nil
 }
 
-//---------------------------
-
-type Transaction struct {
-	tx        *sqlx.Tx
-	committed bool
-}
-
-func (t *Transaction) Close() error {
-	if !t.committed {
-		if err := t.tx.Rollback(); err != nil {
-			return fmt.Errorf("rollback error: %w", err)
-		}
-	}
-
-	return nil
-}
-
-func (t *Transaction) Commit() error {
-	if err := t.tx.Commit(); err != nil {
-		return fmt.Errorf("commit error: %w", err)
-	}
-
-	t.committed = true
-
-	return nil
-}
-
-//---------------------------
-
-type queryer interface {
-	sqlx.QueryerContext
-	SelectContext(ctx context.Context, dest any, query string, args ...any) error
-	GetContext(ctx context.Context, dest any, query string, args ...any) error
+func (r *Database) GetRepository(db DBContext) Repository {
+	return sqliteRepository{db}
 }

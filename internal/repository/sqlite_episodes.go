@@ -17,7 +17,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func (t *Transaction) GetEpisodes(
+func (s sqliteRepository) GetEpisodes(
 	ctx context.Context,
 	userid, deviceid, podcastid int64,
 	since time.Time,
@@ -48,7 +48,7 @@ func (t *Transaction) GetEpisodes(
 
 	res := []EpisodeDB{}
 
-	err := t.tx.SelectContext(ctx, &res, query, args...)
+	err := s.db.SelectContext(ctx, &res, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("query episodes error: %w", err)
 	}
@@ -68,17 +68,17 @@ func (t *Transaction) GetEpisodes(
 	return slices.Collect(maps.Values(agr)), nil
 }
 
-func (t *Transaction) SaveEpisode(ctx context.Context, userid int64, episode ...EpisodeDB) error {
+func (s sqliteRepository) SaveEpisode(ctx context.Context, userid int64, episode ...EpisodeDB) error {
 	logger := log.Ctx(ctx)
 
-	podcasts, err := t.GetSubscribedPodcasts(ctx, userid, time.Time{})
+	podcasts, err := s.GetSubscribedPodcasts(ctx, userid, time.Time{})
 	if err != nil {
 		return err
 	}
 
 	podcastsmap := podcasts.ToIDsMap()
 
-	devices, err := t.getUserDevices(ctx, userid)
+	devices, err := s.getUserDevices(ctx, userid)
 	if err != nil {
 		return err
 	}
@@ -93,7 +93,7 @@ func (t *Transaction) SaveEpisode(ctx context.Context, userid int64, episode ...
 			eps.PodcastID = pid
 		} else {
 			// insert podcast
-			id, err := t.createNewPodcast(ctx, userid, eps.PodcastURL)
+			id, err := s.createNewPodcast(ctx, userid, eps.PodcastURL)
 			if err != nil {
 				return fmt.Errorf("save new podcast %q error: %w", eps.PodcastURL, err)
 			}
@@ -106,7 +106,7 @@ func (t *Transaction) SaveEpisode(ctx context.Context, userid int64, episode ...
 			eps.DeviceID = did
 		} else {
 			// create device
-			did, err := t.createNewDevice(ctx, userid, eps.Device)
+			did, err := s.createNewDevice(ctx, userid, eps.Device)
 			if err != nil {
 				return fmt.Errorf("save new device %q error: %w", eps.Device, err)
 			}
@@ -115,7 +115,7 @@ func (t *Transaction) SaveEpisode(ctx context.Context, userid int64, episode ...
 			devicesmap[eps.Device] = did
 		}
 
-		if err := t.saveEpisode(ctx, eps); err != nil {
+		if err := s.saveEpisode(ctx, eps); err != nil {
 			return err
 		}
 	}
@@ -123,8 +123,27 @@ func (t *Transaction) SaveEpisode(ctx context.Context, userid int64, episode ...
 	return nil
 }
 
-func (t *Transaction) saveEpisode(ctx context.Context, episode EpisodeDB) error {
-	_, err := t.tx.ExecContext(
+func (s sqliteRepository) createNewDevice(ctx context.Context, userid int64, devicename string) (int64, error) {
+	// TODO: drop
+	device := DeviceDB{UserID: userid, Name: devicename, DevType: "computer"}
+
+	res, err := s.db.ExecContext(ctx,
+		"INSERT INTO devices (user_id, name, dev_type, caption) VALUES(?, ?, ?, ?)",
+		device.UserID, device.Name, device.DevType, device.Caption)
+	if err != nil {
+		return 0, fmt.Errorf("insert new device error: %w", err)
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("get last id error: %w", err)
+	}
+
+	return id, nil
+}
+
+func (s sqliteRepository) saveEpisode(ctx context.Context, episode EpisodeDB) error {
+	_, err := s.db.ExecContext(
 		ctx,
 		"INSERT INTO episodes (podcast_id, device_id, title, url, action, started, position, total, "+
 			"created_at, updated_at) "+
@@ -146,4 +165,29 @@ func (t *Transaction) saveEpisode(ctx context.Context, episode EpisodeDB) error 
 	}
 
 	return nil
+}
+
+func (s sqliteRepository) getUserDevices(ctx context.Context, userid int64) (DevicesDB, error) {
+	res := []*DeviceDB{}
+
+	err := s.db.SelectContext(ctx, &res,
+		"SELECT id, user_id, name, dev_type, caption, created_at, updated_at "+
+			"FROM devices WHERE user_id=?", userid)
+	if err != nil {
+		return nil, fmt.Errorf("query device error: %w", err)
+	}
+
+	// all device have the same number of subscriptions
+	var subscriptions int
+
+	err = s.db.GetContext(ctx, &subscriptions, "SELECT count(*) FROM podcasts where user_id=? and subscribed", userid)
+	if err != nil {
+		return nil, fmt.Errorf("count subscriptions error: %w", err)
+	}
+
+	for _, t := range res {
+		t.Subscriptions = subscriptions
+	}
+
+	return res, nil
 }

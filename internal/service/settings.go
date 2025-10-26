@@ -19,29 +19,31 @@ import (
 )
 
 type Settings struct {
-	repo *repository.Repository
+	repo *repository.Database
 }
 
-func NewSettingsService(repo *repository.Repository) *Settings {
+func NewSettingsService(repo *repository.Database) *Settings {
 	return &Settings{repo}
 }
 
 func (s Settings) GetSettings(ctx context.Context, username, scope, key string) (map[string]string, error) {
-	tx, err := s.repo.Begin(ctx)
+	conn, err := s.repo.GetConnection(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("start tx error: %w", err)
+		return nil, fmt.Errorf("get connection error: %w", err)
 	}
 
-	defer tx.Close()
+	defer conn.Close()
 
-	user, err := tx.GetUser(ctx, username)
+	repo := s.repo.GetRepository(conn)
+
+	user, err := repo.GetUser(ctx, username)
 	if errors.Is(err, repository.ErrNoData) {
 		return nil, ErrUnknownUser
 	} else if err != nil {
 		return nil, fmt.Errorf("get user error: %w", err)
 	}
 
-	sett, err := tx.GetSettings(ctx, user.ID, scope, key)
+	sett, err := repo.GetSettings(ctx, user.ID, scope, key)
 	if err != nil {
 		return nil, fmt.Errorf("get settings error: %w", err)
 	}
@@ -59,58 +61,56 @@ func (s Settings) GetSettings(ctx context.Context, username, scope, key string) 
 	return settings, nil
 }
 
-func (e Settings) SaveSettings(
+func (s Settings) SaveSettings(
 	ctx context.Context,
 	username, scope, key string,
 	set map[string]string,
 	del []string,
 ) error {
-	tx, err := e.repo.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("start tx error: %w", err)
-	}
+	err := s.repo.InTransaction(ctx, func(db repository.DBContext) error {
+		repo := s.repo.GetRepository(db)
 
-	defer tx.Close()
-
-	user, err := tx.GetUser(ctx, username)
-	if errors.Is(err, repository.ErrNoData) {
-		return ErrUnknownUser
-	} else if err != nil {
-		return fmt.Errorf("get user error: %w", err)
-	}
-
-	dbsett, err := tx.GetSettings(ctx, user.ID, scope, key)
-	if err != nil {
-		return fmt.Errorf("get settings error: %w", err)
-	}
-
-	settings := make(map[string]string)
-
-	if len(dbsett.Value) > 0 {
-		if err := json.Unmarshal([]byte(dbsett.Value), &settings); err != nil {
-			return fmt.Errorf("unmarshal settings error: %w", err)
+		user, err := repo.GetUser(ctx, username)
+		if errors.Is(err, repository.ErrNoData) {
+			return ErrUnknownUser
+		} else if err != nil {
+			return fmt.Errorf("get user error: %w", err)
 		}
-	}
 
-	maps.Copy(settings, set)
+		dbsett, err := repo.GetSettings(ctx, user.ID, scope, key)
+		if err != nil {
+			return fmt.Errorf("get settings error: %w", err)
+		}
 
-	for _, k := range del {
-		delete(settings, k)
-	}
+		settings := make(map[string]string)
 
-	data, err := json.Marshal(settings)
+		if len(dbsett.Value) > 0 {
+			if err := json.Unmarshal([]byte(dbsett.Value), &settings); err != nil {
+				return fmt.Errorf("unmarshal settings error: %w", err)
+			}
+		}
+
+		maps.Copy(settings, set)
+
+		for _, k := range del {
+			delete(settings, k)
+		}
+
+		data, err := json.Marshal(settings)
+		if err != nil {
+			return fmt.Errorf("marshal settings error: %w", err)
+		}
+
+		dbsett.Value = string(data)
+
+		if err := repo.SaveSettings(ctx, &dbsett); err != nil {
+			return fmt.Errorf("save settings error: %w", err)
+		}
+
+		return nil
+	})
 	if err != nil {
-		return fmt.Errorf("marshal settings error: %w", err)
-	}
-
-	dbsett.Value = string(data)
-
-	if err := tx.SaveSettings(ctx, &dbsett); err != nil {
 		return fmt.Errorf("save settings error: %w", err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit error: %w", err)
 	}
 
 	return nil

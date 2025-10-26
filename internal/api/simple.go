@@ -28,7 +28,7 @@ const opmlDeadline = 5 * time.Second
 
 type simpleResource struct {
 	cfg     *Configuration
-	repo    *repository.Repository
+	repo    *repository.Database
 	subServ *service.Subs
 }
 

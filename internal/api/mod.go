@@ -33,7 +33,7 @@ type Configuration struct {
 
 const connectioTimeout = 60 * time.Second
 
-func Start(repo *repository.Repository, cfg *Configuration) error {
+func Start(repo *repository.Database, cfg *Configuration) error { //nolint:funlen
 	session.RegisterFn("db", func() session.Provider { return repository.NewSessionProvider(repo) })
 
 	sess, err := session.Sessioner(session.Options{
@@ -132,6 +132,7 @@ func writeError(w http.ResponseWriter, r *http.Request, code int, err error) {
 
 		render.Status(r, code)
 		render.JSON(w, r, &res)
+
 		return
 	}
 

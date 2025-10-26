@@ -16,10 +16,10 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func (t *Transaction) GetUser(ctx context.Context, username string) (UserDB, error) {
+func (s sqliteRepository) GetUser(ctx context.Context, username string) (UserDB, error) {
 	user := UserDB{}
 
-	err := t.tx.QueryRowxContext(ctx,
+	err := s.db.QueryRowxContext(ctx,
 		"SELECT id, username, password, email, name, created_at, updated_at "+
 			"FROM users WHERE username=?",
 		username).
@@ -35,12 +35,12 @@ func (t *Transaction) GetUser(ctx context.Context, username string) (UserDB, err
 	}
 }
 
-func (t *Transaction) SaveUser(ctx context.Context, user *UserDB) (int64, error) {
+func (s sqliteRepository) SaveUser(ctx context.Context, user *UserDB) (int64, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Object("user", user).Msg("save user")
 
 	if user.ID == 0 {
-		res, err := t.tx.ExecContext(ctx,
+		res, err := s.db.ExecContext(ctx,
 			"INSERT INTO users (username, password, email, name, created_at, updated_at) "+
 				"VALUES(?, ?, ?, ?, ?, ?)",
 			user.Username, user.Password, user.Email, user.Name, user.CreatedAt, user.UpdatedAt)
@@ -57,7 +57,7 @@ func (t *Transaction) SaveUser(ctx context.Context, user *UserDB) (int64, error)
 	}
 
 	// update
-	_, err := t.tx.ExecContext(ctx,
+	_, err := s.db.ExecContext(ctx,
 		"UPDATE users SET password=?, email=?, name=?, updated_at=? WHERE id=?",
 		user.Password, user.Email, user.Name, user.UpdatedAt, user.ID)
 	if err != nil {

@@ -24,23 +24,25 @@ var (
 )
 
 type Users struct {
-	repo       *repository.Repository
+	repo       *repository.Database
 	passHasher PasswordHasher
 }
 
-func NewUsersService(repo *repository.Repository) *Users {
+func NewUsersService(repo *repository.Database) *Users {
 	return &Users{repo, BCryptPasswordHasher{}}
 }
 
 func (u *Users) LoginUser(ctx context.Context, username, password string) (model.User, error) {
-	tx, err := u.repo.Begin(ctx)
+	conn, err := u.repo.GetConnection(ctx)
 	if err != nil {
-		return model.User{}, fmt.Errorf("start tx error: %w", err)
+		return model.User{}, fmt.Errorf("get db connection error: %w", err)
 	}
 
-	defer tx.Close()
+	defer conn.Close()
 
-	user, err := tx.GetUser(ctx, username)
+	repo := u.repo.GetRepository(conn)
+
+	user, err := repo.GetUser(ctx, username)
 	if errors.Is(err, repository.ErrNoData) {
 		return model.User{}, ErrUnknownUser
 	} else if err != nil {
@@ -57,13 +59,15 @@ func (u *Users) LoginUser(ctx context.Context, username, password string) (model
 func (u *Users) AddUser(ctx context.Context, user model.User) (int64, error) {
 	tx, err := u.repo.Begin(ctx)
 	if err != nil {
-		return 0, fmt.Errorf("start tx error: %w", err)
+		return 0, fmt.Errorf("get db connection error: %w", err)
 	}
 
-	defer tx.Close()
+	defer tx.Rollback()
+
+	repo := u.repo.GetRepository(tx)
 
 	// is user exists?
-	if _, err := tx.GetUser(ctx, user.Username); err != nil && !errors.Is(err, repository.ErrNoData) {
+	if _, err := repo.GetUser(ctx, user.Username); err != nil && !errors.Is(err, repository.ErrNoData) {
 		return 0, fmt.Errorf("check user exists error: %w", err)
 	} else if err == nil {
 		return 0, ErrUserExists
@@ -84,7 +88,7 @@ func (u *Users) AddUser(ctx context.Context, user model.User) (int64, error) {
 		UpdatedAt: now,
 	}
 
-	id, err := tx.SaveUser(ctx, &udb)
+	id, err := repo.SaveUser(ctx, &udb)
 	if err != nil {
 		return 0, fmt.Errorf("save user error: %w", err)
 	}
@@ -102,10 +106,12 @@ func (u *Users) ChangePassword(ctx context.Context, user model.User) (int64, err
 		return 0, fmt.Errorf("start tx error: %w", err)
 	}
 
-	defer tx.Close()
+	defer tx.Rollback()
+
+	repo := u.repo.GetRepository(tx)
 
 	// is user exists?
-	udb, err := tx.GetUser(ctx, user.Username)
+	udb, err := repo.GetUser(ctx, user.Username)
 	if errors.Is(err, repository.ErrNoData) {
 		return 0, ErrUnknownUser
 	} else if err != nil {
@@ -119,7 +125,7 @@ func (u *Users) ChangePassword(ctx context.Context, user model.User) (int64, err
 
 	udb.UpdatedAt = time.Now()
 
-	id, err := tx.SaveUser(ctx, &udb)
+	id, err := repo.SaveUser(ctx, &udb)
 	if err != nil {
 		return 0, fmt.Errorf("save user error: %w", err)
 	}

@@ -29,7 +29,7 @@ func (s *Server) Start(ctx context.Context) error {
 
 	logger.Log().Msgf("Starting server on %q...", s.Listen)
 
-	re := &repository.Repository{}
+	re := &repository.Database{}
 	if err := re.Connect(ctx, "sqlite3", s.Database+"?_fk=true"); err != nil {
 		return fmt.Errorf("connect to database error: %w", err)
 	}
