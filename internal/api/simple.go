@@ -17,14 +17,12 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
-	"github.com/oxtyped/go-opml/opml"
 	"github.com/rs/zerolog"
 	"gitlab.com/kabes/go-gpodder/internal"
+	"gitlab.com/kabes/go-gpodder/internal/opml"
 	"gitlab.com/kabes/go-gpodder/internal/repository"
 	"gitlab.com/kabes/go-gpodder/internal/service"
 )
-
-const opmlDeadline = 5 * time.Second
 
 type simpleResource struct {
 	cfg     *Configuration
@@ -71,10 +69,8 @@ func (s *simpleResource) downloadAllSubscriptions(
 
 	switch format := chi.URLParam(r, "format"); format {
 	case "opml": //nolint:goconst
-		o := opml.NewOPMLFromBlank("go-gpodder")
-		for _, s := range subs {
-			o.AddRSSFromURL(s, opmlDeadline)
-		}
+		o := opml.NewOPML("go-gpodder")
+		o.AddURL(subs...)
 
 		result, err := o.XML()
 		if err != nil {
@@ -85,7 +81,7 @@ func (s *simpleResource) downloadAllSubscriptions(
 		}
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(result))
+		w.Write(result)
 	case "json": //nolint:goconst
 		w.WriteHeader(http.StatusOK)
 		render.JSON(w, r, subs)
@@ -202,17 +198,13 @@ func (s *simpleResource) uploadSubscriptions(
 }
 
 func formatOMPL(subs []string) ([]byte, error) {
-	o := opml.NewOPMLFromBlank("go-gpodder")
-	for _, s := range subs {
-		if err := o.AddRSSFromURL(s, opmlDeadline); err != nil {
-			return nil, fmt.Errorf("build opml (add %q) error: %w", s, err)
-		}
-	}
+	o := opml.NewOPML("go-gpodder")
+	o.AddURL(subs...)
 
 	result, err := o.XML()
 	if err != nil {
 		return nil, fmt.Errorf("build opml error: %w", err)
 	}
 
-	return []byte(result), nil
+	return result, nil
 }

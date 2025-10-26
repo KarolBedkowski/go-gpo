@@ -13,9 +13,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/oxtyped/go-opml/opml"
 	"github.com/rs/zerolog"
 	"gitlab.com/kabes/go-gpodder/internal"
+	"gitlab.com/kabes/go-gpodder/internal/opml"
 	"gitlab.com/kabes/go-gpodder/internal/service"
 
 	"github.com/go-chi/chi/v5"
@@ -124,12 +124,8 @@ func (sr *subscriptionsResource) userSubscriptions(
 		return
 	}
 
-	const deadline = 5 * time.Second
-
-	o := opml.NewOPMLFromBlank("go-gpodder")
-	for _, s := range subs {
-		o.AddRSSFromURL(s, deadline)
-	}
+	o := opml.NewOPML("go-gpodder")
+	o.AddURL(subs...)
 
 	result, err := o.XML()
 	if err != nil {
@@ -140,7 +136,7 @@ func (sr *subscriptionsResource) userSubscriptions(
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(result))
+	w.Write(result)
 }
 
 func (sr *subscriptionsResource) uploadSubscriptions(

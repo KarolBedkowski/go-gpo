@@ -14,7 +14,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/oxtyped/go-opml/opml"
+	"gitlab.com/kabes/go-gpodder/internal/opml"
 )
 
 // ---------------------------------------
@@ -87,18 +87,12 @@ func parseOPML(r io.Reader) ([]string, error) {
 		return []string{}, nil
 	}
 
-	o, err := opml.NewOPML(buf.Bytes())
+	o, err := opml.NewOPMLFromBytes(buf.Bytes())
 	if err != nil {
 		return nil, fmt.Errorf("parse opml error: %w", err)
 	}
 
-	subs := make([]string, 0)
-
-	for _, i := range o.Outlines() {
-		if url := i.XMLURL; url != "" {
-			subs = append(subs, url)
-		}
-	}
+	subs := o.ExtractsURLs()
 
 	return subs, nil
 }
