@@ -15,6 +15,7 @@ import (
 	"os"
 	"runtime/debug"
 
+	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli/v3"
 
 	"gitlab.com/kabes/go-gpodder/internal/cmd"
@@ -109,7 +110,7 @@ func startServerCmd() *cli.Command {
 				LogBody:  c.Bool("verbose"),
 			}
 
-			return s.Start(ctx)
+			return s.Start(log.Logger.WithContext(ctx))
 		},
 	}
 }
@@ -134,7 +135,7 @@ func addUserCmd() *cli.Command {
 				Username: c.String("username"),
 			}
 
-			return s.Start(ctx)
+			return s.Start(log.Logger.WithContext(ctx))
 		},
 	}
 }
@@ -155,7 +156,7 @@ func changeUserPasswordCmd() *cli.Command {
 				Username: c.String("username"),
 			}
 
-			return s.Start(ctx)
+			return s.Start(log.Logger.WithContext(ctx))
 		},
 	}
 }
@@ -166,11 +167,12 @@ func migrateCmd() *cli.Command {
 		Usage: "update database",
 		Action: func(ctx context.Context, c *cli.Command) error {
 			initializeLogger(c.String("log.level"), c.String("log.format"))
+
 			s := cmd.Migrate{
 				Database: c.String("database"),
 			}
 
-			return s.Start(ctx)
+			return s.Start(log.Logger.WithContext(ctx))
 		},
 	}
 }
@@ -186,6 +188,7 @@ func listCmd() *cli.Command {
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
 			initializeLogger(c.String("log.level"), c.String("log.format"))
+
 			s := cmd.List{
 				Database: c.String("database"),
 				Username: c.String("username"),
@@ -193,7 +196,7 @@ func listCmd() *cli.Command {
 				Object:   c.String("object"),
 			}
 
-			return s.Start(ctx)
+			return s.Start(log.Logger.WithContext(ctx))
 		},
 	}
 }
