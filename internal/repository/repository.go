@@ -31,7 +31,6 @@ type DBContext interface {
 
 type DevicesRepository interface {
 	GetDevice(ctx context.Context, userid int64, devicename string) (DeviceDB, error)
-	GetUserDevices(ctx context.Context, userid int64) (DevicesDB, error)
 	SaveDevice(ctx context.Context, device *DeviceDB) (int64, error)
 	ListDevices(ctx context.Context, userid int64) (DevicesDB, error)
 }

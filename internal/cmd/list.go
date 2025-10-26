@@ -49,7 +49,7 @@ func (a *List) listDevices(ctx context.Context, re *repository.Database) error {
 	}
 
 	for _, d := range devices {
-		fmt.Printf("%-30s | %-10s | %-30s\n", d.Name, d.DevType, d.Caption)
+		fmt.Printf("%-30s | %-10s | %-30s | %d \n", d.Name, d.DevType, d.Caption, d.Subscriptions)
 	}
 
 	return nil

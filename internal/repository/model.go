@@ -19,7 +19,7 @@ type DeviceDB struct {
 	CreatedAt time.Time `db:"created_at"`
 	UpdatedAt time.Time `db:"updated_at"`
 
-	Subscriptions int `db:"-"`
+	Subscriptions int `db:"subscriptions"`
 }
 
 func (d DeviceDB) MarshalZerologObject(event *zerolog.Event) {
