@@ -26,7 +26,21 @@ type AppError struct {
 
 const unknownFile = "???"
 
-func NewAppError(msg string, args ...any) AppError {
+func NewAppError(msg string) AppError {
+	_, file, line, ok := runtime.Caller(1)
+	if !ok {
+		file = unknownFile
+		line = 0
+	}
+
+	return AppError{
+		Line: line,
+		File: file,
+		Msg:  msg,
+	}
+}
+
+func NewAppErrorf(msg string, args ...any) AppError {
 	_, file, line, ok := runtime.Caller(1)
 	if !ok {
 		file = unknownFile

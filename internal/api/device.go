@@ -47,7 +47,7 @@ type updateDeviceReq struct {
 
 func (u updateDeviceReq) validate() error {
 	if !slices.Contains(model.ValidDevTypes, u.Type) {
-		return apperrors.NewAppError("invalid device type %q", u.Type).WithCategory(apperrors.ValidationError)
+		return apperrors.NewAppErrorf("invalid device type %q", u.Type).WithCategory(apperrors.ValidationError)
 	}
 
 	return nil

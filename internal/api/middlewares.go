@@ -156,7 +156,7 @@ func newSimpleLogMiddleware(next http.Handler) http.Handler {
 
 // newLogMiddleware create new logging middleware.
 func newLogMiddleware(next http.Handler) http.Handler {
-	logFn := func(writer http.ResponseWriter, request *http.Request) {
+	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		if strings.HasPrefix(request.URL.Path, "/metrics") {
 			next.ServeHTTP(writer, request)
 
@@ -173,46 +173,34 @@ func newLogMiddleware(next http.Handler) http.Handler {
 			Str("url", request.URL.Redacted()).
 			Str("remote", request.RemoteAddr).
 			Str("method", request.Method).
-			// Strs("agent", request.Header["User-Agent"]).
-			// Interface("headers", request.Header).
+			Interface("headers", request.Header).
 			Msg("webhandler: request start")
 
-		var reqBody bytes.Buffer
+		var reqBody, respBody bytes.Buffer
 
 		request.Body = io.NopCloser(io.TeeReader(request.Body, &reqBody))
-
 		lrw := middleware.NewWrapResponseWriter(writer, request.ProtoMajor)
-		// lrw := logResponseWriter{ResponseWriter: writer, status: 0, size: 0}
 
-		var respBody bytes.Buffer
 		lrw.Tee(&respBody)
 
 		defer func() {
-			llog.Debug().Str("request_body", reqBody.String()).
-				Str("req-content-type", request.Header.Get("Content-Type")).
+			llog.Debug().
+				Str("request_body", reqBody.String()).
 				Interface("req-headers", request.Header).
-				Msg("request")
-			llog.Debug().Str("response_body", respBody.String()).
-				Str("resp-content-type", lrw.Header().Get("Content-Type")).
+				Msg("request data")
+			llog.Debug().
+				Str("response_body", respBody.String()).
 				Interface("resp-headers", lrw.Header()).
-				Msg("response")
+				Msg("response data")
+
+			level := zerolog.DebugLevel
 
 			if lrw.Status() >= 400 && lrw.Status() != 404 {
-				llog.Error().
-					Str("uri", request.RequestURI).
-					Interface("req_headers", request.Header).
-					Interface("resp_header", lrw.Header()).
-					Int("status", lrw.Status()).
-					Int("size", lrw.BytesWritten()).
-					Dur("duration", time.Since(start)).
-					Msg("webhandler: request finished")
-
-				return
+				level = zerolog.ErrorLevel
 			}
 
-			llog.Debug().
+			llog.WithLevel(level).
 				Str("uri", request.RequestURI).
-				// Interface("resp_header", lrw.ResponseWriter.Header()).
 				Int("status", lrw.Status()).
 				Int("size", lrw.BytesWritten()).
 				Dur("duration", time.Since(start)).
@@ -220,9 +208,7 @@ func newLogMiddleware(next http.Handler) http.Handler {
 		}()
 
 		next.ServeHTTP(lrw, request)
-	}
-
-	return http.HandlerFunc(logFn)
+	})
 }
 
 func newRecoverMiddleware(next http.Handler) http.Handler {
