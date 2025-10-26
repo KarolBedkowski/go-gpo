@@ -62,14 +62,14 @@ func (d deviceResource) update(ctx context.Context, w http.ResponseWriter, r *ht
 	var udd updateDeviceReq
 
 	if err := render.DecodeJSON(r.Body, &udd); err != nil {
-		logger.Info().Err(err).Msg("error decoding json payload")
+		logger.Debug().Err(err).Msg("error decoding json payload")
 		writeError(w, r, http.StatusBadRequest, nil)
 
 		return
 	}
 
 	if err := udd.validate(); err != nil {
-		logger.Info().Msgf("unknown device: %q", deviceid)
+		logger.Debug().Msgf("unknown device: %q", deviceid)
 		writeError(w, r, http.StatusBadRequest, err)
 
 		return
@@ -83,10 +83,10 @@ func (d deviceResource) update(ctx context.Context, w http.ResponseWriter, r *ht
 		logger.Info().Msgf("unknown user: %q", user)
 		writeError(w, r, http.StatusBadRequest, nil)
 	case errors.Is(err, service.ErrUnknownDevice):
-		logger.Info().Msgf("unknown device: %q", deviceid)
+		logger.Debug().Msgf("unknown device: %q", deviceid)
 		writeError(w, r, http.StatusBadRequest, nil)
 	default:
-		logger.Info().Err(err).Msg("update device error")
+		logger.Warn().Err(err).Msg("update device error")
 		writeError(w, r, http.StatusInternalServerError, nil)
 	}
 }
@@ -104,7 +104,7 @@ func (d deviceResource) list(ctx context.Context, w http.ResponseWriter, r *http
 		logger.Info().Msgf("unknown user: %q", user)
 		writeError(w, r, http.StatusBadRequest, nil)
 	default:
-		logger.Info().Err(err).Msg("update device error")
+		logger.Warn().Err(err).Msg("update device error")
 		writeError(w, r, http.StatusInternalServerError, nil)
 	}
 }

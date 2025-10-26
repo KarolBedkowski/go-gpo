@@ -17,19 +17,15 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func (s sqliteRepository) GetEpisodes(
-	ctx context.Context,
-	userid, deviceid, podcastid int64,
-	since time.Time,
-	aggregated bool,
+func (s sqliteRepository) ListEpisodes(
+	ctx context.Context, userid, deviceid, podcastid int64, since time.Time, aggregated bool,
 ) ([]EpisodeDB, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Int64("userid", userid).Int64("podcastid", podcastid).
-		Int64("deviceid", deviceid).Bool("aggregated", aggregated).
-		Time("since", since).Msg("get podcasts")
+	logger.Debug().Int64("user_id", userid).Int64("podcast_id", podcastid).Int64("device_id", deviceid).
+		Msgf("get episodes since=%s aggregated=%v", since, aggregated)
 
 	query := "SELECT e.id, e.podcast_id, e.url, e.title, e.action, e.started, e.position, e.total, " +
-		"e.created_at, e.updated_at, p.url as podcast_url, p.title as podcast_title, d.name as device_name " +
+		" e.created_at, e.updated_at, p.url as podcast_url, p.title as podcast_title, d.name as device_name " +
 		"FROM episodes e JOIN podcasts p on p.id = e.podcast_id JOIN devices d on d.id=e.device_id " +
 		"WHERE p.user_id=? AND e.updated_at > ? ORDER BY e.updated_at"
 	args := []any{userid, since}
@@ -44,7 +40,7 @@ func (s sqliteRepository) GetEpisodes(
 		args = append(args, podcastid) //nolint:wsl_v5
 	}
 
-	logger.Debug().Str("query", query).Interface("args", args).Msg("query")
+	logger.Debug().Msgf("get episodes - query=%q, args=%v", query, args)
 
 	res := []EpisodeDB{}
 
@@ -53,11 +49,11 @@ func (s sqliteRepository) GetEpisodes(
 		return nil, fmt.Errorf("query episodes error: %w", err)
 	}
 
-	logger.Debug().Msgf("query result len=%d", len(res))
-
 	if !aggregated {
 		return res, nil
 	}
+
+	logger.Debug().Msgf("get episodes - aggregate %d episodes", len(res))
 
 	// TODO: refactor; load only last entries from db
 	agr := make(map[int64]EpisodeDB)
@@ -70,23 +66,26 @@ func (s sqliteRepository) GetEpisodes(
 
 func (s sqliteRepository) SaveEpisode(ctx context.Context, userid int64, episode ...EpisodeDB) error {
 	logger := log.Ctx(ctx)
+	logger.Debug().Int64("user_id", userid).Msgf("save episode")
 
-	podcasts, err := s.GetSubscribedPodcasts(ctx, userid, time.Time{})
+	podcasts, err := s.ListSubscribedPodcasts(ctx, userid, time.Time{})
 	if err != nil {
 		return err
 	}
 
+	// cache podcasts
 	podcastsmap := podcasts.ToIDsMap()
 
-	devices, err := s.getUserDevices(ctx, userid)
+	devices, err := s.ListDevices(ctx, userid)
 	if err != nil {
 		return err
 	}
 
+	// cache devices
 	devicesmap := devices.ToIDsMap()
 
 	for _, eps := range episode {
-		logger.Debug().Object("episode", eps).Msg("save episode")
+		logger.Debug().Object("episode", eps).Msg("update episode")
 
 		if pid, ok := podcastsmap[eps.PodcastURL]; ok {
 			// podcast already created
@@ -95,7 +94,7 @@ func (s sqliteRepository) SaveEpisode(ctx context.Context, userid int64, episode
 			// insert podcast
 			id, err := s.createNewPodcast(ctx, userid, eps.PodcastURL)
 			if err != nil {
-				return fmt.Errorf("save new podcast %q error: %w", eps.PodcastURL, err)
+				return fmt.Errorf("create new podcast %q error: %w", eps.PodcastURL, err)
 			}
 
 			eps.PodcastID = id
@@ -108,7 +107,7 @@ func (s sqliteRepository) SaveEpisode(ctx context.Context, userid int64, episode
 			// create device
 			did, err := s.createNewDevice(ctx, userid, eps.Device)
 			if err != nil {
-				return fmt.Errorf("save new device %q error: %w", eps.Device, err)
+				return fmt.Errorf("create new device %q error: %w", eps.Device, err)
 			}
 
 			eps.DeviceID = did
@@ -123,26 +122,10 @@ func (s sqliteRepository) SaveEpisode(ctx context.Context, userid int64, episode
 	return nil
 }
 
-func (s sqliteRepository) createNewDevice(ctx context.Context, userid int64, devicename string) (int64, error) {
-	// TODO: drop
-	device := DeviceDB{UserID: userid, Name: devicename, DevType: "computer"}
-
-	res, err := s.db.ExecContext(ctx,
-		"INSERT INTO devices (user_id, name, dev_type, caption) VALUES(?, ?, ?, ?)",
-		device.UserID, device.Name, device.DevType, device.Caption)
-	if err != nil {
-		return 0, fmt.Errorf("insert new device error: %w", err)
-	}
-
-	id, err := res.LastInsertId()
-	if err != nil {
-		return 0, fmt.Errorf("get last id error: %w", err)
-	}
-
-	return id, nil
-}
-
 func (s sqliteRepository) saveEpisode(ctx context.Context, episode EpisodeDB) error {
+	logger := log.Ctx(ctx)
+	logger.Debug().Object("episode", episode).Msg("save episode")
+
 	_, err := s.db.ExecContext(
 		ctx,
 		"INSERT INTO episodes (podcast_id, device_id, title, url, action, started, position, total, "+
@@ -160,34 +143,9 @@ func (s sqliteRepository) saveEpisode(ctx context.Context, episode EpisodeDB) er
 		episode.UpdatedAt,
 	)
 	if err != nil {
-		return fmt.Errorf("insert new podcast %d episode %q error: %w", episode.PodcastID,
+		return fmt.Errorf("save episode %d episode %q error: %w", episode.PodcastID,
 			episode.URL, err)
 	}
 
 	return nil
-}
-
-func (s sqliteRepository) getUserDevices(ctx context.Context, userid int64) (DevicesDB, error) {
-	res := []*DeviceDB{}
-
-	err := s.db.SelectContext(ctx, &res,
-		"SELECT id, user_id, name, dev_type, caption, created_at, updated_at "+
-			"FROM devices WHERE user_id=?", userid)
-	if err != nil {
-		return nil, fmt.Errorf("query device error: %w", err)
-	}
-
-	// all device have the same number of subscriptions
-	var subscriptions int
-
-	err = s.db.GetContext(ctx, &subscriptions, "SELECT count(*) FROM podcasts where user_id=? and subscribed", userid)
-	if err != nil {
-		return nil, fmt.Errorf("count subscriptions error: %w", err)
-	}
-
-	for _, t := range res {
-		t.Subscriptions = subscriptions
-	}
-
-	return res, nil
 }

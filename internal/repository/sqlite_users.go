@@ -12,18 +12,21 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/rs/zerolog/log"
 )
 
 func (s sqliteRepository) GetUser(ctx context.Context, username string) (UserDB, error) {
+	logger := log.Ctx(ctx)
+	logger.Debug().Str("user_name", username).Msg("get user")
+
 	user := UserDB{}
 
-	err := s.db.QueryRowxContext(ctx,
+	err := s.db.GetContext(ctx, &user,
 		"SELECT id, username, password, email, name, created_at, updated_at "+
 			"FROM users WHERE username=?",
-		username).
-		StructScan(&user)
+		username)
 
 	switch {
 	case err == nil:
@@ -37,13 +40,14 @@ func (s sqliteRepository) GetUser(ctx context.Context, username string) (UserDB,
 
 func (s sqliteRepository) SaveUser(ctx context.Context, user *UserDB) (int64, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Object("user", user).Msg("save user")
 
 	if user.ID == 0 {
+		logger.Debug().Object("user", user).Msg("insert user")
+
 		res, err := s.db.ExecContext(ctx,
 			"INSERT INTO users (username, password, email, name, created_at, updated_at) "+
 				"VALUES(?, ?, ?, ?, ?, ?)",
-			user.Username, user.Password, user.Email, user.Name, user.CreatedAt, user.UpdatedAt)
+			user.Username, user.Password, user.Email, user.Name, time.Now(), time.Now())
 		if err != nil {
 			return 0, fmt.Errorf("insert new user error: %w", err)
 		}
@@ -57,9 +61,11 @@ func (s sqliteRepository) SaveUser(ctx context.Context, user *UserDB) (int64, er
 	}
 
 	// update
+	logger.Debug().Object("user", user).Msg("update user")
+
 	_, err := s.db.ExecContext(ctx,
 		"UPDATE users SET password=?, email=?, name=?, updated_at=? WHERE id=?",
-		user.Password, user.Email, user.Name, user.UpdatedAt, user.ID)
+		user.Password, user.Email, user.Name, time.Now(), user.ID)
 	if err != nil {
 		return user.ID, fmt.Errorf("update user error: %w", err)
 	}

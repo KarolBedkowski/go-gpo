@@ -24,9 +24,7 @@ type Server struct {
 }
 
 func (s *Server) Start(ctx context.Context) error {
-	logger := log.Logger
-	ctx = logger.WithContext(ctx)
-
+	logger := log.Ctx(ctx)
 	logger.Log().Msgf("Starting server on %q...", s.Listen)
 
 	re := &repository.Database{}

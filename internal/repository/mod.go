@@ -28,7 +28,7 @@ func (r *Database) Connect(ctx context.Context, driver, connstr string) error {
 	var err error
 
 	logger := log.Ctx(ctx)
-	logger.Info().Msgf("connecting to %s/%s", connstr, driver)
+	logger.Info().Msgf("connecting to %s/%s", driver, connstr)
 
 	r.db, err = sqlx.Open(driver, connstr)
 	if err != nil {
@@ -50,7 +50,7 @@ func (r *Database) Migrate(ctx context.Context, driver string, em embed.FS) erro
 	}
 
 	if err := goose.UpContext(ctx, r.db.DB, "migrations"); err != nil {
-		return fmt.Errorf("migrate up error:: %w", err)
+		return fmt.Errorf("migrate up error: %w", err)
 	}
 
 	return nil
@@ -68,7 +68,7 @@ func (r *Database) GetConnection(ctx context.Context) (*sqlx.Conn, error) {
 func (r *Database) Begin(ctx context.Context) (*sqlx.Tx, error) {
 	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
-		return nil, fmt.Errorf("get transaction error: %w", err)
+		return nil, fmt.Errorf("begin tx error: %w", err)
 	}
 
 	return tx, nil

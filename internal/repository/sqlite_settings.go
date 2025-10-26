@@ -19,14 +19,12 @@ import (
 func (s sqliteRepository) GetSettings(ctx context.Context, userid int64, scope, key string,
 ) (SettingsDB, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Int64("userid", userid).Str("scope", scope).Str("key", key).Msg("get settings")
+	logger.Debug().Int64("user_id", userid).Str("settings_scope", scope).Str("settings_key", key).Msg("get settings")
 
 	res := SettingsDB{}
 
 	err := s.db.GetContext(ctx, &res,
-		"SELECT user_id, scope, key, value "+
-			"FROM settings "+
-			"WHERE user_id=? AND scope=? and key=?",
+		"SELECT user_id, scope, key, value FROM settings WHERE user_id=? AND scope=? and key=?",
 		userid, scope, key)
 
 	if errors.Is(err, sql.ErrNoRows) {
@@ -37,7 +35,7 @@ func (s sqliteRepository) GetSettings(ctx context.Context, userid int64, scope, 
 			Value:  "",
 		}, nil
 	} else if err != nil {
-		return res, fmt.Errorf("query settings error: %w", err)
+		return res, fmt.Errorf("query settings for user %d scope %q key %q error: %w", userid, scope, key, err)
 	}
 
 	return res, nil
@@ -45,8 +43,7 @@ func (s sqliteRepository) GetSettings(ctx context.Context, userid int64, scope, 
 
 func (s sqliteRepository) SaveSettings(ctx context.Context, sett *SettingsDB) error {
 	logger := log.Ctx(ctx)
-
-	logger.Debug().Interface("settings", s).Msg("save settings")
+	logger.Debug().Object("settings", sett).Msg("save settings")
 
 	_, err := s.db.ExecContext(
 		ctx,

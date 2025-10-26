@@ -46,7 +46,7 @@ func (s *Subs) GetUserSubscriptions(ctx context.Context, username string, since 
 		return nil, fmt.Errorf("get user error: %w", err)
 	}
 
-	subs, err := repo.GetSubscribedPodcasts(ctx, user.ID, since)
+	subs, err := repo.ListSubscribedPodcasts(ctx, user.ID, since)
 	if err != nil {
 		return nil, fmt.Errorf("get subscriptions error: %w", err)
 	}
@@ -80,7 +80,7 @@ func (s *Subs) GetDeviceSubscriptions(ctx context.Context, username, devicename 
 		return nil, fmt.Errorf("get device error: %w", err)
 	}
 
-	podcasts, err := repo.GetSubscribedPodcasts(ctx, user.ID, since)
+	podcasts, err := repo.ListSubscribedPodcasts(ctx, user.ID, since)
 	if err != nil {
 		return nil, fmt.Errorf("get subscriptions error: %w", err)
 	}
@@ -131,7 +131,7 @@ func (s *Subs) UpdateDeviceSubscriptions(ctx context.Context, //nolint:cyclop
 			return err
 		}
 
-		subscribed, err := repo.GetPodcasts(ctx, user.ID, time.Time{})
+		subscribed, err := repo.ListPodcasts(ctx, user.ID, time.Time{})
 		if err != nil {
 			return fmt.Errorf("get subscriptions error: %w", err)
 		}
@@ -194,7 +194,7 @@ func (s *Subs) UpdateDeviceSubscriptionChanges( //nolint:cyclop
 			return err
 		}
 
-		subscribed, err := repo.GetPodcasts(ctx, device.ID, time.Time{})
+		subscribed, err := repo.ListPodcasts(ctx, device.ID, time.Time{})
 		if err != nil {
 			return fmt.Errorf("get subscriptions error: %w", err)
 		}
@@ -340,7 +340,7 @@ func (s *Subs) getPodcasts(
 		return nil, fmt.Errorf("get device error: %w", err)
 	}
 
-	podcasts, err := repo.GetPodcasts(ctx, user.ID, since)
+	podcasts, err := repo.ListPodcasts(ctx, user.ID, since)
 	if err != nil {
 		return nil, fmt.Errorf("get subscriptions error: %w", err)
 	}

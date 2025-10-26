@@ -175,7 +175,7 @@ func (e *Episodes) getEpisodesActions(
 		podcastid = p.ID
 	}
 
-	episodes, err := repo.GetEpisodes(ctx, user.ID, deviceid, podcastid, since, aggregated)
+	episodes, err := repo.ListEpisodes(ctx, user.ID, deviceid, podcastid, since, aggregated)
 	if err != nil {
 		return nil, fmt.Errorf("get episodes error: %w", err)
 	}

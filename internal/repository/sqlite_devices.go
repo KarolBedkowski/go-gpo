@@ -12,11 +12,15 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/rs/zerolog/log"
 )
 
 func (s sqliteRepository) GetDevice(ctx context.Context, userid int64, devicename string) (DeviceDB, error) {
+	logger := log.Ctx(ctx)
+	logger.Debug().Int64("user_id", userid).Str("device_name", devicename).Msg("get device")
+
 	device := DeviceDB{}
 	err := s.db.GetContext(ctx, &device,
 		"SELECT id, user_id, name, dev_type, caption, created_at, updated_at "+
@@ -28,6 +32,8 @@ func (s sqliteRepository) GetDevice(ctx context.Context, userid int64, devicenam
 	} else if err != nil {
 		return device, fmt.Errorf("query device error: %w", err)
 	}
+
+	logger.Debug().Int64("user_id", userid).Str("device_name", devicename).Msg("count subscriptions")
 
 	err = s.db.GetContext(ctx, &device.Subscriptions,
 		"SELECT count(*) FROM podcasts where user_id=? and subscribed",
@@ -42,12 +48,13 @@ func (s sqliteRepository) GetDevice(ctx context.Context, userid int64, devicenam
 
 func (s sqliteRepository) SaveDevice(ctx context.Context, device *DeviceDB) (int64, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Object("device", device).Msg("update device")
 
 	if device.ID == 0 {
+		logger.Debug().Object("device", device).Msg("insert device")
+
 		res, err := s.db.ExecContext(ctx,
-			"INSERT INTO devices (user_id, name, dev_type, caption) VALUES(?, ?, ?, ?)",
-			device.UserID, device.Name, device.DevType, device.Caption)
+			"INSERT INTO devices (user_id, name, dev_type, caption, updated_at, created_at) VALUES(?, ?, ?, ?, ?, ?)",
+			device.UserID, device.Name, device.DevType, device.Caption, time.Now(), time.Now())
 		if err != nil {
 			return 0, fmt.Errorf("insert new device error: %w", err)
 		}
@@ -61,9 +68,11 @@ func (s sqliteRepository) SaveDevice(ctx context.Context, device *DeviceDB) (int
 	}
 
 	// update
+	logger.Debug().Object("device", device).Msg("update device")
+
 	_, err := s.db.ExecContext(ctx,
-		"UPDATE devices SET dev_type=?, caption=?, updated_at=current_timestamp WHERE id=?",
-		device.DevType, device.Caption, device.ID)
+		"UPDATE devices SET dev_type=?, caption=?, updated_at=? WHERE id=?",
+		device.DevType, device.Caption, time.Now(), device.ID)
 	if err != nil {
 		return device.ID, fmt.Errorf("update device error: %w", err)
 	}
@@ -73,7 +82,7 @@ func (s sqliteRepository) SaveDevice(ctx context.Context, device *DeviceDB) (int
 
 func (s sqliteRepository) ListDevices(ctx context.Context, userid int64) (DevicesDB, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Msg("list devices")
+	logger.Debug().Int64("user_id", userid).Msg("list devices - count subscriptions")
 
 	// all device have the same number of subscriptions
 	var subscriptions int
@@ -84,6 +93,8 @@ func (s sqliteRepository) ListDevices(ctx context.Context, userid int64) (Device
 	if err != nil {
 		return nil, fmt.Errorf("count subscriptions error: %w", err)
 	}
+
+	logger.Debug().Int64("user_id", userid).Msg("list devices")
 
 	res := []*DeviceDB{}
 
@@ -96,4 +107,25 @@ func (s sqliteRepository) ListDevices(ctx context.Context, userid int64) (Device
 	}
 
 	return res, nil
+}
+
+func (s sqliteRepository) createNewDevice(ctx context.Context, userid int64, devicename string) (int64, error) {
+	logger := log.Ctx(ctx)
+	logger.Debug().Int64("user_id", userid).Str("device_name", devicename).Msg("create device")
+
+	device := DeviceDB{UserID: userid, Name: devicename, DevType: "computer"}
+
+	res, err := s.db.ExecContext(ctx,
+		"INSERT INTO devices (user_id, name, dev_type, caption) VALUES(?, ?, ?, ?)",
+		device.UserID, device.Name, device.DevType, device.Caption)
+	if err != nil {
+		return 0, fmt.Errorf("insert new device error: %w", err)
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("get last id error: %w", err)
+	}
+
+	return id, nil
 }

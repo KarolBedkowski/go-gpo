@@ -6,6 +6,8 @@ package api
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net/http"
 
 	"gitlab.com/kabes/go-gpodder/internal"
@@ -43,29 +45,19 @@ func (u *settingsResource) getSettings(
 ) {
 	user := internal.ContextUser(ctx)
 
-	var (
-		res map[string]string
-		err error
-		key string
-	)
-
-	scope := chi.URLParam(r, "scope")
-	switch scope {
-	case "account":
-	case "device":
-		key = r.URL.Query().Get("device")
-	case "episode":
-		key = r.URL.Query().Get("episode")
-	default:
-		logger.Info().Msgf("unknown scope: %q", scope)
+	key, err := u.getKey(r)
+	if err != nil {
+		logger.Debug().Err(err).Msg("get key error")
 		writeError(w, r, http.StatusBadRequest, nil)
 
 		return
 	}
 
-	res, err = u.settingsServ.GetSettings(ctx, user, scope, key)
+	scope := chi.URLParam(r, "scope")
+
+	res, err := u.settingsServ.GetSettings(ctx, user, scope, key)
 	if err != nil {
-		logger.Info().Err(err).Str("scope", "scope").Msgf("get settings error")
+		logger.Warn().Err(err).Str("scope", "scope").Msgf("get settings error")
 		writeError(w, r, http.StatusInternalServerError, nil)
 
 		return
@@ -89,34 +81,57 @@ func (u *settingsResource) setSettings(
 	}
 
 	if err := render.DecodeJSON(r.Body, &req); err != nil {
-		logger.Info().Err(err).Msg("decode request error")
+		logger.Debug().Err(err).Msg("decode request error")
 		writeError(w, r, http.StatusBadRequest, nil)
 
 		return
 	}
 
-	var key string
+	key, err := u.getKey(r)
+	if err != nil {
+		logger.Debug().Err(err).Msg("get key error")
+		writeError(w, r, http.StatusBadRequest, nil)
+
+		return
+	}
 
 	scope := chi.URLParam(r, "scope")
-	switch scope {
-	case "account":
-	case "device":
-		key = r.URL.Query().Get("device")
-	case "episode":
-		key = r.URL.Query().Get("episode")
-	default:
-		logger.Info().Msgf("unknown scope: %q", scope)
-		writeError(w, r, http.StatusBadRequest, nil)
-
-		return
-	}
 
 	if err := u.settingsServ.SaveSettings(ctx, user, scope, key, req.Set, req.Remove); err != nil {
-		logger.Info().Err(err).Str("scope", "scope").Msgf("save settings error")
+		logger.Warn().Err(err).Str("scope", "scope").Msgf("save settings error")
 		writeError(w, r, http.StatusInternalServerError, nil)
 
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func (u *settingsResource) getKey(r *http.Request) (string, error) {
+	var key string
+
+	scope := chi.URLParam(r, "scope")
+	switch scope {
+	case "account":
+		return "", nil
+	case "device":
+		key = r.URL.Query().Get("device")
+	case "episode":
+		e := r.URL.Query().Get("episode")
+		p := r.URL.Query().Get("podcast")
+
+		if e != "" && p != "" {
+			key = p + "|" + e
+		}
+	case "podcast":
+		key = r.URL.Query().Get("podcast")
+	default:
+		return "", fmt.Errorf("unknown scope: %q", scope) //nolint:err113
+	}
+
+	if key == "" {
+		return "", errors.New("missing required keys") //nolint:err113
+	}
+
+	return key, nil
 }

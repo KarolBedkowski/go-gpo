@@ -36,7 +36,7 @@ func (a *List) Start(ctx context.Context) error {
 		return a.listSubscriptions(ctx, re)
 
 	default:
-		return fmt.Errorf("unknown object %q", a.Object) //nolint:err113
+		return fmt.Errorf("unknown object for query %q", a.Object) //nolint:err113
 	}
 }
 

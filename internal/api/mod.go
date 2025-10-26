@@ -31,10 +31,13 @@ type Configuration struct {
 	LogBody bool
 }
 
-const connectioTimeout = 60 * time.Second
+const (
+	connectioTimeout   = 60 * time.Second
+	sessionMaxLifetime = 14 * 24 * 60 * 60 // 14d
+)
 
 func Start(repo *repository.Database, cfg *Configuration) error { //nolint:funlen
-	session.RegisterFn("db", func() session.Provider { return repository.NewSessionProvider(repo) })
+	session.RegisterFn("db", func() session.Provider { return repository.NewSessionProvider(repo, sessionMaxLifetime) })
 
 	sess, err := session.Sessioner(session.Options{
 		Provider:       "db",
@@ -42,10 +45,10 @@ func Start(repo *repository.Database, cfg *Configuration) error { //nolint:funle
 		CookieName:     "sessionid",
 		// Secure:         true,
 		// SameSite:       http.SameSiteLaxMode,
-		// Maxlifetime: 60 * 60 * 24 * 365,
+		Maxlifetime: sessionMaxLifetime,
 	})
 	if err != nil {
-		panic(err.Error())
+		return fmt.Errorf("start session manager error: %w", err)
 	}
 
 	deviceSrv := service.NewDeviceService(repo)
@@ -57,8 +60,6 @@ func Start(repo *repository.Database, cfg *Configuration) error { //nolint:funle
 	router := chi.NewRouter()
 
 	router.Use(newPromMiddleware("api", nil).Handler)
-
-	router.Use(middleware.RequestID)
 	router.Use(middleware.RealIP)
 	router.Use(hlog.RequestIDHandler("req_id", "Request-Id"))
 

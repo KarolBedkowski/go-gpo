@@ -48,7 +48,7 @@ func (er *episodesResource) uploadEpisodeActions(
 
 	err := render.DecodeJSON(r.Body, &request)
 	if err != nil {
-		logger.Warn().Err(err).Msgf("parse json error")
+		logger.Debug().Err(err).Msgf("parse json error")
 		http.Error(w, "invalid request data", http.StatusBadRequest)
 
 		return
@@ -70,7 +70,7 @@ func (er *episodesResource) uploadEpisodeActions(
 		}
 
 		if err := reqEpisode.validate(); err != nil {
-			logger.Warn().Err(err).Interface("req", reqEpisode).Msgf("validate error")
+			logger.Debug().Err(err).Interface("req", reqEpisode).Msgf("validate error")
 			http.Error(w, "validate request data failed", http.StatusBadRequest)
 
 			return
@@ -118,7 +118,7 @@ func (er *episodesResource) getEpisodeActions(
 
 	res, err := er.episodesServ.GetEpisodesActions(ctx, user, podcast, device, since, aggregated)
 	if err != nil {
-		logger.Info().Err(err).Msgf("get episodes error")
+		logger.Warn().Err(err).Msgf("get episodes error")
 		writeError(w, r, http.StatusInternalServerError, nil)
 
 		return

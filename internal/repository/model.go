@@ -191,7 +191,7 @@ func (u UserDB) MarshalZerologObject(event *zerolog.Event) {
 	}
 
 	event.Int64("id", u.ID).
-		Str("username", u.Username).
+		Str("user_name", u.Username).
 		Str("Password", pass).
 		Str("email", u.Email).
 		Str("name", u.Name).
@@ -199,14 +199,16 @@ func (u UserDB) MarshalZerologObject(event *zerolog.Event) {
 		Time("updated_at", u.UpdatedAt)
 }
 
-type UserAlias struct {
-	UserID   int64  `db:"user_id"`
-	Username string `db:"username"`
-}
-
 type SettingsDB struct {
 	UserID int64  `db:"user_id"`
 	Scope  string `db:"scope"`
 	Key    string `db:"key"`
 	Value  string `db:"value"`
+}
+
+func (s SettingsDB) MarshalZerologObject(event *zerolog.Event) {
+	event.Int64("user_id", s.UserID).
+		Str("scope", s.Scope).
+		Str("key", s.Key).
+		Str("Value", s.Value)
 }

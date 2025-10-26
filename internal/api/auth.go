@@ -37,7 +37,6 @@ func (ar *authResource) login(ctx context.Context, w http.ResponseWriter, r *htt
 	case "":
 		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 	case user:
-		logger.Debug().Msgf("user match session user %q", u)
 		w.WriteHeader(http.StatusOK)
 	default:
 		logger.Info().Msgf("user not match session user %q", u)

@@ -33,7 +33,7 @@ func AuthenticatedOnly(next http.Handler) http.Handler {
 		sess := session.GetSession(r)
 		user := sessionUser(sess)
 
-		logger.Debug().Str("session_user", user).Msg("AuthenticatedOnly")
+		logger.Debug().Str("session_user", user).Msg("authenticated only check")
 
 		if user != "" {
 			ctx := internal.ContextWithUser(r.Context(), user)
@@ -63,7 +63,7 @@ func (a authenticator) Authenticate(next http.Handler) http.Handler {
 
 			_, err := a.usersSrv.LoginUser(ctx, username, password)
 			if errors.Is(err, service.ErrUnauthorized) || errors.Is(err, service.ErrUnknownUser) {
-				logger.Info().Err(err).Str("username", username).Msg("auth failed")
+				logger.Warn().Err(err).Str("user_name", username).Msg("auth failed")
 				w.Header().Add("WWW-Authenticate", "Basic realm=\"go-gpodder\"")
 
 				_ = sess.Destroy(w, r)
@@ -72,13 +72,15 @@ func (a authenticator) Authenticate(next http.Handler) http.Handler {
 
 				return
 			} else if err != nil {
-				panic(err)
+				logger.Panic().Err(err).Msg("login user error")
+
+				return
 			}
 
-			lloger := logger.With().Str("username", username).Logger()
+			lloger := logger.With().Str("user_name", username).Logger()
 			ctx = lloger.WithContext(ctx)
 
-			lloger.Debug().Msgf("user authenticated")
+			lloger.Info().Msgf("user authenticated")
 
 			r = r.WithContext(internal.ContextWithUser(ctx, username))
 			_ = sess.Set("user", username)
@@ -223,11 +225,11 @@ func newRecoverMiddleware(next http.Handler) http.Handler {
 
 			switch t := rec.(type) {
 			case error:
+				logger.Error().Err(t).Msg("panic when handling request")
+
 				if errors.Is(t, http.ErrAbortHandler) {
 					panic(t)
 				}
-
-				logger.Error().Err(t).Msg("panic when handling request")
 			case string:
 				logger.Error().Str("err", t).Msg("panic when handling request")
 			default:
@@ -235,12 +237,8 @@ func newRecoverMiddleware(next http.Handler) http.Handler {
 			}
 
 			if req.Header.Get("Connection") != "Upgrade" {
-				w.WriteHeader(http.StatusInternalServerError)
-
-				return
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			}
-
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}(req.Context())
 
 		next.ServeHTTP(w, req)
@@ -253,7 +251,7 @@ func checkUserMiddleware(next http.Handler) http.Handler {
 
 		user := chi.URLParam(req, "user")
 		if user == "" {
-			logger.Warn().Msgf("empty user in params, %q", chi.URLParam(req, "deviceid"))
+			logger.Debug().Msgf("empty user")
 			w.WriteHeader(http.StatusBadRequest)
 
 			return
@@ -274,10 +272,9 @@ func checkUserMiddleware(next http.Handler) http.Handler {
 		}
 
 		ctx := internal.ContextWithUser(req.Context(), user)
-		llogger := logger.With().Str("username", user).Logger()
+		llogger := logger.With().Str("user_name", user).Logger()
 		ctx = llogger.WithContext(ctx)
 
-		llogger.Debug().Msgf("found user %q in params", user)
 		next.ServeHTTP(w, req.WithContext(ctx))
 	})
 }
@@ -286,17 +283,16 @@ func checkDeviceMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		deviceid := chi.URLParam(req, "deviceid")
 		if deviceid == "" {
-			hlog.FromRequest(req).Info().Msgf("empty deviceid")
+			hlog.FromRequest(req).Debug().Msgf("empty deviceid")
 			w.WriteHeader(http.StatusBadRequest)
 
 			return
 		}
 
 		ctx := internal.ContextWithDevice(req.Context(), deviceid)
-		logger := hlog.FromRequest(req).With().Str("deviceid", deviceid).Logger()
+		logger := hlog.FromRequest(req).With().Str("device_id", deviceid).Logger()
 		ctx = logger.WithContext(ctx)
 
-		logger.Debug().Msgf("found device %q in params", deviceid)
 		next.ServeHTTP(w, req.WithContext(ctx))
 	})
 }

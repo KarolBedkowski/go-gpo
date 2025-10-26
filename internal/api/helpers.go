@@ -32,14 +32,6 @@ func sinceFromParameter(r *http.Request) (time.Time, error) {
 	return since, nil
 }
 
-func ensureNotNilList(inp []string) []string {
-	if inp == nil {
-		return make([]string, 0)
-	}
-
-	return inp
-}
-
 func ensureList[T any](inp []T) []T {
 	if inp == nil {
 		return make([]T, 0)

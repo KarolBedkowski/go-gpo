@@ -57,10 +57,10 @@ func (s *simpleResource) downloadAllSubscriptions(
 	subs, err := s.subServ.GetUserSubscriptions(ctx, user, time.Time{})
 	if err != nil {
 		if errors.Is(err, service.ErrUnknownUser) {
-			logger.Info().Msgf("unknown user: %q", user)
+			logger.Warn().Msgf("unknown user: %q", user)
 			writeError(w, r, http.StatusBadRequest, nil)
 		} else {
-			logger.Info().Err(err).Msg("update device error")
+			logger.Warn().Err(err).Msg("update device error")
 			writeError(w, r, http.StatusInternalServerError, nil)
 		}
 
@@ -74,7 +74,7 @@ func (s *simpleResource) downloadAllSubscriptions(
 
 		result, err := o.XML()
 		if err != nil {
-			logger.Info().Err(err).Msg("get opml xml error")
+			logger.Warn().Err(err).Msg("get opml xml error")
 			writeError(w, r, http.StatusInternalServerError, nil)
 
 			return
@@ -107,18 +107,18 @@ func (s *simpleResource) downloadSubscriptions(
 	switch {
 	case err == nil:
 	case errors.Is(err, service.ErrUnknownUser):
-		logger.Info().Msgf("unknown user: %q", user)
+		logger.Warn().Msgf("unknown user: %q", user)
 		writeError(w, r, http.StatusBadRequest, nil)
 
 		return
 	case errors.Is(err, service.ErrUnknownDevice):
-		logger.Info().Msgf("unknown device: %q", deviceid)
+		logger.Debug().Msgf("unknown device: %q", deviceid)
 		writeError(w, r, http.StatusBadRequest, nil)
 
 		return
 	default:
-		logger.Info().Err(err).Msg("update device error")
-		writeError(w, r, http.StatusBadRequest, nil)
+		logger.Warn().Err(err).Msg("get device subscriptions failed")
+		writeError(w, r, http.StatusInternalServerError, nil)
 
 		return
 	}
@@ -127,7 +127,7 @@ func (s *simpleResource) downloadSubscriptions(
 	case "opml":
 		result, err := formatOMPL(subs)
 		if err != nil {
-			logger.Info().Err(err).Msg("build opml error")
+			logger.Warn().Err(err).Msg("build opml error")
 			writeError(w, r, http.StatusInternalServerError, nil)
 
 			return
@@ -175,14 +175,14 @@ func (s *simpleResource) uploadSubscriptions(
 			subs = slices.Collect(strings.Lines(string(body)))
 		}
 	default:
-		logger.Info().Msgf("unknown format %q", format)
+		logger.Debug().Msgf("unknown format %q", format)
 		writeError(w, r, http.StatusBadRequest, nil)
 
 		return
 	}
 
 	if err != nil {
-		logger.Warn().Err(err).Msgf("parse %q error", format)
+		logger.Debug().Err(err).Msgf("parse %q error", format)
 		writeError(w, r, http.StatusBadRequest, nil)
 
 		return

@@ -19,6 +19,7 @@ import (
 
 	"gitea.com/go-chi/session"
 	"github.com/jmoiron/sqlx"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
@@ -79,7 +80,7 @@ func (s *SessionStore) ID() string {
 // save postgres session values to database.
 // must call this method to save values to database.
 func (s *SessionStore) Release() error {
-	log.Logger.Debug().Msgf("session release: %d", len(s.data))
+	log.Logger.Debug().Msgf("session release: %+v", s.data)
 
 	// Skip encoding if the data is empty
 	if len(s.data) == 0 {
@@ -114,9 +115,10 @@ func (s *SessionStore) Flush() error {
 type SessionProvider struct {
 	db          *sqlx.DB
 	maxlifetime int64
+	logger      zerolog.Logger
 }
 
-func NewSessionProvider(r *Database) *SessionProvider {
+func NewSessionProvider(r *Database, maxlifetime int64) *SessionProvider {
 	if r == nil {
 		panic("repository is nil")
 	}
@@ -125,7 +127,11 @@ func NewSessionProvider(r *Database) *SessionProvider {
 		panic("repository is not connected")
 	}
 
-	return &SessionProvider{r.db, 0}
+	return &SessionProvider{
+		r.db,
+		maxlifetime,
+		log.Logger.With().Str("module", "session_provider").Logger(),
+	}
 }
 
 // Init initializes postgres session provider.
@@ -158,6 +164,8 @@ func (p *SessionProvider) Destroy(sid string) error {
 
 // Regenerate regenerates a session store from old session ID to new one.
 func (p *SessionProvider) Regenerate(oldsid, sid string) (session.RawStore, error) { //nolint:cyclop
+	p.logger.Debug().Str("sid", sid).Str("old_sid", oldsid).Msg("regenerate session")
+
 	ctx := context.Background()
 
 	tx, err := p.db.BeginTxx(ctx, nil)
@@ -216,6 +224,8 @@ func (p *SessionProvider) Count() (int, error) {
 
 // GC calls GC to clean expired sessions.
 func (p *SessionProvider) GC() {
+	p.logger.Debug().Msg("gc sessions")
+
 	_, err := p.db.Exec("DELETE FROM sessions WHERE created_at < ?", //nolint: noctx
 		time.Now().Add(time.Duration(-p.maxlifetime)*time.Second))
 	if err != nil {

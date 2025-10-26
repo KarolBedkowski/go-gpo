@@ -41,14 +41,15 @@ type UsersRepository interface {
 }
 
 type EpisodesRepository interface {
-	GetEpisodes(ctx context.Context, userid, deviceid, podcastid int64, since time.Time, aggregated bool,
+	ListEpisodes(
+		ctx context.Context, userid, deviceid, podcastid int64, since time.Time, aggregated bool,
 	) ([]EpisodeDB, error)
 	SaveEpisode(ctx context.Context, userid int64, episode ...EpisodeDB) error
 }
 
 type SubscribedRepository interface {
-	GetSubscribedPodcasts(ctx context.Context, userid int64, since time.Time) (PodcastsDB, error)
-	GetPodcasts(ctx context.Context, userid int64, since time.Time) (PodcastsDB, error)
+	ListSubscribedPodcasts(ctx context.Context, userid int64, since time.Time) (PodcastsDB, error)
+	ListPodcasts(ctx context.Context, userid int64, since time.Time) (PodcastsDB, error)
 	GetPodcast(ctx context.Context, userid int64, podcasturl string) (PodcastDB, error)
 	SavePodcast(ctx context.Context, user, device string, podcast ...PodcastDB) error
 }

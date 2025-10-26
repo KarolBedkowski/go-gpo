@@ -59,7 +59,7 @@ func (sr *subscriptionsResource) devSubscriptions(
 	if since := r.URL.Query().Get("since"); since != "" {
 		ts, err := strconv.ParseInt(since, 10, 64)
 		if err != nil {
-			logger.Info().Err(err).Msgf("parse since=%q error", since)
+			logger.Debug().Err(err).Msgf("parse since=%q error", since)
 			w.WriteHeader(http.StatusBadRequest)
 		}
 
@@ -70,17 +70,17 @@ func (sr *subscriptionsResource) devSubscriptions(
 	switch {
 	case err == nil:
 	case errors.Is(err, service.ErrUnknownUser):
-		logger.Info().Msgf("unknown user: %q", user)
+		logger.Warn().Msgf("unknown user: %q", user)
 		writeError(w, r, http.StatusBadRequest, nil)
 
 		return
 	case errors.Is(err, service.ErrUnknownDevice):
-		logger.Info().Msgf("unknown device: %q", deviceid)
+		logger.Debug().Msgf("unknown device: %q", deviceid)
 		writeError(w, r, http.StatusBadRequest, nil)
 
 		return
 	default:
-		logger.Info().Err(err).Msg("update device error")
+		logger.Warn().Err(err).Msg("get subscriptions changes error")
 		writeError(w, r, http.StatusInternalServerError, nil)
 
 		return
@@ -91,8 +91,8 @@ func (sr *subscriptionsResource) devSubscriptions(
 		Remove    []string `json:"remove"`
 		Timestamp int64    `json:"timestamp"`
 	}{
-		Add:       ensureNotNilList(added),
-		Remove:    ensureNotNilList(removed),
+		Add:       ensureList(added),
+		Remove:    ensureList(removed),
 		Timestamp: time.Now().Unix(),
 	}
 
@@ -113,12 +113,12 @@ func (sr *subscriptionsResource) userSubscriptions(
 	switch {
 	case err == nil:
 	case errors.Is(err, service.ErrUnknownUser):
-		logger.Info().Msgf("unknown user: %q", user)
+		logger.Warn().Msgf("unknown user: %q", user)
 		writeError(w, r, http.StatusBadRequest, nil)
 
 		return
 	default:
-		logger.Info().Err(err).Msg("update device error")
+		logger.Warn().Err(err).Msg("get user subscriptions error")
 		writeError(w, r, http.StatusInternalServerError, nil)
 
 		return
@@ -129,7 +129,7 @@ func (sr *subscriptionsResource) userSubscriptions(
 
 	result, err := o.XML()
 	if err != nil {
-		logger.Info().Err(err).Msg("get opml xml error")
+		logger.Warn().Err(err).Msg("get opml xml error")
 		writeError(w, r, http.StatusInternalServerError, nil)
 
 		return
@@ -151,7 +151,7 @@ func (sr *subscriptionsResource) uploadSubscriptions(
 	var subs []string
 
 	if err := render.DecodeJSON(r.Body, &subs); err != nil {
-		logger.Warn().Err(err).Msgf("parse json error")
+		logger.Debug().Err(err).Msgf("parse json error")
 		writeError(w, r, http.StatusBadRequest, nil)
 
 		return
@@ -179,7 +179,7 @@ func (sr *subscriptionsResource) uploadSubscriptionChanges(
 
 	changes := subscriptionChangesRequest{}
 	if err := render.DecodeJSON(r.Body, &changes); err != nil {
-		logger.Warn().Err(err).Msgf("parse json error")
+		logger.Debug().Err(err).Msgf("parse json error")
 		writeError(w, r, http.StatusBadRequest, nil)
 
 		return
