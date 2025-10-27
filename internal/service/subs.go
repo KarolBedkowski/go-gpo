@@ -189,12 +189,12 @@ func (s *Subs) UpdateDeviceSubscriptionChanges( //nolint:cyclop
 			return err
 		}
 
-		device, err := s.getUserDevice(ctx, repo, user.ID, devicename)
-		if err != nil {
+		// check service
+		if _, err = s.getUserDevice(ctx, repo, user.ID, devicename); err != nil {
 			return err
 		}
 
-		subscribed, err := repo.ListPodcasts(ctx, device.ID, time.Time{})
+		subscribed, err := repo.ListPodcasts(ctx, user.ID, time.Time{})
 		if err != nil {
 			return fmt.Errorf("get subscriptions error: %w", err)
 		}

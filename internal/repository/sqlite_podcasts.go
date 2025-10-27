@@ -134,7 +134,8 @@ func (s sqliteRepository) createNewPodcast(ctx context.Context, userid int64, ur
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Str("podcast_url", url).Msg("create new podcast")
 
-	podcast := PodcastDB{UserID: userid, URL: url, Subscribed: true}
+	now := time.Now()
+	podcast := PodcastDB{UserID: userid, URL: url, Subscribed: true, UpdatedAt: now, CreatedAt: now}
 
 	id, err := s.savePodcast(ctx, &podcast)
 	if err != nil {
