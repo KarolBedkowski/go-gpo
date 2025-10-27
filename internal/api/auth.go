@@ -12,8 +12,8 @@ import (
 	"gitea.com/go-chi/session"
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
-	"gitlab.com/kabes/go-gpodder/internal"
-	"gitlab.com/kabes/go-gpodder/internal/service"
+	"gitlab.com/kabes/go-gpo/internal"
+	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
 type authResource struct {

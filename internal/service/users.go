@@ -13,8 +13,8 @@ import (
 	"fmt"
 	"time"
 
-	"gitlab.com/kabes/go-gpodder/internal/model"
-	"gitlab.com/kabes/go-gpodder/internal/repository"
+	"gitlab.com/kabes/go-gpo/internal/model"
+	"gitlab.com/kabes/go-gpo/internal/repository"
 	"golang.org/x/crypto/bcrypt"
 )
 

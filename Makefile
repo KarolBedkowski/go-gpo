@@ -28,7 +28,7 @@ LDFLAGSR="-w -s\
 
 .PHONY: build
 build:
-	go build $(GOTAGS) -v -o go-gpodder -ldflags $(LDFLAGS) \
+	go build $(GOTAGS) -v -o go-gpo -ldflags $(LDFLAGS) \
 		./cli
 
 .PHONY: build_arm64
@@ -36,7 +36,7 @@ build_arm64:
 	CGO_ENABLED=1 \
 	GOGCCFLAGS="-fPIC -O4 -Ofast -pipe -march=native -s" \
 		GOARCH=arm64 GOOS=linux \
-		go build -v -o go-gpodder-arm64 --ldflags $(LDFLAGS) \
+		go build -v -o go-gpo-arm64 --ldflags $(LDFLAGS) \
 		./cli
 
 .PHONY: build_arm64_release
@@ -44,7 +44,7 @@ build_arm64_release:
 	CGO_ENABLED=1 \
 	GOGCCFLAGS="-fPIC -O4 -Ofast -pipe -march=native -s" \
 		GOARCH=arm64 GOOS=linux \
-		go build -v -o go-gpodder-arm64 --ldflags $(LDFLAGSR) \
+		go build -v -o go-gpo-arm64 --ldflags $(LDFLAGSR) \
 		./cli
 
 
@@ -54,7 +54,7 @@ run:
 
 .PHONY: clean
 clean:
-	rm -f go-gpodder
+	rm -f go-gpo
 
 .PHONY: test
 test:

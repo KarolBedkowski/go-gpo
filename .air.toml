@@ -3,8 +3,8 @@ testdata_dir = "testdata"
 tmp_dir = "tmp"
 
 [build]
-  bin = "./go-gpodder --log.level=debug serve --noauth"
-  cmd = "go build -o ./go-gpodder ./cli/"
+  bin = "./go-gpo --log.level=debug serve --noauth"
+  cmd = "go build -o ./go-gpo ./cli/"
   delay = 1000
   exclude_dir = ["assets", "tmp", "vendor", "testdata"]
   exclude_file = []

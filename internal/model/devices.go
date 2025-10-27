@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"gitlab.com/kabes/go-gpodder/internal/errors"
-	"gitlab.com/kabes/go-gpodder/internal/repository"
+	"gitlab.com/kabes/go-gpo/internal/errors"
+	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
 var ValidDevTypes = []string{"desktop", "laptop", "mobile", "server", "other"}

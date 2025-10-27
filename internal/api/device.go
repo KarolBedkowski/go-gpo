@@ -12,10 +12,10 @@ import (
 	"slices"
 
 	"github.com/rs/zerolog"
-	"gitlab.com/kabes/go-gpodder/internal"
-	apperrors "gitlab.com/kabes/go-gpodder/internal/errors"
-	"gitlab.com/kabes/go-gpodder/internal/model"
-	"gitlab.com/kabes/go-gpodder/internal/service"
+	"gitlab.com/kabes/go-gpo/internal"
+	apperrors "gitlab.com/kabes/go-gpo/internal/errors"
+	"gitlab.com/kabes/go-gpo/internal/model"
+	"gitlab.com/kabes/go-gpo/internal/service"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"

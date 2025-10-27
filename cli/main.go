@@ -18,7 +18,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli/v3"
 
-	"gitlab.com/kabes/go-gpodder/internal/cmd"
+	"gitlab.com/kabes/go-gpo/internal/cmd"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -65,7 +65,7 @@ func main() {
 	}
 
 	cmd := &cli.Command{
-		Name:    "go-gpodder",
+		Name:    "go-gpo",
 		Version: buildVersionString(),
 		Flags: []cli.Flag{
 			&cli.StringFlag{Name: "database", Value: "database.sqlite", Usage: "Database file"},

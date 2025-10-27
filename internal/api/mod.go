@@ -21,8 +21,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog/hlog"
 	"github.com/rs/zerolog/log"
-	"gitlab.com/kabes/go-gpodder/internal/repository"
-	"gitlab.com/kabes/go-gpodder/internal/service"
+	"gitlab.com/kabes/go-gpo/internal/repository"
+	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
 type Configuration struct {
@@ -91,7 +91,7 @@ func Start(repo *repository.Database, cfg *Configuration) error { //nolint:funle
 	})
 
 	router.Get("/", func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte("go-gpodder"))
+		_, _ = w.Write([]byte("go-gpo"))
 	})
 
 	logRoutes(router)

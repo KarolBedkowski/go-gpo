@@ -12,8 +12,8 @@ import (
 	"fmt"
 	"time"
 
-	"gitlab.com/kabes/go-gpodder/internal/repository"
-	"gitlab.com/kabes/go-gpodder/internal/service"
+	"gitlab.com/kabes/go-gpo/internal/repository"
+	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
 type List struct {

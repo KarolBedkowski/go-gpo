@@ -18,10 +18,10 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 	"github.com/rs/zerolog"
-	"gitlab.com/kabes/go-gpodder/internal"
-	"gitlab.com/kabes/go-gpodder/internal/opml"
-	"gitlab.com/kabes/go-gpodder/internal/repository"
-	"gitlab.com/kabes/go-gpodder/internal/service"
+	"gitlab.com/kabes/go-gpo/internal"
+	"gitlab.com/kabes/go-gpo/internal/opml"
+	"gitlab.com/kabes/go-gpo/internal/repository"
+	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
 type simpleResource struct {
@@ -69,7 +69,7 @@ func (s *simpleResource) downloadAllSubscriptions(
 
 	switch format := chi.URLParam(r, "format"); format {
 	case "opml": //nolint:goconst
-		o := opml.NewOPML("go-gpodder")
+		o := opml.NewOPML("go-gpo")
 		o.AddURL(subs...)
 
 		result, err := o.XML()
@@ -198,7 +198,7 @@ func (s *simpleResource) uploadSubscriptions(
 }
 
 func formatOMPL(subs []string) ([]byte, error) {
-	o := opml.NewOPML("go-gpodder")
+	o := opml.NewOPML("go-gpo")
 	o.AddURL(subs...)
 
 	result, err := o.XML()

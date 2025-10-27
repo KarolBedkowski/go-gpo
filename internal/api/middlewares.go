@@ -23,8 +23,8 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/hlog"
 	"github.com/rs/zerolog/log"
-	"gitlab.com/kabes/go-gpodder/internal"
-	"gitlab.com/kabes/go-gpodder/internal/service"
+	"gitlab.com/kabes/go-gpo/internal"
+	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
 func AuthenticatedOnly(next http.Handler) http.Handler {
@@ -44,7 +44,7 @@ func AuthenticatedOnly(next http.Handler) http.Handler {
 
 		_ = sess.Destroy(w, r)
 
-		w.Header().Add("WWW-Authenticate", "Basic realm=\"go-gpodder\"")
+		w.Header().Add("WWW-Authenticate", "Basic realm=\"go-gpo\"")
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 	})
 }
@@ -64,7 +64,7 @@ func (a authenticator) Authenticate(next http.Handler) http.Handler {
 			_, err := a.usersSrv.LoginUser(ctx, username, password)
 			if errors.Is(err, service.ErrUnauthorized) || errors.Is(err, service.ErrUnknownUser) {
 				logger.Warn().Err(err).Str("user_name", username).Msg("auth failed")
-				w.Header().Add("WWW-Authenticate", "Basic realm=\"go-gpodder\"")
+				w.Header().Add("WWW-Authenticate", "Basic realm=\"go-gpo\"")
 
 				_ = sess.Destroy(w, r)
 

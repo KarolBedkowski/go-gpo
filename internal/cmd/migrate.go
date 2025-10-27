@@ -12,7 +12,7 @@ import (
 	"embed"
 	"fmt"
 
-	"gitlab.com/kabes/go-gpodder/internal/repository"
+	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
 //go:embed "migrations/*.sql"

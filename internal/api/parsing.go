@@ -14,7 +14,7 @@ import (
 	"strconv"
 	"time"
 
-	"gitlab.com/kabes/go-gpodder/internal/opml"
+	"gitlab.com/kabes/go-gpo/internal/opml"
 )
 
 // ---------------------------------------

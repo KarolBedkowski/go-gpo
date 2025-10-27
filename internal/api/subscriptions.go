@@ -14,9 +14,9 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
-	"gitlab.com/kabes/go-gpodder/internal"
-	"gitlab.com/kabes/go-gpodder/internal/opml"
-	"gitlab.com/kabes/go-gpodder/internal/service"
+	"gitlab.com/kabes/go-gpo/internal"
+	"gitlab.com/kabes/go-gpo/internal/opml"
+	"gitlab.com/kabes/go-gpo/internal/service"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
@@ -124,7 +124,7 @@ func (sr *subscriptionsResource) userSubscriptions(
 		return
 	}
 
-	o := opml.NewOPML("go-gpodder")
+	o := opml.NewOPML("go-gpo")
 	o.AddURL(subs...)
 
 	result, err := o.XML()

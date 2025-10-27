@@ -12,8 +12,8 @@ import (
 	"fmt"
 
 	"github.com/rs/zerolog/log"
-	"gitlab.com/kabes/go-gpodder/internal/api"
-	"gitlab.com/kabes/go-gpodder/internal/repository"
+	"gitlab.com/kabes/go-gpo/internal/api"
+	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
 type Server struct {

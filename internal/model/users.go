@@ -4,7 +4,7 @@
 // Distributed under terms of the GPLv3 license.
 package model
 
-import "gitlab.com/kabes/go-gpodder/internal/repository"
+import "gitlab.com/kabes/go-gpo/internal/repository"
 
 type User struct {
 	Username string

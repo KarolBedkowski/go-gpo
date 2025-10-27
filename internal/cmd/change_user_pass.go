@@ -11,9 +11,9 @@ import (
 	"context"
 	"fmt"
 
-	"gitlab.com/kabes/go-gpodder/internal/model"
-	"gitlab.com/kabes/go-gpodder/internal/repository"
-	"gitlab.com/kabes/go-gpodder/internal/service"
+	"gitlab.com/kabes/go-gpo/internal/model"
+	"gitlab.com/kabes/go-gpo/internal/repository"
+	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
 type ChangeUserPassword struct {

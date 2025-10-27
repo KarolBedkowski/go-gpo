@@ -1,4 +1,4 @@
-# go-gpodder
+# go-gpo
 
 Reimplementatin (simpilfed) (mygpo)[https://github.com/gpodder/mygpo] and (gpodder2go)[https://github.com/oxtyped/gpodder2go].
 
@@ -32,22 +32,22 @@ Missing features from mygpo:
 
 or
 
-    go build -o go-gpodder ./cli/
+    go build -o go-gpo ./cli/
 
 ### Run
 
 Create/update database
 
-    ./go-gpodder migrate
+    ./go-gpo migrate
 
 Run
 
-    ./go-gpodder serve
+    ./go-gpo serve
 
 
 For other options / commands:
 
-    ./go-gpodder --help
+    ./go-gpo --help
 
 
 ## Implemented APIs

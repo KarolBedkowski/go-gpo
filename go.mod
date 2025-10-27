@@ -1,4 +1,4 @@
-module gitlab.com/kabes/go-gpodder
+module gitlab.com/kabes/go-gpo
 
 go 1.25.1
 
