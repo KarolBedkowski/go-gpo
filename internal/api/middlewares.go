@@ -24,6 +24,7 @@ import (
 	"github.com/rs/zerolog/hlog"
 	"github.com/rs/zerolog/log"
 	"gitlab.com/kabes/go-gpo/internal"
+	"gitlab.com/kabes/go-gpo/internal/repository"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
@@ -49,11 +50,13 @@ func AuthenticatedOnly(next http.Handler) http.Handler {
 	})
 }
 
+//-------------------------------------------------------------
+
 type authenticator struct {
 	usersSrv *service.Users
 }
 
-func (a authenticator) Authenticate(next http.Handler) http.Handler {
+func (a authenticator) handle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		username, password, ok := r.BasicAuth()
 		if ok && password != "" && username != "" {
@@ -90,6 +93,8 @@ func (a authenticator) Authenticate(next http.Handler) http.Handler {
 	})
 }
 
+//-------------------------------------------------------------
+
 type logResponseWriter struct {
 	http.ResponseWriter // compose original http.ResponseWriter
 
@@ -115,11 +120,10 @@ func (r *logResponseWriter) WriteHeader(status int) {
 }
 
 func newSimpleLogMiddleware(next http.Handler) http.Handler {
-	logFn := func(writer http.ResponseWriter, request *http.Request) {
+	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		loglevel := zerolog.InfoLevel
 		if strings.HasPrefix(request.URL.Path, "/metrics") {
-			next.ServeHTTP(writer, request)
-
-			return
+			loglevel = zerolog.DebugLevel
 		}
 
 		start := time.Now()
@@ -128,7 +132,7 @@ func newSimpleLogMiddleware(next http.Handler) http.Handler {
 		llog := log.With().Logger().With().Str("req_id", requestID.String()).Logger()
 		request = request.WithContext(llog.WithContext(ctx))
 
-		llog.Info().
+		llog.WithLevel(loglevel).
 			Str("url", request.URL.Redacted()).
 			Str("remote", request.RemoteAddr).
 			Str("method", request.Method).
@@ -137,12 +141,11 @@ func newSimpleLogMiddleware(next http.Handler) http.Handler {
 		lrw := &logResponseWriter{ResponseWriter: writer, status: 0, size: 0}
 
 		defer func() {
-			l := zerolog.InfoLevel
 			if lrw.status >= 400 && lrw.status != 404 {
-				l = zerolog.WarnLevel
+				loglevel = zerolog.WarnLevel
 			}
 
-			llog.WithLevel(l).
+			llog.WithLevel(loglevel).
 				Str("uri", request.RequestURI).
 				Int("status", lrw.status).
 				Int("size", lrw.size).
@@ -151,18 +154,17 @@ func newSimpleLogMiddleware(next http.Handler) http.Handler {
 		}()
 
 		next.ServeHTTP(lrw, request)
-	}
-
-	return http.HandlerFunc(logFn)
+	})
 }
 
-// newLogMiddleware create new logging middleware.
-func newLogMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		if strings.HasPrefix(request.URL.Path, "/metrics") {
-			next.ServeHTTP(writer, request)
+//-------------------------------------------------------------
 
-			return
+// newFullLogMiddleware create new logging middleware.
+func newFullLogMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		loglevel := zerolog.InfoLevel
+		if strings.HasPrefix(request.URL.Path, "/metrics") {
+			loglevel = zerolog.DebugLevel
 		}
 
 		start := time.Now()
@@ -171,7 +173,7 @@ func newLogMiddleware(next http.Handler) http.Handler {
 		llog := log.With().Logger().With().Str("req_id", requestID.String()).Logger()
 		request = request.WithContext(llog.WithContext(ctx))
 
-		llog.Info().
+		llog.WithLevel(loglevel).
 			Str("url", request.URL.Redacted()).
 			Str("remote", request.RemoteAddr).
 			Str("method", request.Method).
@@ -186,22 +188,22 @@ func newLogMiddleware(next http.Handler) http.Handler {
 		lrw.Tee(&respBody)
 
 		defer func() {
-			llog.Debug().
-				Str("request_body", reqBody.String()).
-				Interface("req-headers", request.Header).
-				Msg("request data")
-			llog.Debug().
-				Str("response_body", respBody.String()).
-				Interface("resp-headers", lrw.Header()).
-				Msg("response data")
-
-			level := zerolog.DebugLevel
-
-			if lrw.Status() >= 400 && lrw.Status() != 404 {
-				level = zerolog.ErrorLevel
+			if !strings.HasPrefix(request.URL.Path, "/metrics") {
+				llog.Debug().
+					Str("request_body", reqBody.String()).
+					Interface("req-headers", request.Header).
+					Msg("request data")
+				llog.Debug().
+					Str("response_body", respBody.String()).
+					Interface("resp-headers", lrw.Header()).
+					Msg("response data")
 			}
 
-			llog.WithLevel(level).
+			if lrw.Status() >= 400 && lrw.Status() != 404 {
+				loglevel = zerolog.ErrorLevel
+			}
+
+			llog.WithLevel(loglevel).
 				Str("uri", request.RequestURI).
 				Int("status", lrw.Status()).
 				Int("size", lrw.BytesWritten()).
@@ -212,6 +214,18 @@ func newLogMiddleware(next http.Handler) http.Handler {
 		next.ServeHTTP(lrw, request)
 	})
 }
+
+//-------------------------------------------------------------
+
+func newLogMiddleware(cfg *Configuration) func(http.Handler) http.Handler {
+	if cfg.LogBody {
+		return newFullLogMiddleware
+	}
+
+	return newSimpleLogMiddleware
+}
+
+//-------------------------------------------------------------
 
 func newRecoverMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -244,6 +258,8 @@ func newRecoverMiddleware(next http.Handler) http.Handler {
 		next.ServeHTTP(w, req)
 	})
 }
+
+//-------------------------------------------------------------
 
 func checkUserMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -297,18 +313,24 @@ func checkDeviceMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-type sessionMiddleware struct {
-	sess func(next http.Handler) http.Handler
-}
+// -------------------------------------------------------------
 
-func (s *sessionMiddleware) handle(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		if strings.HasPrefix(req.URL.Path, "/metrics") {
-			next.ServeHTTP(w, req)
-
-			return
-		}
-
-		s.sess(next).ServeHTTP(w, req)
+func newSessionMiddleware(repo *repository.Database) (func(http.Handler) http.Handler, error) {
+	session.RegisterFn("db", func() session.Provider {
+		return repository.NewSessionProvider(repo, sessionMaxLifetime)
 	})
+
+	sess, err := session.Sessioner(session.Options{
+		Provider:       "db",
+		ProviderConfig: "./tmp/",
+		CookieName:     "sessionid",
+		// Secure:         true,
+		SameSite:    http.SameSiteLaxMode,
+		Maxlifetime: sessionMaxLifetime,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("start session manager error: %w", err)
+	}
+
+	return sess, nil
 }

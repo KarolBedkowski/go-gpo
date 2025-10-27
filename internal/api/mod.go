@@ -8,17 +8,15 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
-	"gitea.com/go-chi/session"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog/hlog"
 	"github.com/rs/zerolog/log"
 	"gitlab.com/kabes/go-gpo/internal/repository"
@@ -36,52 +34,41 @@ const (
 	sessionMaxLifetime = 14 * 24 * 60 * 60 // 14d
 )
 
-func Start(repo *repository.Database, cfg *Configuration) error { //nolint:funlen
-	session.RegisterFn("db", func() session.Provider { return repository.NewSessionProvider(repo, sessionMaxLifetime) })
-
-	sess, err := session.Sessioner(session.Options{
-		Provider:       "db",
-		ProviderConfig: "./tmp/",
-		CookieName:     "sessionid",
-		// Secure:         true,
-		// SameSite:       http.SameSiteLaxMode,
-		Maxlifetime: sessionMaxLifetime,
-	})
-	if err != nil {
-		return fmt.Errorf("start session manager error: %w", err)
-	}
-
+func Start(ctx context.Context, repo *repository.Database, cfg *Configuration) error {
 	deviceSrv := service.NewDeviceService(repo)
 	subSrv := service.NewSubssService(repo)
 	usersSrv := service.NewUsersService(repo)
 	episodesSrv := service.NewEpisodesService(repo)
 	settingsSrv := service.NewSettingsService(repo)
 
-	router := chi.NewRouter()
+	// middlewares
+	sessionMW, err := newSessionMiddleware(repo)
+	if err != nil {
+		return err
+	}
 
+	authMW := authenticator{usersSrv}
+
+	// routes
+	router := chi.NewRouter()
 	router.Use(newPromMiddleware("api", nil).Handler)
 	router.Use(middleware.RealIP)
 	router.Use(hlog.RequestIDHandler("req_id", "Request-Id"))
-
-	if cfg.LogBody {
-		router.Use(newLogMiddleware)
-	} else {
-		router.Use(newSimpleLogMiddleware)
-	}
-
-	router.Use((&sessionMiddleware{sess}).handle)
-	router.Use(authenticator{usersSrv}.Authenticate)
+	router.Use(newLogMiddleware(cfg))
 	router.Use(newRecoverMiddleware)
 	router.Use(middleware.Timeout(connectioTimeout))
 
-	router.Handle("/metrics", promhttp.InstrumentMetricHandler(
-		prometheus.DefaultRegisterer,
-		promhttp.HandlerFor(prometheus.DefaultGatherer, promhttp.HandlerOpts{DisableCompression: true}),
-	))
+	router.Handle("/metrics", newMetricsHandler())
 
-	router.Mount("/subscriptions", (&simpleResource{cfg, repo, subSrv}).Routes())
+	router.Route("/subscriptions", func(r chi.Router) {
+		r.Use(sessionMW)
+		r.Use(authMW.handle)
+		r.Mount("/", (&simpleResource{cfg, repo, subSrv}).Routes())
+	})
 
 	router.Route("/api/2", func(r chi.Router) {
+		r.Use(sessionMW)
+		r.Use(authMW.handle)
 		r.Mount("/auth", (&authResource{cfg, usersSrv}).Routes())
 		r.Mount("/devices", (&deviceResource{cfg, deviceSrv}).Routes())
 		r.Mount("/subscriptions", (&subscriptionsResource{cfg, subSrv}).Routes())
@@ -94,7 +81,7 @@ func Start(repo *repository.Database, cfg *Configuration) error { //nolint:funle
 		_, _ = w.Write([]byte("go-gpo"))
 	})
 
-	logRoutes(router)
+	logRoutes(ctx, router)
 
 	if err := http.ListenAndServe(cfg.Listen, router); err != nil { //nolint:gosec
 		return fmt.Errorf("start listen error: %w", err)
@@ -103,18 +90,19 @@ func Start(repo *repository.Database, cfg *Configuration) error { //nolint:funle
 	return nil
 }
 
-func logRoutes(r chi.Routes) {
+func logRoutes(ctx context.Context, r chi.Routes) {
+	logger := log.Ctx(ctx)
 	walkFunc := func(method, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
 		_ = handler
 		_ = middlewares
 		route = strings.ReplaceAll(route, "/*/", "/")
-		log.Debug().Msgf("ROUTE: %s %s", method, route)
+		logger.Debug().Msgf("ROUTE: %s %s", method, route)
 
 		return nil
 	}
 
 	if err := chi.Walk(r, walkFunc); err != nil {
-		log.Error().Err(err).Msg("routers walk error")
+		logger.Error().Err(err).Msg("routers walk error")
 	}
 }
 

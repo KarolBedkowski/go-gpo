@@ -87,3 +87,10 @@ func newPromMiddleware(name string, buckets []float64) *promMiddleware {
 		buckets: buckets,
 	}
 }
+
+func newMetricsHandler() http.Handler {
+	return promhttp.InstrumentMetricHandler(
+		prometheus.DefaultRegisterer,
+		promhttp.HandlerFor(prometheus.DefaultGatherer, promhttp.HandlerOpts{DisableCompression: true}),
+	)
+}

@@ -38,7 +38,7 @@ func (s *Server) Start(ctx context.Context) error {
 		LogBody: s.LogBody,
 	}
 
-	if err := api.Start(re, &cfg); err != nil {
+	if err := api.Start(ctx, re, &cfg); err != nil {
 		return fmt.Errorf("start server error: %w", err)
 	}
 

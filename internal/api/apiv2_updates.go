@@ -45,7 +45,7 @@ func (u *updatesResource) getUpdates(
 	user := internal.ContextUser(ctx)
 	deviceid := internal.ContextDevice(ctx)
 
-	since, err := sinceFromParameter(r)
+	since, err := getSinceParameter(r)
 	if err != nil {
 		logger.Debug().Err(err).Msgf("parse since error")
 		writeError(w, r, http.StatusBadRequest, nil)

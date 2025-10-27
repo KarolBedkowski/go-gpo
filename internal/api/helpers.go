@@ -17,7 +17,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func sinceFromParameter(r *http.Request) (time.Time, error) {
+// getSinceParameter from request url query.
+func getSinceParameter(r *http.Request) (time.Time, error) {
 	since := time.Time{}
 
 	if s := r.URL.Query().Get("since"); s != "" {
@@ -32,6 +33,7 @@ func sinceFromParameter(r *http.Request) (time.Time, error) {
 	return since, nil
 }
 
+// ensureList create empty list if `inp` is null or return `inp` otherwise.
 func ensureList[T any](inp []T) []T {
 	if inp == nil {
 		return make([]T, 0)
@@ -40,6 +42,7 @@ func ensureList[T any](inp []T) []T {
 	return inp
 }
 
+// wrap add context and logger to handler.
 func wrap(handler func(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	logger *zerolog.Logger),
 ) http.HandlerFunc {
