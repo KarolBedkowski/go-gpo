@@ -5,16 +5,19 @@
 package model
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
 	"time"
 
-	"gitlab.com/kabes/go-gpo/internal/errors"
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
-var ValidDevTypes = []string{"desktop", "laptop", "mobile", "server", "other"}
+var (
+	ValidDevTypes  = []string{"desktop", "laptop", "mobile", "server", "other"}
+	ErrInvalidData = errors.New("invalid data")
+)
 
 type Device struct {
 	User          string    `json:"user"`
@@ -51,7 +54,7 @@ func (d Device) Validate() error {
 	}
 
 	if len(errs) > 0 {
-		return errors.NewAppError(strings.Join(errs, ";")).WithCategory(errors.ValidationError)
+		return fmt.Errorf("%w, %s", ErrInvalidData, strings.Join(errs, ";"))
 	}
 
 	return nil

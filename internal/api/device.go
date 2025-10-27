@@ -8,12 +8,12 @@ package api
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"slices"
 
 	"github.com/rs/zerolog"
 	"gitlab.com/kabes/go-gpo/internal"
-	apperrors "gitlab.com/kabes/go-gpo/internal/errors"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/service"
 
@@ -47,7 +47,7 @@ type updateDeviceReq struct {
 
 func (u updateDeviceReq) validate() error {
 	if !slices.Contains(model.ValidDevTypes, u.Type) {
-		return apperrors.NewAppErrorf("invalid device type %q", u.Type).WithCategory(apperrors.ValidationError)
+		return fmt.Errorf("invalid device type %q", u.Type) //nolint:err113
 	}
 
 	return nil

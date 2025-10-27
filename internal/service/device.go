@@ -13,7 +13,6 @@ import (
 	"fmt"
 	"slices"
 
-	apperrors "gitlab.com/kabes/go-gpo/internal/errors"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
@@ -21,6 +20,7 @@ import (
 var (
 	ErrUnknownUser   = errors.New("unknown user")
 	ErrUnknownDevice = errors.New("unknown device")
+	ErrInvalidData   = errors.New("invalid data")
 )
 
 type Device struct {
@@ -33,7 +33,7 @@ func NewDeviceService(repo *repository.Database) *Device {
 
 func (d *Device) UpdateDevice(ctx context.Context, username, deviceid, caption, devtype string) error {
 	if username == "" || deviceid == "" || !slices.Contains(model.ValidDevTypes, devtype) {
-		return apperrors.NewAppError("invalid data").WithCategory(apperrors.ValidationError)
+		return ErrInvalidData
 	}
 
 	err := d.repo.InTransaction(ctx, func(tx repository.DBContext) error {
