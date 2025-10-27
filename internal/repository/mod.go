@@ -35,6 +35,10 @@ func (r *Database) Connect(ctx context.Context, driver, connstr string) error {
 		return fmt.Errorf("open database error: %w", err)
 	}
 
+	if err := r.onConnect(ctx, r.db); err != nil {
+		return fmt.Errorf("on connect setup error: %w", err)
+	}
+
 	if err := r.db.PingContext(ctx); err != nil {
 		return fmt.Errorf("ping database error: %w", err)
 	}
@@ -60,6 +64,10 @@ func (r *Database) GetConnection(ctx context.Context) (*sqlx.Conn, error) {
 	conn, err := r.db.Connx(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("open connection error: %w", err)
+	}
+
+	if err := r.onConnect(ctx, conn); err != nil {
+		return nil, fmt.Errorf("on connect setup error: %w", err)
 	}
 
 	return conn, nil
@@ -98,4 +106,16 @@ func (r *Database) InTransaction(ctx context.Context, f func(DBContext) error) e
 
 func (r *Database) GetRepository(db DBContext) Repository {
 	return sqliteRepository{db}
+}
+
+func (r *Database) onConnect(ctx context.Context, db sqlx.ExecerContext) error {
+	_, err := db.ExecContext(ctx,
+		"PRAGMA journal_mode = WAL;"+
+			"PRAGMA synchronous = NORMAL;"+
+			"PRAGMA temp_store = MEMORY;"+
+			"PRAGMA foreign_keys = ON;"+
+			"PRAGMA auto_vacuum = INCREMENTAL;",
+	)
+
+	return err
 }
