@@ -44,7 +44,7 @@ build_arm64_release:
 	CGO_ENABLED=1 \
 	GOGCCFLAGS="-fPIC -O4 -Ofast -pipe -march=native -s" \
 		GOARCH=arm64 GOOS=linux \
-		go build -v -o go-gpo-arm64 --ldflags $(LDFLAGSR) \
+		go build -trimpath -v -o go-gpo-arm64 --ldflags $(LDFLAGSR) \
 		./cli
 
 
