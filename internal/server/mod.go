@@ -50,7 +50,9 @@ func Start(ctx context.Context, repo *repository.Database, cfg *Configuration) e
 
 	// routes
 	router := chi.NewRouter()
+	router.Use(middleware.Heartbeat("/ping"))
 	router.Use(newPromMiddleware("api", nil).Handler)
+	router.Use(middleware.CleanPath)
 	router.Use(middleware.RealIP)
 	router.Use(hlog.RequestIDHandler("req_id", "Request-Id"))
 	router.Use(newLogMiddleware(cfg))
@@ -64,6 +66,7 @@ func Start(ctx context.Context, repo *repository.Database, cfg *Configuration) e
 		With(sessionMW).
 		With(authMW.handle).
 		With(AuthenticatedOnly).
+		With(middleware.NoCache).
 		Mount("/", api.Routes())
 
 	router.Get("/", func(w http.ResponseWriter, _ *http.Request) {
