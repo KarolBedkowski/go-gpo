@@ -19,19 +19,16 @@ import (
 )
 
 type updatesResource struct {
-	cfg          *Configuration
 	subSrv       *service.Subs
 	episodesServ *service.Episodes
 }
 
 func (u *updatesResource) Routes() chi.Router {
 	r := chi.NewRouter()
-	if !u.cfg.NoAuth {
-		r.Use(AuthenticatedOnly)
-	}
+	r.Use(AuthenticatedOnly)
 
 	r.With(checkUserMiddleware, checkDeviceMiddleware).
-		Get(`/{user:[\w+.-]+}/{deviceid:[\w.-]+}.json`, wrap(u.getUpdates))
+		Get(`/{user:[\w+.-]+}/{deviceid:[\w.-]+}.json`, internal.Wrap(u.getUpdates))
 
 	return r
 }
@@ -45,10 +42,10 @@ func (u *updatesResource) getUpdates(
 	user := internal.ContextUser(ctx)
 	deviceid := internal.ContextDevice(ctx)
 
-	since, err := getSinceParameter(r)
+	since, err := internal.GetSinceParameter(r)
 	if err != nil {
 		logger.Debug().Err(err).Msgf("parse since error")
-		writeError(w, r, http.StatusBadRequest, nil)
+		internal.WriteError(w, r, http.StatusBadRequest, nil)
 
 		return
 	}
@@ -58,7 +55,7 @@ func (u *updatesResource) getUpdates(
 	added, removed, err := u.subSrv.GetSubscriptionChanges(ctx, user, deviceid, since)
 	if err != nil {
 		logger.Warn().Err(err).Msgf("load subscription changes error")
-		writeError(w, r, http.StatusInternalServerError, nil)
+		internal.WriteError(w, r, http.StatusInternalServerError, nil)
 
 		return
 	}
@@ -66,7 +63,7 @@ func (u *updatesResource) getUpdates(
 	updates, err := u.episodesServ.GetEpisodesUpdates(ctx, user, deviceid, since, includeActions)
 	if err != nil {
 		logger.Warn().Err(err).Msgf("load episodes updates error")
-		writeError(w, r, http.StatusInternalServerError, nil)
+		internal.WriteError(w, r, http.StatusInternalServerError, nil)
 
 		return
 	}

@@ -1,6 +1,10 @@
 package internal
 
-import "context"
+// TODO: move this
+
+import (
+	"context"
+)
 
 var CtxUserKey = any("CtxUserKey")
 

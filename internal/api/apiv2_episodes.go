@@ -24,14 +24,12 @@ import (
 
 func (er *episodesResource) Routes() chi.Router {
 	r := chi.NewRouter()
-	if !er.cfg.NoAuth {
-		r.Use(AuthenticatedOnly)
-	}
+	r.Use(AuthenticatedOnly)
 
 	r.With(checkUserMiddleware).
-		Post(`/{user:[\w+.-]+}.json`, wrap(er.uploadEpisodeActions))
+		Post(`/{user:[\w+.-]+}.json`, internal.Wrap(er.uploadEpisodeActions))
 	r.With(checkUserMiddleware).
-		Get(`/{user:[\w+.-]+}.json`, wrap(er.getEpisodeActions))
+		Get(`/{user:[\w+.-]+}.json`, internal.Wrap(er.getEpisodeActions))
 
 	return r
 }
@@ -82,7 +80,7 @@ func (er *episodesResource) uploadEpisodeActions(
 	if err = er.episodesServ.SaveEpisodesActions(ctx, user, actions...); err != nil {
 		logger.Debug().Interface("req", request).Msg("save episodes error")
 		logger.Warn().Err(err).Msg("save episodes error")
-		writeError(w, r, http.StatusInternalServerError, nil)
+		internal.WriteError(w, r, http.StatusInternalServerError, nil)
 
 		return
 	}
@@ -108,10 +106,10 @@ func (er *episodesResource) getEpisodeActions(
 	device := r.URL.Query().Get("device")
 	aggregated := r.URL.Query().Get("aggregated") == "true"
 
-	since, err := getSinceParameter(r)
+	since, err := internal.GetSinceParameter(r)
 	if err != nil {
 		logger.Debug().Err(err).Msgf("parse since parameter to time error")
-		writeError(w, r, http.StatusBadRequest, nil)
+		internal.WriteError(w, r, http.StatusBadRequest, nil)
 
 		return
 	}
@@ -119,7 +117,7 @@ func (er *episodesResource) getEpisodeActions(
 	res, err := er.episodesServ.GetEpisodesActions(ctx, user, podcast, device, since, aggregated)
 	if err != nil {
 		logger.Warn().Err(err).Msgf("get episodes error")
-		writeError(w, r, http.StatusInternalServerError, nil)
+		internal.WriteError(w, r, http.StatusInternalServerError, nil)
 
 		return
 	}
@@ -143,7 +141,6 @@ func (er *episodesResource) getEpisodeActions(
 // -----------------------------
 
 type episodesResource struct {
-	cfg          *Configuration
 	episodesServ *service.Episodes
 }
 

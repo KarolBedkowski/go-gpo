@@ -19,20 +19,17 @@ import (
 )
 
 type settingsResource struct {
-	cfg          *Configuration
 	settingsServ *service.Settings
 }
 
 func (u *settingsResource) Routes() chi.Router {
 	r := chi.NewRouter()
-	if !u.cfg.NoAuth {
-		r.Use(AuthenticatedOnly)
-	}
+	r.Use(AuthenticatedOnly)
 
 	r.With(checkUserMiddleware).
-		Get(`/{user:[\w+.-]+}/{scope:[a-z]+}.json`, wrap(u.getSettings))
+		Get(`/{user:[\w+.-]+}/{scope:[a-z]+}.json`, internal.Wrap(u.getSettings))
 	r.With(checkUserMiddleware).
-		Post(`/{user:[\w+.-]+}/{scope:[a-z]+}.json`, wrap(u.setSettings))
+		Post(`/{user:[\w+.-]+}/{scope:[a-z]+}.json`, internal.Wrap(u.setSettings))
 
 	return r
 }
@@ -48,7 +45,7 @@ func (u *settingsResource) getSettings(
 	key, err := u.getKey(r)
 	if err != nil {
 		logger.Debug().Err(err).Msg("get key error")
-		writeError(w, r, http.StatusBadRequest, nil)
+		internal.WriteError(w, r, http.StatusBadRequest, nil)
 
 		return
 	}
@@ -58,7 +55,7 @@ func (u *settingsResource) getSettings(
 	res, err := u.settingsServ.GetSettings(ctx, user, scope, key)
 	if err != nil {
 		logger.Warn().Err(err).Str("scope", "scope").Msgf("get settings error")
-		writeError(w, r, http.StatusInternalServerError, nil)
+		internal.WriteError(w, r, http.StatusInternalServerError, nil)
 
 		return
 	}
@@ -82,7 +79,7 @@ func (u *settingsResource) setSettings(
 
 	if err := render.DecodeJSON(r.Body, &req); err != nil {
 		logger.Debug().Err(err).Msg("decode request error")
-		writeError(w, r, http.StatusBadRequest, nil)
+		internal.WriteError(w, r, http.StatusBadRequest, nil)
 
 		return
 	}
@@ -90,7 +87,7 @@ func (u *settingsResource) setSettings(
 	key, err := u.getKey(r)
 	if err != nil {
 		logger.Debug().Err(err).Msg("get key error")
-		writeError(w, r, http.StatusBadRequest, nil)
+		internal.WriteError(w, r, http.StatusBadRequest, nil)
 
 		return
 	}
@@ -99,7 +96,7 @@ func (u *settingsResource) setSettings(
 
 	if err := u.settingsServ.SaveSettings(ctx, user, scope, key, req.Set, req.Remove); err != nil {
 		logger.Warn().Err(err).Str("scope", "scope").Msgf("save settings error")
-		writeError(w, r, http.StatusInternalServerError, nil)
+		internal.WriteError(w, r, http.StatusInternalServerError, nil)
 
 		return
 	}

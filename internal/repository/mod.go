@@ -116,6 +116,9 @@ func (r *Database) onConnect(ctx context.Context, db sqlx.ExecerContext) error {
 			"PRAGMA foreign_keys = ON;"+
 			"PRAGMA auto_vacuum = INCREMENTAL;",
 	)
+	if err != nil {
+		return fmt.Errorf("execute db init script error: %w", err)
+	}
 
-	return err
+	return nil
 }

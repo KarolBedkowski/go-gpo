@@ -17,14 +17,13 @@ import (
 )
 
 type authResource struct {
-	cfg   *Configuration
 	users *service.Users
 }
 
 func (ar *authResource) Routes() chi.Router {
 	r := chi.NewRouter()
-	r.Post(`/{user:[\w.+-]}/login.json`, wrap(ar.login))
-	r.Post(`/{user:[\w.+-]}/logout.json`, wrap(ar.logout))
+	r.Post(`/{user:[\w.+-]}/login.json`, internal.Wrap(ar.login))
+	r.Post(`/{user:[\w.+-]}/logout.json`, internal.Wrap(ar.logout))
 
 	return r
 }
@@ -33,7 +32,7 @@ func (ar *authResource) login(ctx context.Context, w http.ResponseWriter, r *htt
 	sess := session.GetSession(r)
 	user := internal.ContextUser(ctx)
 
-	switch u := sessionUser(sess); u {
+	switch u := internal.SessionUser(sess); u {
 	case "":
 		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 	case user:
@@ -47,13 +46,13 @@ func (ar *authResource) login(ctx context.Context, w http.ResponseWriter, r *htt
 func (*authResource) logout(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
 	sess := session.GetSession(r)
 	user := internal.ContextUser(ctx)
-	username := sessionUser(sess)
+	username := internal.SessionUser(sess)
 
 	logger.Info().Str("user", user).Msg("logout user")
 
 	if username != "" && user != username {
 		logger.Info().Str("user", user).Msgf("logout user error; session user %q not match user", username)
-		writeError(w, r, http.StatusBadRequest, nil)
+		internal.WriteError(w, r, http.StatusBadRequest, nil)
 
 		return
 	}

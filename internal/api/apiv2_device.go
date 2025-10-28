@@ -22,20 +22,17 @@ import (
 )
 
 type deviceResource struct {
-	cfg       *Configuration
 	deviceSrv *service.Device
 }
 
 func (d deviceResource) Routes() chi.Router {
 	r := chi.NewRouter()
-	if !d.cfg.NoAuth {
-		r.Use(AuthenticatedOnly)
-	}
+	r.Use(AuthenticatedOnly)
 
 	r.With(checkUserMiddleware).
-		Get(`/{user:[\w+.-]+}.json`, wrap(d.list))
+		Get(`/{user:[\w+.-]+}.json`, internal.Wrap(d.list))
 	r.With(checkUserMiddleware, checkDeviceMiddleware).
-		Post(`/{user:[\w+.-]+}/{deviceid:[\w.-]+}.json`, wrap(d.update))
+		Post(`/{user:[\w+.-]+}/{deviceid:[\w.-]+}.json`, internal.Wrap(d.update))
 
 	return r
 }
@@ -63,14 +60,14 @@ func (d deviceResource) update(ctx context.Context, w http.ResponseWriter, r *ht
 
 	if err := render.DecodeJSON(r.Body, &udd); err != nil {
 		logger.Debug().Err(err).Msg("error decoding json payload")
-		writeError(w, r, http.StatusBadRequest, nil)
+		internal.WriteError(w, r, http.StatusBadRequest, nil)
 
 		return
 	}
 
 	if err := udd.validate(); err != nil {
 		logger.Debug().Msgf("unknown device: %q", deviceid)
-		writeError(w, r, http.StatusBadRequest, err)
+		internal.WriteError(w, r, http.StatusBadRequest, err)
 
 		return
 	}
@@ -81,13 +78,13 @@ func (d deviceResource) update(ctx context.Context, w http.ResponseWriter, r *ht
 		w.WriteHeader(http.StatusOK)
 	case errors.Is(err, service.ErrUnknownUser):
 		logger.Info().Msgf("unknown user: %q", user)
-		writeError(w, r, http.StatusBadRequest, nil)
+		internal.WriteError(w, r, http.StatusBadRequest, nil)
 	case errors.Is(err, service.ErrUnknownDevice):
 		logger.Debug().Msgf("unknown device: %q", deviceid)
-		writeError(w, r, http.StatusBadRequest, nil)
+		internal.WriteError(w, r, http.StatusBadRequest, nil)
 	default:
 		logger.Warn().Err(err).Msg("update device error")
-		writeError(w, r, http.StatusInternalServerError, nil)
+		internal.WriteError(w, r, http.StatusInternalServerError, nil)
 	}
 }
 
@@ -102,9 +99,9 @@ func (d deviceResource) list(ctx context.Context, w http.ResponseWriter, r *http
 		render.JSON(w, r, ensureList(devices))
 	case errors.Is(err, service.ErrUnknownUser):
 		logger.Info().Msgf("unknown user: %q", user)
-		writeError(w, r, http.StatusBadRequest, nil)
+		internal.WriteError(w, r, http.StatusBadRequest, nil)
 	default:
 		logger.Warn().Err(err).Msg("update device error")
-		writeError(w, r, http.StatusInternalServerError, nil)
+		internal.WriteError(w, r, http.StatusInternalServerError, nil)
 	}
 }

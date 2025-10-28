@@ -12,12 +12,11 @@ import (
 	"fmt"
 
 	"github.com/rs/zerolog/log"
-	"gitlab.com/kabes/go-gpo/internal/api"
 	"gitlab.com/kabes/go-gpo/internal/repository"
+	"gitlab.com/kabes/go-gpo/internal/server"
 )
 
 type Server struct {
-	NoAuth   bool
 	Database string
 	Listen   string
 	LogBody  bool
@@ -32,13 +31,12 @@ func (s *Server) Start(ctx context.Context) error {
 		return fmt.Errorf("connect to database error: %w", err)
 	}
 
-	cfg := api.Configuration{
-		NoAuth:  s.NoAuth,
+	cfg := server.Configuration{
 		Listen:  s.Listen,
 		LogBody: s.LogBody,
 	}
 
-	if err := api.Start(ctx, re, &cfg); err != nil {
+	if err := server.Start(ctx, re, &cfg); err != nil {
 		return fmt.Errorf("start server error: %w", err)
 	}
 

@@ -20,28 +20,23 @@ import (
 	"github.com/rs/zerolog"
 	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/opml"
-	"gitlab.com/kabes/go-gpo/internal/repository"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
 type simpleResource struct {
-	cfg     *Configuration
-	repo    *repository.Database
 	subServ *service.Subs
 }
 
 func (s *simpleResource) Routes() chi.Router {
 	r := chi.NewRouter()
-	if !s.cfg.NoAuth {
-		r.Use(AuthenticatedOnly)
-	}
+	r.Use(AuthenticatedOnly)
 
 	r.With(checkUserMiddleware).
-		Get(`/{user:[\w+.-]+}.{format}`, wrap(s.downloadAllSubscriptions))
+		Get(`/{user:[\w+.-]+}.{format}`, internal.Wrap(s.downloadAllSubscriptions))
 	r.With(checkUserMiddleware, checkDeviceMiddleware).
-		Get(`/{user:[\w+.-]+}/{deviceid:[\w.-]+}.{format}`, wrap(s.downloadSubscriptions))
+		Get(`/{user:[\w+.-]+}/{deviceid:[\w.-]+}.{format}`, internal.Wrap(s.downloadSubscriptions))
 	r.With(checkUserMiddleware, checkDeviceMiddleware).
-		Put(`/{user:[\w+.-]+}/{deviceid:[\w.-]+}.{format}`, wrap(s.uploadSubscriptions))
+		Put(`/{user:[\w+.-]+}/{deviceid:[\w.-]+}.{format}`, internal.Wrap(s.uploadSubscriptions))
 
 	return r
 }
@@ -58,10 +53,10 @@ func (s *simpleResource) downloadAllSubscriptions(
 	if err != nil {
 		if errors.Is(err, service.ErrUnknownUser) {
 			logger.Warn().Msgf("unknown user: %q", user)
-			writeError(w, r, http.StatusBadRequest, nil)
+			internal.WriteError(w, r, http.StatusBadRequest, nil)
 		} else {
 			logger.Warn().Err(err).Msg("update device error")
-			writeError(w, r, http.StatusInternalServerError, nil)
+			internal.WriteError(w, r, http.StatusInternalServerError, nil)
 		}
 
 		return
@@ -75,7 +70,7 @@ func (s *simpleResource) downloadAllSubscriptions(
 		result, err := o.XML()
 		if err != nil {
 			logger.Warn().Err(err).Msg("get opml xml error")
-			writeError(w, r, http.StatusInternalServerError, nil)
+			internal.WriteError(w, r, http.StatusInternalServerError, nil)
 
 			return
 		}
@@ -90,7 +85,7 @@ func (s *simpleResource) downloadAllSubscriptions(
 		render.PlainText(w, r, strings.Join(subs, "\n"))
 	default:
 		logger.Info().Msgf("unknown format %q", format)
-		writeError(w, r, http.StatusBadRequest, nil)
+		internal.WriteError(w, r, http.StatusBadRequest, nil)
 	}
 }
 
@@ -108,17 +103,17 @@ func (s *simpleResource) downloadSubscriptions(
 	case err == nil:
 	case errors.Is(err, service.ErrUnknownUser):
 		logger.Warn().Msgf("unknown user: %q", user)
-		writeError(w, r, http.StatusBadRequest, nil)
+		internal.WriteError(w, r, http.StatusBadRequest, nil)
 
 		return
 	case errors.Is(err, service.ErrUnknownDevice):
 		logger.Debug().Msgf("unknown device: %q", deviceid)
-		writeError(w, r, http.StatusBadRequest, nil)
+		internal.WriteError(w, r, http.StatusBadRequest, nil)
 
 		return
 	default:
 		logger.Warn().Err(err).Msg("get device subscriptions failed")
-		writeError(w, r, http.StatusInternalServerError, nil)
+		internal.WriteError(w, r, http.StatusInternalServerError, nil)
 
 		return
 	}
@@ -128,7 +123,7 @@ func (s *simpleResource) downloadSubscriptions(
 		result, err := formatOMPL(subs)
 		if err != nil {
 			logger.Warn().Err(err).Msg("build opml error")
-			writeError(w, r, http.StatusInternalServerError, nil)
+			internal.WriteError(w, r, http.StatusInternalServerError, nil)
 
 			return
 		}
@@ -143,7 +138,7 @@ func (s *simpleResource) downloadSubscriptions(
 		render.PlainText(w, r, strings.Join(subs, "\n"))
 	default:
 		logger.Info().Msgf("unknown format %q", format)
-		writeError(w, r, http.StatusBadRequest, nil)
+		internal.WriteError(w, r, http.StatusBadRequest, nil)
 	}
 }
 
@@ -176,14 +171,14 @@ func (s *simpleResource) uploadSubscriptions(
 		}
 	default:
 		logger.Debug().Msgf("unknown format %q", format)
-		writeError(w, r, http.StatusBadRequest, nil)
+		internal.WriteError(w, r, http.StatusBadRequest, nil)
 
 		return
 	}
 
 	if err != nil {
 		logger.Debug().Err(err).Msgf("parse %q error", format)
-		writeError(w, r, http.StatusBadRequest, nil)
+		internal.WriteError(w, r, http.StatusBadRequest, nil)
 
 		return
 	}
@@ -191,7 +186,7 @@ func (s *simpleResource) uploadSubscriptions(
 	if err := s.subServ.UpdateDeviceSubscriptions(ctx, user, deviceid, subs, time.Now()); err != nil {
 		logger.Debug().Strs("subs", subs).Msg("update subscriptions data")
 		logger.Warn().Err(err).Msg("update subscriptions error")
-		writeError(w, r, http.StatusInternalServerError, nil)
+		internal.WriteError(w, r, http.StatusInternalServerError, nil)
 	} else {
 		w.WriteHeader(http.StatusOK)
 	}
