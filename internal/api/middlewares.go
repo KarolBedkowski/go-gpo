@@ -121,9 +121,10 @@ func (r *logResponseWriter) WriteHeader(status int) {
 
 func newSimpleLogMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		loglevel := zerolog.InfoLevel
 		if strings.HasPrefix(request.URL.Path, "/metrics") {
-			loglevel = zerolog.DebugLevel
+			next.ServeHTTP(writer, request)
+
+			return
 		}
 
 		start := time.Now()
@@ -132,7 +133,7 @@ func newSimpleLogMiddleware(next http.Handler) http.Handler {
 		llog := log.With().Logger().With().Str("req_id", requestID.String()).Logger()
 		request = request.WithContext(llog.WithContext(ctx))
 
-		llog.WithLevel(loglevel).
+		llog.Info().
 			Str("url", request.URL.Redacted()).
 			Str("remote", request.RemoteAddr).
 			Str("method", request.Method).
@@ -141,6 +142,7 @@ func newSimpleLogMiddleware(next http.Handler) http.Handler {
 		lrw := &logResponseWriter{ResponseWriter: writer, status: 0, size: 0}
 
 		defer func() {
+			loglevel := zerolog.InfoLevel
 			if lrw.status >= 400 && lrw.status != 404 {
 				loglevel = zerolog.WarnLevel
 			}
@@ -162,9 +164,10 @@ func newSimpleLogMiddleware(next http.Handler) http.Handler {
 // newFullLogMiddleware create new logging middleware.
 func newFullLogMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		loglevel := zerolog.InfoLevel
 		if strings.HasPrefix(request.URL.Path, "/metrics") {
-			loglevel = zerolog.DebugLevel
+			next.ServeHTTP(writer, request)
+
+			return
 		}
 
 		start := time.Now()
@@ -173,7 +176,7 @@ func newFullLogMiddleware(next http.Handler) http.Handler {
 		llog := log.With().Logger().With().Str("req_id", requestID.String()).Logger()
 		request = request.WithContext(llog.WithContext(ctx))
 
-		llog.WithLevel(loglevel).
+		llog.Info().
 			Str("url", request.URL.Redacted()).
 			Str("remote", request.RemoteAddr).
 			Str("method", request.Method).
@@ -199,6 +202,7 @@ func newFullLogMiddleware(next http.Handler) http.Handler {
 					Msg("response data")
 			}
 
+			loglevel := zerolog.InfoLevel
 			if lrw.Status() >= 400 && lrw.Status() != 404 {
 				loglevel = zerolog.ErrorLevel
 			}
