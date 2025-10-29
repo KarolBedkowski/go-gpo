@@ -1,0 +1,21 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>My Application {{ .assertsEnable }}</title>
+		{{ if .assertsEnable }}
+			<link rel="stylesheet" href="s/css_bundle.css">
+		{{ else }}
+			<link rel="stylesheet" href="s/spectre.min.css">
+			<link rel="stylesheet" href="s/spectre-exp.min.css">
+			<link rel="stylesheet" href="s/spectre-icons.min.css">
+		{{ end }}
+	</head>
+	<body>
+		<div id="main"></div>
+		<div id="dialog-container"></div>
+		<script type="text/javascript" src="s/mithril.js"></script>
+		<script type="module" type="text/javascript" src="s/app.js"></script>
+	</body>
+</html>

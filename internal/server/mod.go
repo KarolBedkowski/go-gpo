@@ -21,6 +21,7 @@ import (
 	gpoapi "gitlab.com/kabes/go-gpo/internal/api"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/service"
+	gpoweb "gitlab.com/kabes/go-gpo/internal/web"
 )
 
 type Configuration struct {
@@ -68,6 +69,13 @@ func Start(ctx context.Context, repo *db.Database, cfg *Configuration) error {
 		With(AuthenticatedOnly).
 		With(middleware.NoCache).
 		Mount("/", api.Routes())
+
+	web := gpoweb.New(deviceSrv, subSrv, usersSrv, episodesSrv, settingsSrv)
+	router.
+		With(sessionMW).
+		With(authMW.handle).
+		With(AuthenticatedOnly).
+		Mount("/web", web.Routes())
 
 	router.Get("/", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("go-gpo"))
