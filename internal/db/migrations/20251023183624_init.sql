@@ -40,6 +40,7 @@ CREATE TABLE podcasts (
     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
+CREATE UNIQUE INDEX podcasts_user_idx2 ON podcasts (user_id, url);
 CREATE INDEX podcasts_user_id_idx ON podcasts (user_id);
 CREATE INDEX podcasts_idx1 ON podcasts (updated_at, subscribed);
 
@@ -64,6 +65,8 @@ CREATE TABLE episodes (
 CREATE INDEX episodes_device_id_idx ON episodes (device_id);
 CREATE INDEX episodes_podcast_id_idx ON episodes (podcast_id);
 CREATE INDEX episodes_idx1 ON episodes (podcast_id, device_id, updated_at);
+CREATE UNIQUE INDEX episodes_idx1 ON episodes (podcast_id, url);
+
 -- +goose StatementEnd
 
 -- +goose Down
