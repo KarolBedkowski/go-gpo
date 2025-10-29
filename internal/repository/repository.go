@@ -38,6 +38,7 @@ type DevicesRepository interface {
 type UsersRepository interface {
 	GetUser(ctx context.Context, username string) (UserDB, error)
 	SaveUser(ctx context.Context, user *UserDB) (int64, error)
+	ListUsers(ctx context.Context, activeOnly bool) ([]UserDB, error)
 }
 
 type EpisodesRepository interface {

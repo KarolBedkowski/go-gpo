@@ -72,3 +72,23 @@ func (s sqliteRepository) SaveUser(ctx context.Context, user *UserDB) (int64, er
 
 	return user.ID, nil
 }
+
+// ListUsers get all users from database.
+func (s sqliteRepository) ListUsers(ctx context.Context, activeOnly bool) ([]UserDB, error) {
+	logger := log.Ctx(ctx)
+	logger.Debug().Msgf("list users, active_only=%v", activeOnly)
+
+	var users []UserDB
+
+	sql := "SELECT id, username, password, email, name, created_at, updated_at FROM users"
+	if activeOnly {
+		sql += " WHERE password != 'LOCKED'"
+	}
+
+	err := s.db.SelectContext(ctx, &users, sql)
+	if err != nil {
+		return nil, fmt.Errorf("get user error: %w", err)
+	}
+
+	return users, nil
+}

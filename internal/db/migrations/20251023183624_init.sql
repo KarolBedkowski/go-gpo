@@ -65,7 +65,7 @@ CREATE TABLE episodes (
 CREATE INDEX episodes_device_id_idx ON episodes (device_id);
 CREATE INDEX episodes_podcast_id_idx ON episodes (podcast_id);
 CREATE INDEX episodes_idx1 ON episodes (podcast_id, device_id, updated_at);
-CREATE UNIQUE INDEX episodes_idx1 ON episodes (podcast_id, url);
+CREATE UNIQUE INDEX episodes_idx2 ON episodes (podcast_id, url);
 
 -- +goose StatementEnd
 

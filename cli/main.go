@@ -104,6 +104,7 @@ func main() {
 				Usage: "manage users",
 				Commands: []*cli.Command{
 					addUserCmd(),
+					listUsersCmd(),
 					changeUserPasswordCmd(),
 				},
 			},
@@ -166,6 +167,25 @@ func addUserCmd() *cli.Command {
 				Password: c.String("password"),
 				Email:    c.String("email"),
 				Username: c.String("username"),
+			}
+
+			return s.Start(log.Logger.WithContext(ctx))
+		},
+	}
+}
+
+func listUsersCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "list",
+		Usage: "list user accounts",
+		Flags: []cli.Flag{
+			&cli.BoolFlag{Name: "active-only", Usage: "show active only accounts", Aliases: []string{"a"}},
+		},
+		Action: func(ctx context.Context, c *cli.Command) error {
+			initializeLogger(c.String("log.level"), c.String("log.format"))
+			s := cmd.ListUsers{
+				Database:   c.String("database"),
+				ActiveOnly: c.Bool("active-only"),
 			}
 
 			return s.Start(log.Logger.WithContext(ctx))

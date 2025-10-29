@@ -138,6 +138,30 @@ func (u *Users) ChangePassword(ctx context.Context, user model.User) (int64, err
 	return id, nil
 }
 
+func (u *Users) GetUsers(ctx context.Context, activeOnly bool) ([]model.User, error) {
+	conn, err := u.db.GetConnection(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get db connection error: %w", err)
+	}
+
+	defer conn.Close()
+
+	repo := u.db.GetRepository(conn)
+
+	users, err := repo.ListUsers(ctx, activeOnly)
+	if err != nil {
+		return nil, fmt.Errorf("get user error: %w", err)
+	}
+
+	res := make([]model.User, 0, len(users))
+
+	for _, u := range users {
+		res = append(res, model.NewUserFromUserDB(&u))
+	}
+
+	return res, nil
+}
+
 //---------------------------
 
 type PasswordHasher interface {

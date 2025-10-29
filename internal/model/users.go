@@ -11,6 +11,8 @@ type User struct {
 	Password string
 	Email    string
 	Name     string
+
+	Locked bool
 }
 
 func NewUserFromUserDB(u *repository.UserDB) User {
@@ -19,5 +21,6 @@ func NewUserFromUserDB(u *repository.UserDB) User {
 		Password: u.Password,
 		Email:    u.Email,
 		Name:     u.Name,
+		Locked:   u.Password == "LOCKED",
 	}
 }
