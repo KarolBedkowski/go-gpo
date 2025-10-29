@@ -6,6 +6,8 @@ package model
 
 import "gitlab.com/kabes/go-gpo/internal/repository"
 
+const UserLockedPassword = "LOCKED"
+
 type User struct {
 	Username string
 	Password string
@@ -21,6 +23,6 @@ func NewUserFromUserDB(u *repository.UserDB) User {
 		Password: u.Password,
 		Email:    u.Email,
 		Name:     u.Name,
-		Locked:   u.Password == "LOCKED",
+		Locked:   u.Password == UserLockedPassword,
 	}
 }

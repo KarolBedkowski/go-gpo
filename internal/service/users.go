@@ -20,8 +20,9 @@ import (
 )
 
 var (
-	ErrUnauthorized = errors.New("unauthorized")
-	ErrUserExists   = errors.New("user already exists")
+	ErrUnauthorized      = errors.New("unauthorized")
+	ErrUserAccountLocked = errors.New("account is locked")
+	ErrUserExists        = errors.New("user already exists")
 )
 
 type Users struct {
@@ -48,6 +49,10 @@ func (u *Users) LoginUser(ctx context.Context, username, password string) (model
 		return model.User{}, ErrUnknownUser
 	} else if err != nil {
 		return model.User{}, fmt.Errorf("get user error: %w", err)
+	}
+
+	if user.Password == model.UserLockedPassword {
+		return model.User{}, ErrUserAccountLocked
 	}
 
 	if !u.passHasher.CheckPassword(password, user.Password) {
@@ -160,6 +165,33 @@ func (u *Users) GetUsers(ctx context.Context, activeOnly bool) ([]model.User, er
 	}
 
 	return res, nil
+}
+
+func (u *Users) LockAccount(ctx context.Context, username string) error {
+	err := u.db.InTransaction(ctx, func(dbctx repository.DBContext) error {
+		repo := u.db.GetRepository(dbctx)
+
+		udb, err := repo.GetUser(ctx, username)
+		if errors.Is(err, repository.ErrNoData) {
+			return ErrUnknownUser
+		} else if err != nil {
+			return fmt.Errorf("get user error: %w", err)
+		}
+
+		udb.Password = model.UserLockedPassword
+		udb.UpdatedAt = time.Now()
+
+		if _, err = repo.SaveUser(ctx, &udb); err != nil {
+			return fmt.Errorf("save user error: %w", err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("lock user account error: %w", err)
+	}
+
+	return nil
 }
 
 //---------------------------

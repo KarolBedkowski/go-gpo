@@ -105,6 +105,7 @@ func main() {
 				Commands: []*cli.Command{
 					addUserCmd(),
 					listUsersCmd(),
+					lockUserCmd(),
 					changeUserPasswordCmd(),
 				},
 			},
@@ -197,15 +198,17 @@ func changeUserPasswordCmd() *cli.Command {
 	return &cli.Command{
 		Name:  "password",
 		Usage: "set new user password",
+func lockUserCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "lock",
+		Usage: "lock user account",
 		Flags: []cli.Flag{
 			&cli.StringFlag{Name: "username", Required: true, Aliases: []string{"u"}},
-			&cli.StringFlag{Name: "password", Required: true, Aliases: []string{"p"}},
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
 			initializeLogger(c.String("log.level"), c.String("log.format"))
-			s := cmd.ChangeUserPassword{
+			s := cmd.LockUserAccount{
 				Database: c.String("database"),
-				Password: c.String("password"),
 				Username: c.String("username"),
 			}
 

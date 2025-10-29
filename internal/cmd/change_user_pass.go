@@ -44,3 +44,27 @@ func (a *ChangeUserPassword) Start(ctx context.Context) error {
 
 	return nil
 }
+
+//---------------------------------------------------------------------
+
+type LockUserAccount struct {
+	Database string
+	Username string
+}
+
+func (l *LockUserAccount) Start(ctx context.Context) error {
+	re := &db.Database{}
+	if err := re.Connect(ctx, "sqlite3", l.Database); err != nil {
+		return fmt.Errorf("connect to database error: %w", err)
+	}
+
+	userv := service.NewUsersService(re)
+
+	if err := userv.LockAccount(ctx, l.Username); err != nil {
+		return fmt.Errorf("change user password error: %w", err)
+	}
+
+	fmt.Printf("User %q locked\n", l.Username)
+
+	return nil
+}
