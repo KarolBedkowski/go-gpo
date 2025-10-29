@@ -22,7 +22,7 @@ CREATE TABLE devices (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE INDEX devices_user_id_idx ON devices (user_id);
@@ -37,7 +37,7 @@ CREATE TABLE podcasts (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-    FOREIGN KEY (user_id) REFERENCES users (id)
+    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE INDEX podcasts_user_id_idx ON podcasts (user_id);
@@ -57,8 +57,8 @@ CREATE TABLE episodes (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-    FOREIGN KEY (podcast_id) REFERENCES podcasts (id),
-    FOREIGN KEY (device_id) REFERENCES devices (id)
+    FOREIGN KEY (podcast_id) REFERENCES podcasts (id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (device_id) REFERENCES devices (id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE INDEX episodes_device_id_idx ON episodes (device_id);

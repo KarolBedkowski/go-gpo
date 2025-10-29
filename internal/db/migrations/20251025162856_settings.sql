@@ -6,7 +6,7 @@ CREATE TABLE settings (
     key VARCHAR NOT NULL,
     value VARCHAR NOT NULL,
 
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE UNIQUE INDEX settings_idx ON settings(user_id, scope, key);
