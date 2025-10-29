@@ -75,6 +75,7 @@ func main() {
 		Commands: []*cli.Command{
 			startServerCmd(),
 			migrateCmd(),
+			maintenanceCmd(),
 			listCmd(),
 			{
 				Name:  "user",
@@ -167,6 +168,22 @@ func migrateCmd() *cli.Command {
 			initializeLogger(c.String("log.level"), c.String("log.format"))
 
 			s := cmd.Migrate{
+				Database: c.String("database"),
+			}
+
+			return s.Start(log.Logger.WithContext(ctx))
+		},
+	}
+}
+
+func maintenanceCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "maintenance",
+		Usage: "maintenance database",
+		Action: func(ctx context.Context, c *cli.Command) error {
+			initializeLogger(c.String("log.level"), c.String("log.format"))
+
+			s := cmd.Maintenance{
 				Database: c.String("database"),
 			}
 

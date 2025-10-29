@@ -108,13 +108,26 @@ func (r *Database) GetRepository(db DBContext) Repository {
 	return sqliteRepository{db}
 }
 
+func (r *Database) Maintenance(ctx context.Context) error {
+	_, err := r.db.ExecContext(ctx,
+		"VACUUM;"+
+			"PRAGMA optimize;",
+	)
+	if err != nil {
+		return fmt.Errorf("execute db init script error: %w", err)
+	}
+
+	return nil
+}
+
 func (r *Database) onConnect(ctx context.Context, db sqlx.ExecerContext) error {
 	_, err := db.ExecContext(ctx,
 		"PRAGMA journal_mode = WAL;"+
 			"PRAGMA synchronous = NORMAL;"+
 			"PRAGMA temp_store = MEMORY;"+
 			"PRAGMA foreign_keys = ON;"+
-			"PRAGMA auto_vacuum = INCREMENTAL;",
+			"PRAGMA auto_vacuum = INCREMENTAL;"+
+			"PRAGMA optimize=0x10002;",
 	)
 	if err != nil {
 		return fmt.Errorf("execute db init script error: %w", err)
