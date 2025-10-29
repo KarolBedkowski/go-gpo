@@ -10,3 +10,7 @@ package repository
 type sqliteRepository struct {
 	db DBContext
 }
+
+func NewSqliteRepository(db DBContext) Repository {
+	return &sqliteRepository{db}
+}

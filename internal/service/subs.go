@@ -14,6 +14,7 @@ import (
 	"slices"
 	"time"
 
+	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
@@ -21,23 +22,23 @@ import (
 var ErrUnknownPodcast = errors.New("unknown podcast")
 
 type Subs struct {
-	repo *repository.Database
+	db *db.Database
 }
 
-func NewSubssService(repo *repository.Database) *Subs {
-	return &Subs{repo}
+func NewSubssService(db *db.Database) *Subs {
+	return &Subs{db}
 }
 
 // GetUserSubscriptions is simple api.
 func (s *Subs) GetUserSubscriptions(ctx context.Context, username string, since time.Time) ([]string, error) {
-	conn, err := s.repo.GetConnection(ctx)
+	conn, err := s.db.GetConnection(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("get connection error: %w", err)
 	}
 
 	defer conn.Close()
 
-	repo := s.repo.GetRepository(conn)
+	repo := s.db.GetRepository(conn)
 
 	user, err := repo.GetUser(ctx, username)
 	if errors.Is(err, repository.ErrNoData) {
@@ -57,14 +58,14 @@ func (s *Subs) GetUserSubscriptions(ctx context.Context, username string, since 
 // GetDeviceSubscriptions is simple api.
 func (s *Subs) GetDeviceSubscriptions(ctx context.Context, username, devicename string, since time.Time,
 ) ([]string, error) {
-	conn, err := s.repo.GetConnection(ctx)
+	conn, err := s.db.GetConnection(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("get connection error: %w", err)
 	}
 
 	defer conn.Close()
 
-	repo := s.repo.GetRepository(conn)
+	repo := s.db.GetRepository(conn)
 
 	user, err := repo.GetUser(ctx, username)
 	if errors.Is(err, repository.ErrNoData) {
@@ -113,8 +114,8 @@ func (s *Subs) UpdateDeviceSubscriptions(ctx context.Context, //nolint:cyclop
 ) error {
 	_ = ts
 
-	err := s.repo.InTransaction(ctx, func(db repository.DBContext) error {
-		repo := s.repo.GetRepository(db)
+	err := s.db.InTransaction(ctx, func(db repository.DBContext) error {
+		repo := s.db.GetRepository(db)
 
 		user, err := s.getUser(ctx, repo, username)
 		if err != nil {
@@ -181,8 +182,8 @@ func (s *Subs) UpdateDeviceSubscriptionChanges( //nolint:cyclop
 	username, devicename string,
 	changes *model.SubscriptionChanges,
 ) error {
-	err := s.repo.InTransaction(ctx, func(db repository.DBContext) error {
-		repo := s.repo.GetRepository(db)
+	err := s.db.InTransaction(ctx, func(db repository.DBContext) error {
+		repo := s.db.GetRepository(db)
 
 		user, err := s.getUser(ctx, repo, username)
 		if err != nil {
@@ -317,14 +318,14 @@ func (s *Subs) getPodcasts(
 ) (
 	[]repository.PodcastDB, error,
 ) {
-	conn, err := s.repo.GetConnection(ctx)
+	conn, err := s.db.GetConnection(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("get connection error: %w", err)
 	}
 
 	defer conn.Close()
 
-	repo := s.repo.GetRepository(conn)
+	repo := s.db.GetRepository(conn)
 
 	user, err := repo.GetUser(ctx, username)
 	if errors.Is(err, repository.ErrNoData) {

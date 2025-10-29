@@ -5,10 +5,13 @@
 package repository
 
 import (
+	"errors"
 	"time"
 
 	"github.com/rs/zerolog"
 )
+
+var ErrNoData = errors.New("no result")
 
 type DeviceDB struct {
 	ID        int64     `db:"id"`

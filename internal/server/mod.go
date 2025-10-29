@@ -19,7 +19,7 @@ import (
 	"github.com/rs/zerolog/hlog"
 	"github.com/rs/zerolog/log"
 	gpoapi "gitlab.com/kabes/go-gpo/internal/api"
-	"gitlab.com/kabes/go-gpo/internal/repository"
+	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
@@ -33,7 +33,7 @@ const (
 	sessionMaxLifetime = 14 * 24 * 60 * 60 // 14d
 )
 
-func Start(ctx context.Context, repo *repository.Database, cfg *Configuration) error {
+func Start(ctx context.Context, repo *db.Database, cfg *Configuration) error {
 	deviceSrv := service.NewDeviceService(repo)
 	subSrv := service.NewSubssService(repo)
 	usersSrv := service.NewUsersService(repo)

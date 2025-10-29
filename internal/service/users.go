@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"time"
 
+	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/repository"
 	"golang.org/x/crypto/bcrypt"
@@ -24,23 +25,23 @@ var (
 )
 
 type Users struct {
-	repo       *repository.Database
+	db         *db.Database
 	passHasher PasswordHasher
 }
 
-func NewUsersService(repo *repository.Database) *Users {
-	return &Users{repo, BCryptPasswordHasher{}}
+func NewUsersService(db *db.Database) *Users {
+	return &Users{db, BCryptPasswordHasher{}}
 }
 
 func (u *Users) LoginUser(ctx context.Context, username, password string) (model.User, error) {
-	conn, err := u.repo.GetConnection(ctx)
+	conn, err := u.db.GetConnection(ctx)
 	if err != nil {
 		return model.User{}, fmt.Errorf("get db connection error: %w", err)
 	}
 
 	defer conn.Close()
 
-	repo := u.repo.GetRepository(conn)
+	repo := u.db.GetRepository(conn)
 
 	user, err := repo.GetUser(ctx, username)
 	if errors.Is(err, repository.ErrNoData) {
@@ -57,14 +58,14 @@ func (u *Users) LoginUser(ctx context.Context, username, password string) (model
 }
 
 func (u *Users) AddUser(ctx context.Context, user model.User) (int64, error) {
-	tx, err := u.repo.Begin(ctx)
+	tx, err := u.db.Begin(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("get db connection error: %w", err)
 	}
 
 	defer tx.Rollback()
 
-	repo := u.repo.GetRepository(tx)
+	repo := u.db.GetRepository(tx)
 
 	// is user exists?
 	if _, err := repo.GetUser(ctx, user.Username); err != nil && !errors.Is(err, repository.ErrNoData) {
@@ -101,14 +102,14 @@ func (u *Users) AddUser(ctx context.Context, user model.User) (int64, error) {
 }
 
 func (u *Users) ChangePassword(ctx context.Context, user model.User) (int64, error) {
-	tx, err := u.repo.Begin(ctx)
+	tx, err := u.db.Begin(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("start tx error: %w", err)
 	}
 
 	defer tx.Rollback()
 
-	repo := u.repo.GetRepository(tx)
+	repo := u.db.GetRepository(tx)
 
 	// is user exists?
 	udb, err := repo.GetUser(ctx, user.Username)

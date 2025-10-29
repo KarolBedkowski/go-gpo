@@ -1,4 +1,4 @@
-package repository
+package db
 
 //
 // mod.go
@@ -16,9 +16,8 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/pressly/goose/v3"
 	"github.com/rs/zerolog/log"
+	"gitlab.com/kabes/go-gpo/internal/repository"
 )
-
-var ErrNoData = errors.New("no result")
 
 type Database struct {
 	db *sqlx.DB
@@ -82,7 +81,7 @@ func (r *Database) Begin(ctx context.Context) (*sqlx.Tx, error) {
 	return tx, nil
 }
 
-func (r *Database) InTransaction(ctx context.Context, f func(DBContext) error) error {
+func (r *Database) InTransaction(ctx context.Context, f func(repository.DBContext) error) error {
 	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin tx error: %w", err)
@@ -104,8 +103,8 @@ func (r *Database) InTransaction(ctx context.Context, f func(DBContext) error) e
 	return nil
 }
 
-func (r *Database) GetRepository(db DBContext) Repository {
-	return sqliteRepository{db}
+func (r *Database) GetRepository(db repository.DBContext) repository.Repository {
+	return repository.NewSqliteRepository(db)
 }
 
 func (r *Database) Maintenance(ctx context.Context) error {

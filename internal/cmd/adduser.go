@@ -11,8 +11,8 @@ import (
 	"context"
 	"fmt"
 
+	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
-	"gitlab.com/kabes/go-gpo/internal/repository"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
@@ -25,7 +25,7 @@ type AddUser struct {
 }
 
 func (a *AddUser) Start(ctx context.Context) error {
-	re := &repository.Database{}
+	re := &db.Database{}
 	if err := re.Connect(ctx, "sqlite3", a.Database); err != nil {
 		return fmt.Errorf("connect to database error: %w", err)
 	}

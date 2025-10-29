@@ -13,7 +13,7 @@ import (
 
 	"github.com/Merovius/systemd"
 	"github.com/rs/zerolog/log"
-	"gitlab.com/kabes/go-gpo/internal/repository"
+	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/server"
 )
 
@@ -33,7 +33,7 @@ func (s *Server) Start(ctx context.Context) error {
 		logger.Warn().Err(err).Msg("systemd autowatchdog start error")
 	}
 
-	re := &repository.Database{}
+	re := &db.Database{}
 	if err := re.Connect(ctx, "sqlite3", s.Database); err != nil {
 		return fmt.Errorf("connect to database error: %w", err)
 	}

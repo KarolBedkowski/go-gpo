@@ -13,21 +13,22 @@ import (
 	"fmt"
 	"time"
 
+	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
 type Episodes struct {
-	repo *repository.Database
+	db *db.Database
 }
 
-func NewEpisodesService(repo *repository.Database) *Episodes {
-	return &Episodes{repo}
+func NewEpisodesService(db *db.Database) *Episodes {
+	return &Episodes{db}
 }
 
 func (e *Episodes) SaveEpisodesActions(ctx context.Context, username string, action ...model.Episode) error {
-	err := e.repo.InTransaction(ctx, func(db repository.DBContext) error {
-		repo := e.repo.GetRepository(db)
+	err := e.db.InTransaction(ctx, func(db repository.DBContext) error {
+		repo := e.db.GetRepository(db)
 
 		user, err := repo.GetUser(ctx, username)
 		if errors.Is(err, repository.ErrNoData) {
@@ -68,14 +69,14 @@ func (e *Episodes) SaveEpisodesActions(ctx context.Context, username string, act
 func (e *Episodes) GetEpisodesActions(ctx context.Context, username, podcast, devicename string,
 	since time.Time, aggregated bool,
 ) ([]model.Episode, error) {
-	conn, err := e.repo.GetConnection(ctx)
+	conn, err := e.db.GetConnection(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("get connection error: %w", err)
 	}
 
 	defer conn.Close()
 
-	repo := e.repo.GetRepository(conn)
+	repo := e.db.GetRepository(conn)
 
 	episodes, err := e.getEpisodesActions(ctx, repo, username, podcast, devicename, since, aggregated)
 	if err != nil {
@@ -109,12 +110,12 @@ func (e *Episodes) GetEpisodesUpdates(ctx context.Context, username, devicename 
 ) ([]model.EpisodeUpdate, error) {
 	_ = includeActions
 
-	conn, err := e.repo.GetConnection(ctx)
+	conn, err := e.db.GetConnection(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("get connection error: %w", err)
 	}
 
-	repo := e.repo.GetRepository(conn)
+	repo := e.db.GetRepository(conn)
 
 	episodes, err := e.getEpisodesActions(ctx, repo, username, "", devicename, since, true)
 	if err != nil {

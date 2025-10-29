@@ -12,7 +12,7 @@ import (
 	"embed"
 	"fmt"
 
-	"gitlab.com/kabes/go-gpo/internal/repository"
+	"gitlab.com/kabes/go-gpo/internal/db"
 )
 
 //go:embed "migrations/*.sql"
@@ -23,7 +23,7 @@ type Migrate struct {
 }
 
 func (a *Migrate) Start(ctx context.Context) error {
-	re := &repository.Database{}
+	re := &db.Database{}
 	if err := re.Connect(ctx, "sqlite3", a.Database); err != nil {
 		return fmt.Errorf("connect to database error: %w", err)
 	}

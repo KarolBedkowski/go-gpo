@@ -11,7 +11,7 @@ import (
 	"context"
 	"fmt"
 
-	"gitlab.com/kabes/go-gpo/internal/repository"
+	"gitlab.com/kabes/go-gpo/internal/db"
 )
 
 type Maintenance struct {
@@ -19,7 +19,7 @@ type Maintenance struct {
 }
 
 func (a *Maintenance) Start(ctx context.Context) error {
-	re := &repository.Database{}
+	re := &db.Database{}
 	if err := re.Connect(ctx, "sqlite3", a.Database); err != nil {
 		return fmt.Errorf("connect to database error: %w", err)
 	}

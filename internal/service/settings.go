@@ -15,26 +15,27 @@ import (
 	"maps"
 
 	//	"gitlab.com/kabes/go-gpo/internal/model"
+	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
 type Settings struct {
-	repo *repository.Database
+	db *db.Database
 }
 
-func NewSettingsService(repo *repository.Database) *Settings {
-	return &Settings{repo}
+func NewSettingsService(db *db.Database) *Settings {
+	return &Settings{db}
 }
 
 func (s Settings) GetSettings(ctx context.Context, username, scope, key string) (map[string]string, error) {
-	conn, err := s.repo.GetConnection(ctx)
+	conn, err := s.db.GetConnection(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("get connection error: %w", err)
 	}
 
 	defer conn.Close()
 
-	repo := s.repo.GetRepository(conn)
+	repo := s.db.GetRepository(conn)
 
 	user, err := repo.GetUser(ctx, username)
 	if errors.Is(err, repository.ErrNoData) {
@@ -67,8 +68,8 @@ func (s Settings) SaveSettings(
 	set map[string]string,
 	del []string,
 ) error {
-	err := s.repo.InTransaction(ctx, func(db repository.DBContext) error {
-		repo := s.repo.GetRepository(db)
+	err := s.db.InTransaction(ctx, func(db repository.DBContext) error {
+		repo := s.db.GetRepository(db)
 
 		user, err := repo.GetUser(ctx, username)
 		if errors.Is(err, repository.ErrNoData) {

@@ -14,7 +14,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-type queryer interface {
+type Queryer interface {
 	sqlx.QueryerContext
 	SelectContext(ctx context.Context, dest any, query string, args ...any) error
 	GetContext(ctx context.Context, dest any, query string, args ...any) error
@@ -59,10 +59,21 @@ type SettingsRepository interface {
 	SaveSettings(ctx context.Context, sett *SettingsDB) error
 }
 
+type SessionRepository interface {
+	DeleteSession(ctx context.Context, sid string) error
+	SaveSession(ctx context.Context, sid string, data []byte) error
+	RegenerateSession(ctx context.Context, oldsid, newsid string) error
+	CountSessions(ctx context.Context) (int, error)
+	CleanSessions(ctx context.Context, maxLifeTime, maxLifeTimeForEmpty time.Duration) error
+	ReadOrCreate(ctx context.Context, sid string) (data []byte, createAt time.Time, err error)
+	SessionExists(ctx context.Context, sid string) (bool, error)
+}
+
 type Repository interface {
 	DevicesRepository
 	UsersRepository
 	EpisodesRepository
 	SubscribedRepository
 	SettingsRepository
+	SessionRepository
 }

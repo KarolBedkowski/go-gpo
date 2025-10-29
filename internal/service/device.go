@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"slices"
 
+	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
@@ -24,11 +25,11 @@ var (
 )
 
 type Device struct {
-	repo *repository.Database
+	db *db.Database
 }
 
-func NewDeviceService(repo *repository.Database) *Device {
-	return &Device{repo}
+func NewDeviceService(db *db.Database) *Device {
+	return &Device{db}
 }
 
 func (d *Device) UpdateDevice(ctx context.Context, username, deviceid, caption, devtype string) error {
@@ -36,8 +37,8 @@ func (d *Device) UpdateDevice(ctx context.Context, username, deviceid, caption, 
 		return ErrInvalidData
 	}
 
-	err := d.repo.InTransaction(ctx, func(tx repository.DBContext) error {
-		repo := d.repo.GetRepository(tx)
+	err := d.db.InTransaction(ctx, func(tx repository.DBContext) error {
+		repo := d.db.GetRepository(tx)
 
 		user, err := repo.GetUser(ctx, username)
 		if errors.Is(err, repository.ErrNoData) {
@@ -72,14 +73,14 @@ func (d *Device) UpdateDevice(ctx context.Context, username, deviceid, caption, 
 }
 
 func (d *Device) ListDevices(ctx context.Context, username string) ([]model.Device, error) {
-	conn, err := d.repo.GetConnection(ctx)
+	conn, err := d.db.GetConnection(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("get connection error: %w", err)
 	}
 
 	defer conn.Close()
 
-	repo := d.repo.GetRepository(conn)
+	repo := d.db.GetRepository(conn)
 
 	user, err := repo.GetUser(ctx, username)
 	if errors.Is(err, repository.ErrNoData) {
