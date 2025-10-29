@@ -50,6 +50,9 @@ func (a *List) listDevices(ctx context.Context, re *db.Database) error {
 		return fmt.Errorf("get device list error: %w", err)
 	}
 
+	fmt.Printf("%-30s | %-10s | %-30s | %s \n", "Name", "Type", "Caption", "Subscriptions")
+	fmt.Println("--------------------------------------------------------------------------------------------")
+
 	for _, d := range devices {
 		fmt.Printf("%-30s | %-10s | %-30s | %d \n", d.Name, d.DevType, d.Caption, d.Subscriptions)
 	}
