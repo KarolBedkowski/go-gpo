@@ -35,8 +35,6 @@ func (sr *subscriptionsResource) Routes() chi.Router {
 	router.With(checkUserMiddleware, checkDeviceMiddleware).
 		Get(`/{user:[\w+.-]+}/{deviceid:[\w.-]+}.json`, internal.Wrap(sr.devSubscriptions))
 	router.With(checkUserMiddleware, checkDeviceMiddleware).
-		Put(`/{user:[\w+.-]+}/{deviceid:[\w.-]+}.json`, internal.Wrap(sr.uploadSubscriptions))
-	router.With(checkUserMiddleware, checkDeviceMiddleware).
 		Post(`/{user:[\w+.-]+}/{deviceid:[\w.-]+}.json`, internal.Wrap(sr.uploadSubscriptionChanges))
 
 	return router
@@ -134,35 +132,6 @@ func (sr *subscriptionsResource) userSubscriptions(
 
 	w.WriteHeader(http.StatusOK)
 	w.Write(result)
-}
-
-func (sr *subscriptionsResource) uploadSubscriptions(
-	ctx context.Context,
-	w http.ResponseWriter,
-	r *http.Request,
-	logger *zerolog.Logger,
-) {
-	user := internal.ContextUser(ctx)
-	deviceid := internal.ContextDevice(ctx)
-
-	var subs []string
-
-	if err := render.DecodeJSON(r.Body, &subs); err != nil {
-		logger.Debug().Err(err).Msgf("parse json error")
-		internal.WriteError(w, r, http.StatusBadRequest, nil)
-
-		return
-	}
-
-	if err := sr.subServ.UpdateDeviceSubscriptions(ctx, user, deviceid, subs, time.Now()); err != nil {
-		logger.Debug().Strs("subs", subs).Msg("update subscriptions data")
-		logger.Warn().Err(err).Msg("update subscriptions error")
-		internal.WriteError(w, r, http.StatusBadRequest, nil)
-
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
 }
 
 func (sr *subscriptionsResource) uploadSubscriptionChanges(
