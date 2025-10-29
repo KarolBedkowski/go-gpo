@@ -109,7 +109,7 @@ func (s *Subs) GetDeviceSubscriptionChanges(ctx context.Context, username, devic
 }
 
 func (s *Subs) UpdateDeviceSubscriptions(ctx context.Context, //nolint:cyclop
-	username, devicename string, subs []string, ts time.Time,
+	username, devicename string, subs model.SubscribedURLs, ts time.Time,
 ) error {
 	_ = ts
 
@@ -179,7 +179,7 @@ func (s *Subs) UpdateDeviceSubscriptions(ctx context.Context, //nolint:cyclop
 func (s *Subs) UpdateDeviceSubscriptionChanges( //nolint:cyclop
 	ctx context.Context,
 	username, devicename string,
-	added, removed []string,
+	changes *model.SubscriptionChanges,
 ) error {
 	err := s.repo.InTransaction(ctx, func(db repository.DBContext) error {
 		repo := s.repo.GetRepository(db)
@@ -199,17 +199,17 @@ func (s *Subs) UpdateDeviceSubscriptionChanges( //nolint:cyclop
 			return fmt.Errorf("get subscriptions error: %w", err)
 		}
 
-		changes := make([]repository.PodcastDB, 0, len(added)+len(removed))
+		podchanges := make([]repository.PodcastDB, 0, len(changes.Add)+len(changes.Remove))
 
 		// removed
-		for _, sub := range removed {
+		for _, sub := range changes.Remove {
 			if podcast, ok := subscribed.FindPodcastByURL(sub); ok && podcast.Subscribed {
 				podcast.Subscribed = false
-				changes = append(changes, podcast)
+				podchanges = append(podchanges, podcast)
 			}
 		}
 
-		for _, sub := range added {
+		for _, sub := range changes.Add {
 			podcast, ok := subscribed.FindPodcastByURL(sub)
 			switch {
 			case ok && podcast.Subscribed:
@@ -221,10 +221,10 @@ func (s *Subs) UpdateDeviceSubscriptionChanges( //nolint:cyclop
 				podcast.Subscribed = true
 			}
 
-			changes = append(changes, podcast)
+			podchanges = append(podchanges, podcast)
 		}
 
-		if err := repo.SavePodcast(ctx, username, devicename, changes...); err != nil {
+		if err := repo.SavePodcast(ctx, username, devicename, podchanges...); err != nil {
 			return fmt.Errorf("save subscriptions error: %w", err)
 		}
 

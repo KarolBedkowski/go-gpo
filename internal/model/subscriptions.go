@@ -8,6 +8,10 @@
 package model
 
 import (
+	"fmt"
+	"net/url"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -34,6 +38,8 @@ type Subscription struct {
 	Action    string
 	UpdatedAt time.Time
 }
+
+// ------------------------------------------------------
 
 type Episode struct {
 	Podcast   string
@@ -66,6 +72,8 @@ func (e Episode) MarshalZerologObject(event *zerolog.Event) {
 	}
 }
 
+// ------------------------------------------------------
+
 type EpisodeUpdate struct {
 	Title        string    `json:"title"`
 	URL          string    `json:"url"`
@@ -75,4 +83,87 @@ type EpisodeUpdate struct {
 	MygpoLink    string    `json:"mygpo_link"`
 	Released     time.Time `json:"released"`
 	Status       string    `json:"status"`
+}
+
+// ------------------------------------------------------
+
+type SubscriptionChanges struct {
+	Add         []string
+	Remove      []string
+	ChangedURLs [][]string
+}
+
+func NewSubscriptionChanges(add, remove []string) SubscriptionChanges {
+	add, chAdd := SanitizeURLs(add)
+	remove, chRem := SanitizeURLs(remove)
+
+	changes := make([][]string, 0)
+	changes = append(changes, chAdd...)
+	changes = append(changes, chRem...)
+
+	return SubscriptionChanges{
+		Add:         add,
+		Remove:      remove,
+		ChangedURLs: changes,
+	}
+}
+
+func (s *SubscriptionChanges) Validate() error {
+	for _, i := range s.Add {
+		if slices.Contains(s.Remove, i) {
+			return fmt.Errorf("%w, duplicated url: %s", ErrInvalidData, i)
+		}
+	}
+
+	return nil
+}
+
+// ------------------------------------------------------
+
+type SubscribedURLs []string
+
+func NewSubscribedURLS(urls []string) SubscribedURLs {
+	sanitized := make([]string, 0, len(urls))
+
+	for _, u := range urls {
+		if s := sanitizeURL(u); s != "" {
+			sanitized = append(sanitized, s)
+		}
+	}
+
+	return SubscribedURLs(sanitized)
+}
+
+// ------------------------------------------------------
+
+func SanitizeURLs(urls []string) ([]string, [][]string) {
+	res := make([]string, 0, len(urls))
+	changes := make([][]string, 0)
+
+	for _, u := range urls {
+		su := sanitizeURL(u)
+
+		if su == "" {
+			continue
+		}
+
+		if su != u {
+			changes = append(changes, []string{u, su})
+		}
+
+		res = append(res, su)
+	}
+
+	return res, changes
+}
+
+func sanitizeURL(u string) string {
+	su := strings.TrimSpace(u)
+
+	url, err := url.Parse(su)
+	if err != nil || (url.Scheme != "http" && url.Scheme != "https") {
+		return ""
+	}
+
+	return su
 }

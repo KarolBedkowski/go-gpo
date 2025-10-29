@@ -19,6 +19,7 @@ import (
 	"github.com/go-chi/render"
 	"github.com/rs/zerolog"
 	"gitlab.com/kabes/go-gpo/internal"
+	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/opml"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
@@ -183,7 +184,8 @@ func (s *simpleResource) uploadSubscriptions(
 		return
 	}
 
-	if err := s.subServ.UpdateDeviceSubscriptions(ctx, user, deviceid, subs, time.Now()); err != nil {
+	subscribed := model.NewSubscribedURLS(subs)
+	if err := s.subServ.UpdateDeviceSubscriptions(ctx, user, deviceid, subscribed, time.Now()); err != nil {
 		logger.Debug().Strs("subs", subs).Msg("update subscriptions data")
 		logger.Warn().Err(err).Msg("update subscriptions error")
 		internal.WriteError(w, r, http.StatusInternalServerError, nil)

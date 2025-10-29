@@ -9,12 +9,12 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"slices"
 	"strconv"
 	"time"
 
 	"github.com/rs/zerolog"
 	"gitlab.com/kabes/go-gpo/internal"
+	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/opml"
 	"gitlab.com/kabes/go-gpo/internal/service"
 
@@ -151,16 +151,16 @@ func (sr *subscriptionsResource) uploadSubscriptionChanges(
 		return
 	}
 
-	updatedURLs := changes.sanitize()
+	subChanges := model.NewSubscriptionChanges(changes.Add, changes.Remove)
 
-	if err := changes.validate(); err != nil {
+	if err := subChanges.Validate(); err != nil {
 		logger.Debug().Err(err).Msg("validate request error")
 		internal.WriteError(w, r, http.StatusBadRequest, nil)
 
 		return
 	}
 
-	err := sr.subServ.UpdateDeviceSubscriptionChanges(ctx, user, deviceid, changes.Add, changes.Remove)
+	err := sr.subServ.UpdateDeviceSubscriptionChanges(ctx, user, deviceid, &subChanges)
 	if err != nil {
 		logger.Debug().Interface("changes", changes).Msg("update subscriptions data")
 		logger.Warn().Err(err).Msg("update subscriptions error")
@@ -169,16 +169,12 @@ func (sr *subscriptionsResource) uploadSubscriptionChanges(
 		return
 	}
 
-	if updatedURLs == nil {
-		updatedURLs = make([][]string, 0)
-	}
-
 	resp := struct {
 		Timestamp   int64      `json:"timestamp"`
 		UpdatedURLs [][]string `json:"update_urls"`
 	}{
 		Timestamp:   time.Now().Unix(),
-		UpdatedURLs: updatedURLs,
+		UpdatedURLs: subChanges.ChangedURLs,
 	}
 
 	render.JSON(w, r, &resp)
@@ -189,31 +185,4 @@ func (sr *subscriptionsResource) uploadSubscriptionChanges(
 type subscriptionChangesRequest struct {
 	Add    []string `json:"add"`
 	Remove []string `json:"remove"`
-}
-
-func (s *subscriptionChangesRequest) validate() error {
-	if len(s.Add) == 0 || len(s.Remove) == 0 {
-		return nil
-	}
-
-	for _, i := range s.Add {
-		if slices.Contains(s.Remove, i) {
-			return NewValidationError("duplicated url: %s", i)
-		}
-	}
-
-	return nil
-}
-
-func (s *subscriptionChangesRequest) sanitize() [][]string {
-	var chAdd, chRem [][]string
-
-	s.Add, chAdd = SanitizeURLs(s.Add)
-	s.Remove, chRem = SanitizeURLs(s.Remove)
-
-	changes := make([][]string, 0)
-	changes = append(changes, chAdd...)
-	changes = append(changes, chRem...)
-
-	return changes
 }
