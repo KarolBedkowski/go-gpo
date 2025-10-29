@@ -84,7 +84,7 @@ func main() {
 			&cli.StringFlag{
 				Name:    "log.format",
 				Value:   "logfmt",
-				Usage:   "Log format (logfmt, json)",
+				Usage:   "Log format (logfmt, json, syslog)",
 				Sources: cli.EnvVars("GOGPO_LOGFORMAT"),
 			},
 		},
@@ -120,8 +120,20 @@ func startServerCmd() *cli.Command {
 		Name:  "serve",
 		Usage: "start server",
 		Flags: []cli.Flag{
-			&cli.StringFlag{Name: "address", Value: ":8080", Usage: "listen address"},
-			&cli.BoolFlag{Name: "verbose", Value: false, Usage: "enable logging request and responses"},
+			&cli.StringFlag{
+				Name:    "address",
+				Value:   ":8080",
+				Usage:   "listen address",
+				Aliases: []string{"a"},
+				Sources: cli.EnvVars("GOGPO_SERVER_ADDRESS"),
+			},
+			&cli.BoolFlag{
+				Name:    "verbose",
+				Value:   false,
+				Usage:   "enable logging request and responses",
+				Aliases: []string{"-v"},
+				Sources: cli.EnvVars("GOGPO_SERVER_VERBOSE"),
+			},
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
 			initializeLogger(c.String("log.level"), c.String("log.format"))

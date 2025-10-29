@@ -22,11 +22,24 @@ func initializeLogger(level, format string) {
 		log.Error().Msgf("logger: unknown log format %q; using logfmt", format)
 
 		fallthrough
+	case "syslog":
+		llog = log.Output(zerolog.ConsoleWriter{ //nolint:exhaustruct
+			Out:          os.Stderr,
+			NoColor:      true,
+			PartsExclude: []string{zerolog.TimestampFieldName},
+		})
 	case "logfmt":
+		console := outputIsConsole()
+
+		tformat := time.RFC3339
+		if console {
+			tformat = time.TimeOnly
+		}
+
 		llog = log.Output(zerolog.ConsoleWriter{ //nolint:exhaustruct
 			Out:        os.Stderr,
 			NoColor:    !outputIsConsole(),
-			TimeFormat: time.RFC3339,
+			TimeFormat: tformat,
 		})
 	case "json":
 		llog = log.Logger
@@ -39,7 +52,7 @@ func initializeLogger(level, format string) {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
 
-	log.Logger = llog.With().Caller().Logger()
+	log.Logger = llog.With().Timestamp().Caller().Logger()
 
 	stdlog.SetFlags(0)
 	stdlog.SetOutput(log.Logger)
