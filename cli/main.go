@@ -68,15 +68,37 @@ func main() {
 		Name:    "go-gpo",
 		Version: buildVersionString(),
 		Flags: []cli.Flag{
-			&cli.StringFlag{Name: "database", Value: "database.sqlite", Usage: "Database file"},
-			&cli.StringFlag{Name: "log.level", Value: "info", Usage: "Log level (debug, info, warn, error)"},
-			&cli.StringFlag{Name: "log.format", Value: "logfmt", Usage: "Log format (logfmt, json)"},
+			&cli.StringFlag{
+				Name:    "database",
+				Value:   "database.sqlite",
+				Usage:   "Database file",
+				Aliases: []string{"d"},
+				Sources: cli.EnvVars("GOGPO_DB"),
+			},
+			&cli.StringFlag{
+				Name:    "log.level",
+				Value:   "info",
+				Usage:   "Log level (debug, info, warn, error)",
+				Sources: cli.EnvVars("GOGPO_LOGLEVEL"),
+			},
+			&cli.StringFlag{
+				Name:    "log.format",
+				Value:   "logfmt",
+				Usage:   "Log format (logfmt, json)",
+				Sources: cli.EnvVars("GOGPO_LOGFORMAT"),
+			},
 		},
 		Commands: []*cli.Command{
 			startServerCmd(),
-			migrateCmd(),
-			maintenanceCmd(),
 			listCmd(),
+			{
+				Name:  "database",
+				Usage: "manage database",
+				Commands: []*cli.Command{
+					migrateCmd(),
+					maintenanceCmd(),
+				},
+			},
 			{
 				Name:  "user",
 				Usage: "manage users",
@@ -119,10 +141,10 @@ func addUserCmd() *cli.Command {
 		Name:  "add",
 		Usage: "add new user",
 		Flags: []cli.Flag{
-			&cli.StringFlag{Name: "username", Required: true},
-			&cli.StringFlag{Name: "password", Required: true},
-			&cli.StringFlag{Name: "email"},
-			&cli.StringFlag{Name: "name"},
+			&cli.StringFlag{Name: "username", Required: true, Aliases: []string{"u"}},
+			&cli.StringFlag{Name: "password", Required: true, Aliases: []string{"p"}},
+			&cli.StringFlag{Name: "email", Aliases: []string{"e"}},
+			&cli.StringFlag{Name: "name", Aliases: []string{"n"}},
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
 			initializeLogger(c.String("log.level"), c.String("log.format"))
@@ -144,8 +166,8 @@ func changeUserPasswordCmd() *cli.Command {
 		Name:  "password",
 		Usage: "set new user password",
 		Flags: []cli.Flag{
-			&cli.StringFlag{Name: "username", Required: true},
-			&cli.StringFlag{Name: "password", Required: true},
+			&cli.StringFlag{Name: "username", Required: true, Aliases: []string{"u"}},
+			&cli.StringFlag{Name: "password", Required: true, Aliases: []string{"p"}},
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
 			initializeLogger(c.String("log.level"), c.String("log.format"))
@@ -197,9 +219,14 @@ func listCmd() *cli.Command {
 		Name:  "list",
 		Usage: "list user objects.",
 		Flags: []cli.Flag{
-			&cli.StringFlag{Name: "username", Required: true},
-			&cli.StringFlag{Name: "object", Required: true, Usage: "object to list (devices, subs)"},
-			&cli.StringFlag{Name: "device"},
+			&cli.StringFlag{Name: "username", Required: true, Aliases: []string{"u"}},
+			&cli.StringFlag{
+				Name:     "object",
+				Required: true,
+				Usage:    "object to list (" + cmd.ListSupportedObjects + ")",
+				Aliases:  []string{"o"},
+			},
+			&cli.StringFlag{Name: "device", Aliases: []string{"d"}},
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
 			initializeLogger(c.String("log.level"), c.String("log.format"))

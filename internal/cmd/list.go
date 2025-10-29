@@ -23,6 +23,8 @@ type List struct {
 	Object   string
 }
 
+const ListSupportedObjects = "devices, subs"
+
 func (a *List) Start(ctx context.Context) error {
 	re := &repository.Database{}
 	if err := re.Connect(ctx, "sqlite3", a.Database); err != nil {
