@@ -16,6 +16,7 @@ require (
 )
 
 require (
+	github.com/Merovius/systemd v0.0.0-20140203230105-93296c743739 // indirect
 	github.com/ajg/form v1.5.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
