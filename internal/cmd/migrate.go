@@ -9,14 +9,10 @@ package cmd
 
 import (
 	"context"
-	"embed"
 	"fmt"
 
 	"gitlab.com/kabes/go-gpo/internal/db"
 )
-
-//go:embed "migrations/*.sql"
-var embedMigrations embed.FS
 
 type Migrate struct {
 	Database string
@@ -28,7 +24,7 @@ func (a *Migrate) Start(ctx context.Context) error {
 		return fmt.Errorf("connect to database error: %w", err)
 	}
 
-	err := re.Migrate(ctx, "sqlite3", embedMigrations)
+	err := re.Migrate(ctx, "sqlite3")
 	if err != nil {
 		return fmt.Errorf("migrate error: %w", err)
 	}

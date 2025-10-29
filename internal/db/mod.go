@@ -19,6 +19,9 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
+//go:embed "migrations/*.sql"
+var embedMigrations embed.FS
+
 type Database struct {
 	db *sqlx.DB
 }
@@ -45,8 +48,8 @@ func (r *Database) Connect(ctx context.Context, driver, connstr string) error {
 	return nil
 }
 
-func (r *Database) Migrate(ctx context.Context, driver string, em embed.FS) error {
-	goose.SetBaseFS(em)
+func (r *Database) Migrate(ctx context.Context, driver string) error {
+	goose.SetBaseFS(embedMigrations)
 
 	if err := goose.SetDialect(driver); err != nil {
 		panic(err)
