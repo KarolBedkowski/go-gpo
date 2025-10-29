@@ -11,12 +11,16 @@ import (
 	// _ "github.com/WAY29/icecream-go/icecream".
 
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"runtime/debug"
+	"strings"
+	"syscall"
 
 	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli/v3"
+	"golang.org/x/term"
 
 	"gitlab.com/kabes/go-gpo/internal/cmd"
 
@@ -197,7 +201,41 @@ func listUsersCmd() *cli.Command {
 func changeUserPasswordCmd() *cli.Command {
 	return &cli.Command{
 		Name:  "password",
-		Usage: "set new user password",
+		Usage: "set new user password / unlock account",
+		Flags: []cli.Flag{
+			&cli.StringFlag{Name: "username", Required: true, Aliases: []string{"u"}},
+			&cli.StringFlag{Name: "password", Aliases: []string{"p"}},
+		},
+		Action: func(ctx context.Context, clicmd *cli.Command) error {
+			initializeLogger(clicmd.String("log.level"), clicmd.String("log.format"))
+
+			pass := strings.TrimSpace(clicmd.String("password"))
+			if pass == "" {
+				fmt.Print("Enter new password: ")
+
+				bytepw, err := term.ReadPassword(syscall.Stdin)
+				if err != nil {
+					return fmt.Errorf("read password error: %w", err)
+				}
+
+				pass = strings.TrimSpace(string(bytepw))
+			}
+
+			if pass != "" {
+				return errors.New("password can't be empty") //nolint:err113
+			}
+
+			s := cmd.ChangeUserPassword{
+				Database: clicmd.String("database"),
+				Password: pass,
+				Username: clicmd.String("username"),
+			}
+
+			return s.Start(log.Logger.WithContext(ctx))
+		},
+	}
+}
+
 func lockUserCmd() *cli.Command {
 	return &cli.Command{
 		Name:  "lock",
