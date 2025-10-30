@@ -1,5 +1,12 @@
 package server
 
+//
+// instrumentation.go
+// Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
+//
+// Distributed under terms of the GPLv3 license.
+//
+
 import (
 	"net/http"
 
@@ -8,20 +15,33 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-//
-// instrumentation.go
-// Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
-//
-// Distributed under terms of the GPLv3 license.
-//
-
 type promMiddleware struct {
-	name    string
-	buckets []float64
+	requestsTotal   *prometheus.CounterVec
+	requestDuration *prometheus.HistogramVec
+	requestSize     *prometheus.SummaryVec
+	responseSize    *prometheus.SummaryVec
+	inFlight        prometheus.Gauge
 }
 
-func (m *promMiddleware) Handler(handler http.Handler) http.Handler {
-	reg := prometheus.WrapRegistererWith(prometheus.Labels{"handler": m.name}, prometheus.DefaultRegisterer)
+func (m *promMiddleware) Handler(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		base := promhttp.InstrumentHandlerInFlight(m.inFlight, next)
+		base = promhttp.InstrumentHandlerResponseSize(m.responseSize, base)
+		base = promhttp.InstrumentHandlerRequestSize(m.requestSize, base)
+		base = promhttp.InstrumentHandlerDuration(m.requestDuration, base)
+		base = promhttp.InstrumentHandlerCounter(m.requestsTotal, base)
+
+		base.ServeHTTP(w, r)
+	})
+}
+
+// New returns a Middleware interface.
+func newPromMiddleware(name string, buckets []float64) *promMiddleware {
+	if buckets == nil {
+		buckets = []float64{0.5, 2, 10, 30, 90}
+	}
+
+	reg := prometheus.WrapRegistererWith(prometheus.Labels{"handler": name}, prometheus.DefaultRegisterer)
 
 	requestsTotal := promauto.With(reg).NewCounterVec(
 		prometheus.CounterOpts{
@@ -33,7 +53,7 @@ func (m *promMiddleware) Handler(handler http.Handler) http.Handler {
 		prometheus.HistogramOpts{
 			Name:    "http_request_duration_seconds",
 			Help:    "Tracks the latencies for HTTP requests.",
-			Buckets: m.buckets,
+			Buckets: buckets,
 		},
 		[]string{"method", "code"},
 	)
@@ -51,40 +71,17 @@ func (m *promMiddleware) Handler(handler http.Handler) http.Handler {
 		},
 		[]string{"method", "code"},
 	)
-	inFlight := prometheus.NewGauge(prometheus.GaugeOpts{
+	inFlight := promauto.With(reg).NewGauge(prometheus.GaugeOpts{
 		Name: "http_in_flight_requests",
 		Help: "A gauge of requests currently being served by the wrapped handler.",
 	})
 
-	base := promhttp.InstrumentHandlerCounter(
-		requestsTotal,
-		promhttp.InstrumentHandlerDuration(
-			requestDuration,
-			promhttp.InstrumentHandlerRequestSize(
-				requestSize,
-				promhttp.InstrumentHandlerResponseSize(
-					responseSize,
-					promhttp.InstrumentHandlerInFlight(
-						inFlight,
-						handler,
-					),
-				),
-			),
-		),
-	)
-
-	return http.HandlerFunc(base.ServeHTTP)
-}
-
-// New returns a Middleware interface.
-func newPromMiddleware(name string, buckets []float64) *promMiddleware {
-	if buckets == nil {
-		buckets = []float64{0.5, 2, 10, 30, 90}
-	}
-
 	return &promMiddleware{
-		name:    name,
-		buckets: buckets,
+		requestsTotal:   requestsTotal,
+		requestDuration: requestDuration,
+		requestSize:     requestSize,
+		responseSize:    responseSize,
+		inFlight:        inFlight,
 	}
 }
 

@@ -53,7 +53,6 @@ func Start(ctx context.Context, repo *db.Database, cfg *Configuration) error {
 	// routes
 	router := chi.NewRouter()
 	router.Use(middleware.Heartbeat("/ping"))
-	router.Use(newPromMiddleware("api", nil).Handler)
 	router.Use(middleware.CleanPath)
 	router.Use(middleware.RealIP)
 	router.Use(hlog.RequestIDHandler("req_id", "Request-Id"))
@@ -65,6 +64,7 @@ func Start(ctx context.Context, repo *db.Database, cfg *Configuration) error {
 
 	api := gpoapi.New(deviceSrv, subSrv, usersSrv, episodesSrv, settingsSrv)
 	router.
+		With(newPromMiddleware("api", nil).Handler).
 		With(sessionMW).
 		With(authMW.handle).
 		With(AuthenticatedOnly).
@@ -73,6 +73,7 @@ func Start(ctx context.Context, repo *db.Database, cfg *Configuration) error {
 
 	web := gpoweb.New(deviceSrv, subSrv, usersSrv, episodesSrv, settingsSrv, podcastsSrv)
 	router.
+		With(newPromMiddleware("web", nil).Handler).
 		With(sessionMW).
 		With(authMW.handle).
 		With(AuthenticatedOnly).
