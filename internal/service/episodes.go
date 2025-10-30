@@ -26,6 +26,40 @@ func NewEpisodesService(db *db.Database) *Episodes {
 	return &Episodes{db}
 }
 
+func (e *Episodes) GetPodcastEpisodes(ctx context.Context, username, podcast, devicename string,
+) ([]model.Episode, error) {
+	conn, err := e.db.GetConnection(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get connection error: %w", err)
+	}
+
+	defer conn.Close()
+
+	repo := e.db.GetRepository(conn)
+
+	actions, err := e.getEpisodesActions(ctx, repo, username, podcast, devicename, time.Time{}, true)
+	if err != nil {
+		return nil, fmt.Errorf("get episodes error: %w", err)
+	}
+
+	episodes := make([]model.Episode, 0, len(actions))
+
+	for _, e := range actions {
+		episodes = append(episodes, model.Episode{
+			Episode:   e.URL,
+			Device:    e.Device,
+			Action:    e.Action,
+			Timestamp: e.UpdatedAt,
+			Started:   e.Started,
+			Position:  e.Position,
+			Total:     e.Total,
+			Podcast:   e.PodcastURL,
+		})
+	}
+
+	return episodes, nil
+}
+
 func (e *Episodes) SaveEpisodesActions(ctx context.Context, username string, action ...model.Episode) error {
 	err := e.db.InTransaction(ctx, func(db repository.DBContext) error {
 		repo := e.db.GetRepository(db)
