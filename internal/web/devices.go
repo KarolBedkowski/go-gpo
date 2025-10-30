@@ -2,7 +2,6 @@ package web
 
 import (
 	"context"
-	"html/template"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -21,7 +20,7 @@ import (
 
 type devicePage struct {
 	deviceSrv *service.Device
-	template  *template.Template
+	template  templates
 }
 
 func (d devicePage) Routes() chi.Router {
@@ -46,7 +45,7 @@ func (d devicePage) list(ctx context.Context, w http.ResponseWriter, r *http.Req
 		Devices: devices,
 	}
 
-	if err := d.template.ExecuteTemplate(w, "devices.html", &data); err != nil {
+	if err := d.template.executeTemplate(w, "devices.tmpl", &data); err != nil {
 		logger.Error().Err(err).Msg("execute template error")
 		internal.WriteError(w, r, http.StatusInternalServerError, nil)
 	}

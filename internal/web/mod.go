@@ -8,16 +8,25 @@ package web
 //
 
 import (
+	"context"
 	"embed"
+	"fmt"
 	"html/template"
+	"io"
+	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
-//go:embed templates/*
-var content embed.FS
+//go:embed templates/*.tmpl
+var templatesFS embed.FS
+
+//go:embed static/*
+var staticFS embed.FS
 
 type WEB struct {
 	deviceSrv   *service.Device
@@ -26,7 +35,7 @@ type WEB struct {
 	episodesSrv *service.Episodes
 	settingsSrv *service.Settings
 
-	template *template.Template
+	template templates
 }
 
 func New(
@@ -36,8 +45,6 @@ func New(
 	episodesSrv *service.Episodes,
 	settingsSrv *service.Settings,
 ) WEB {
-	t := loadTemplates()
-
 	return WEB{
 		deviceSrv:   deviceSrv,
 		subSrv:      subSrv,
@@ -45,40 +52,71 @@ func New(
 		episodesSrv: episodesSrv,
 		settingsSrv: settingsSrv,
 
-		template: t,
+		template: newTemplates(),
 	}
 }
 
 func (w *WEB) Routes() chi.Router {
 	router := chi.NewRouter()
 
+	router.Get("/", internal.Wrap(w.indexPage))
 	router.Mount("/device", (&devicePage{w.deviceSrv, w.template}).Routes())
+
+	fs := http.FileServerFS(staticFS)
+	router.Method("GET", "/static/*", http.StripPrefix("/web/", fs))
 
 	return router
 }
 
-// loadTemplate loads templates.
-func loadTemplates() *template.Template {
-	tmpl := template.New("")
-	logger := log.Logger
+func (w *WEB) indexPage(ctx context.Context, writer http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
+	_ = ctx
 
-	direntries, err := content.ReadDir("templates")
+	if err := w.template.executeTemplate(writer, "index.tmpl", nil); err != nil {
+		logger.Error().Err(err).Msg("execute template error")
+		internal.WriteError(writer, r, http.StatusInternalServerError, nil)
+	}
+}
+
+//-----------------------------------------------
+
+type templates map[string]*template.Template
+
+// newTemplate loads templates.
+func newTemplates() templates {
+	logger := log.Logger
+	base := template.Must(template.New("").ParseFS(templatesFS, "templates/_base*"))
+
+	direntries, err := templatesFS.ReadDir("templates")
 	if err != nil {
 		panic(err)
 	}
+
+	res := make(map[string]*template.Template)
 
 	for _, de := range direntries {
 		if de.IsDir() {
 			continue
 		}
 
-		logger.Debug().Msgf("loading template: %s", de.Name())
-
-		tmpl, err = tmpl.New(de.Name()).ParseFS(content, "templates/"+de.Name())
-		if err != nil {
-			panic(err)
+		name := de.Name()
+		if name[0] == '_' {
+			continue
 		}
+
+		logger.Debug().Msgf("loading template: %s", name)
+
+		baseclone := template.Must(base.Clone())
+		res[name] = template.Must(baseclone.ParseFS(templatesFS, "templates/"+name))
 	}
 
-	return tmpl
+	return res
+}
+
+func (t templates) executeTemplate(wr io.Writer, name string, data any) error {
+	err := t[name].ExecuteTemplate(wr, name, data)
+	if err != nil {
+		return fmt.Errorf("execute template %q error: %w", name, err)
+	}
+
+	return nil
 }
