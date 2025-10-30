@@ -19,8 +19,6 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
-var ErrUnknownPodcast = errors.New("unknown podcast")
-
 type Subs struct {
 	db *db.Database
 }
