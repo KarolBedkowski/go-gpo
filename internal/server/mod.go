@@ -40,6 +40,7 @@ func Start(ctx context.Context, repo *db.Database, cfg *Configuration) error {
 	usersSrv := service.NewUsersService(repo)
 	episodesSrv := service.NewEpisodesService(repo)
 	settingsSrv := service.NewSettingsService(repo)
+	podcastsSrv := service.NewPodcastsService(repo)
 
 	// middlewares
 	sessionMW, err := newSessionMiddleware(repo)
@@ -70,7 +71,7 @@ func Start(ctx context.Context, repo *db.Database, cfg *Configuration) error {
 		With(middleware.NoCache).
 		Mount("/", api.Routes())
 
-	web := gpoweb.New(deviceSrv, subSrv, usersSrv, episodesSrv, settingsSrv)
+	web := gpoweb.New(deviceSrv, subSrv, usersSrv, episodesSrv, settingsSrv, podcastsSrv)
 	router.
 		With(sessionMW).
 		With(authMW.handle).

@@ -1,0 +1,29 @@
+{{ template "_base.tmpl" . }}
+
+{{ define "title" }}Episodes{{ end }}
+
+{{ define "body" }}
+
+  <h1>Episodes</h1>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Episode</th>
+        <th>Device</th>
+        <th>Action</th>
+        <th>Timestamp</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Episodes}}
+      <tr>
+        <td>{{ .Episode }}</td>
+        <td>{{ .Device }}</td>
+        <td>{{ .Action}}</td>
+        <td>{{ .Timestamp}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+{{ end }}

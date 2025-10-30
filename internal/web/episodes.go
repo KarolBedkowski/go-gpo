@@ -1,7 +1,7 @@
 package web
 
 //
-// devices.go
+// episodes.go
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
 //
 // Distributed under terms of the GPLv3 license.
@@ -18,34 +18,44 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
-type devicePages struct {
-	deviceSrv *service.Device
-	template  templates
+type episodePages struct {
+	episodeSrv *service.Episodes
+	template   templates
 }
 
-func (d devicePages) Routes() chi.Router {
+func (e episodePages) Routes() chi.Router {
 	r := chi.NewRouter()
-	r.Get(`/`, internal.Wrap(d.list))
+	r.Get(`/`, internal.Wrap(e.list))
 
 	return r
 }
 
-func (d devicePages) list(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
+func (e episodePages) list(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
 	user := internal.ContextUser(ctx)
 
-	devices, err := d.deviceSrv.ListDevices(ctx, user)
+	podcast := r.URL.Query().Get("podcast")
+	if podcast == "" {
+		logger.Debug().Msgf("empty podcast")
+		w.WriteHeader(http.StatusBadRequest)
+
+		return
+	}
+
+	episodes, err := e.episodeSrv.GetPodcastEpisodes(ctx, user, podcast, "")
 	if err != nil {
 		logger.Error().Err(err).Msg("get list devices error")
 		internal.WriteError(w, r, http.StatusInternalServerError, nil)
+
+		return
 	}
 
 	data := struct {
-		Devices []model.Device
+		Episodes []model.Episode
 	}{
-		Devices: devices,
+		Episodes: episodes,
 	}
 
-	if err := d.template.executeTemplate(w, "devices.tmpl", &data); err != nil {
+	if err := e.template.executeTemplate(w, "episodes.tmpl", &data); err != nil {
 		logger.Error().Err(err).Msg("execute template error")
 		internal.WriteError(w, r, http.StatusInternalServerError, nil)
 	}

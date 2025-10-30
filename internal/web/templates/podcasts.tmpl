@@ -1,0 +1,25 @@
+{{ template "_base.tmpl" . }}
+
+{{ define "title" }}Podcasts{{ end }}
+
+{{ define "body" }}
+
+  <h1>Subscribed podcasts</h1>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Title</th>
+        <th>URL</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Podcasts}}
+      <tr>
+        <td>{{ .Title }}</td>
+        <td><a href="episode/?podcast={{ .URL }}">{{ .URL }}</a></td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+{{ end }}

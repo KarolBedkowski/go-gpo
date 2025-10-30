@@ -34,6 +34,7 @@ type WEB struct {
 	usersSrv    *service.Users
 	episodesSrv *service.Episodes
 	settingsSrv *service.Settings
+	podcastsSrv *service.Podcasts
 
 	template templates
 }
@@ -44,6 +45,7 @@ func New(
 	usersSrv *service.Users,
 	episodesSrv *service.Episodes,
 	settingsSrv *service.Settings,
+	podcastsSrv *service.Podcasts,
 ) WEB {
 	return WEB{
 		deviceSrv:   deviceSrv,
@@ -51,6 +53,7 @@ func New(
 		usersSrv:    usersSrv,
 		episodesSrv: episodesSrv,
 		settingsSrv: settingsSrv,
+		podcastsSrv: podcastsSrv,
 
 		template: newTemplates(),
 	}
@@ -60,7 +63,9 @@ func (w *WEB) Routes() chi.Router {
 	router := chi.NewRouter()
 
 	router.Get("/", internal.Wrap(w.indexPage))
-	router.Mount("/device", (&devicePage{w.deviceSrv, w.template}).Routes())
+	router.Mount("/device", (&devicePages{w.deviceSrv, w.template}).Routes())
+	router.Mount("/podcast", (&podcastPages{w.podcastsSrv, w.template}).Routes())
+	router.Mount("/episode", (&episodePages{w.episodesSrv, w.template}).Routes())
 
 	fs := http.FileServerFS(staticFS)
 	router.Method("GET", "/static/*", http.StripPrefix("/web/", fs))
