@@ -106,10 +106,10 @@ func (u *Users) AddUser(ctx context.Context, user model.User) (int64, error) {
 	return id, nil
 }
 
-func (u *Users) ChangePassword(ctx context.Context, user model.User) (int64, error) {
+func (u *Users) ChangePassword(ctx context.Context, user model.User) error {
 	tx, err := u.db.Begin(ctx)
 	if err != nil {
-		return 0, fmt.Errorf("start tx error: %w", err)
+		return fmt.Errorf("start tx error: %w", err)
 	}
 
 	defer tx.Rollback()
@@ -119,28 +119,27 @@ func (u *Users) ChangePassword(ctx context.Context, user model.User) (int64, err
 	// is user exists?
 	udb, err := repo.GetUser(ctx, user.Username)
 	if errors.Is(err, repository.ErrNoData) {
-		return 0, ErrUnknownUser
+		return ErrUnknownUser
 	} else if err != nil {
-		return 0, fmt.Errorf("get user error: %w", err)
+		return fmt.Errorf("get user error: %w", err)
 	}
 
 	udb.Password, err = u.passHasher.HashPassword(user.Password)
 	if err != nil {
-		return 0, fmt.Errorf("hash password error: %w", err)
+		return fmt.Errorf("hash password error: %w", err)
 	}
 
 	udb.UpdatedAt = time.Now()
 
-	id, err := repo.SaveUser(ctx, &udb)
-	if err != nil {
-		return 0, fmt.Errorf("save user error: %w", err)
+	if _, err := repo.SaveUser(ctx, &udb); err != nil {
+		return fmt.Errorf("save user error: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return 0, fmt.Errorf("commit error: %w", err)
+		return fmt.Errorf("commit error: %w", err)
 	}
 
-	return id, nil
+	return nil
 }
 
 func (u *Users) GetUsers(ctx context.Context, activeOnly bool) ([]model.User, error) {
