@@ -11,6 +11,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"gitlab.com/kabes/go-gpo/internal/db"
@@ -37,25 +38,41 @@ func (e *Episodes) GetPodcastEpisodes(ctx context.Context, username, podcast, de
 
 	repo := e.db.GetRepository(conn)
 
-	actions, err := e.getEpisodesActions(ctx, repo, username, podcast, devicename, time.Time{}, true)
+	actions, err := e.getEpisodesActions(ctx, repo, username, podcast, devicename, time.Time{}, false)
 	if err != nil {
 		return nil, fmt.Errorf("get episodes error: %w", err)
 	}
 
+	if len(actions) == 0 {
+		return []model.Episode{}, nil
+	}
+
+	// get last entry for each episode
+	// TODO: move it to db
+	slices.Reverse(actions)
+
+	seen := make(map[string]struct{})
 	episodes := make([]model.Episode, 0, len(actions))
 
-	for _, e := range actions {
+	for _, episode := range actions {
+		if _, ok := seen[episode.URL]; ok {
+			continue
+		}
+
+		seen[episode.URL] = struct{}{}
 		episodes = append(episodes, model.Episode{
-			Episode:   e.URL,
-			Device:    e.Device,
-			Action:    e.Action,
-			Timestamp: e.UpdatedAt,
-			Started:   e.Started,
-			Position:  e.Position,
-			Total:     e.Total,
-			Podcast:   e.PodcastURL,
+			Episode:   episode.URL,
+			Device:    episode.Device,
+			Action:    episode.Action,
+			Timestamp: episode.UpdatedAt,
+			Started:   episode.Started,
+			Position:  episode.Position,
+			Total:     episode.Total,
+			Podcast:   episode.PodcastURL,
 		})
 	}
+
+	slices.Reverse(episodes)
 
 	return episodes, nil
 }
