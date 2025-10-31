@@ -69,6 +69,7 @@ func (w *WEB) Routes() chi.Router {
 	router.Mount("/device", (&devicePages{w.deviceSrv, w.template}).Routes())
 	router.Mount("/podcast", (&podcastPages{w.podcastsSrv, w.template}).Routes())
 	router.Mount("/episode", (&episodePages{w.episodesSrv, w.template}).Routes())
+	router.Mount("/user", (&usersPages{w.usersSrv, w.template}).Routes())
 
 	fs := http.FileServerFS(staticFS)
 	router.Method("GET", "/static/*", http.StripPrefix("/web/", fs))
