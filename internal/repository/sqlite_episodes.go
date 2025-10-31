@@ -27,7 +27,7 @@ func (s sqliteRepository) ListEpisodes(
 	query := "SELECT e.id, e.podcast_id, e.url, e.title, e.action, e.started, e.position, e.total, " +
 		" e.created_at, e.updated_at, p.url as podcast_url, p.title as podcast_title, d.name as device_name " +
 		"FROM episodes e JOIN podcasts p on p.id = e.podcast_id JOIN devices d on d.id=e.device_id " +
-		"WHERE p.user_id=? AND e.updated_at > ? ORDER BY e.updated_at"
+		"WHERE p.user_id=? AND e.updated_at > ?"
 	args := []any{userid, since}
 
 	if deviceid > 0 {
@@ -39,6 +39,8 @@ func (s sqliteRepository) ListEpisodes(
 		query += " AND e.podcast_id = ?"
 		args = append(args, podcastid) //nolint:wsl_v5
 	}
+
+	query += " ORDER BY e.updated_at"
 
 	logger.Debug().Msgf("get episodes - query=%q, args=%v", query, args)
 
@@ -55,7 +57,7 @@ func (s sqliteRepository) ListEpisodes(
 
 	logger.Debug().Msgf("get episodes - aggregate %d episodes", len(res))
 
-	// TODO: refactor; load only last entries from db
+	// TODO: refactor; load only last entries for each podcast from db
 	agr := make(map[int64]EpisodeDB)
 	for _, t := range res {
 		agr[t.PodcastID] = t
