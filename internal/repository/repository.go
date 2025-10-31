@@ -30,44 +30,44 @@ type DBContext interface {
 }
 
 type DevicesRepository interface {
-	GetDevice(ctx context.Context, userid int64, devicename string) (DeviceDB, error)
-	SaveDevice(ctx context.Context, device *DeviceDB) (int64, error)
-	ListDevices(ctx context.Context, userid int64) (DevicesDB, error)
+	GetDevice(ctx context.Context, db DBContext, userid int64, devicename string) (DeviceDB, error)
+	SaveDevice(ctx context.Context, db DBContext, device *DeviceDB) (int64, error)
+	ListDevices(ctx context.Context, db DBContext, userid int64) (DevicesDB, error)
 }
 
 type UsersRepository interface {
-	GetUser(ctx context.Context, username string) (UserDB, error)
-	SaveUser(ctx context.Context, user *UserDB) (int64, error)
-	ListUsers(ctx context.Context, activeOnly bool) ([]UserDB, error)
+	GetUser(ctx context.Context, db DBContext, username string) (UserDB, error)
+	SaveUser(ctx context.Context, db DBContext, user *UserDB) (int64, error)
+	ListUsers(ctx context.Context, db DBContext, activeOnly bool) ([]UserDB, error)
 }
 
 type EpisodesRepository interface {
 	ListEpisodes(
-		ctx context.Context, userid, deviceid, podcastid int64, since time.Time, aggregated bool,
+		ctx context.Context, db DBContext, userid, deviceid, podcastid int64, since time.Time, aggregated bool,
 	) ([]EpisodeDB, error)
-	SaveEpisode(ctx context.Context, userid int64, episode ...EpisodeDB) error
+	SaveEpisode(ctx context.Context, db DBContext, userid int64, episode ...EpisodeDB) error
 }
 
 type SubscribedRepository interface {
-	ListSubscribedPodcasts(ctx context.Context, userid int64, since time.Time) (PodcastsDB, error)
-	ListPodcasts(ctx context.Context, userid int64, since time.Time) (PodcastsDB, error)
-	GetPodcast(ctx context.Context, userid int64, podcasturl string) (PodcastDB, error)
-	SavePodcast(ctx context.Context, user, device string, podcast ...PodcastDB) error
+	ListSubscribedPodcasts(ctx context.Context, db DBContext, userid int64, since time.Time) (PodcastsDB, error)
+	ListPodcasts(ctx context.Context, db DBContext, userid int64, since time.Time) (PodcastsDB, error)
+	GetPodcast(ctx context.Context, db DBContext, userid int64, podcasturl string) (PodcastDB, error)
+	SavePodcast(ctx context.Context, db DBContext, user, device string, podcast ...PodcastDB) error
 }
 
 type SettingsRepository interface {
-	GetSettings(ctx context.Context, userid int64, scope, key string) (SettingsDB, error)
-	SaveSettings(ctx context.Context, sett *SettingsDB) error
+	GetSettings(ctx context.Context, db DBContext, userid int64, scope, key string) (SettingsDB, error)
+	SaveSettings(ctx context.Context, db DBContext, sett *SettingsDB) error
 }
 
 type SessionRepository interface {
-	DeleteSession(ctx context.Context, sid string) error
-	SaveSession(ctx context.Context, sid string, data []byte) error
-	RegenerateSession(ctx context.Context, oldsid, newsid string) error
-	CountSessions(ctx context.Context) (int, error)
-	CleanSessions(ctx context.Context, maxLifeTime, maxLifeTimeForEmpty time.Duration) error
-	ReadOrCreate(ctx context.Context, sid string) (data []byte, createAt time.Time, err error)
-	SessionExists(ctx context.Context, sid string) (bool, error)
+	DeleteSession(ctx context.Context, db DBContext, sid string) error
+	SaveSession(ctx context.Context, db DBContext, sid string, data []byte) error
+	RegenerateSession(ctx context.Context, db DBContext, oldsid, newsid string) error
+	CountSessions(ctx context.Context, db DBContext) (int, error)
+	CleanSessions(ctx context.Context, db DBContext, maxLifeTime, maxLifeTimeForEmpty time.Duration) error
+	ReadOrCreate(ctx context.Context, db DBContext, sid string) (data []byte, createAt time.Time, err error)
+	SessionExists(ctx context.Context, db DBContext, sid string) (bool, error)
 }
 
 type Repository interface {

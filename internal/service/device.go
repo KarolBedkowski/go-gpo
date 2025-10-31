@@ -26,17 +26,19 @@ var (
 )
 
 type Device struct {
-	db *db.Database
+	db   *db.Database
+	repo repository.Repository
 }
 
 func NewDeviceService(db *db.Database) *Device {
-	return &Device{db}
+	return &Device{db, db.GetRepository()}
 }
 
 func NewDeviceServiceI(i do.Injector) (*Device, error) {
 	db := do.MustInvoke[*db.Database](i)
+	repo := do.MustInvoke[repository.Repository](i)
 
-	return &Device{db}, nil
+	return &Device{db, repo}, nil
 }
 
 func (d *Device) UpdateDevice(ctx context.Context, username, deviceid, caption, devtype string) error {
@@ -45,16 +47,14 @@ func (d *Device) UpdateDevice(ctx context.Context, username, deviceid, caption, 
 	}
 
 	err := d.db.InTransaction(ctx, func(tx repository.DBContext) error {
-		repo := d.db.GetRepository(tx)
-
-		user, err := repo.GetUser(ctx, username)
+		user, err := d.repo.GetUser(ctx, tx, username)
 		if errors.Is(err, repository.ErrNoData) {
 			return ErrUnknownUser
 		} else if err != nil {
 			return fmt.Errorf("get user error: %w", err)
 		}
 
-		device, err := repo.GetDevice(ctx, user.ID, deviceid)
+		device, err := d.repo.GetDevice(ctx, tx, user.ID, deviceid)
 		if errors.Is(err, repository.ErrNoData) {
 			// new device
 			device = repository.DeviceDB{UserID: user.ID, Name: deviceid, DevType: "other"}
@@ -65,7 +65,7 @@ func (d *Device) UpdateDevice(ctx context.Context, username, deviceid, caption, 
 		device.Caption = caption
 		device.DevType = devtype
 
-		_, err = repo.SaveDevice(ctx, &device)
+		_, err = d.repo.SaveDevice(ctx, tx, &device)
 		if err != nil {
 			return fmt.Errorf("save device error: %w", err)
 		}
@@ -87,16 +87,14 @@ func (d *Device) ListDevices(ctx context.Context, username string) ([]model.Devi
 
 	defer conn.Close()
 
-	repo := d.db.GetRepository(conn)
-
-	user, err := repo.GetUser(ctx, username)
+	user, err := d.repo.GetUser(ctx, conn, username)
 	if errors.Is(err, repository.ErrNoData) {
 		return nil, ErrUnknownUser
 	} else if err != nil {
 		return nil, fmt.Errorf("get user error: %w", err)
 	}
 
-	devices, err := repo.ListDevices(ctx, user.ID)
+	devices, err := d.repo.ListDevices(ctx, conn, user.ID)
 	if err != nil {
 		return nil, fmt.Errorf("get device error: %w", err)
 	}

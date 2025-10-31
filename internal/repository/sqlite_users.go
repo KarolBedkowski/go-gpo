@@ -17,13 +17,13 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func (s sqliteRepository) GetUser(ctx context.Context, username string) (UserDB, error) {
+func (s sqliteRepository) GetUser(ctx context.Context, db DBContext, username string) (UserDB, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Str("user_name", username).Msg("get user")
 
 	user := UserDB{}
 
-	err := s.db.GetContext(ctx, &user,
+	err := db.GetContext(ctx, &user,
 		"SELECT id, username, password, email, name, created_at, updated_at "+
 			"FROM users WHERE username=?",
 		username)
@@ -38,13 +38,13 @@ func (s sqliteRepository) GetUser(ctx context.Context, username string) (UserDB,
 	}
 }
 
-func (s sqliteRepository) SaveUser(ctx context.Context, user *UserDB) (int64, error) {
+func (s sqliteRepository) SaveUser(ctx context.Context, db DBContext, user *UserDB) (int64, error) {
 	logger := log.Ctx(ctx)
 
 	if user.ID == 0 {
 		logger.Debug().Object("user", user).Msg("insert user")
 
-		res, err := s.db.ExecContext(ctx,
+		res, err := db.ExecContext(ctx,
 			"INSERT INTO users (username, password, email, name, created_at, updated_at) "+
 				"VALUES(?, ?, ?, ?, ?, ?)",
 			user.Username, user.Password, user.Email, user.Name, time.Now(), time.Now())
@@ -63,7 +63,7 @@ func (s sqliteRepository) SaveUser(ctx context.Context, user *UserDB) (int64, er
 	// update
 	logger.Debug().Object("user", user).Msg("update user")
 
-	_, err := s.db.ExecContext(ctx,
+	_, err := db.ExecContext(ctx,
 		"UPDATE users SET password=?, email=?, name=?, updated_at=? WHERE id=?",
 		user.Password, user.Email, user.Name, time.Now(), user.ID)
 	if err != nil {
@@ -74,7 +74,7 @@ func (s sqliteRepository) SaveUser(ctx context.Context, user *UserDB) (int64, er
 }
 
 // ListUsers get all users from database.
-func (s sqliteRepository) ListUsers(ctx context.Context, activeOnly bool) ([]UserDB, error) {
+func (s sqliteRepository) ListUsers(ctx context.Context, db DBContext, activeOnly bool) ([]UserDB, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("list users, active_only=%v", activeOnly)
 
@@ -85,7 +85,7 @@ func (s sqliteRepository) ListUsers(ctx context.Context, activeOnly bool) ([]Use
 		sql += " WHERE password != 'LOCKED'"
 	}
 
-	err := s.db.SelectContext(ctx, &users, sql)
+	err := db.SelectContext(ctx, &users, sql)
 	if err != nil {
 		return nil, fmt.Errorf("get user error: %w", err)
 	}

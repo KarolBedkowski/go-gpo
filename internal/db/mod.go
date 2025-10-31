@@ -111,8 +111,8 @@ func (r *Database) InTransaction(ctx context.Context, f func(repository.DBContex
 	return nil
 }
 
-func (r *Database) GetRepository(db repository.DBContext) repository.Repository {
-	return repository.NewSqliteRepository(db)
+func (r *Database) GetRepository() repository.Repository {
+	return repository.NewSqliteRepository()
 }
 
 func (r *Database) Maintenance(ctx context.Context) error {

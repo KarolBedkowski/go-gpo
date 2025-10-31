@@ -18,7 +18,7 @@ import (
 )
 
 func (s sqliteRepository) ListEpisodes(
-	ctx context.Context, userid, deviceid, podcastid int64, since time.Time, aggregated bool,
+	ctx context.Context, db DBContext, userid, deviceid, podcastid int64, since time.Time, aggregated bool,
 ) ([]EpisodeDB, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Int64("podcast_id", podcastid).Int64("device_id", deviceid).
@@ -46,7 +46,7 @@ func (s sqliteRepository) ListEpisodes(
 
 	res := []EpisodeDB{}
 
-	err := s.db.SelectContext(ctx, &res, query, args...)
+	err := db.SelectContext(ctx, &res, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("query episodes error: %w", err)
 	}
@@ -66,11 +66,11 @@ func (s sqliteRepository) ListEpisodes(
 	return slices.Collect(maps.Values(agr)), nil
 }
 
-func (s sqliteRepository) SaveEpisode(ctx context.Context, userid int64, episode ...EpisodeDB) error {
+func (s sqliteRepository) SaveEpisode(ctx context.Context, db DBContext, userid int64, episode ...EpisodeDB) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Msgf("save episode")
 
-	podcasts, err := s.ListSubscribedPodcasts(ctx, userid, time.Time{})
+	podcasts, err := s.ListSubscribedPodcasts(ctx, db, userid, time.Time{})
 	if err != nil {
 		return err
 	}
@@ -78,7 +78,7 @@ func (s sqliteRepository) SaveEpisode(ctx context.Context, userid int64, episode
 	// cache podcasts
 	podcastsmap := podcasts.ToIDsMap()
 
-	devices, err := s.ListDevices(ctx, userid)
+	devices, err := s.ListDevices(ctx, db, userid)
 	if err != nil {
 		return err
 	}
@@ -94,7 +94,7 @@ func (s sqliteRepository) SaveEpisode(ctx context.Context, userid int64, episode
 			eps.PodcastID = pid
 		} else {
 			// insert podcast
-			id, err := s.createNewPodcast(ctx, userid, eps.PodcastURL)
+			id, err := s.createNewPodcast(ctx, db, userid, eps.PodcastURL)
 			if err != nil {
 				return fmt.Errorf("create new podcast %q error: %w", eps.PodcastURL, err)
 			}
@@ -107,7 +107,7 @@ func (s sqliteRepository) SaveEpisode(ctx context.Context, userid int64, episode
 			eps.DeviceID = did
 		} else {
 			// create device
-			did, err := s.createNewDevice(ctx, userid, eps.Device)
+			did, err := s.createNewDevice(ctx, db, userid, eps.Device)
 			if err != nil {
 				return fmt.Errorf("create new device %q error: %w", eps.Device, err)
 			}
@@ -116,7 +116,7 @@ func (s sqliteRepository) SaveEpisode(ctx context.Context, userid int64, episode
 			devicesmap[eps.Device] = did
 		}
 
-		if err := s.saveEpisode(ctx, eps); err != nil {
+		if err := s.saveEpisode(ctx, db, eps); err != nil {
 			return err
 		}
 	}
@@ -124,11 +124,11 @@ func (s sqliteRepository) SaveEpisode(ctx context.Context, userid int64, episode
 	return nil
 }
 
-func (s sqliteRepository) saveEpisode(ctx context.Context, episode EpisodeDB) error {
+func (s sqliteRepository) saveEpisode(ctx context.Context, db DBContext, episode EpisodeDB) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Object("episode", episode).Msg("save episode")
 
-	_, err := s.db.ExecContext(
+	_, err := db.ExecContext(
 		ctx,
 		"INSERT INTO episodes (podcast_id, device_id, title, url, action, started, position, total, "+
 			"created_at, updated_at) "+

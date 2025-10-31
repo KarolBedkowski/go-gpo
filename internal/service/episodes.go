@@ -21,17 +21,19 @@ import (
 )
 
 type Episodes struct {
-	db *db.Database
+	db   *db.Database
+	repo repository.Repository
 }
 
 func NewEpisodesService(db *db.Database) *Episodes {
-	return &Episodes{db}
+	return &Episodes{db, db.GetRepository()}
 }
 
 func NewEpisodesServiceI(i do.Injector) (*Episodes, error) {
 	db := do.MustInvoke[*db.Database](i)
+	repo := do.MustInvoke[repository.Repository](i)
 
-	return &Episodes{db}, nil
+	return &Episodes{db, repo}, nil
 }
 
 func (e *Episodes) GetPodcastEpisodes(ctx context.Context, username, podcast, devicename string,
@@ -43,9 +45,7 @@ func (e *Episodes) GetPodcastEpisodes(ctx context.Context, username, podcast, de
 
 	defer conn.Close()
 
-	repo := e.db.GetRepository(conn)
-
-	actions, err := e.getEpisodesActions(ctx, repo, username, podcast, devicename, time.Time{}, false)
+	actions, err := e.getEpisodesActions(ctx, conn, username, podcast, devicename, time.Time{}, false)
 	if err != nil {
 		return nil, fmt.Errorf("get episodes error: %w", err)
 	}
@@ -85,10 +85,8 @@ func (e *Episodes) GetPodcastEpisodes(ctx context.Context, username, podcast, de
 }
 
 func (e *Episodes) SaveEpisodesActions(ctx context.Context, username string, action ...model.Episode) error {
-	err := e.db.InTransaction(ctx, func(db repository.DBContext) error {
-		repo := e.db.GetRepository(db)
-
-		user, err := repo.GetUser(ctx, username)
+	err := e.db.InTransaction(ctx, func(dbctx repository.DBContext) error {
+		user, err := e.repo.GetUser(ctx, dbctx, username)
 		if errors.Is(err, repository.ErrNoData) {
 			return ErrUnknownUser
 		} else if err != nil {
@@ -111,7 +109,7 @@ func (e *Episodes) SaveEpisodesActions(ctx context.Context, username string, act
 			})
 		}
 
-		if err := repo.SaveEpisode(ctx, user.ID, episodes...); err != nil {
+		if err := e.repo.SaveEpisode(ctx, dbctx, user.ID, episodes...); err != nil {
 			return fmt.Errorf("save episodes error: %w", err)
 		}
 
@@ -134,9 +132,7 @@ func (e *Episodes) GetEpisodesActions(ctx context.Context, username, podcast, de
 
 	defer conn.Close()
 
-	repo := e.db.GetRepository(conn)
-
-	episodes, err := e.getEpisodesActions(ctx, repo, username, podcast, devicename, since, aggregated)
+	episodes, err := e.getEpisodesActions(ctx, conn, username, podcast, devicename, since, aggregated)
 	if err != nil {
 		return nil, fmt.Errorf("get episodes error: %w", err)
 	}
@@ -173,9 +169,7 @@ func (e *Episodes) GetEpisodesUpdates(ctx context.Context, username, devicename 
 		return nil, fmt.Errorf("get connection error: %w", err)
 	}
 
-	repo := e.db.GetRepository(conn)
-
-	episodes, err := e.getEpisodesActions(ctx, repo, username, "", devicename, since, true)
+	episodes, err := e.getEpisodesActions(ctx, conn, username, "", devicename, since, true)
 	if err != nil {
 		return nil, fmt.Errorf("get episodes error: %w", err)
 	}
@@ -200,12 +194,12 @@ func (e *Episodes) GetEpisodesUpdates(ctx context.Context, username, devicename 
 
 func (e *Episodes) getEpisodesActions(
 	ctx context.Context,
-	repo repository.Repository,
+	dbctx repository.DBContext,
 	username, podcast, devicename string,
 	since time.Time,
 	aggregated bool,
 ) ([]repository.EpisodeDB, error) {
-	user, err := repo.GetUser(ctx, username)
+	user, err := e.repo.GetUser(ctx, dbctx, username)
 	if errors.Is(err, repository.ErrNoData) {
 		return nil, ErrUnknownUser
 	} else if err != nil {
@@ -215,7 +209,7 @@ func (e *Episodes) getEpisodesActions(
 	var deviceid int64
 
 	if devicename != "" {
-		device, err := repo.GetDevice(ctx, user.ID, devicename)
+		device, err := e.repo.GetDevice(ctx, dbctx, user.ID, devicename)
 		if err != nil {
 			return nil, ErrUnknownDevice
 		}
@@ -226,7 +220,7 @@ func (e *Episodes) getEpisodesActions(
 	var podcastid int64
 
 	if podcast != "" {
-		p, err := repo.GetPodcast(ctx, user.ID, podcast)
+		p, err := e.repo.GetPodcast(ctx, dbctx, user.ID, podcast)
 		if err != nil {
 			return nil, ErrUnknownPodcast
 		}
@@ -234,7 +228,7 @@ func (e *Episodes) getEpisodesActions(
 		podcastid = p.ID
 	}
 
-	episodes, err := repo.ListEpisodes(ctx, user.ID, deviceid, podcastid, since, aggregated)
+	episodes, err := e.repo.ListEpisodes(ctx, dbctx, user.ID, deviceid, podcastid, since, aggregated)
 	if err != nil {
 		return nil, fmt.Errorf("get episodes error: %w", err)
 	}

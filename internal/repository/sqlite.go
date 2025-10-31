@@ -1,5 +1,7 @@
 package repository
 
+import "github.com/samber/do/v2"
+
 //
 // sqlite.go
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
@@ -7,10 +9,12 @@ package repository
 // Distributed under terms of the GPLv3 license.
 //
 
-type sqliteRepository struct {
-	db DBContext
+type sqliteRepository struct{}
+
+func NewSqliteRepository() Repository {
+	return &sqliteRepository{}
 }
 
-func NewSqliteRepository(db DBContext) Repository {
-	return &sqliteRepository{db}
+func NewSqliteRepositoryI(i do.Injector) (Repository, error) {
+	return &sqliteRepository{}, nil
 }

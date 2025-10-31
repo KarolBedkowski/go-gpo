@@ -21,11 +21,11 @@ import (
 
 var ErrDuplicatedSID = errors.New("sid already exists")
 
-func (s sqliteRepository) DeleteSession(ctx context.Context, sid string) error {
+func (s sqliteRepository) DeleteSession(ctx context.Context, db DBContext, sid string) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Str("sid", sid).Msg("delete session")
 
-	_, err := s.db.ExecContext(ctx, "DELETE FROM sessions WHERE key=?", sid)
+	_, err := db.ExecContext(ctx, "DELETE FROM sessions WHERE key=?", sid)
 	if err != nil {
 		return fmt.Errorf("delete session %q error: %w", sid, err)
 	}
@@ -33,11 +33,11 @@ func (s sqliteRepository) DeleteSession(ctx context.Context, sid string) error {
 	return nil
 }
 
-func (s sqliteRepository) SaveSession(ctx context.Context, sid string, data []byte) error {
+func (s sqliteRepository) SaveSession(ctx context.Context, db DBContext, sid string, data []byte) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Str("sid", sid).Msg("save session")
 
-	_, err := s.db.ExecContext(ctx,
+	_, err := db.ExecContext(ctx,
 		"UPDATE sessions SET data=?, created_at=? WHERE key=?",
 		data, time.Now(), sid)
 	if err != nil {
@@ -47,11 +47,11 @@ func (s sqliteRepository) SaveSession(ctx context.Context, sid string, data []by
 	return nil
 }
 
-func (s sqliteRepository) RegenerateSession(ctx context.Context, oldsid, newsid string) error {
+func (s sqliteRepository) RegenerateSession(ctx context.Context, db DBContext, oldsid, newsid string) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Str("sid", newsid).Str("old_sid", oldsid).Msg("regenerate session")
 
-	res, err := s.db.ExecContext(ctx, "UPDATE sessions SET key=? WHERE key=?", newsid, oldsid)
+	res, err := db.ExecContext(ctx, "UPDATE sessions SET key=? WHERE key=?", newsid, oldsid)
 	if err != nil {
 		return fmt.Errorf("update key for session %q error: %w", oldsid, err)
 	}
@@ -67,7 +67,7 @@ func (s sqliteRepository) RegenerateSession(ctx context.Context, oldsid, newsid 
 	}
 
 	// session not exists - insert
-	_, err = s.db.ExecContext(ctx,
+	_, err = db.ExecContext(ctx,
 		"INSERT INTO sessions(key, data, created_at) VALUES(?, '', ?)",
 		newsid, time.Now())
 	if err != nil {
@@ -77,24 +77,24 @@ func (s sqliteRepository) RegenerateSession(ctx context.Context, oldsid, newsid 
 	return nil
 }
 
-func (s sqliteRepository) CountSessions(ctx context.Context) (int, error) {
+func (s sqliteRepository) CountSessions(ctx context.Context, db DBContext) (int, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msg("count sessions")
 
 	var total int
 
-	if err := s.db.GetContext(ctx, &total, "SELECT COUNT(*) AS num FROM sessions"); err != nil {
+	if err := db.GetContext(ctx, &total, "SELECT COUNT(*) AS num FROM sessions"); err != nil {
 		return 0, fmt.Errorf("error counting records: %w", err)
 	}
 
 	return total, nil
 }
 
-func (s sqliteRepository) CleanSessions(ctx context.Context, maxLifeTime, maxLifeTimeForEmpty time.Duration) error {
+func (s sqliteRepository) CleanSessions(ctx context.Context, db DBContext, maxLifeTime, maxLifeTimeForEmpty time.Duration) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msg("clean sessions")
 
-	_, err := s.db.ExecContext(ctx,
+	_, err := db.ExecContext(ctx,
 		"DELETE FROM sessions WHERE created_at < ?",
 		time.Now().Add(-maxLifeTime))
 	if err != nil {
@@ -102,7 +102,7 @@ func (s sqliteRepository) CleanSessions(ctx context.Context, maxLifeTime, maxLif
 	}
 
 	// remove empty session older than 2 hour
-	_, err = s.db.ExecContext(ctx,
+	_, err = db.ExecContext(ctx,
 		"DELETE FROM sessions WHERE created_at < ? AND data is null",
 		time.Now().Add(maxLifeTimeForEmpty))
 	if err != nil {
@@ -112,7 +112,7 @@ func (s sqliteRepository) CleanSessions(ctx context.Context, maxLifeTime, maxLif
 	return nil
 }
 
-func (s sqliteRepository) ReadOrCreate(ctx context.Context, sid string) ([]byte, time.Time, error) {
+func (s sqliteRepository) ReadOrCreate(ctx context.Context, db DBContext, sid string) ([]byte, time.Time, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Str("sid", sid).Msg("read or create session")
 
@@ -121,11 +121,11 @@ func (s sqliteRepository) ReadOrCreate(ctx context.Context, sid string) ([]byte,
 		createdat = time.Now()
 	)
 
-	err := s.db.QueryRowxContext(ctx, "SELECT data, created_at FROM sessions WHERE key=?", sid).
+	err := db.QueryRowxContext(ctx, "SELECT data, created_at FROM sessions WHERE key=?", sid).
 		Scan(&data, &createdat)
 	if errors.Is(err, sql.ErrNoRows) {
 		// create empty session
-		_, err := s.db.ExecContext(ctx, "INSERT INTO sessions(key, created_at) VALUES(?, ?)", sid, createdat)
+		_, err := db.ExecContext(ctx, "INSERT INTO sessions(key, created_at) VALUES(?, ?)", sid, createdat)
 		if err != nil {
 			return nil, time.Time{}, fmt.Errorf("insert session into db error: %w", err)
 		}
@@ -136,13 +136,13 @@ func (s sqliteRepository) ReadOrCreate(ctx context.Context, sid string) ([]byte,
 	return data, createdat, nil
 }
 
-func (s sqliteRepository) SessionExists(ctx context.Context, sid string) (bool, error) {
+func (s sqliteRepository) SessionExists(ctx context.Context, db DBContext, sid string) (bool, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msg("count sessions")
 
 	var count int
 
-	err := s.db.GetContext(ctx, &count, "SELECT 1 FROM sessions where key=?", sid)
+	err := db.GetContext(ctx, &count, "SELECT 1 FROM sessions where key=?", sid)
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
 	} else if err != nil {

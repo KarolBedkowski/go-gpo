@@ -21,17 +21,19 @@ import (
 )
 
 type Settings struct {
-	db *db.Database
+	db   *db.Database
+	repo repository.Repository
 }
 
 func NewSettingsService(db *db.Database) *Settings {
-	return &Settings{db}
+	return &Settings{db, db.GetRepository()}
 }
 
 func NewSettingsServiceI(i do.Injector) (*Settings, error) {
 	db := do.MustInvoke[*db.Database](i)
+	repo := do.MustInvoke[repository.Repository](i)
 
-	return &Settings{db}, nil
+	return &Settings{db, repo}, nil
 }
 
 func (s Settings) GetSettings(ctx context.Context, username, scope, key string) (map[string]string, error) {
@@ -42,16 +44,14 @@ func (s Settings) GetSettings(ctx context.Context, username, scope, key string) 
 
 	defer conn.Close()
 
-	repo := s.db.GetRepository(conn)
-
-	user, err := repo.GetUser(ctx, username)
+	user, err := s.repo.GetUser(ctx, conn, username)
 	if errors.Is(err, repository.ErrNoData) {
 		return nil, ErrUnknownUser
 	} else if err != nil {
 		return nil, fmt.Errorf("get user error: %w", err)
 	}
 
-	sett, err := repo.GetSettings(ctx, user.ID, scope, key)
+	sett, err := s.repo.GetSettings(ctx, conn, user.ID, scope, key)
 	if err != nil {
 		return nil, fmt.Errorf("get settings error: %w", err)
 	}
@@ -75,17 +75,15 @@ func (s Settings) SaveSettings(
 	set map[string]string,
 	del []string,
 ) error {
-	err := s.db.InTransaction(ctx, func(db repository.DBContext) error {
-		repo := s.db.GetRepository(db)
-
-		user, err := repo.GetUser(ctx, username)
+	err := s.db.InTransaction(ctx, func(dbctx repository.DBContext) error {
+		user, err := s.repo.GetUser(ctx, dbctx, username)
 		if errors.Is(err, repository.ErrNoData) {
 			return ErrUnknownUser
 		} else if err != nil {
 			return fmt.Errorf("get user error: %w", err)
 		}
 
-		dbsett, err := repo.GetSettings(ctx, user.ID, scope, key)
+		dbsett, err := s.repo.GetSettings(ctx, dbctx, user.ID, scope, key)
 		if err != nil {
 			return fmt.Errorf("get settings error: %w", err)
 		}
@@ -111,7 +109,7 @@ func (s Settings) SaveSettings(
 
 		dbsett.Value = string(data)
 
-		if err := repo.SaveSettings(ctx, &dbsett); err != nil {
+		if err := s.repo.SaveSettings(ctx, dbctx, &dbsett); err != nil {
 			return fmt.Errorf("save settings error: %w", err)
 		}
 

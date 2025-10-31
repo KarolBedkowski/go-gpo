@@ -22,17 +22,19 @@ import (
 var ErrUnknownPodcast = errors.New("unknown podcast")
 
 type Podcasts struct {
-	db *db.Database
+	db   *db.Database
+	repo repository.Repository
 }
 
 func NewPodcastsService(db *db.Database) *Podcasts {
-	return &Podcasts{db}
+	return &Podcasts{db, db.GetRepository()}
 }
 
 func NewPodcastsServiceI(i do.Injector) (*Podcasts, error) {
 	db := do.MustInvoke[*db.Database](i)
+	repo := do.MustInvoke[repository.Repository](i)
 
-	return &Podcasts{db}, nil
+	return &Podcasts{db, repo}, nil
 }
 
 func (p *Podcasts) GetUserPodcasts(ctx context.Context, username string) ([]model.Podcast, error) {
@@ -43,16 +45,14 @@ func (p *Podcasts) GetUserPodcasts(ctx context.Context, username string) ([]mode
 
 	defer conn.Close()
 
-	repo := p.db.GetRepository(conn)
-
-	user, err := repo.GetUser(ctx, username)
+	user, err := p.repo.GetUser(ctx, conn, username)
 	if errors.Is(err, repository.ErrNoData) {
 		return nil, ErrUnknownUser
 	} else if err != nil {
 		return nil, fmt.Errorf("get user error: %w", err)
 	}
 
-	subs, err := repo.ListSubscribedPodcasts(ctx, user.ID, time.Time{})
+	subs, err := p.repo.ListSubscribedPodcasts(ctx, conn, user.ID, time.Time{})
 	if err != nil {
 		return nil, fmt.Errorf("get subscriptions error: %w", err)
 	}

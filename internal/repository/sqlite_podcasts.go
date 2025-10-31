@@ -17,14 +17,14 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func (s sqliteRepository) ListSubscribedPodcasts(ctx context.Context, userid int64, since time.Time,
+func (s sqliteRepository) ListSubscribedPodcasts(ctx context.Context, db DBContext, userid int64, since time.Time,
 ) (PodcastsDB, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Msgf("get subscribed podcasts since %s", since)
 
 	res := []PodcastDB{}
 
-	err := s.db.SelectContext(ctx, &res,
+	err := db.SelectContext(ctx, &res,
 		"SELECT p.id, p.user_id, p.url, p.title, p.subscribed, p.created_at, p.updated_at "+
 			"FROM podcasts p "+
 			"WHERE p.user_id=? AND p.updated_at > ? and subscribed", userid, since)
@@ -35,14 +35,14 @@ func (s sqliteRepository) ListSubscribedPodcasts(ctx context.Context, userid int
 	return res, nil
 }
 
-func (s sqliteRepository) ListPodcasts(ctx context.Context, userid int64, since time.Time,
+func (s sqliteRepository) ListPodcasts(ctx context.Context, db DBContext, userid int64, since time.Time,
 ) (PodcastsDB, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Msgf("get podcasts since %s", since)
 
 	res := []PodcastDB{}
 
-	err := s.db.SelectContext(ctx, &res,
+	err := db.SelectContext(ctx, &res,
 		"SELECT p.id, p.user_id, p.url, p.title, p.subscribed, p.created_at, p.updated_at "+
 			"FROM podcasts p "+
 			"WHERE p.user_id=? AND p.updated_at > ?", userid, since)
@@ -53,13 +53,13 @@ func (s sqliteRepository) ListPodcasts(ctx context.Context, userid int64, since 
 	return res, nil
 }
 
-func (s sqliteRepository) GetPodcast(ctx context.Context, userid int64, podcasturl string) (PodcastDB, error) {
+func (s sqliteRepository) GetPodcast(ctx context.Context, db DBContext, userid int64, podcasturl string) (PodcastDB, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Str("podcast_url", podcasturl).Msg("get podcast")
 
 	podcast := PodcastDB{}
 
-	err := s.db.GetContext(ctx, &podcast,
+	err := db.GetContext(ctx, &podcast,
 		"SELECT p.id, p.user_id, p.url, p.title, p.subscribed, p.created_at, p.updated_at "+
 			"FROM podcasts p "+
 			"WHERE p.user_id=? AND p.url = ?", userid, podcasturl)
@@ -73,12 +73,12 @@ func (s sqliteRepository) GetPodcast(ctx context.Context, userid int64, podcastu
 	}
 }
 
-func (s sqliteRepository) SavePodcast(ctx context.Context, user, device string, podcast ...PodcastDB) error {
+func (s sqliteRepository) SavePodcast(ctx context.Context, db DBContext, user, device string, podcast ...PodcastDB) error {
 	_ = user
 	_ = device
 
 	for _, p := range podcast {
-		if _, err := s.savePodcast(ctx, &p); err != nil {
+		if _, err := s.savePodcast(ctx, db, &p); err != nil {
 			return err
 		}
 	}
@@ -86,13 +86,13 @@ func (s sqliteRepository) SavePodcast(ctx context.Context, user, device string, 
 	return nil
 }
 
-func (s sqliteRepository) savePodcast(ctx context.Context, podcast *PodcastDB) (int64, error) {
+func (s sqliteRepository) savePodcast(ctx context.Context, db DBContext, podcast *PodcastDB) (int64, error) {
 	logger := log.Ctx(ctx)
 
 	if podcast.ID == 0 {
 		logger.Debug().Object("podcast", podcast).Msg("insert podcast")
 
-		res, err := s.db.ExecContext(
+		res, err := db.ExecContext(
 			ctx,
 			"INSERT INTO podcasts (user_id, title, url, subscribed, created_at, updated_at) "+
 				"VALUES(?, ?, ?, ?, ?, ?)",
@@ -120,7 +120,7 @@ func (s sqliteRepository) savePodcast(ctx context.Context, podcast *PodcastDB) (
 	// update
 	logger.Debug().Object("podcast", podcast).Msg("update podcast")
 
-	_, err := s.db.ExecContext(ctx,
+	_, err := db.ExecContext(ctx,
 		"UPDATE podcasts SET subscribed=?, title=?, url=?, updated_at=? WHERE id=?",
 		podcast.Subscribed, podcast.Title, podcast.URL, time.Now(), podcast.ID)
 	if err != nil {
@@ -130,14 +130,14 @@ func (s sqliteRepository) savePodcast(ctx context.Context, podcast *PodcastDB) (
 	return podcast.ID, nil
 }
 
-func (s sqliteRepository) createNewPodcast(ctx context.Context, userid int64, url string) (int64, error) {
+func (s sqliteRepository) createNewPodcast(ctx context.Context, db DBContext, userid int64, url string) (int64, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Str("podcast_url", url).Msg("create new podcast")
 
 	now := time.Now()
 	podcast := PodcastDB{UserID: userid, URL: url, Subscribed: true, UpdatedAt: now, CreatedAt: now}
 
-	id, err := s.savePodcast(ctx, &podcast)
+	id, err := s.savePodcast(ctx, db, &podcast)
 	if err != nil {
 		return 0, err
 	}
