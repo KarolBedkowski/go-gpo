@@ -9,6 +9,7 @@ package api
 
 import (
 	"github.com/go-chi/chi/v5"
+	"github.com/samber/do"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
@@ -26,13 +27,14 @@ type API struct {
 	settingsSrv *service.Settings
 }
 
-func New(
-	deviceSrv *service.Device,
-	subSrv *service.Subs,
-	usersSrv *service.Users,
-	episodesSrv *service.Episodes,
-	settingsSrv *service.Settings,
-) API {
+func New(i *do.Injector) API {
+	deviceSrv := do.MustInvoke[*service.Device](i)
+	subSrv := do.MustInvoke[*service.Subs](i)
+	usersSrv := do.MustInvoke[*service.Users](i)
+	episodesSrv := do.MustInvoke[*service.Episodes](i)
+	settingsSrv := do.MustInvoke[*service.Settings](i)
+	// podcastsSrv := do.MustInvoke[*service.Podcasts](i)
+
 	return API{
 		deviceSrv:   deviceSrv,
 		subSrv:      subSrv,

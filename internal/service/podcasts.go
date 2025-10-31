@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/samber/do"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/repository"
@@ -26,6 +27,12 @@ type Podcasts struct {
 
 func NewPodcastsService(db *db.Database) *Podcasts {
 	return &Podcasts{db}
+}
+
+func NewPodcastsServiceI(i *do.Injector) (*Podcasts, error) {
+	db := do.MustInvoke[*db.Database](i)
+
+	return &Podcasts{db}, nil
 }
 
 func (p *Podcasts) GetUserPodcasts(ctx context.Context, username string) ([]model.Podcast, error) {

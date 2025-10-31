@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/samber/do"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/repository"
@@ -32,6 +33,12 @@ type Users struct {
 
 func NewUsersService(db *db.Database) *Users {
 	return &Users{db, BCryptPasswordHasher{}}
+}
+
+func NewUsersServiceI(i *do.Injector) (*Users, error) {
+	db := do.MustInvoke[*db.Database](i)
+
+	return &Users{db, BCryptPasswordHasher{}}, nil
 }
 
 func (u *Users) LoginUser(ctx context.Context, username, password string) (model.User, error) {

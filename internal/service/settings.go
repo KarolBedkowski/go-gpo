@@ -15,6 +15,7 @@ import (
 	"maps"
 
 	//	"gitlab.com/kabes/go-gpo/internal/model"
+	"github.com/samber/do"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
@@ -25,6 +26,12 @@ type Settings struct {
 
 func NewSettingsService(db *db.Database) *Settings {
 	return &Settings{db}
+}
+
+func NewSettingsServiceI(i *do.Injector) (*Settings, error) {
+	db := do.MustInvoke[*db.Database](i)
+
+	return &Settings{db}, nil
 }
 
 func (s Settings) GetSettings(ctx context.Context, username, scope, key string) (map[string]string, error) {

@@ -16,6 +16,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/pressly/goose/v3"
 	"github.com/rs/zerolog/log"
+	"github.com/samber/do"
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
@@ -24,6 +25,10 @@ var embedMigrations embed.FS
 
 type Database struct {
 	db *sqlx.DB
+}
+
+func NewDatabaseI(_ *do.Injector) (*Database, error) {
+	return &Database{}, nil
 }
 
 func (r *Database) Connect(ctx context.Context, driver, connstr string) error {

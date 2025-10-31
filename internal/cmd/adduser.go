@@ -11,6 +11,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/samber/do"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/service"
@@ -25,8 +26,10 @@ type AddUser struct {
 }
 
 func (a *AddUser) Start(ctx context.Context) error {
-	re := &db.Database{}
-	if err := re.Connect(ctx, "sqlite3", a.Database); err != nil {
+	injector := createInjector(ctx)
+
+	db := do.MustInvoke[*db.Database](injector)
+	if err := db.Connect(ctx, "sqlite3", a.Database); err != nil {
 		return fmt.Errorf("connect to database error: %w", err)
 	}
 
@@ -37,7 +40,9 @@ func (a *AddUser) Start(ctx context.Context) error {
 		Username: a.Username,
 	}
 
-	userv := service.NewUsersService(re)
+	// userv := service.NewUsersService(db)
+
+	userv := do.MustInvoke[*service.Users](injector)
 
 	id, err := userv.AddUser(ctx, user)
 	if err != nil {

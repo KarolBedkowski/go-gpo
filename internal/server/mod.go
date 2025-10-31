@@ -18,6 +18,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/rs/zerolog/hlog"
 	"github.com/rs/zerolog/log"
+	"github.com/samber/do"
 	gpoapi "gitlab.com/kabes/go-gpo/internal/api"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/service"
@@ -35,16 +36,12 @@ const (
 	sessionMaxLifetime = 14 * 24 * 60 * 60 // 14d
 )
 
-func Start(ctx context.Context, repo *db.Database, cfg *Configuration) error {
-	deviceSrv := service.NewDeviceService(repo)
-	subSrv := service.NewSubssService(repo)
-	usersSrv := service.NewUsersService(repo)
-	episodesSrv := service.NewEpisodesService(repo)
-	settingsSrv := service.NewSettingsService(repo)
-	podcastsSrv := service.NewPodcastsService(repo)
+func Start(ctx context.Context, injector *do.Injector, cfg *Configuration) error {
+	usersSrv := do.MustInvoke[*service.Users](injector)
+	db := do.MustInvoke[*db.Database](injector)
 
 	// middlewares
-	sessionMW, err := newSessionMiddleware(repo)
+	sessionMW, err := newSessionMiddleware(db)
 	if err != nil {
 		return err
 	}
@@ -63,7 +60,7 @@ func Start(ctx context.Context, repo *db.Database, cfg *Configuration) error {
 
 	router.Method("GET", "/metrics", newMetricsHandler())
 
-	api := gpoapi.New(deviceSrv, subSrv, usersSrv, episodesSrv, settingsSrv)
+	api := gpoapi.New(injector)
 	router.
 		With(newPromMiddleware("api", nil).Handler).
 		With(sessionMW).
@@ -72,7 +69,7 @@ func Start(ctx context.Context, repo *db.Database, cfg *Configuration) error {
 		With(middleware.NoCache).
 		Mount("/", api.Routes())
 
-	web := gpoweb.New(deviceSrv, subSrv, usersSrv, episodesSrv, settingsSrv, podcastsSrv, cfg.WebRoot)
+	web := gpoweb.New(injector, cfg.WebRoot)
 	router.
 		With(newPromMiddleware("web", nil).Handler).
 		With(sessionMW).
@@ -80,8 +77,8 @@ func Start(ctx context.Context, repo *db.Database, cfg *Configuration) error {
 		With(AuthenticatedOnly).
 		Mount("/web", web.Routes())
 
-	router.Get("/", func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte("go-gpo"))
+	router.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, cfg.WebRoot+"/web", http.StatusMovedPermanently)
 	})
 
 	logRoutes(ctx, router)

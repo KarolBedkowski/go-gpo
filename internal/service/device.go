@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/samber/do"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/repository"
@@ -30,6 +31,12 @@ type Device struct {
 
 func NewDeviceService(db *db.Database) *Device {
 	return &Device{db}
+}
+
+func NewDeviceServiceI(i *do.Injector) (*Device, error) {
+	db := do.MustInvoke[*db.Database](i)
+
+	return &Device{db}, nil
 }
 
 func (d *Device) UpdateDevice(ctx context.Context, username, deviceid, caption, devtype string) error {

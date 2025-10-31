@@ -14,6 +14,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/samber/do"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/repository"
@@ -25,6 +26,12 @@ type Subs struct {
 
 func NewSubssService(db *db.Database) *Subs {
 	return &Subs{db}
+}
+
+func NewSubssServiceI(i *do.Injector) (*Subs, error) {
+	db := do.MustInvoke[*db.Database](i)
+
+	return &Subs{db}, nil
 }
 
 // GetUserSubscriptions is simple api.

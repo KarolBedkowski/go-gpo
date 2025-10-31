@@ -18,6 +18,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"github.com/samber/do"
 	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
@@ -40,15 +41,14 @@ type WEB struct {
 	webroot  string
 }
 
-func New(
-	deviceSrv *service.Device,
-	subSrv *service.Subs,
-	usersSrv *service.Users,
-	episodesSrv *service.Episodes,
-	settingsSrv *service.Settings,
-	podcastsSrv *service.Podcasts,
-	webroot string,
-) WEB {
+func New(i *do.Injector, webroot string) WEB {
+	deviceSrv := do.MustInvoke[*service.Device](i)
+	subSrv := do.MustInvoke[*service.Subs](i)
+	usersSrv := do.MustInvoke[*service.Users](i)
+	episodesSrv := do.MustInvoke[*service.Episodes](i)
+	settingsSrv := do.MustInvoke[*service.Settings](i)
+	podcastsSrv := do.MustInvoke[*service.Podcasts](i)
+
 	return WEB{
 		deviceSrv:   deviceSrv,
 		subSrv:      subSrv,
