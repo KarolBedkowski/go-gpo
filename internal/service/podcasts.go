@@ -13,7 +13,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/samber/do"
+	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/repository"
@@ -29,7 +29,7 @@ func NewPodcastsService(db *db.Database) *Podcasts {
 	return &Podcasts{db}
 }
 
-func NewPodcastsServiceI(i *do.Injector) (*Podcasts, error) {
+func NewPodcastsServiceI(i do.Injector) (*Podcasts, error) {
 	db := do.MustInvoke[*db.Database](i)
 
 	return &Podcasts{db}, nil

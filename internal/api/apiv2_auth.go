@@ -13,12 +13,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 	"gitlab.com/kabes/go-gpo/internal"
-	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
-type authResource struct {
-	users *service.Users
-}
+type authResource struct{}
 
 func (ar *authResource) Routes() chi.Router {
 	r := chi.NewRouter()
@@ -43,7 +40,7 @@ func (ar *authResource) login(ctx context.Context, w http.ResponseWriter, r *htt
 	}
 }
 
-func (*authResource) logout(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
+func (ar *authResource) logout(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
 	sess := session.GetSession(r)
 	user := internal.ContextUser(ctx)
 	username := internal.SessionUser(sess)

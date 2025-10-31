@@ -16,7 +16,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/pressly/goose/v3"
 	"github.com/rs/zerolog/log"
-	"github.com/samber/do"
+	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
@@ -27,7 +27,7 @@ type Database struct {
 	db *sqlx.DB
 }
 
-func NewDatabaseI(_ *do.Injector) (*Database, error) {
+func NewDatabaseI(_ do.Injector) (*Database, error) {
 	return &Database{}, nil
 }
 

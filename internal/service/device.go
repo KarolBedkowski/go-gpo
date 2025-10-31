@@ -13,7 +13,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/samber/do"
+	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/repository"
@@ -33,7 +33,7 @@ func NewDeviceService(db *db.Database) *Device {
 	return &Device{db}
 }
 
-func NewDeviceServiceI(i *do.Injector) (*Device, error) {
+func NewDeviceServiceI(i do.Injector) (*Device, error) {
 	db := do.MustInvoke[*db.Database](i)
 
 	return &Device{db}, nil

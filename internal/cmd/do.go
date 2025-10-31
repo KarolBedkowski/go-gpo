@@ -9,26 +9,26 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/rs/zerolog/log"
-	"github.com/samber/do"
+	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
-func createInjector(ctx context.Context) *do.Injector {
-	injector := do.New()
+func createInjector(ctx context.Context) do.Injector {
+	injector := do.New(
+		service.Package,
+	)
 
 	do.Provide(injector, db.NewDatabaseI)
-	do.Provide(injector, service.NewUsersServiceI)
-	do.Provide(injector, service.NewDeviceServiceI)
-	do.Provide(injector, service.NewEpisodesServiceI)
-	do.Provide(injector, service.NewPodcastsServiceI)
-	do.Provide(injector, service.NewSettingsServiceI)
-	do.Provide(injector, service.NewSubssServiceI)
 
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("Available services: %v", injector.ListProvidedServices())
+
+	explanation := do.ExplainInjector(injector)
+	fmt.Println(explanation.String())
 
 	return injector
 }

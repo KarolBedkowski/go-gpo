@@ -14,7 +14,7 @@ import (
 
 	"github.com/Merovius/systemd"
 	"github.com/rs/zerolog/log"
-	"github.com/samber/do"
+	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/server"
 )

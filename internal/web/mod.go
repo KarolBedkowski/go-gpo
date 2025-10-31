@@ -18,7 +18,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/samber/do"
+	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
@@ -30,46 +30,35 @@ var templatesFS embed.FS
 var staticFS embed.FS
 
 type WEB struct {
-	deviceSrv   *service.Device
-	subSrv      *service.Subs
-	usersSrv    *service.Users
-	episodesSrv *service.Episodes
-	settingsSrv *service.Settings
-	podcastsSrv *service.Podcasts
+	i do.Injector
 
 	template templates
 	webroot  string
 }
 
-func New(i *do.Injector, webroot string) WEB {
-	deviceSrv := do.MustInvoke[*service.Device](i)
-	subSrv := do.MustInvoke[*service.Subs](i)
-	usersSrv := do.MustInvoke[*service.Users](i)
-	episodesSrv := do.MustInvoke[*service.Episodes](i)
-	settingsSrv := do.MustInvoke[*service.Settings](i)
-	podcastsSrv := do.MustInvoke[*service.Podcasts](i)
-
+func New(i do.Injector, webroot string) WEB {
 	return WEB{
-		deviceSrv:   deviceSrv,
-		subSrv:      subSrv,
-		usersSrv:    usersSrv,
-		episodesSrv: episodesSrv,
-		settingsSrv: settingsSrv,
-		podcastsSrv: podcastsSrv,
-		webroot:     webroot,
-
+		i:        i,
+		webroot:  webroot,
 		template: newTemplates(webroot),
 	}
 }
 
 func (w *WEB) Routes() chi.Router {
+	deviceSrv := do.MustInvoke[*service.Device](w.i)
+	// subSrv := do.MustInvoke[*service.Subs](w.i)
+	usersSrv := do.MustInvoke[*service.Users](w.i)
+	episodesSrv := do.MustInvoke[*service.Episodes](w.i)
+	// settingsSrv := do.MustInvoke[*service.Settings](w.i)
+	podcastsSrv := do.MustInvoke[*service.Podcasts](w.i)
+
 	router := chi.NewRouter()
 
 	router.Get("/", internal.Wrap(w.indexPage))
-	router.Mount("/device", (&devicePages{w.deviceSrv, w.template}).Routes())
-	router.Mount("/podcast", (&podcastPages{w.podcastsSrv, w.template}).Routes())
-	router.Mount("/episode", (&episodePages{w.episodesSrv, w.template}).Routes())
-	router.Mount("/user", (&usersPages{w.usersSrv, w.template}).Routes())
+	router.Mount("/device", (&devicePages{deviceSrv, w.template}).Routes())
+	router.Mount("/podcast", (&podcastPages{podcastsSrv, w.template}).Routes())
+	router.Mount("/episode", (&episodePages{episodesSrv, w.template}).Routes())
+	router.Mount("/user", (&usersPages{usersSrv, w.template}).Routes())
 
 	fs := http.FileServerFS(staticFS)
 	router.Method("GET", "/static/*", http.StripPrefix("/web/", fs))

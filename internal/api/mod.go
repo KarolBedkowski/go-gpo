@@ -9,7 +9,7 @@ package api
 
 import (
 	"github.com/go-chi/chi/v5"
-	"github.com/samber/do"
+	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
@@ -19,44 +19,30 @@ type Configuration struct {
 	LogBody bool
 }
 
-type API struct {
-	deviceSrv   *service.Device
-	subSrv      *service.Subs
-	usersSrv    *service.Users
-	episodesSrv *service.Episodes
-	settingsSrv *service.Settings
-}
+type API struct{ i do.Injector }
 
-func New(i *do.Injector) API {
-	deviceSrv := do.MustInvoke[*service.Device](i)
-	subSrv := do.MustInvoke[*service.Subs](i)
-	usersSrv := do.MustInvoke[*service.Users](i)
-	episodesSrv := do.MustInvoke[*service.Episodes](i)
-	settingsSrv := do.MustInvoke[*service.Settings](i)
-	// podcastsSrv := do.MustInvoke[*service.Podcasts](i)
-
-	return API{
-		deviceSrv:   deviceSrv,
-		subSrv:      subSrv,
-		usersSrv:    usersSrv,
-		episodesSrv: episodesSrv,
-		settingsSrv: settingsSrv,
-	}
+func New(i do.Injector) API {
+	return API{i}
 }
 
 func (a *API) Routes() chi.Router {
+	deviceSrv := do.MustInvoke[*service.Device](a.i)
+	subSrv := do.MustInvoke[*service.Subs](a.i)
+	episodesSrv := do.MustInvoke[*service.Episodes](a.i)
+	settingsSrv := do.MustInvoke[*service.Settings](a.i)
+
 	router := chi.NewRouter()
 	router.Route("/subscriptions", func(r chi.Router) {
-		r.Mount("/", (&simpleResource{a.subSrv}).Routes())
+		r.Mount("/", (&simpleResource{subSrv}).Routes())
 	})
 
 	router.Route("/api/2", func(r chi.Router) {
-		r.Mount("/auth", (&authResource{a.usersSrv}).Routes())
-		r.Mount("/devices", (&deviceResource{a.deviceSrv}).Routes())
-		r.Mount("/subscriptions", (&subscriptionsResource{a.subSrv}).Routes())
-		r.Mount("/episodes", (&episodesResource{a.episodesSrv}).Routes())
-		r.Mount("/updates", (&updatesResource{a.subSrv, a.episodesSrv}).Routes())
-		r.Mount("/settings", (&settingsResource{a.settingsSrv}).Routes())
+		r.Mount("/auth", (&authResource{}).Routes())
+		r.Mount("/devices", (&deviceResource{deviceSrv}).Routes())
+		r.Mount("/subscriptions", (&subscriptionsResource{subSrv}).Routes())
+		r.Mount("/episodes", (&episodesResource{episodesSrv}).Routes())
+		r.Mount("/updates", (&updatesResource{subSrv, episodesSrv}).Routes())
+		r.Mount("/settings", (&settingsResource{settingsSrv}).Routes())
 	})
 
 	return router

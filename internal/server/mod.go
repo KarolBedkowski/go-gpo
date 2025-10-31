@@ -18,7 +18,8 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/rs/zerolog/hlog"
 	"github.com/rs/zerolog/log"
-	"github.com/samber/do"
+	dochi "github.com/samber/do/http/chi/v2"
+	"github.com/samber/do/v2"
 	gpoapi "gitlab.com/kabes/go-gpo/internal/api"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/service"
@@ -36,7 +37,7 @@ const (
 	sessionMaxLifetime = 14 * 24 * 60 * 60 // 14d
 )
 
-func Start(ctx context.Context, injector *do.Injector, cfg *Configuration) error {
+func Start(ctx context.Context, injector do.Injector, cfg *Configuration) error {
 	usersSrv := do.MustInvoke[*service.Users](injector)
 	db := do.MustInvoke[*db.Database](injector)
 
@@ -76,6 +77,8 @@ func Start(ctx context.Context, injector *do.Injector, cfg *Configuration) error
 		With(authMW.handle).
 		With(AuthenticatedOnly).
 		Mount("/web", web.Routes())
+
+	dochi.Use(router, "/debug/do", injector)
 
 	router.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, cfg.WebRoot+"/web", http.StatusMovedPermanently)

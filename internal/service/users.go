@@ -13,7 +13,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/samber/do"
+	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/repository"
@@ -35,7 +35,7 @@ func NewUsersService(db *db.Database) *Users {
 	return &Users{db, BCryptPasswordHasher{}}
 }
 
-func NewUsersServiceI(i *do.Injector) (*Users, error) {
+func NewUsersServiceI(i do.Injector) (*Users, error) {
 	db := do.MustInvoke[*db.Database](i)
 
 	return &Users{db, BCryptPasswordHasher{}}, nil
