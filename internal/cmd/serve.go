@@ -10,6 +10,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/Merovius/systemd"
 	"github.com/rs/zerolog/log"
@@ -21,6 +22,7 @@ type Server struct {
 	Database string
 	Listen   string
 	LogBody  bool
+	WebRoot  string
 }
 
 func (s *Server) Start(ctx context.Context) error {
@@ -41,6 +43,7 @@ func (s *Server) Start(ctx context.Context) error {
 	cfg := server.Configuration{
 		Listen:  s.Listen,
 		LogBody: s.LogBody,
+		WebRoot: strings.TrimSuffix(s.WebRoot, "/"),
 	}
 
 	systemd.NotifyReady()           //nolint:errcheck

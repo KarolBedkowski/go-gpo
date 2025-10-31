@@ -17,7 +17,7 @@
       {{range .Podcasts}}
       <tr>
         <td>{{ .Title }}</td>
-        <td><a href="episode/?podcast={{ .URL }}">{{ .URL }}</a></td>
+        <td><a href="{{webroot}}/web/episode/?podcast={{ .URL }}">{{ .URL }}</a></td>
       </tr>
       {{end}}
     </tbody>

@@ -37,6 +37,7 @@ type WEB struct {
 	podcastsSrv *service.Podcasts
 
 	template templates
+	webroot  string
 }
 
 func New(
@@ -46,6 +47,7 @@ func New(
 	episodesSrv *service.Episodes,
 	settingsSrv *service.Settings,
 	podcastsSrv *service.Podcasts,
+	webroot string,
 ) WEB {
 	return WEB{
 		deviceSrv:   deviceSrv,
@@ -54,8 +56,9 @@ func New(
 		episodesSrv: episodesSrv,
 		settingsSrv: settingsSrv,
 		podcastsSrv: podcastsSrv,
+		webroot:     webroot,
 
-		template: newTemplates(),
+		template: newTemplates(webroot),
 	}
 }
 
@@ -87,9 +90,10 @@ func (w *WEB) indexPage(ctx context.Context, writer http.ResponseWriter, r *http
 type templates map[string]*template.Template
 
 // newTemplate loads templates.
-func newTemplates() templates {
+func newTemplates(webroot string) templates {
 	logger := log.Logger
-	base := template.Must(template.New("").ParseFS(templatesFS, "templates/_base*"))
+	funcs := template.FuncMap{"webroot": func() string { return webroot }}
+	base := template.Must(template.New("").Funcs(funcs).ParseFS(templatesFS, "templates/_base*"))
 
 	direntries, err := templatesFS.ReadDir("templates")
 	if err != nil {

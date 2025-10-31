@@ -27,6 +27,7 @@ import (
 type Configuration struct {
 	Listen  string
 	LogBody bool
+	WebRoot string
 }
 
 const (
@@ -71,7 +72,7 @@ func Start(ctx context.Context, repo *db.Database, cfg *Configuration) error {
 		With(middleware.NoCache).
 		Mount("/", api.Routes())
 
-	web := gpoweb.New(deviceSrv, subSrv, usersSrv, episodesSrv, settingsSrv, podcastsSrv)
+	web := gpoweb.New(deviceSrv, subSrv, usersSrv, episodesSrv, settingsSrv, podcastsSrv, cfg.WebRoot)
 	router.
 		With(newPromMiddleware("web", nil).Handler).
 		With(sessionMW).

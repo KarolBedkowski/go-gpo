@@ -133,6 +133,13 @@ func startServerCmd() *cli.Command {
 				Aliases: []string{"a"},
 				Sources: cli.EnvVars("GOGPO_SERVER_ADDRESS"),
 			},
+			&cli.StringFlag{
+				Name:    "web-root",
+				Value:   "/",
+				Usage:   "path root",
+				Aliases: []string{"a"},
+				Sources: cli.EnvVars("GOGPO_SERVER_WEBROOT"),
+			},
 			&cli.BoolFlag{
 				Name:    "verbose",
 				Value:   false,
@@ -147,6 +154,7 @@ func startServerCmd() *cli.Command {
 				Database: c.String("database"),
 				Listen:   c.String("address"),
 				LogBody:  c.Bool("verbose"),
+				WebRoot:  c.String("web-root"),
 			}
 
 			return s.Start(log.Logger.WithContext(ctx))
