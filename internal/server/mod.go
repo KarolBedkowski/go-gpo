@@ -48,18 +48,16 @@ func Start(ctx context.Context, injector do.Injector, cfg *Configuration) error 
 
 	authMW := authenticator{usersSrv}
 
-	// TODO: web-root
-
 	// routes
 	router := chi.NewRouter()
-	router.Use(middleware.Heartbeat("/ping"))
+	router.Use(middleware.Heartbeat(cfg.WebRoot + "/ping"))
 	router.Use(middleware.RealIP)
 	router.Use(hlog.RequestIDHandler("req_id", "Request-Id"))
 	router.Use(newLogMiddleware(cfg))
 	router.Use(newRecoverMiddleware)
 	router.Use(middleware.Timeout(connectioTimeout))
 
-	router.Method("GET", "/metrics", newMetricsHandler())
+	router.Method("GET", cfg.WebRoot+"/metrics", newMetricsHandler())
 
 	api := do.MustInvoke[gpoapi.API](injector)
 	router.
@@ -69,7 +67,7 @@ func Start(ctx context.Context, injector do.Injector, cfg *Configuration) error 
 		With(authMW.handle).
 		With(AuthenticatedOnly).
 		With(middleware.NoCache).
-		Mount("/", api.Routes())
+		Mount(cfg.WebRoot+"/", api.Routes())
 
 	web := do.MustInvoke[gpoweb.WEB](injector)
 	router.
@@ -78,17 +76,17 @@ func Start(ctx context.Context, injector do.Injector, cfg *Configuration) error 
 		With(sessionMW).
 		With(authMW.handle).
 		With(AuthenticatedOnly).
-		Mount("/web", web.Routes())
+		Mount(cfg.WebRoot+"/web", web.Routes())
 
 	if cfg.DebugFlags.HasFlag(config.DebugDo) {
-		dochi.Use(router, "/debug/do", injector)
+		dochi.Use(router, cfg.WebRoot+"/debug/do", injector)
 	}
 
 	if cfg.DebugFlags.HasFlag(config.DebugGo) {
-		router.Mount("/debug", middleware.Profiler())
+		router.Mount(cfg.WebRoot+"/debug", middleware.Profiler())
 	}
 
-	router.Get("/", func(w http.ResponseWriter, r *http.Request) {
+	router.Get(cfg.WebRoot+"/", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, cfg.WebRoot+"/web", http.StatusMovedPermanently)
 	})
 
