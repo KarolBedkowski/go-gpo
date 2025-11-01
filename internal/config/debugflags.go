@@ -19,6 +19,7 @@ type DebugFlag string
 const (
 	DebugMsgBody = DebugFlag("logbody")
 	DebugDo      = DebugFlag("do")
+	DebugGo      = DebugFlag("go")
 )
 
 type DebugFlags []string

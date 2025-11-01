@@ -123,7 +123,7 @@ func (r *logResponseWriter) WriteHeader(status int) {
 
 func newSimpleLogMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		if strings.HasPrefix(request.URL.Path, "/metrics") {
+		if shouldSkipLogRequest(request) {
 			next.ServeHTTP(writer, request)
 
 			return
@@ -166,7 +166,7 @@ func newSimpleLogMiddleware(next http.Handler) http.Handler {
 // newFullLogMiddleware create new logging middleware.
 func newFullLogMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		if strings.HasPrefix(request.URL.Path, "/metrics") {
+		if shouldSkipLogRequest(request) {
 			next.ServeHTTP(writer, request)
 
 			return
@@ -193,7 +193,7 @@ func newFullLogMiddleware(next http.Handler) http.Handler {
 		lrw.Tee(&respBody)
 
 		defer func() {
-			if !strings.HasPrefix(request.URL.Path, "/metrics") {
+			if !shouldSkipLogRequest(request) {
 				llog.Debug().
 					Str("request_body", reqBody.String()).
 					Interface("req-headers", request.Header).
@@ -219,6 +219,15 @@ func newFullLogMiddleware(next http.Handler) http.Handler {
 
 		next.ServeHTTP(lrw, request)
 	})
+}
+
+//-------------------------------------------------------------
+
+// shouldSkipLogRequest determine which request should not be logged.
+func shouldSkipLogRequest(request *http.Request) bool {
+	path := request.URL.Path
+
+	return !strings.HasPrefix(path, "/metrics") && !strings.HasPrefix(path, "/debug")
 }
 
 //-------------------------------------------------------------

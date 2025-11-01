@@ -53,7 +53,6 @@ func Start(ctx context.Context, injector do.Injector, cfg *Configuration) error 
 	// routes
 	router := chi.NewRouter()
 	router.Use(middleware.Heartbeat("/ping"))
-	router.Use(middleware.CleanPath)
 	router.Use(middleware.RealIP)
 	router.Use(hlog.RequestIDHandler("req_id", "Request-Id"))
 	router.Use(newLogMiddleware(cfg))
@@ -65,6 +64,7 @@ func Start(ctx context.Context, injector do.Injector, cfg *Configuration) error 
 	api := do.MustInvoke[gpoapi.API](injector)
 	router.
 		With(newPromMiddleware("api", nil).Handler).
+		With(middleware.CleanPath).
 		With(sessionMW).
 		With(authMW.handle).
 		With(AuthenticatedOnly).
@@ -74,6 +74,7 @@ func Start(ctx context.Context, injector do.Injector, cfg *Configuration) error 
 	web := do.MustInvoke[gpoweb.WEB](injector)
 	router.
 		With(newPromMiddleware("web", nil).Handler).
+		With(middleware.CleanPath).
 		With(sessionMW).
 		With(authMW.handle).
 		With(AuthenticatedOnly).
@@ -81,6 +82,10 @@ func Start(ctx context.Context, injector do.Injector, cfg *Configuration) error 
 
 	if cfg.DebugFlags.HasFlag(config.DebugDo) {
 		dochi.Use(router, "/debug/do", injector)
+	}
+
+	if cfg.DebugFlags.HasFlag(config.DebugGo) {
+		router.Mount("/debug", middleware.Profiler())
 	}
 
 	router.Get("/", func(w http.ResponseWriter, r *http.Request) {
