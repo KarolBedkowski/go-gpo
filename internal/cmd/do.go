@@ -16,6 +16,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/repository"
 	"gitlab.com/kabes/go-gpo/internal/service"
+	gpoweb "gitlab.com/kabes/go-gpo/internal/web"
 )
 
 func createInjector(ctx context.Context) *do.RootScope {
@@ -23,6 +24,7 @@ func createInjector(ctx context.Context) *do.RootScope {
 		service.Package,
 		db.Package,
 		repository.Package,
+		gpoweb.Package,
 	)
 
 	logger := log.Ctx(ctx)

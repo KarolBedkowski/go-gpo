@@ -13,16 +13,24 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
+	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
-type usersPages struct {
+type userPages struct {
 	usersSrv *service.Users
 	template templates
 }
 
-func (u usersPages) Routes() chi.Router {
+func newUserPages(i do.Injector) (userPages, error) {
+	return userPages{
+		usersSrv: do.MustInvoke[*service.Users](i),
+		template: do.MustInvoke[templates](i),
+	}, nil
+}
+
+func (u userPages) Routes() chi.Router {
 	r := chi.NewRouter()
 	r.Get(`/password`, internal.Wrap(u.changePassword))
 	r.Post(`/password`, internal.Wrap(u.changePassword))
@@ -30,7 +38,7 @@ func (u usersPages) Routes() chi.Router {
 	return r
 }
 
-func (u usersPages) changePassword(
+func (u userPages) changePassword(
 	ctx context.Context,
 	w http.ResponseWriter,
 	r *http.Request,
@@ -59,7 +67,7 @@ func (u usersPages) changePassword(
 	}
 }
 
-func (u usersPages) doChangePassword(ctx context.Context, r *http.Request, logger *zerolog.Logger) string {
+func (u userPages) doChangePassword(ctx context.Context, r *http.Request, logger *zerolog.Logger) string {
 	cpass, npass, msg := u.getChangePasswordParams(r)
 	if msg != "" {
 		return "Error: " + msg
@@ -85,7 +93,7 @@ func (u usersPages) doChangePassword(ctx context.Context, r *http.Request, logge
 	return "Password changed"
 }
 
-func (usersPages) getChangePasswordParams(r *http.Request) (string, string, string) {
+func (userPages) getChangePasswordParams(r *http.Request) (string, string, string) {
 	currentPass := r.FormValue("cpass")
 	newpass1 := r.FormValue("npass1")
 	newpass2 := r.FormValue("npass2")

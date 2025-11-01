@@ -20,7 +20,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal"
-	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
 //go:embed templates/*.tmpl
@@ -30,32 +29,35 @@ var templatesFS embed.FS
 var staticFS embed.FS
 
 type WEB struct {
-	template templates
-	webroot  string
+	devicePages  devicePages
+	userPages    userPages
+	episodePages episodePages
+	podcastPages podcastPages
+	template     templates
+	webroot      string
 }
 
-func New(webroot string) WEB {
+func New(i do.Injector) (WEB, error) {
+	webroot := do.MustInvokeNamed[string](i, "server.webroot")
+
 	return WEB{
-		webroot:  webroot,
-		template: newTemplates(webroot),
-	}
+		devicePages:  do.MustInvoke[devicePages](i),
+		userPages:    do.MustInvoke[userPages](i),
+		episodePages: do.MustInvoke[episodePages](i),
+		podcastPages: do.MustInvoke[podcastPages](i),
+		webroot:      webroot,
+		template:     newTemplates(webroot),
+	}, nil
 }
 
-func (w *WEB) Routes(i do.Injector) chi.Router {
-	deviceSrv := do.MustInvoke[*service.Device](i)
-	// subSrv := do.MustInvoke[*service.Subs](w.i)
-	usersSrv := do.MustInvoke[*service.Users](i)
-	episodesSrv := do.MustInvoke[*service.Episodes](i)
-	// settingsSrv := do.MustInvoke[*service.Settings](w.i)
-	podcastsSrv := do.MustInvoke[*service.Podcasts](i)
-
+func (w *WEB) Routes() chi.Router {
 	router := chi.NewRouter()
 
 	router.Get("/", internal.Wrap(w.indexPage))
-	router.Mount("/device", (&devicePages{deviceSrv, w.template}).Routes())
-	router.Mount("/podcast", (&podcastPages{podcastsSrv, w.template}).Routes())
-	router.Mount("/episode", (&episodePages{episodesSrv, w.template}).Routes())
-	router.Mount("/user", (&usersPages{usersSrv, w.template}).Routes())
+	router.Mount("/device", w.devicePages.Routes())
+	router.Mount("/podcast", w.podcastPages.Routes())
+	router.Mount("/episode", w.episodePages.Routes())
+	router.Mount("/user", w.userPages.Routes())
 
 	fs := http.FileServerFS(staticFS)
 	router.Method("GET", "/static/*", http.StripPrefix("/web/", fs))
@@ -106,6 +108,12 @@ func newTemplates(webroot string) templates {
 	}
 
 	return res
+}
+
+func newTemplatesI(i do.Injector) (templates, error) {
+	webroot := do.MustInvokeNamed[string](i, "server.webroot")
+
+	return newTemplates(webroot), nil
 }
 
 func (t templates) executeTemplate(wr io.Writer, name string, data any) error {

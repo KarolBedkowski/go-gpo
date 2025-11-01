@@ -70,13 +70,13 @@ func Start(ctx context.Context, injector do.Injector, cfg *Configuration) error 
 		With(middleware.NoCache).
 		Mount("/", api.Routes(injector))
 
-	web := gpoweb.New(cfg.WebRoot)
+	web := do.MustInvoke[gpoweb.WEB](injector)
 	router.
 		With(newPromMiddleware("web", nil).Handler).
 		With(sessionMW).
 		With(authMW.handle).
 		With(AuthenticatedOnly).
-		Mount("/web", web.Routes(injector))
+		Mount("/web", web.Routes())
 
 	dochi.Use(router, "/debug/do", injector)
 

@@ -32,6 +32,10 @@ func (s *Server) Start(ctx context.Context) error {
 
 	injector := createInjector(ctx)
 
+	s.WebRoot = strings.TrimSuffix(s.WebRoot, "/")
+
+	do.ProvideNamedValue(injector, "server.webroot", s.WebRoot)
+
 	if ok, dur, err := systemd.AutoWatchdog(); ok {
 		logger.Info().Msgf("systemd autowatchdog started; duration=%s", dur)
 	} else if err != nil {
@@ -46,7 +50,7 @@ func (s *Server) Start(ctx context.Context) error {
 	cfg := server.Configuration{
 		Listen:  s.Listen,
 		LogBody: s.LogBody,
-		WebRoot: strings.TrimSuffix(s.WebRoot, "/"),
+		WebRoot: s.WebRoot,
 	}
 
 	systemd.NotifyReady()           //nolint:errcheck

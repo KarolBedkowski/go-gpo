@@ -13,6 +13,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
+	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/service"
@@ -21,6 +22,13 @@ import (
 type devicePages struct {
 	deviceSrv *service.Device
 	template  templates
+}
+
+func newDevicePages(i do.Injector) (devicePages, error) {
+	return devicePages{
+		deviceSrv: do.MustInvoke[*service.Device](i),
+		template:  do.MustInvoke[templates](i),
+	}, nil
 }
 
 func (d devicePages) Routes() chi.Router {

@@ -13,6 +13,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
+	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/service"
@@ -21,6 +22,13 @@ import (
 type episodePages struct {
 	episodeSrv *service.Episodes
 	template   templates
+}
+
+func newEpisodePages(i do.Injector) (episodePages, error) {
+	return episodePages{
+		episodeSrv: do.MustInvoke[*service.Episodes](i),
+		template:   do.MustInvoke[templates](i),
+	}, nil
 }
 
 func (e episodePages) Routes() chi.Router {
