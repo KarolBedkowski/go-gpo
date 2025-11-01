@@ -32,24 +32,45 @@ type Configuration struct {
 }
 
 const (
-	connectioTimeout   = 60 * time.Second
-	sessionMaxLifetime = 14 * 24 * 60 * 60 // 14d
+	sessionMaxLifetime    = 14 * 24 * 60 * 60 // 14d
+	defaultReadTimeout    = 60 * time.Second
+	defaultWriteTimeout   = 60 * time.Second
+	defaultMaxHeaderBytes = 1 << 20
+	shutdownTimeout       = 10 * time.Second
 )
 
-func Start(ctx context.Context, injector do.Injector, cfg *Configuration) error {
-	// middlewares
+type Server struct {
+	sessionMW func(http.Handler) http.Handler
+	authMW    authenticator
+	api       gpoapi.API
+	web       gpoweb.WEB
+
+	// for debug only
+	injector do.Injector
+
+	s *http.Server
+}
+
+func New(injector do.Injector) (Server, error) {
 	sessionMW, err := newSessionMiddleware(injector)
 	if err != nil {
-		return err
+		panic(err)
 	}
 
-	authMW := do.MustInvoke[authenticator](injector)
+	return Server{
+		sessionMW: sessionMW,
+		authMW:    do.MustInvoke[authenticator](injector),
+		api:       do.MustInvoke[gpoapi.API](injector),
+		web:       do.MustInvoke[gpoweb.WEB](injector),
+		injector:  injector,
+	}, nil
+}
 
+func (s *Server) Start(ctx context.Context, cfg *Configuration) error {
 	// routes
 	router := chi.NewRouter()
 	router.Use(middleware.Heartbeat(cfg.WebRoot + "/ping"))
 	router.Use(middleware.RealIP)
-	router.Use(middleware.Timeout(connectioTimeout))
 
 	router.Method("GET", cfg.WebRoot+"/metrics", newMetricsHandler())
 
@@ -58,20 +79,16 @@ func Start(ctx context.Context, injector do.Injector, cfg *Configuration) error 
 		group.Use(newLogMiddleware(cfg))
 		group.Use(newRecoverMiddleware)
 		group.Use(middleware.CleanPath)
-		group.Use(sessionMW)
-		group.Use(authMW.handle)
+		group.Use(s.sessionMW)
+		group.Use(s.authMW.handle)
 		group.Use(AuthenticatedOnly)
-
-		api := do.MustInvoke[gpoapi.API](injector)
 		group.
 			With(newPromMiddleware("api", nil).Handler).
 			With(middleware.NoCache).
-			Mount(cfg.WebRoot+"/", api.Routes())
-
-		web := do.MustInvoke[gpoweb.WEB](injector)
+			Mount(cfg.WebRoot+"/", s.api.Routes())
 		group.
 			With(newPromMiddleware("web", nil).Handler).
-			Mount(cfg.WebRoot+"/web", web.Routes())
+			Mount(cfg.WebRoot+"/web", s.web.Routes())
 
 		group.Get(cfg.WebRoot+"/", func(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, cfg.WebRoot+"/web", http.StatusMovedPermanently)
@@ -79,7 +96,7 @@ func Start(ctx context.Context, injector do.Injector, cfg *Configuration) error 
 	})
 
 	if cfg.DebugFlags.HasFlag(config.DebugDo) {
-		dochi.Use(router, cfg.WebRoot+"/debug/do", injector)
+		dochi.Use(router, cfg.WebRoot+"/debug/do", s.injector)
 	}
 
 	if cfg.DebugFlags.HasFlag(config.DebugGo) {
@@ -88,11 +105,32 @@ func Start(ctx context.Context, injector do.Injector, cfg *Configuration) error 
 
 	logRoutes(ctx, router)
 
-	if err := http.ListenAndServe(cfg.Listen, router); err != nil { //nolint:gosec
+	s.s = &http.Server{
+		Addr:           cfg.Listen,
+		Handler:        router,
+		ReadTimeout:    defaultReadTimeout,
+		WriteTimeout:   defaultWriteTimeout,
+		MaxHeaderBytes: defaultMaxHeaderBytes,
+	}
+
+	if err := s.s.ListenAndServe(); err != nil {
 		return fmt.Errorf("start listen error: %w", err)
 	}
 
 	return nil
+}
+
+func (s *Server) Stop(_ error) {
+	logger := log.Logger
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cancel()
+
+	if err := s.s.Shutdown(shutdownCtx); err != nil {
+		logger.Error().Err(err).Msg("shutdown server failed")
+	} else {
+		logger.Debug().Msg("server stopped")
+	}
 }
 
 func logRoutes(ctx context.Context, r chi.Routes) {

@@ -9,6 +9,7 @@ require (
 	github.com/go-chi/render v1.0.3
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/mattn/go-sqlite3 v1.14.32
+	github.com/oklog/run v1.2.0
 	github.com/pressly/goose/v3 v3.26.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/rs/zerolog v1.34.0

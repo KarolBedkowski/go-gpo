@@ -10,6 +10,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/rs/zerolog/log"
 	"github.com/samber/do/v2"
@@ -20,6 +21,8 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/service"
 	gpoweb "gitlab.com/kabes/go-gpo/internal/web"
 )
+
+const shutdownInjectorTimeout = 5 * time.Second
 
 func createInjector(ctx context.Context) *do.RootScope {
 	injector := do.New(
@@ -40,4 +43,16 @@ func createInjector(ctx context.Context) *do.RootScope {
 func explainDoInjecor(injector *do.RootScope) {
 	explanation := do.ExplainInjector(injector)
 	fmt.Println(explanation.String())
+}
+
+func shudownInjector(ctx context.Context, injector do.Injector) {
+	shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), shutdownInjectorTimeout)
+	defer cancel()
+
+	report := injector.ShutdownWithContext(shutdownCtx)
+
+	logger := log.Ctx(ctx)
+	for k, err := range report.Errors {
+		logger.Debug().Msgf("Shutdown error %v: %s", k, err)
+	}
 }
