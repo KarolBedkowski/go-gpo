@@ -12,6 +12,7 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"net/url"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/pressly/goose/v3"
@@ -33,6 +34,12 @@ func NewDatabaseI(_ do.Injector) (*Database, error) {
 
 func (r *Database) Connect(ctx context.Context, driver, connstr string) error {
 	var err error
+
+	// add some required parameters to connstr
+	connstr, err = prepareSqliteConnstr(connstr)
+	if err != nil {
+		return err
+	}
 
 	logger := log.Ctx(ctx)
 	logger.Info().Msgf("connecting to %s/%s", driver, connstr)
@@ -137,11 +144,7 @@ func (r *Database) Maintenance(ctx context.Context) error {
 
 func (r *Database) onConnect(ctx context.Context, db sqlx.ExecerContext) error {
 	_, err := db.ExecContext(ctx,
-		"PRAGMA journal_mode = WAL;"+
-			"PRAGMA synchronous = NORMAL;"+
-			"PRAGMA temp_store = MEMORY;"+
-			"PRAGMA foreign_keys = ON;"+
-			"PRAGMA auto_vacuum = INCREMENTAL;"+
+		"PRAGMA temp_store = MEMORY;"+
 			"PRAGMA optimize=0x10002;",
 	)
 	if err != nil {
@@ -149,4 +152,20 @@ func (r *Database) onConnect(ctx context.Context, db sqlx.ExecerContext) error {
 	}
 
 	return nil
+}
+
+func prepareSqliteConnstr(connstr string) (string, error) {
+	parsed, err := url.Parse(connstr)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse connections string: %w", err)
+	}
+
+	query := parsed.Query()
+	if !query.Has("_fk") && !query.Has("__foreign_keys") {
+		query.Set("_fk", "ON")
+	}
+
+	parsed.RawQuery = query.Encode()
+
+	return parsed.String(), err
 }
