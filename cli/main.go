@@ -23,6 +23,7 @@ import (
 	"golang.org/x/term"
 
 	"gitlab.com/kabes/go-gpo/internal/cmd"
+	"gitlab.com/kabes/go-gpo/internal/config"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -91,6 +92,7 @@ func main() {
 				Usage:   "Log format (logfmt, json, syslog)",
 				Sources: cli.EnvVars("GOGPO_LOGFORMAT"),
 			},
+			&cli.StringFlag{Name: "debug", Usage: "Debug flags", Sources: cli.EnvVars("GOGPO_DEBUG")},
 		},
 		Commands: []*cli.Command{
 			startServerCmd(),
@@ -140,21 +142,14 @@ func startServerCmd() *cli.Command {
 				Aliases: []string{"a"},
 				Sources: cli.EnvVars("GOGPO_SERVER_WEBROOT"),
 			},
-			&cli.BoolFlag{
-				Name:    "verbose",
-				Value:   false,
-				Usage:   "enable logging request and responses",
-				Aliases: []string{"-v"},
-				Sources: cli.EnvVars("GOGPO_SERVER_VERBOSE"),
-			},
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
 			initializeLogger(c.String("log.level"), c.String("log.format"))
 			s := cmd.Server{
-				Database: c.String("database"),
-				Listen:   c.String("address"),
-				LogBody:  c.Bool("verbose"),
-				WebRoot:  c.String("web-root"),
+				Database:   c.String("database"),
+				Listen:     c.String("address"),
+				DebugFlags: config.NewDebugFLags(c.String("debug")),
+				WebRoot:    c.String("web-root"),
 			}
 
 			return s.Start(log.Logger.WithContext(ctx))

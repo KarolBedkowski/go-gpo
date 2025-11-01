@@ -32,8 +32,10 @@ func createInjector(ctx context.Context) *do.RootScope {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("Available services: %v", injector.ListProvidedServices())
 
+	return injector
+}
+
+func explainDoInjecor(injector *do.RootScope) {
 	explanation := do.ExplainInjector(injector)
 	fmt.Println(explanation.String())
-
-	return injector
 }

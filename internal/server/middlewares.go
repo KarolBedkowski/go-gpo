@@ -24,6 +24,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal"
+	"gitlab.com/kabes/go-gpo/internal/config"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/repository"
 	"gitlab.com/kabes/go-gpo/internal/service"
@@ -223,7 +224,7 @@ func newFullLogMiddleware(next http.Handler) http.Handler {
 //-------------------------------------------------------------
 
 func newLogMiddleware(cfg *Configuration) func(http.Handler) http.Handler {
-	if cfg.LogBody {
+	if cfg.DebugFlags.HasFlag(config.DebugMsgBody) {
 		return newFullLogMiddleware
 	}
 

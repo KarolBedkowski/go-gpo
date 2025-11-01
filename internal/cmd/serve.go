@@ -15,15 +15,16 @@ import (
 	"github.com/Merovius/systemd"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/do/v2"
+	"gitlab.com/kabes/go-gpo/internal/config"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/server"
 )
 
 type Server struct {
-	Database string
-	Listen   string
-	LogBody  bool
-	WebRoot  string
+	Database   string
+	Listen     string
+	WebRoot    string
+	DebugFlags config.DebugFlags
 }
 
 func (s *Server) Start(ctx context.Context) error {
@@ -31,6 +32,10 @@ func (s *Server) Start(ctx context.Context) error {
 	logger.Log().Msgf("Starting server on %q...", s.Listen)
 
 	injector := createInjector(ctx)
+
+	if s.DebugFlags.HasFlag("do") {
+		explainDoInjecor(injector)
+	}
 
 	s.WebRoot = strings.TrimSuffix(s.WebRoot, "/")
 
@@ -48,9 +53,9 @@ func (s *Server) Start(ctx context.Context) error {
 	}
 
 	cfg := server.Configuration{
-		Listen:  s.Listen,
-		LogBody: s.LogBody,
-		WebRoot: s.WebRoot,
+		Listen:     s.Listen,
+		DebugFlags: s.DebugFlags,
+		WebRoot:    s.WebRoot,
 	}
 
 	systemd.NotifyReady()           //nolint:errcheck

@@ -3,7 +3,7 @@ testdata_dir = "testdata"
 tmp_dir = "tmp"
 
 [build]
-  bin = "./go-gpo --log.level=debug serve"
+  bin = "./go-gpo --log.level=debug --debug=all serve"
   cmd = "go build -o ./go-gpo ./cli/"
   delay = 1000
   exclude_dir = ["assets", "tmp", "vendor", "testdata"]

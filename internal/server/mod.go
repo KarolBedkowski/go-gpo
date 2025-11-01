@@ -21,14 +21,15 @@ import (
 	dochi "github.com/samber/do/http/chi/v2"
 	"github.com/samber/do/v2"
 	gpoapi "gitlab.com/kabes/go-gpo/internal/api"
+	"gitlab.com/kabes/go-gpo/internal/config"
 	"gitlab.com/kabes/go-gpo/internal/service"
 	gpoweb "gitlab.com/kabes/go-gpo/internal/web"
 )
 
 type Configuration struct {
-	Listen  string
-	LogBody bool
-	WebRoot string
+	Listen     string
+	WebRoot    string
+	DebugFlags config.DebugFlags
 }
 
 const (
@@ -78,7 +79,9 @@ func Start(ctx context.Context, injector do.Injector, cfg *Configuration) error 
 		With(AuthenticatedOnly).
 		Mount("/web", web.Routes())
 
-	dochi.Use(router, "/debug/do", injector)
+	if cfg.DebugFlags.HasFlag(config.DebugDo) {
+		dochi.Use(router, "/debug/do", injector)
+	}
 
 	router.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, cfg.WebRoot+"/web", http.StatusMovedPermanently)
