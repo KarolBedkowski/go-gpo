@@ -22,8 +22,10 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/hlog"
 	"github.com/rs/zerolog/log"
+	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/db"
+	"gitlab.com/kabes/go-gpo/internal/repository"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
@@ -264,9 +266,12 @@ func newRecoverMiddleware(next http.Handler) http.Handler {
 
 //-------------------------------------------------------------
 
-func newSessionMiddleware(db *db.Database) (func(http.Handler) http.Handler, error) {
+func newSessionMiddleware(i do.Injector) (func(http.Handler) http.Handler, error) {
+	db := do.MustInvoke[*db.Database](i)
+	repo := do.MustInvoke[repository.SessionRepository](i)
+
 	session.RegisterFn("db", func() session.Provider {
-		return service.NewSessionProvider(db, sessionMaxLifetime)
+		return service.NewSessionProvider(db, repo, sessionMaxLifetime)
 	})
 
 	sess, err := session.Sessioner(session.Options{

@@ -21,19 +21,17 @@ import (
 )
 
 type Settings struct {
-	db   *db.Database
-	repo repository.Repository
-}
-
-func NewSettingsService(db *db.Database) *Settings {
-	return &Settings{db, db.GetRepository()}
+	db        *db.Database
+	settRepo  repository.SettingsRepository
+	usersRepo repository.UsersRepository
 }
 
 func NewSettingsServiceI(i do.Injector) (*Settings, error) {
-	db := do.MustInvoke[*db.Database](i)
-	repo := do.MustInvoke[repository.Repository](i)
-
-	return &Settings{db, repo}, nil
+	return &Settings{
+		db:        do.MustInvoke[*db.Database](i),
+		settRepo:  do.MustInvoke[repository.SettingsRepository](i),
+		usersRepo: do.MustInvoke[repository.UsersRepository](i),
+	}, nil
 }
 
 func (s Settings) GetSettings(ctx context.Context, username, scope, key string) (map[string]string, error) {
@@ -44,14 +42,14 @@ func (s Settings) GetSettings(ctx context.Context, username, scope, key string) 
 
 	defer conn.Close()
 
-	user, err := s.repo.GetUser(ctx, conn, username)
+	user, err := s.usersRepo.GetUser(ctx, conn, username)
 	if errors.Is(err, repository.ErrNoData) {
 		return nil, ErrUnknownUser
 	} else if err != nil {
 		return nil, fmt.Errorf("get user error: %w", err)
 	}
 
-	sett, err := s.repo.GetSettings(ctx, conn, user.ID, scope, key)
+	sett, err := s.settRepo.GetSettings(ctx, conn, user.ID, scope, key)
 	if err != nil {
 		return nil, fmt.Errorf("get settings error: %w", err)
 	}
@@ -76,14 +74,14 @@ func (s Settings) SaveSettings(
 	del []string,
 ) error {
 	err := s.db.InTransaction(ctx, func(dbctx repository.DBContext) error {
-		user, err := s.repo.GetUser(ctx, dbctx, username)
+		user, err := s.usersRepo.GetUser(ctx, dbctx, username)
 		if errors.Is(err, repository.ErrNoData) {
 			return ErrUnknownUser
 		} else if err != nil {
 			return fmt.Errorf("get user error: %w", err)
 		}
 
-		dbsett, err := s.repo.GetSettings(ctx, dbctx, user.ID, scope, key)
+		dbsett, err := s.settRepo.GetSettings(ctx, dbctx, user.ID, scope, key)
 		if err != nil {
 			return fmt.Errorf("get settings error: %w", err)
 		}
@@ -109,7 +107,7 @@ func (s Settings) SaveSettings(
 
 		dbsett.Value = string(data)
 
-		if err := s.repo.SaveSettings(ctx, dbctx, &dbsett); err != nil {
+		if err := s.settRepo.SaveSettings(ctx, dbctx, &dbsett); err != nil {
 			return fmt.Errorf("save settings error: %w", err)
 		}
 

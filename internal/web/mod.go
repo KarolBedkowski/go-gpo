@@ -30,27 +30,24 @@ var templatesFS embed.FS
 var staticFS embed.FS
 
 type WEB struct {
-	i do.Injector
-
 	template templates
 	webroot  string
 }
 
-func New(i do.Injector, webroot string) WEB {
+func New(webroot string) WEB {
 	return WEB{
-		i:        i,
 		webroot:  webroot,
 		template: newTemplates(webroot),
 	}
 }
 
-func (w *WEB) Routes() chi.Router {
-	deviceSrv := do.MustInvoke[*service.Device](w.i)
+func (w *WEB) Routes(i do.Injector) chi.Router {
+	deviceSrv := do.MustInvoke[*service.Device](i)
 	// subSrv := do.MustInvoke[*service.Subs](w.i)
-	usersSrv := do.MustInvoke[*service.Users](w.i)
-	episodesSrv := do.MustInvoke[*service.Episodes](w.i)
+	usersSrv := do.MustInvoke[*service.Users](i)
+	episodesSrv := do.MustInvoke[*service.Episodes](i)
 	// settingsSrv := do.MustInvoke[*service.Settings](w.i)
-	podcastsSrv := do.MustInvoke[*service.Podcasts](w.i)
+	podcastsSrv := do.MustInvoke[*service.Podcasts](i)
 
 	router := chi.NewRouter()
 

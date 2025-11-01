@@ -22,7 +22,7 @@ import (
 
 // -----------------------------
 
-func (er *episodesResource) Routes() chi.Router {
+func (er episodesResource) Routes() chi.Router {
 	r := chi.NewRouter()
 	r.Use(AuthenticatedOnly)
 
@@ -34,7 +34,7 @@ func (er *episodesResource) Routes() chi.Router {
 	return r
 }
 
-func (er *episodesResource) uploadEpisodeActions(
+func (er episodesResource) uploadEpisodeActions(
 	ctx context.Context,
 	w http.ResponseWriter,
 	r *http.Request,
@@ -95,7 +95,7 @@ func (er *episodesResource) uploadEpisodeActions(
 	render.JSON(w, r, &res)
 }
 
-func (er *episodesResource) getEpisodeActions(
+func (er episodesResource) getEpisodeActions(
 	ctx context.Context,
 	w http.ResponseWriter,
 	r *http.Request,

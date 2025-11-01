@@ -40,8 +40,6 @@ func (a *AddUser) Start(ctx context.Context) error {
 		Username: a.Username,
 	}
 
-	// userv := service.NewUsersService(db)
-
 	userv := do.MustInvoke[*service.Users](injector)
 
 	id, err := userv.AddUser(ctx, user)

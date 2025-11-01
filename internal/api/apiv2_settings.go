@@ -22,7 +22,7 @@ type settingsResource struct {
 	settingsServ *service.Settings
 }
 
-func (u *settingsResource) Routes() chi.Router {
+func (u settingsResource) Routes() chi.Router {
 	r := chi.NewRouter()
 	r.Use(AuthenticatedOnly)
 
@@ -34,7 +34,7 @@ func (u *settingsResource) Routes() chi.Router {
 	return r
 }
 
-func (u *settingsResource) getSettings(
+func (u settingsResource) getSettings(
 	ctx context.Context,
 	w http.ResponseWriter,
 	r *http.Request,
@@ -64,7 +64,7 @@ func (u *settingsResource) getSettings(
 	render.JSON(w, r, &res)
 }
 
-func (u *settingsResource) setSettings(
+func (u settingsResource) setSettings(
 	ctx context.Context,
 	w http.ResponseWriter,
 	r *http.Request,
@@ -104,7 +104,7 @@ func (u *settingsResource) setSettings(
 	w.WriteHeader(http.StatusOK)
 }
 
-func (u *settingsResource) getKey(r *http.Request) (string, error) {
+func (u settingsResource) getKey(r *http.Request) (string, error) {
 	var key string
 
 	scope := chi.URLParam(r, "scope")

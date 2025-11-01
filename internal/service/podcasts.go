@@ -22,19 +22,17 @@ import (
 var ErrUnknownPodcast = errors.New("unknown podcast")
 
 type Podcasts struct {
-	db   *db.Database
-	repo repository.Repository
-}
-
-func NewPodcastsService(db *db.Database) *Podcasts {
-	return &Podcasts{db, db.GetRepository()}
+	db           *db.Database
+	usersRepo    repository.UsersRepository
+	podcastsRepo repository.PodcastsRepository
 }
 
 func NewPodcastsServiceI(i do.Injector) (*Podcasts, error) {
-	db := do.MustInvoke[*db.Database](i)
-	repo := do.MustInvoke[repository.Repository](i)
-
-	return &Podcasts{db, repo}, nil
+	return &Podcasts{
+		db:           do.MustInvoke[*db.Database](i),
+		usersRepo:    do.MustInvoke[repository.UsersRepository](i),
+		podcastsRepo: do.MustInvoke[repository.PodcastsRepository](i),
+	}, nil
 }
 
 func (p *Podcasts) GetUserPodcasts(ctx context.Context, username string) ([]model.Podcast, error) {
@@ -45,14 +43,14 @@ func (p *Podcasts) GetUserPodcasts(ctx context.Context, username string) ([]mode
 
 	defer conn.Close()
 
-	user, err := p.repo.GetUser(ctx, conn, username)
+	user, err := p.usersRepo.GetUser(ctx, conn, username)
 	if errors.Is(err, repository.ErrNoData) {
 		return nil, ErrUnknownUser
 	} else if err != nil {
 		return nil, fmt.Errorf("get user error: %w", err)
 	}
 
-	subs, err := p.repo.ListSubscribedPodcasts(ctx, conn, user.ID, time.Time{})
+	subs, err := p.podcastsRepo.ListSubscribedPodcasts(ctx, conn, user.ID, time.Time{})
 	if err != nil {
 		return nil, fmt.Errorf("get subscriptions error: %w", err)
 	}

@@ -21,7 +21,6 @@ import (
 	dochi "github.com/samber/do/http/chi/v2"
 	"github.com/samber/do/v2"
 	gpoapi "gitlab.com/kabes/go-gpo/internal/api"
-	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/service"
 	gpoweb "gitlab.com/kabes/go-gpo/internal/web"
 )
@@ -39,15 +38,16 @@ const (
 
 func Start(ctx context.Context, injector do.Injector, cfg *Configuration) error {
 	usersSrv := do.MustInvoke[*service.Users](injector)
-	db := do.MustInvoke[*db.Database](injector)
 
 	// middlewares
-	sessionMW, err := newSessionMiddleware(db)
+	sessionMW, err := newSessionMiddleware(injector)
 	if err != nil {
 		return err
 	}
 
 	authMW := authenticator{usersSrv}
+
+	// TODO: web-root
 
 	// routes
 	router := chi.NewRouter()
@@ -61,22 +61,22 @@ func Start(ctx context.Context, injector do.Injector, cfg *Configuration) error 
 
 	router.Method("GET", "/metrics", newMetricsHandler())
 
-	api := gpoapi.New(injector)
+	api := gpoapi.New()
 	router.
 		With(newPromMiddleware("api", nil).Handler).
 		With(sessionMW).
 		With(authMW.handle).
 		With(AuthenticatedOnly).
 		With(middleware.NoCache).
-		Mount("/", api.Routes())
+		Mount("/", api.Routes(injector))
 
-	web := gpoweb.New(injector, cfg.WebRoot)
+	web := gpoweb.New(cfg.WebRoot)
 	router.
 		With(newPromMiddleware("web", nil).Handler).
 		With(sessionMW).
 		With(authMW.handle).
 		With(AuthenticatedOnly).
-		Mount("/web", web.Routes())
+		Mount("/web", web.Routes(injector))
 
 	dochi.Use(router, "/debug/do", injector)
 

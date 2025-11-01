@@ -26,7 +26,7 @@ type subscriptionsResource struct {
 	subServ *service.Subs
 }
 
-func (sr *subscriptionsResource) Routes() chi.Router {
+func (sr subscriptionsResource) Routes() chi.Router {
 	router := chi.NewRouter()
 	router.Use(AuthenticatedOnly)
 
@@ -40,7 +40,7 @@ func (sr *subscriptionsResource) Routes() chi.Router {
 	return router
 }
 
-func (sr *subscriptionsResource) devSubscriptions(
+func (sr subscriptionsResource) devSubscriptions(
 	ctx context.Context,
 	w http.ResponseWriter,
 	r *http.Request,
@@ -95,7 +95,7 @@ func (sr *subscriptionsResource) devSubscriptions(
 	render.JSON(w, r, &res)
 }
 
-func (sr *subscriptionsResource) userSubscriptions(
+func (sr subscriptionsResource) userSubscriptions(
 	ctx context.Context,
 	w http.ResponseWriter,
 	r *http.Request,
@@ -134,7 +134,7 @@ func (sr *subscriptionsResource) userSubscriptions(
 	w.Write(result)
 }
 
-func (sr *subscriptionsResource) uploadSubscriptionChanges(
+func (sr subscriptionsResource) uploadSubscriptionChanges(
 	ctx context.Context,
 	w http.ResponseWriter,
 	r *http.Request,

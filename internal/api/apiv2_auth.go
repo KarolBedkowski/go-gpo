@@ -17,7 +17,7 @@ import (
 
 type authResource struct{}
 
-func (ar *authResource) Routes() chi.Router {
+func (ar authResource) Routes() chi.Router {
 	r := chi.NewRouter()
 	r.Post(`/{user:[\w.+-]}/login.json`, internal.Wrap(ar.login))
 	r.Post(`/{user:[\w.+-]}/logout.json`, internal.Wrap(ar.logout))
@@ -25,7 +25,7 @@ func (ar *authResource) Routes() chi.Router {
 	return r
 }
 
-func (ar *authResource) login(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
+func (ar authResource) login(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
 	sess := session.GetSession(r)
 	user := internal.ContextUser(ctx)
 
@@ -40,7 +40,7 @@ func (ar *authResource) login(ctx context.Context, w http.ResponseWriter, r *htt
 	}
 }
 
-func (ar *authResource) logout(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
+func (ar authResource) logout(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
 	sess := session.GetSession(r)
 	user := internal.ContextUser(ctx)
 	username := internal.SessionUser(sess)

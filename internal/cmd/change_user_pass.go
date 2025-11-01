@@ -11,6 +11,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/service"
@@ -23,8 +24,10 @@ type ChangeUserPassword struct {
 }
 
 func (a *ChangeUserPassword) Start(ctx context.Context) error {
-	re := &db.Database{}
-	if err := re.Connect(ctx, "sqlite3", a.Database); err != nil {
+	injector := createInjector(ctx)
+
+	db := do.MustInvoke[*db.Database](injector)
+	if err := db.Connect(ctx, "sqlite3", a.Database); err != nil {
 		return fmt.Errorf("connect to database error: %w", err)
 	}
 
@@ -33,7 +36,7 @@ func (a *ChangeUserPassword) Start(ctx context.Context) error {
 		Username: a.Username,
 	}
 
-	userv := service.NewUsersService(re)
+	userv := do.MustInvoke[*service.Users](injector)
 
 	if err := userv.ChangePassword(ctx, user); err != nil {
 		return fmt.Errorf("change user password error: %w", err)
@@ -52,12 +55,14 @@ type LockUserAccount struct {
 }
 
 func (l *LockUserAccount) Start(ctx context.Context) error {
-	re := &db.Database{}
-	if err := re.Connect(ctx, "sqlite3", l.Database); err != nil {
+	injector := createInjector(ctx)
+
+	db := do.MustInvoke[*db.Database](injector)
+	if err := db.Connect(ctx, "sqlite3", l.Database); err != nil {
 		return fmt.Errorf("connect to database error: %w", err)
 	}
 
-	userv := service.NewUsersService(re)
+	userv := do.MustInvoke[*service.Users](injector)
 
 	if err := userv.LockAccount(ctx, l.Username); err != nil {
 		return fmt.Errorf("change user password error: %w", err)

@@ -23,7 +23,7 @@ type updatesResource struct {
 	episodesServ *service.Episodes
 }
 
-func (u *updatesResource) Routes() chi.Router {
+func (u updatesResource) Routes() chi.Router {
 	r := chi.NewRouter()
 	r.Use(AuthenticatedOnly)
 
@@ -33,7 +33,7 @@ func (u *updatesResource) Routes() chi.Router {
 	return r
 }
 
-func (u *updatesResource) getUpdates(
+func (u updatesResource) getUpdates(
 	ctx context.Context,
 	w http.ResponseWriter,
 	r *http.Request,

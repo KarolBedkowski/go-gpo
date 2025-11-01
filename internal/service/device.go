@@ -26,19 +26,17 @@ var (
 )
 
 type Device struct {
-	db   *db.Database
-	repo repository.Repository
-}
-
-func NewDeviceService(db *db.Database) *Device {
-	return &Device{db, db.GetRepository()}
+	db          *db.Database
+	usersRepo   repository.UsersRepository
+	devicesRepo repository.DevicesRepository
 }
 
 func NewDeviceServiceI(i do.Injector) (*Device, error) {
-	db := do.MustInvoke[*db.Database](i)
-	repo := do.MustInvoke[repository.Repository](i)
-
-	return &Device{db, repo}, nil
+	return &Device{
+		db:          do.MustInvoke[*db.Database](i),
+		usersRepo:   do.MustInvoke[repository.UsersRepository](i),
+		devicesRepo: do.MustInvoke[repository.DevicesRepository](i),
+	}, nil
 }
 
 func (d *Device) UpdateDevice(ctx context.Context, username, deviceid, caption, devtype string) error {
@@ -47,14 +45,14 @@ func (d *Device) UpdateDevice(ctx context.Context, username, deviceid, caption, 
 	}
 
 	err := d.db.InTransaction(ctx, func(tx repository.DBContext) error {
-		user, err := d.repo.GetUser(ctx, tx, username)
+		user, err := d.usersRepo.GetUser(ctx, tx, username)
 		if errors.Is(err, repository.ErrNoData) {
 			return ErrUnknownUser
 		} else if err != nil {
 			return fmt.Errorf("get user error: %w", err)
 		}
 
-		device, err := d.repo.GetDevice(ctx, tx, user.ID, deviceid)
+		device, err := d.devicesRepo.GetDevice(ctx, tx, user.ID, deviceid)
 		if errors.Is(err, repository.ErrNoData) {
 			// new device
 			device = repository.DeviceDB{UserID: user.ID, Name: deviceid, DevType: "other"}
@@ -65,7 +63,7 @@ func (d *Device) UpdateDevice(ctx context.Context, username, deviceid, caption, 
 		device.Caption = caption
 		device.DevType = devtype
 
-		_, err = d.repo.SaveDevice(ctx, tx, &device)
+		_, err = d.devicesRepo.SaveDevice(ctx, tx, &device)
 		if err != nil {
 			return fmt.Errorf("save device error: %w", err)
 		}
@@ -87,14 +85,14 @@ func (d *Device) ListDevices(ctx context.Context, username string) ([]model.Devi
 
 	defer conn.Close()
 
-	user, err := d.repo.GetUser(ctx, conn, username)
+	user, err := d.usersRepo.GetUser(ctx, conn, username)
 	if errors.Is(err, repository.ErrNoData) {
 		return nil, ErrUnknownUser
 	} else if err != nil {
 		return nil, fmt.Errorf("get user error: %w", err)
 	}
 
-	devices, err := d.repo.ListDevices(ctx, conn, user.ID)
+	devices, err := d.devicesRepo.ListDevices(ctx, conn, user.ID)
 	if err != nil {
 		return nil, fmt.Errorf("get device error: %w", err)
 	}

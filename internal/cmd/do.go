@@ -18,13 +18,12 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
-func createInjector(ctx context.Context) do.Injector {
+func createInjector(ctx context.Context) *do.RootScope {
 	injector := do.New(
 		service.Package,
+		db.Package,
+		repository.Package,
 	)
-
-	do.Provide(injector, db.NewDatabaseI)
-	do.Provide(injector, repository.NewSqliteRepositoryI)
 
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("Available services: %v", injector.ListProvidedServices())

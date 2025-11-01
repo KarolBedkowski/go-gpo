@@ -53,6 +53,18 @@ func (r *Database) Connect(ctx context.Context, driver, connstr string) error {
 	return nil
 }
 
+func (r *Database) Shutdown(context.Context) error {
+	if r.db == nil {
+		return nil
+	}
+
+	if err := r.db.Close(); err != nil {
+		return fmt.Errorf("close db error: %w", err)
+	}
+
+	return nil
+}
+
 func (r *Database) Migrate(ctx context.Context, driver string) error {
 	goose.SetBaseFS(embedMigrations)
 
@@ -109,10 +121,6 @@ func (r *Database) InTransaction(ctx context.Context, f func(repository.DBContex
 	}
 
 	return nil
-}
-
-func (r *Database) GetRepository() repository.Repository {
-	return repository.NewSqliteRepository()
 }
 
 func (r *Database) Maintenance(ctx context.Context) error {

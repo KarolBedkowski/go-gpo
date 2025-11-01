@@ -48,11 +48,11 @@ type EpisodesRepository interface {
 	SaveEpisode(ctx context.Context, db DBContext, userid int64, episode ...EpisodeDB) error
 }
 
-type SubscribedRepository interface {
+type PodcastsRepository interface {
 	ListSubscribedPodcasts(ctx context.Context, db DBContext, userid int64, since time.Time) (PodcastsDB, error)
 	ListPodcasts(ctx context.Context, db DBContext, userid int64, since time.Time) (PodcastsDB, error)
 	GetPodcast(ctx context.Context, db DBContext, userid int64, podcasturl string) (PodcastDB, error)
-	SavePodcast(ctx context.Context, db DBContext, user, device string, podcast ...PodcastDB) error
+	SavePodcast(ctx context.Context, db DBContext, podcast *PodcastDB) (int64, error)
 }
 
 type SettingsRepository interface {
@@ -74,7 +74,7 @@ type Repository interface {
 	DevicesRepository
 	UsersRepository
 	EpisodesRepository
-	SubscribedRepository
+	PodcastsRepository
 	SettingsRepository
 	SessionRepository
 }

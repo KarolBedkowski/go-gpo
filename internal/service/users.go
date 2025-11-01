@@ -28,17 +28,13 @@ var (
 
 type Users struct {
 	db         *db.Database
-	repo       repository.Repository
+	usersRepo  repository.UsersRepository
 	passHasher PasswordHasher
-}
-
-func NewUsersService(db *db.Database) *Users {
-	return &Users{db, db.GetRepository(), BCryptPasswordHasher{}}
 }
 
 func NewUsersServiceI(i do.Injector) (*Users, error) {
 	db := do.MustInvoke[*db.Database](i)
-	repo := do.MustInvoke[repository.Repository](i)
+	repo := do.MustInvoke[repository.UsersRepository](i)
 
 	return &Users{db, repo, BCryptPasswordHasher{}}, nil
 }
@@ -51,7 +47,7 @@ func (u *Users) LoginUser(ctx context.Context, username, password string) (model
 
 	defer conn.Close()
 
-	user, err := u.repo.GetUser(ctx, conn, username)
+	user, err := u.usersRepo.GetUser(ctx, conn, username)
 	if errors.Is(err, repository.ErrNoData) {
 		return model.User{}, ErrUnknownUser
 	} else if err != nil {
@@ -78,7 +74,7 @@ func (u *Users) AddUser(ctx context.Context, user model.User) (int64, error) {
 	defer tx.Rollback()
 
 	// is user exists?
-	if _, err := u.repo.GetUser(ctx, tx, user.Username); err != nil && !errors.Is(err, repository.ErrNoData) {
+	if _, err := u.usersRepo.GetUser(ctx, tx, user.Username); err != nil && !errors.Is(err, repository.ErrNoData) {
 		return 0, fmt.Errorf("check user exists error: %w", err)
 	} else if err == nil {
 		return 0, ErrUserExists
@@ -99,7 +95,7 @@ func (u *Users) AddUser(ctx context.Context, user model.User) (int64, error) {
 		UpdatedAt: now,
 	}
 
-	id, err := u.repo.SaveUser(ctx, tx, &udb)
+	id, err := u.usersRepo.SaveUser(ctx, tx, &udb)
 	if err != nil {
 		return 0, fmt.Errorf("save user error: %w", err)
 	}
@@ -120,7 +116,7 @@ func (u *Users) ChangePassword(ctx context.Context, user model.User) error {
 	defer tx.Rollback()
 
 	// is user exists?
-	udb, err := u.repo.GetUser(ctx, tx, user.Username)
+	udb, err := u.usersRepo.GetUser(ctx, tx, user.Username)
 	if errors.Is(err, repository.ErrNoData) {
 		return ErrUnknownUser
 	} else if err != nil {
@@ -134,7 +130,7 @@ func (u *Users) ChangePassword(ctx context.Context, user model.User) error {
 
 	udb.UpdatedAt = time.Now()
 
-	if _, err := u.repo.SaveUser(ctx, tx, &udb); err != nil {
+	if _, err := u.usersRepo.SaveUser(ctx, tx, &udb); err != nil {
 		return fmt.Errorf("save user error: %w", err)
 	}
 
@@ -153,7 +149,7 @@ func (u *Users) GetUsers(ctx context.Context, activeOnly bool) ([]model.User, er
 
 	defer conn.Close()
 
-	users, err := u.repo.ListUsers(ctx, conn, activeOnly)
+	users, err := u.usersRepo.ListUsers(ctx, conn, activeOnly)
 	if err != nil {
 		return nil, fmt.Errorf("get user error: %w", err)
 	}
@@ -169,7 +165,7 @@ func (u *Users) GetUsers(ctx context.Context, activeOnly bool) ([]model.User, er
 
 func (u *Users) LockAccount(ctx context.Context, username string) error {
 	err := u.db.InTransaction(ctx, func(dbctx repository.DBContext) error {
-		udb, err := u.repo.GetUser(ctx, dbctx, username)
+		udb, err := u.usersRepo.GetUser(ctx, dbctx, username)
 		if errors.Is(err, repository.ErrNoData) {
 			return ErrUnknownUser
 		} else if err != nil {
@@ -179,7 +175,7 @@ func (u *Users) LockAccount(ctx context.Context, username string) error {
 		udb.Password = model.UserLockedPassword
 		udb.UpdatedAt = time.Now()
 
-		if _, err = u.repo.SaveUser(ctx, dbctx, &udb); err != nil {
+		if _, err = u.usersRepo.SaveUser(ctx, dbctx, &udb); err != nil {
 			return fmt.Errorf("save user error: %w", err)
 		}
 

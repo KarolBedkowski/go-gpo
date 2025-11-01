@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
@@ -26,25 +27,28 @@ type List struct {
 const ListSupportedObjects = "devices, subs"
 
 func (a *List) Start(ctx context.Context) error {
-	re := &db.Database{}
-	if err := re.Connect(ctx, "sqlite3", a.Database); err != nil {
+	injector := createInjector(ctx)
+
+	db := do.MustInvoke[*db.Database](injector)
+	if err := db.Connect(ctx, "sqlite3", a.Database); err != nil {
 		return fmt.Errorf("connect to database error: %w", err)
 	}
 
+	devSrv := do.MustInvoke[*service.Device](injector)
+	subsSrv := do.MustInvoke[*service.Subs](injector)
+
 	switch a.Object {
 	case "devices":
-		return a.listDevices(ctx, re)
+		return a.listDevices(ctx, devSrv)
 	case "subs":
-		return a.listSubscriptions(ctx, re)
+		return a.listSubscriptions(ctx, subsSrv)
 
 	default:
 		return fmt.Errorf("unknown object for query %q", a.Object) //nolint:err113
 	}
 }
 
-func (a *List) listDevices(ctx context.Context, re *db.Database) error {
-	devsrv := service.NewDeviceService(re)
-
+func (a *List) listDevices(ctx context.Context, devsrv *service.Device) error {
 	devices, err := devsrv.ListDevices(ctx, a.Username)
 	if err != nil {
 		return fmt.Errorf("get device list error: %w", err)
@@ -60,9 +64,7 @@ func (a *List) listDevices(ctx context.Context, re *db.Database) error {
 	return nil
 }
 
-func (a *List) listSubscriptions(ctx context.Context, re *db.Database) error {
-	subssrv := service.NewSubssService(re)
-
+func (a *List) listSubscriptions(ctx context.Context, subssrv *service.Subs) error {
 	subs, err := subssrv.GetUserSubscriptions(ctx, a.Username, time.Time{})
 	if err != nil {
 		return fmt.Errorf("get subscriptions list error: %w", err)

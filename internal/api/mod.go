@@ -19,17 +19,19 @@ type Configuration struct {
 	LogBody bool
 }
 
-type API struct{ i do.Injector }
+type API struct{}
 
-func New(i do.Injector) API {
-	return API{i}
+func New() API {
+	return API{}
 }
 
-func (a *API) Routes() chi.Router {
-	deviceSrv := do.MustInvoke[*service.Device](a.i)
-	subSrv := do.MustInvoke[*service.Subs](a.i)
-	episodesSrv := do.MustInvoke[*service.Episodes](a.i)
-	settingsSrv := do.MustInvoke[*service.Settings](a.i)
+func (a *API) Routes(i do.Injector) chi.Router {
+	deviceSrv := do.MustInvoke[*service.Device](i)
+	subSrv := do.MustInvoke[*service.Subs](i)
+	// usersSrv := do.MustInvoke[*service.Users](a.i)
+	episodesSrv := do.MustInvoke[*service.Episodes](i)
+	settingsSrv := do.MustInvoke[*service.Settings](i)
+	// podcastsSrv := do.MustInvoke[*service.Podcasts](i)
 
 	router := chi.NewRouter()
 	router.Route("/subscriptions", func(r chi.Router) {
@@ -37,12 +39,12 @@ func (a *API) Routes() chi.Router {
 	})
 
 	router.Route("/api/2", func(r chi.Router) {
-		r.Mount("/auth", (&authResource{}).Routes())
-		r.Mount("/devices", (&deviceResource{deviceSrv}).Routes())
-		r.Mount("/subscriptions", (&subscriptionsResource{subSrv}).Routes())
-		r.Mount("/episodes", (&episodesResource{episodesSrv}).Routes())
-		r.Mount("/updates", (&updatesResource{subSrv, episodesSrv}).Routes())
-		r.Mount("/settings", (&settingsResource{settingsSrv}).Routes())
+		r.Mount("/auth", authResource{}.Routes())
+		r.Mount("/devices", deviceResource{deviceSrv}.Routes())
+		r.Mount("/subscriptions", subscriptionsResource{subSrv}.Routes())
+		r.Mount("/episodes", episodesResource{episodesSrv}.Routes())
+		r.Mount("/updates", updatesResource{subSrv, episodesSrv}.Routes())
+		r.Mount("/settings", settingsResource{settingsSrv}.Routes())
 	})
 
 	return router
