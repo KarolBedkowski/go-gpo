@@ -60,7 +60,7 @@ func (r *Database) Connect(ctx context.Context, driver, connstr string) error {
 	return nil
 }
 
-func (r *Database) Shutdown(context.Context) error {
+func (r *Database) Shutdown(ctx context.Context) error {
 	if r.db == nil {
 		return nil
 	}
@@ -68,6 +68,9 @@ func (r *Database) Shutdown(context.Context) error {
 	if err := r.db.Close(); err != nil {
 		return fmt.Errorf("close db error: %w", err)
 	}
+
+	logger := log.Ctx(ctx)
+	logger.Debug().Msg("db closed")
 
 	return nil
 }
