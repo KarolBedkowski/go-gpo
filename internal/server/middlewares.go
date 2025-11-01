@@ -233,7 +233,7 @@ func newFullLogMiddleware(next http.Handler) http.Handler {
 func shouldSkipLogRequest(request *http.Request) bool {
 	path := request.URL.Path
 
-	return !strings.HasPrefix(path, "/metrics") && !strings.HasPrefix(path, "/debug")
+	return strings.HasPrefix(path, "/metrics") || strings.HasPrefix(path, "/debug")
 }
 
 //-------------------------------------------------------------
