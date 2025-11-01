@@ -16,11 +16,19 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 	"github.com/rs/zerolog"
+	"github.com/samber/do/v2"
 )
 
 type updatesResource struct {
-	subSrv       *service.Subs
-	episodesServ *service.Episodes
+	subsSrv     *service.Subs
+	episodesSrv *service.Episodes
+}
+
+func newUpdatesResource(i do.Injector) (updatesResource, error) {
+	return updatesResource{
+		subsSrv:     do.MustInvoke[*service.Subs](i),
+		episodesSrv: do.MustInvoke[*service.Episodes](i),
+	}, nil
 }
 
 func (u updatesResource) Routes() chi.Router {
@@ -52,7 +60,7 @@ func (u updatesResource) getUpdates(
 
 	includeActions := chi.URLParam(r, "include_actions") == "true"
 
-	added, removed, err := u.subSrv.GetSubscriptionChanges(ctx, user, deviceid, since)
+	added, removed, err := u.subsSrv.GetSubscriptionChanges(ctx, user, deviceid, since)
 	if err != nil {
 		logger.Warn().Err(err).Msgf("load subscription changes error")
 		internal.WriteError(w, r, http.StatusInternalServerError, nil)
@@ -60,7 +68,7 @@ func (u updatesResource) getUpdates(
 		return
 	}
 
-	updates, err := u.episodesServ.GetEpisodesUpdates(ctx, user, deviceid, since, includeActions)
+	updates, err := u.episodesSrv.GetEpisodesUpdates(ctx, user, deviceid, since, includeActions)
 	if err != nil {
 		logger.Warn().Err(err).Msgf("load episodes updates error")
 		internal.WriteError(w, r, http.StatusInternalServerError, nil)

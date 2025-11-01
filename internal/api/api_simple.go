@@ -18,6 +18,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 	"github.com/rs/zerolog"
+	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/opml"
@@ -26,6 +27,12 @@ import (
 
 type simpleResource struct {
 	subServ *service.Subs
+}
+
+func newSimpleResource(i do.Injector) (simpleResource, error) {
+	return simpleResource{
+		subServ: do.MustInvoke[*service.Subs](i),
+	}, nil
 }
 
 func (s *simpleResource) Routes() chi.Router {

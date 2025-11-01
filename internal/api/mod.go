@@ -10,7 +10,6 @@ package api
 import (
 	"github.com/go-chi/chi/v5"
 	"github.com/samber/do/v2"
-	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
 type Configuration struct {
@@ -19,32 +18,41 @@ type Configuration struct {
 	LogBody bool
 }
 
-type API struct{}
-
-func New() API {
-	return API{}
+type API struct {
+	simpleResource        simpleResource
+	authResource          authResource
+	deviceResource        deviceResource
+	subscriptionsResource subscriptionsResource
+	episodesResource      episodesResource
+	updatesResource       updatesResource
+	settingsResource      settingsResource
 }
 
-func (a *API) Routes(i do.Injector) chi.Router {
-	deviceSrv := do.MustInvoke[*service.Device](i)
-	subSrv := do.MustInvoke[*service.Subs](i)
-	// usersSrv := do.MustInvoke[*service.Users](a.i)
-	episodesSrv := do.MustInvoke[*service.Episodes](i)
-	settingsSrv := do.MustInvoke[*service.Settings](i)
-	// podcastsSrv := do.MustInvoke[*service.Podcasts](i)
+func New(i do.Injector) (API, error) {
+	return API{
+		simpleResource:        do.MustInvoke[simpleResource](i),
+		authResource:          do.MustInvoke[authResource](i),
+		deviceResource:        do.MustInvoke[deviceResource](i),
+		subscriptionsResource: do.MustInvoke[subscriptionsResource](i),
+		episodesResource:      do.MustInvoke[episodesResource](i),
+		updatesResource:       do.MustInvoke[updatesResource](i),
+		settingsResource:      do.MustInvoke[settingsResource](i),
+	}, nil
+}
 
+func (a *API) Routes() chi.Router {
 	router := chi.NewRouter()
 	router.Route("/subscriptions", func(r chi.Router) {
-		r.Mount("/", (&simpleResource{subSrv}).Routes())
+		r.Mount("/", a.simpleResource.Routes())
 	})
 
 	router.Route("/api/2", func(r chi.Router) {
-		r.Mount("/auth", authResource{}.Routes())
-		r.Mount("/devices", deviceResource{deviceSrv}.Routes())
-		r.Mount("/subscriptions", subscriptionsResource{subSrv}.Routes())
-		r.Mount("/episodes", episodesResource{episodesSrv}.Routes())
-		r.Mount("/updates", updatesResource{subSrv, episodesSrv}.Routes())
-		r.Mount("/settings", settingsResource{settingsSrv}.Routes())
+		r.Mount("/auth", a.authResource.Routes())
+		r.Mount("/devices", a.deviceResource.Routes())
+		r.Mount("/subscriptions", a.subscriptionsResource.Routes())
+		r.Mount("/episodes", a.episodesResource.Routes())
+		r.Mount("/updates", a.updatesResource.Routes())
+		r.Mount("/settings", a.settingsResource.Routes())
 	})
 
 	return router

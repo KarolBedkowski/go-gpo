@@ -16,10 +16,17 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 	"github.com/rs/zerolog"
+	"github.com/samber/do/v2"
 )
 
 type settingsResource struct {
-	settingsServ *service.Settings
+	settingsSrv *service.Settings
+}
+
+func newSettingsResource(i do.Injector) (settingsResource, error) {
+	return settingsResource{
+		settingsSrv: do.MustInvoke[*service.Settings](i),
+	}, nil
 }
 
 func (u settingsResource) Routes() chi.Router {
@@ -52,7 +59,7 @@ func (u settingsResource) getSettings(
 
 	scope := chi.URLParam(r, "scope")
 
-	res, err := u.settingsServ.GetSettings(ctx, user, scope, key)
+	res, err := u.settingsSrv.GetSettings(ctx, user, scope, key)
 	if err != nil {
 		logger.Warn().Err(err).Str("scope", "scope").Msgf("get settings error")
 		internal.WriteError(w, r, http.StatusInternalServerError, nil)
@@ -94,7 +101,7 @@ func (u settingsResource) setSettings(
 
 	scope := chi.URLParam(r, "scope")
 
-	if err := u.settingsServ.SaveSettings(ctx, user, scope, key, req.Set, req.Remove); err != nil {
+	if err := u.settingsSrv.SaveSettings(ctx, user, scope, key, req.Set, req.Remove); err != nil {
 		logger.Warn().Err(err).Str("scope", "scope").Msgf("save settings error")
 		internal.WriteError(w, r, http.StatusInternalServerError, nil)
 

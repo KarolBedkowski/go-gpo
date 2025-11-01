@@ -18,9 +18,19 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 	"github.com/rs/zerolog"
+	"github.com/samber/do/v2"
 )
 
 // -----------------------------
+type episodesResource struct {
+	episodesSrv *service.Episodes
+}
+
+func newEpisodesResource(i do.Injector) (episodesResource, error) {
+	return episodesResource{
+		episodesSrv: do.MustInvoke[*service.Episodes](i),
+	}, nil
+}
 
 func (er episodesResource) Routes() chi.Router {
 	r := chi.NewRouter()
@@ -77,7 +87,7 @@ func (er episodesResource) uploadEpisodeActions(
 		actions = append(actions, reqEpisode.toModel())
 	}
 
-	if err = er.episodesServ.SaveEpisodesActions(ctx, user, actions...); err != nil {
+	if err = er.episodesSrv.SaveEpisodesActions(ctx, user, actions...); err != nil {
 		logger.Debug().Interface("req", request).Msg("save episodes error")
 		logger.Warn().Err(err).Msg("save episodes error")
 		internal.WriteError(w, r, http.StatusInternalServerError, nil)
@@ -114,7 +124,7 @@ func (er episodesResource) getEpisodeActions(
 		return
 	}
 
-	res, err := er.episodesServ.GetEpisodesActions(ctx, user, podcast, device, since, aggregated)
+	res, err := er.episodesSrv.GetEpisodesActions(ctx, user, podcast, device, since, aggregated)
 	if err != nil {
 		logger.Warn().Err(err).Msgf("get episodes error")
 		internal.WriteError(w, r, http.StatusInternalServerError, nil)
@@ -139,10 +149,6 @@ func (er episodesResource) getEpisodeActions(
 }
 
 // -----------------------------
-
-type episodesResource struct {
-	episodesServ *service.Episodes
-}
 
 type episode struct {
 	Podcast   string `json:"podcast"`

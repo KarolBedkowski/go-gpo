@@ -13,6 +13,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/samber/do/v2"
+	gpoapi "gitlab.com/kabes/go-gpo/internal/api"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/repository"
 	"gitlab.com/kabes/go-gpo/internal/service"
@@ -25,6 +26,7 @@ func createInjector(ctx context.Context) *do.RootScope {
 		db.Package,
 		repository.Package,
 		gpoweb.Package,
+		gpoapi.Package,
 	)
 
 	logger := log.Ctx(ctx)

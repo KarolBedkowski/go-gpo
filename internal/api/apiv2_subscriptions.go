@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/opml"
@@ -23,7 +24,13 @@ import (
 )
 
 type subscriptionsResource struct {
-	subServ *service.Subs
+	subsSrv *service.Subs
+}
+
+func newSubscriptionsResource(i do.Injector) (subscriptionsResource, error) {
+	return subscriptionsResource{
+		subsSrv: do.MustInvoke[*service.Subs](i),
+	}, nil
 }
 
 func (sr subscriptionsResource) Routes() chi.Router {
@@ -61,7 +68,7 @@ func (sr subscriptionsResource) devSubscriptions(
 		sinceTS = time.Unix(ts, 0)
 	}
 
-	added, removed, err := sr.subServ.GetDeviceSubscriptionChanges(ctx, user, deviceid, sinceTS)
+	added, removed, err := sr.subsSrv.GetDeviceSubscriptionChanges(ctx, user, deviceid, sinceTS)
 	switch {
 	case err == nil:
 	case errors.Is(err, service.ErrUnknownUser):
@@ -104,7 +111,7 @@ func (sr subscriptionsResource) userSubscriptions(
 	_ = r
 	user := internal.ContextUser(ctx)
 
-	subs, err := sr.subServ.GetUserSubscriptions(ctx, user, time.Time{})
+	subs, err := sr.subsSrv.GetUserSubscriptions(ctx, user, time.Time{})
 	switch {
 	case err == nil:
 	case errors.Is(err, service.ErrUnknownUser):
@@ -160,7 +167,7 @@ func (sr subscriptionsResource) uploadSubscriptionChanges(
 		return
 	}
 
-	err := sr.subServ.UpdateDeviceSubscriptionChanges(ctx, user, deviceid, &subChanges)
+	err := sr.subsSrv.UpdateDeviceSubscriptionChanges(ctx, user, deviceid, &subChanges)
 	if err != nil {
 		logger.Debug().Interface("changes", changes).Msg("update subscriptions data")
 		logger.Warn().Err(err).Msg("update subscriptions error")

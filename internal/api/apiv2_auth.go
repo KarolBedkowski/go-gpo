@@ -12,10 +12,15 @@ import (
 	"gitea.com/go-chi/session"
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
+	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal"
 )
 
 type authResource struct{}
+
+func newAuthResource(_ do.Injector) (authResource, error) {
+	return authResource{}, nil
+}
 
 func (ar authResource) Routes() chi.Router {
 	r := chi.NewRouter()

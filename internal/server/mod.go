@@ -61,14 +61,14 @@ func Start(ctx context.Context, injector do.Injector, cfg *Configuration) error 
 
 	router.Method("GET", "/metrics", newMetricsHandler())
 
-	api := gpoapi.New()
+	api := do.MustInvoke[gpoapi.API](injector)
 	router.
 		With(newPromMiddleware("api", nil).Handler).
 		With(sessionMW).
 		With(authMW.handle).
 		With(AuthenticatedOnly).
 		With(middleware.NoCache).
-		Mount("/", api.Routes(injector))
+		Mount("/", api.Routes())
 
 	web := do.MustInvoke[gpoweb.WEB](injector)
 	router.

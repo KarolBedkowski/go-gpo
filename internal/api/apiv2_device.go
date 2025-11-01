@@ -13,6 +13,7 @@ import (
 	"slices"
 
 	"github.com/rs/zerolog"
+	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/service"
@@ -23,6 +24,12 @@ import (
 
 type deviceResource struct {
 	deviceSrv *service.Device
+}
+
+func newDeviceResource(i do.Injector) (deviceResource, error) {
+	return deviceResource{
+		deviceSrv: do.MustInvoke[*service.Device](i),
+	}, nil
 }
 
 func (d deviceResource) Routes() chi.Router {
