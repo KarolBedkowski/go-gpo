@@ -58,6 +58,12 @@ type authenticator struct {
 	usersSrv *service.Users
 }
 
+func newAuthenticator(i do.Injector) (authenticator, error) {
+	return authenticator{
+		usersSrv: do.MustInvoke[*service.Users](i),
+	}, nil
+}
+
 func (a authenticator) handle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		username, password, ok := r.BasicAuth()

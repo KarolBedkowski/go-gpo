@@ -22,7 +22,6 @@ import (
 	"github.com/samber/do/v2"
 	gpoapi "gitlab.com/kabes/go-gpo/internal/api"
 	"gitlab.com/kabes/go-gpo/internal/config"
-	"gitlab.com/kabes/go-gpo/internal/service"
 	gpoweb "gitlab.com/kabes/go-gpo/internal/web"
 )
 
@@ -38,15 +37,13 @@ const (
 )
 
 func Start(ctx context.Context, injector do.Injector, cfg *Configuration) error {
-	usersSrv := do.MustInvoke[*service.Users](injector)
-
 	// middlewares
 	sessionMW, err := newSessionMiddleware(injector)
 	if err != nil {
 		return err
 	}
 
-	authMW := authenticator{usersSrv}
+	authMW := do.MustInvoke[authenticator](injector)
 
 	// routes
 	router := chi.NewRouter()
