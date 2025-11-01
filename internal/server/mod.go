@@ -49,31 +49,34 @@ func Start(ctx context.Context, injector do.Injector, cfg *Configuration) error 
 	router := chi.NewRouter()
 	router.Use(middleware.Heartbeat(cfg.WebRoot + "/ping"))
 	router.Use(middleware.RealIP)
-	router.Use(hlog.RequestIDHandler("req_id", "Request-Id"))
-	router.Use(newLogMiddleware(cfg))
-	router.Use(newRecoverMiddleware)
 	router.Use(middleware.Timeout(connectioTimeout))
 
 	router.Method("GET", cfg.WebRoot+"/metrics", newMetricsHandler())
 
-	api := do.MustInvoke[gpoapi.API](injector)
-	router.
-		With(newPromMiddleware("api", nil).Handler).
-		With(middleware.CleanPath).
-		With(sessionMW).
-		With(authMW.handle).
-		With(AuthenticatedOnly).
-		With(middleware.NoCache).
-		Mount(cfg.WebRoot+"/", api.Routes())
+	router.Group(func(group chi.Router) {
+		group.Use(hlog.RequestIDHandler("req_id", "Request-Id"))
+		group.Use(newLogMiddleware(cfg))
+		group.Use(newRecoverMiddleware)
+		group.Use(middleware.CleanPath)
+		group.Use(sessionMW)
+		group.Use(authMW.handle)
+		group.Use(AuthenticatedOnly)
 
-	web := do.MustInvoke[gpoweb.WEB](injector)
-	router.
-		With(newPromMiddleware("web", nil).Handler).
-		With(middleware.CleanPath).
-		With(sessionMW).
-		With(authMW.handle).
-		With(AuthenticatedOnly).
-		Mount(cfg.WebRoot+"/web", web.Routes())
+		api := do.MustInvoke[gpoapi.API](injector)
+		group.
+			With(newPromMiddleware("api", nil).Handler).
+			With(middleware.NoCache).
+			Mount(cfg.WebRoot+"/", api.Routes())
+
+		web := do.MustInvoke[gpoweb.WEB](injector)
+		group.
+			With(newPromMiddleware("web", nil).Handler).
+			Mount(cfg.WebRoot+"/web", web.Routes())
+
+		group.Get(cfg.WebRoot+"/", func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, cfg.WebRoot+"/web", http.StatusMovedPermanently)
+		})
+	})
 
 	if cfg.DebugFlags.HasFlag(config.DebugDo) {
 		dochi.Use(router, cfg.WebRoot+"/debug/do", injector)
@@ -82,10 +85,6 @@ func Start(ctx context.Context, injector do.Injector, cfg *Configuration) error 
 	if cfg.DebugFlags.HasFlag(config.DebugGo) {
 		router.Mount(cfg.WebRoot+"/debug", middleware.Profiler())
 	}
-
-	router.Get(cfg.WebRoot+"/", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, cfg.WebRoot+"/web", http.StatusMovedPermanently)
-	})
 
 	logRoutes(ctx, router)
 
