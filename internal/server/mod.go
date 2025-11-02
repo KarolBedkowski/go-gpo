@@ -43,7 +43,8 @@ const (
 type Server struct {
 	router chi.Router
 
-	s *http.Server
+	cfg *Configuration
+	s   *http.Server
 }
 
 func New(injector do.Injector) (Server, error) {
@@ -96,6 +97,7 @@ func New(injector do.Injector) (Server, error) {
 
 	return Server{
 		router: router,
+		cfg:    cfg,
 		s: &http.Server{
 			Addr:           cfg.Listen,
 			Handler:        router,
@@ -107,7 +109,9 @@ func New(injector do.Injector) (Server, error) {
 }
 
 func (s *Server) Start(ctx context.Context) error {
-	logRoutes(ctx, s.router)
+	if s.cfg.DebugFlags.HasFlag(config.DebugRouter) {
+		logRoutes(ctx, s.router)
+	}
 
 	if err := s.s.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("listen error: %w", err)

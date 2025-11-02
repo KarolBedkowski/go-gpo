@@ -23,12 +23,13 @@ const shutdownInjectorTimeout = 5 * time.Second
 
 func createInjector(ctx context.Context) *do.RootScope {
 	logger := log.Ctx(ctx)
+	logger.Debug().Msg("create injector")
 
 	injector := do.NewWithOpts(
 		&do.InjectorOpts{
-			Logf: func(format string, args ...any) {
-				logger.Debug().Str("mod", "do").Msgf(format, args...)
-			},
+			// Logf: func(format string, args ...any) {
+			// 	logger.Debug().Str("mod", "do").Msgf(format, args...)
+			// },
 		},
 		service.Package,
 		db.Package,

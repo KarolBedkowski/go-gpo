@@ -48,7 +48,7 @@ func (s *Server) Start(ctx context.Context) error {
 
 	injector := s.createInjector(createInjector(ctx))
 
-	if s.DebugFlags.HasFlag("do") {
+	if s.DebugFlags.HasFlag(config.DebugDo) {
 		enableDoDebug(ctx, injector.RootScope())
 	}
 
