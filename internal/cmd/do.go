@@ -22,9 +22,14 @@ import (
 const shutdownInjectorTimeout = 5 * time.Second
 
 func createInjector(ctx context.Context) *do.RootScope {
-	_ = ctx
+	logger := log.Ctx(ctx)
 
-	injector := do.New(
+	injector := do.NewWithOpts(
+		&do.InjectorOpts{
+			Logf: func(format string, args ...any) {
+				logger.Debug().Msgf(format, args...)
+			},
+		},
 		service.Package,
 		db.Package,
 		repository.Package,
@@ -33,9 +38,21 @@ func createInjector(ctx context.Context) *do.RootScope {
 	return injector
 }
 
-func explainDoInjecor(injector *do.RootScope) {
+func enableDoDebug(ctx context.Context, injector *do.RootScope) {
+	logger := log.Ctx(ctx)
+
 	explanation := do.ExplainInjector(injector)
 	fmt.Println(explanation.String())
+
+	// injector.AddAfterInvocationHook(func(_ *do.Scope, serviceName string, err error) {
+	// 	logger.Debug().Err(err).Msgf("service %q after invocation", serviceName)
+	// })
+	// injector.AddBeforeShutdownHook(func(_ *do.Scope, serviceName string) {
+	// 	logger.Debug().Msgf("service %q start shutdown", serviceName)
+	// })
+	injector.AddAfterShutdownHook(func(_ *do.Scope, serviceName string, err error) {
+		logger.Debug().Err(err).Msgf("service %q shutdown complete", serviceName)
+	})
 }
 
 func shudownInjector(ctx context.Context, injector do.Injector) {

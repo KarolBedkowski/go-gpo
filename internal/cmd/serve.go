@@ -49,7 +49,7 @@ func (s *Server) Start(ctx context.Context) error {
 	injector := s.createInjector(createInjector(ctx))
 
 	if s.DebugFlags.HasFlag("do") {
-		explainDoInjecor(injector.RootScope())
+		enableDoDebug(ctx, injector.RootScope())
 	}
 
 	db := do.MustInvoke[*db.Database](injector)
