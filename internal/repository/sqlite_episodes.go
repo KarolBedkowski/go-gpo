@@ -9,12 +9,12 @@ package repository
 
 import (
 	"context"
-	"fmt"
 	"maps"
 	"slices"
 	"time"
 
 	"github.com/rs/zerolog/log"
+	"gitlab.com/kabes/go-gpo/internal/aerr"
 )
 
 func (s sqliteRepository) ListEpisodes(
@@ -48,7 +48,8 @@ func (s sqliteRepository) ListEpisodes(
 
 	err := dbctx.SelectContext(ctx, &res, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("query episodes error: %w", err)
+		return nil, aerr.Wrapf(err, "query episodes failed").WithTag(aerr.InternalError).
+			WithMeta("sql", query, "args", args)
 	}
 
 	if !aggregated {
@@ -96,7 +97,7 @@ func (s sqliteRepository) SaveEpisode(ctx context.Context, dbctx DBContext, user
 			// insert podcast
 			id, err := s.SavePodcast(ctx, dbctx, &PodcastDB{UserID: userid, URL: eps.PodcastURL, Subscribed: true})
 			if err != nil {
-				return fmt.Errorf("create new podcast %q error: %w", eps.PodcastURL, err)
+				return aerr.Wrapf(err, "create new podcast failed")
 			}
 
 			eps.PodcastID = id
@@ -109,7 +110,7 @@ func (s sqliteRepository) SaveEpisode(ctx context.Context, dbctx DBContext, user
 			// create device
 			did, err := s.SaveDevice(ctx, dbctx, &DeviceDB{UserID: userid, Name: eps.Device, DevType: "other"})
 			if err != nil {
-				return fmt.Errorf("create new device %q error: %w", eps.Device, err)
+				return aerr.Wrapf(err, "create new device failed")
 			}
 
 			eps.DeviceID = did
@@ -145,8 +146,8 @@ func (s sqliteRepository) saveEpisode(ctx context.Context, dbctx DBContext, epis
 		episode.UpdatedAt,
 	)
 	if err != nil {
-		return fmt.Errorf("save episode %d episode %q error: %w", episode.PodcastID,
-			episode.URL, err)
+		return aerr.Wrapf(err, "insert episode failed").WithTag(aerr.InternalError).
+			WithMeta("podcast_id", episode.PodcastID, "episode_url", episode.URL)
 	}
 
 	return nil

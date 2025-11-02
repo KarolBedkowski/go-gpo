@@ -13,6 +13,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/hlog"
 	"github.com/rs/zerolog/log"
+	"gitlab.com/kabes/go-gpo/internal/aerr"
 )
 
 //
@@ -60,12 +61,9 @@ func Wrap(handler func(ctx context.Context, w http.ResponseWriter, r *http.Reque
 	}
 }
 
-func WriteError(w http.ResponseWriter, r *http.Request, code int, err error) {
-	var msg string
-	if err == nil {
+func WriteError(w http.ResponseWriter, r *http.Request, code int, msg string) {
+	if msg == "" {
 		msg = http.StatusText(code)
-	} else {
-		msg = err.Error()
 	}
 
 	if strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
@@ -80,4 +78,25 @@ func WriteError(w http.ResponseWriter, r *http.Request, code int, err error) {
 	}
 
 	http.Error(w, msg, code)
+}
+
+// CheckAndWriteError decode and write error. Return true for errors that should be logged as error.
+func CheckAndWriteError(w http.ResponseWriter, r *http.Request, err error) bool {
+	msg := aerr.GetUserMessage(err)
+
+	switch {
+	case aerr.HasTag(err, aerr.InternalError):
+		WriteError(w, r, http.StatusInternalServerError, "")
+
+	case aerr.HasTag(err, aerr.DataError):
+		WriteError(w, r, http.StatusBadRequest, msg)
+
+		return false
+
+	default:
+		// unknown error
+		WriteError(w, r, http.StatusInternalServerError, "")
+	}
+
+	return true
 }

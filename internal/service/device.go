@@ -10,19 +10,13 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	"slices"
 
 	"github.com/samber/do/v2"
+	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/repository"
-)
-
-var (
-	ErrUnknownUser   = errors.New("unknown user")
-	ErrUnknownDevice = errors.New("unknown device")
-	ErrInvalidData   = errors.New("invalid data")
 )
 
 type Device struct {
@@ -41,7 +35,7 @@ func NewDeviceServiceI(i do.Injector) (*Device, error) {
 
 func (d *Device) UpdateDevice(ctx context.Context, username, deviceid, caption, devtype string) error {
 	if username == "" || deviceid == "" || !slices.Contains(model.ValidDevTypes, devtype) {
-		return ErrInvalidData
+		return aerr.New("invalid data").WithTag(aerr.ValidationError)
 	}
 
 	err := d.db.InTransaction(ctx, func(tx repository.DBContext) error {
@@ -49,7 +43,7 @@ func (d *Device) UpdateDevice(ctx context.Context, username, deviceid, caption, 
 		if errors.Is(err, repository.ErrNoData) {
 			return ErrUnknownUser
 		} else if err != nil {
-			return fmt.Errorf("get user error: %w", err)
+			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
 		device, err := d.devicesRepo.GetDevice(ctx, tx, user.ID, deviceid)
@@ -57,7 +51,7 @@ func (d *Device) UpdateDevice(ctx context.Context, username, deviceid, caption, 
 			// new device
 			device = repository.DeviceDB{UserID: user.ID, Name: deviceid, DevType: "other"}
 		} else if err != nil {
-			return fmt.Errorf("get device %q for user %q error: %w", deviceid, username, err)
+			return aerr.Wrapf(err, "get device from repo failed")
 		}
 
 		device.Caption = caption
@@ -65,22 +59,19 @@ func (d *Device) UpdateDevice(ctx context.Context, username, deviceid, caption, 
 
 		_, err = d.devicesRepo.SaveDevice(ctx, tx, &device)
 		if err != nil {
-			return fmt.Errorf("save device error: %w", err)
+			return aerr.Wrapf(err, "save device failed")
 		}
 
 		return nil
 	})
-	if err != nil {
-		return fmt.Errorf("update device error: %w", err)
-	}
 
-	return nil
+	return err //nolint:wrapcheck
 }
 
 func (d *Device) ListDevices(ctx context.Context, username string) ([]model.Device, error) {
 	conn, err := d.db.GetConnection(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("get connection error: %w", err)
+		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
 	defer conn.Close()
@@ -89,12 +80,12 @@ func (d *Device) ListDevices(ctx context.Context, username string) ([]model.Devi
 	if errors.Is(err, repository.ErrNoData) {
 		return nil, ErrUnknownUser
 	} else if err != nil {
-		return nil, fmt.Errorf("get user error: %w", err)
+		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
 	devices, err := d.devicesRepo.ListDevices(ctx, conn, user.ID)
 	if err != nil {
-		return nil, fmt.Errorf("get device error: %w", err)
+		return nil, aerr.Wrapf(err, "get devices from db failed")
 	}
 
 	res := make([]model.Device, 0, len(devices))

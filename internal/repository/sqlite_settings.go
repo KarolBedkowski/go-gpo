@@ -11,11 +11,12 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 
 	"github.com/rs/zerolog/log"
+	"gitlab.com/kabes/go-gpo/internal/aerr"
 )
 
+// GetSettings return setting for user, scope and key. Create empty SettingsDB object when no data found in db.
 func (s sqliteRepository) GetSettings(ctx context.Context, db DBContext, userid int64, scope, key string,
 ) (SettingsDB, error) {
 	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_settings").Logger()
@@ -35,12 +36,13 @@ func (s sqliteRepository) GetSettings(ctx context.Context, db DBContext, userid 
 			Value:  "",
 		}, nil
 	} else if err != nil {
-		return res, fmt.Errorf("query settings for user %d scope %q key %q error: %w", userid, scope, key, err)
+		return res, aerr.Wrapf(err, "select settings failed")
 	}
 
 	return res, nil
 }
 
+// SaveSettings insert or update setting.
 func (s sqliteRepository) SaveSettings(ctx context.Context, db DBContext, sett *SettingsDB) error {
 	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_settings").Logger()
 	logger.Debug().Object("settings", sett).Msg("save settings")
@@ -55,7 +57,7 @@ func (s sqliteRepository) SaveSettings(ctx context.Context, db DBContext, sett *
 		sett.Value,
 	)
 	if err != nil {
-		return fmt.Errorf("save settings error: %w", err)
+		return aerr.Wrapf(err, "upsert settings error")
 	}
 
 	return nil

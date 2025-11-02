@@ -10,10 +10,10 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/samber/do/v2"
+	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/repository"
@@ -38,7 +38,7 @@ func NewPodcastsServiceI(i do.Injector) (*Podcasts, error) {
 func (p *Podcasts) GetUserPodcasts(ctx context.Context, username string) ([]model.Podcast, error) {
 	conn, err := p.db.GetConnection(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("get connection error: %w", err)
+		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
 	defer conn.Close()
@@ -47,12 +47,12 @@ func (p *Podcasts) GetUserPodcasts(ctx context.Context, username string) ([]mode
 	if errors.Is(err, repository.ErrNoData) {
 		return nil, ErrUnknownUser
 	} else if err != nil {
-		return nil, fmt.Errorf("get user error: %w", err)
+		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
 	subs, err := p.podcastsRepo.ListSubscribedPodcasts(ctx, conn, user.ID, time.Time{})
 	if err != nil {
-		return nil, fmt.Errorf("get subscriptions error: %w", err)
+		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
 	podcasts := make([]model.Podcast, 0, len(subs))

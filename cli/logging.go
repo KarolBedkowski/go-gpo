@@ -11,10 +11,13 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"gitlab.com/kabes/go-gpo/internal/aerr"
 )
 
 // InitializeLogger set log level and optional log filename.
 func initializeLogger(level, format string) {
+	zerolog.ErrorMarshalFunc = aerr.ErrorMarshalFunc //nolint:reassign
+
 	var llog zerolog.Logger
 
 	switch format {

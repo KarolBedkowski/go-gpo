@@ -18,6 +18,7 @@ import (
 	"github.com/pressly/goose/v3"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/do/v2"
+	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
@@ -46,15 +47,15 @@ func (r *Database) Connect(ctx context.Context, driver, connstr string) error {
 
 	r.db, err = sqlx.Open(driver, connstr)
 	if err != nil {
-		return fmt.Errorf("open database error: %w", err)
+		return aerr.Wrapf(err, "open database failed").WithTag(aerr.InternalError).WithMeta("connstr", connstr)
 	}
 
 	if err := r.onConnect(ctx, r.db); err != nil {
-		return fmt.Errorf("on connect setup error: %w", err)
+		return aerr.Wrapf(err, "call startup scripts error").WithTag(aerr.InternalError)
 	}
 
 	if err := r.db.PingContext(ctx); err != nil {
-		return fmt.Errorf("ping database error: %w", err)
+		return aerr.Wrapf(err, "ping database failed").WithTag(aerr.InternalError)
 	}
 
 	return nil

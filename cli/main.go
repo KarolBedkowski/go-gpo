@@ -22,6 +22,7 @@ import (
 	"github.com/urfave/cli/v3"
 	"golang.org/x/term"
 
+	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/cmd"
 	"gitlab.com/kabes/go-gpo/internal/config"
 
@@ -119,7 +120,13 @@ func main() {
 	}
 
 	if err := cmd.Run(context.Background(), os.Args); err != nil {
-		fmt.Printf("Error: %s\n", err.Error())
+		if h := aerr.GetUserMessage(err); h != "" {
+			fmt.Printf("Error: %s\n", h)
+		} else {
+			fmt.Printf("Error: %s\n", err.Error())
+		}
+
+		// TODO: verbose log
 	}
 }
 

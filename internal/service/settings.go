@@ -11,11 +11,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"maps"
 
 	//	"gitlab.com/kabes/go-gpo/internal/model"
 	"github.com/samber/do/v2"
+	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
@@ -37,7 +37,7 @@ func NewSettingsServiceI(i do.Injector) (*Settings, error) {
 func (s Settings) GetSettings(ctx context.Context, username, scope, key string) (map[string]string, error) {
 	conn, err := s.db.GetConnection(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("get connection error: %w", err)
+		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
 	defer conn.Close()
@@ -46,12 +46,12 @@ func (s Settings) GetSettings(ctx context.Context, username, scope, key string) 
 	if errors.Is(err, repository.ErrNoData) {
 		return nil, ErrUnknownUser
 	} else if err != nil {
-		return nil, fmt.Errorf("get user error: %w", err)
+		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
 	sett, err := s.settRepo.GetSettings(ctx, conn, user.ID, scope, key)
 	if err != nil {
-		return nil, fmt.Errorf("get settings error: %w", err)
+		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
 	settings := make(map[string]string)
@@ -61,7 +61,7 @@ func (s Settings) GetSettings(ctx context.Context, username, scope, key string) 
 	}
 
 	if err := json.Unmarshal([]byte(sett.Value), &settings); err != nil {
-		return nil, fmt.Errorf("unmarshal settings error: %w", err)
+		return nil, aerr.Wrapf(err, "failed unmarshal settings from database").WithMeta("value", sett.Value)
 	}
 
 	return settings, nil
@@ -78,19 +78,19 @@ func (s Settings) SaveSettings(
 		if errors.Is(err, repository.ErrNoData) {
 			return ErrUnknownUser
 		} else if err != nil {
-			return fmt.Errorf("get user error: %w", err)
+			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
 		dbsett, err := s.settRepo.GetSettings(ctx, dbctx, user.ID, scope, key)
 		if err != nil {
-			return fmt.Errorf("get settings error: %w", err)
+			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
 		settings := make(map[string]string)
 
 		if len(dbsett.Value) > 0 {
 			if err := json.Unmarshal([]byte(dbsett.Value), &settings); err != nil {
-				return fmt.Errorf("unmarshal settings error: %w", err)
+				return aerr.Wrapf(err, "failed unmarshal settings from database").WithMeta("value", dbsett.Value)
 			}
 		}
 
@@ -102,20 +102,17 @@ func (s Settings) SaveSettings(
 
 		data, err := json.Marshal(settings)
 		if err != nil {
-			return fmt.Errorf("marshal settings error: %w", err)
+			return aerr.Wrapf(err, "failed marshal settings").WithMeta("value", settings)
 		}
 
 		dbsett.Value = string(data)
 
 		if err := s.settRepo.SaveSettings(ctx, dbctx, &dbsett); err != nil {
-			return fmt.Errorf("save settings error: %w", err)
+			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
 		return nil
 	})
-	if err != nil {
-		return fmt.Errorf("save settings error: %w", err)
-	}
 
-	return nil
+	return err //nolint:wrapcheck
 }

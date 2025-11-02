@@ -11,10 +11,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/rs/zerolog/log"
+	"gitlab.com/kabes/go-gpo/internal/aerr"
 )
 
 func (s sqliteRepository) GetDevice(
@@ -35,7 +35,7 @@ func (s sqliteRepository) GetDevice(
 	if errors.Is(err, sql.ErrNoRows) {
 		return device, ErrNoData
 	} else if err != nil {
-		return device, fmt.Errorf("query device error: %w", err)
+		return device, aerr.Wrapf(err, "select device failed").WithMeta("user_id", userid, "device_name", devicename)
 	}
 
 	logger.Debug().Int64("user_id", userid).Str("device_name", devicename).Msg("count subscriptions")
@@ -45,7 +45,7 @@ func (s sqliteRepository) GetDevice(
 		userid,
 	)
 	if err != nil {
-		return device, fmt.Errorf("count subscriptions error: %w", err)
+		return device, aerr.Wrapf(err, "count subscriptions failed").WithMeta("user_id", userid)
 	}
 
 	return device, nil
@@ -61,12 +61,13 @@ func (s sqliteRepository) SaveDevice(ctx context.Context, dbctx DBContext, devic
 			"INSERT INTO devices (user_id, name, dev_type, caption, updated_at, created_at) VALUES(?, ?, ?, ?, ?, ?)",
 			device.UserID, device.Name, device.DevType, device.Caption, time.Now(), time.Now())
 		if err != nil {
-			return 0, fmt.Errorf("insert new device error: %w", err)
+			return 0, aerr.Wrapf(err, "insert device failed")
 		}
 
 		id, err := res.LastInsertId()
 		if err != nil {
-			return 0, fmt.Errorf("get last id error: %w", err)
+			return 0, aerr.Wrapf(err, "get last id device failed").
+				WithMeta("device_name", device.Name, "user_id", device.UserID)
 		}
 
 		return id, nil
@@ -79,7 +80,7 @@ func (s sqliteRepository) SaveDevice(ctx context.Context, dbctx DBContext, devic
 		"UPDATE devices SET dev_type=?, caption=?, updated_at=? WHERE id=?",
 		device.DevType, device.Caption, time.Now(), device.ID)
 	if err != nil {
-		return device.ID, fmt.Errorf("update device error: %w", err)
+		return device.ID, aerr.Wrapf(err, "update device failed").WithMeta("device_id", device.ID)
 	}
 
 	return device.ID, nil
@@ -96,7 +97,7 @@ func (s sqliteRepository) ListDevices(ctx context.Context, dbctx DBContext, user
 		"SELECT count(*) FROM podcasts where user_id=? and subscribed",
 		userid)
 	if err != nil {
-		return nil, fmt.Errorf("count subscriptions error: %w", err)
+		return nil, aerr.Wrapf(err, "count subscriptions error").WithMeta("user_id", userid)
 	}
 
 	logger.Debug().Int64("user_id", userid).Msg("list devices")
@@ -108,7 +109,7 @@ func (s sqliteRepository) ListDevices(ctx context.Context, dbctx DBContext, user
 			"FROM devices WHERE user_id=?",
 		subscriptions, userid)
 	if err != nil {
-		return nil, fmt.Errorf("query devices error: %w", err)
+		return nil, aerr.Wrapf(err, "select device failed").WithMeta("user_id", userid)
 	}
 
 	return res, nil

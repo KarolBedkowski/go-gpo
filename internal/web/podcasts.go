@@ -43,8 +43,11 @@ func (p podcastPages) list(ctx context.Context, w http.ResponseWriter, r *http.R
 
 	podcasts, err := p.podcastsSrv.GetUserPodcasts(ctx, user)
 	if err != nil {
-		logger.Error().Err(err).Str("mod", "web").Msg("get list devices error")
-		internal.WriteError(w, r, http.StatusInternalServerError, nil)
+		if internal.CheckAndWriteError(w, r, err) {
+			logger.Warn().Err(err).Str("mod", "web").Msg("get user podcasts error")
+		} else {
+			logger.Debug().Err(err).Str("mod", "web").Msg("get user podcasts error")
+		}
 
 		return
 	}
@@ -57,6 +60,6 @@ func (p podcastPages) list(ctx context.Context, w http.ResponseWriter, r *http.R
 
 	if err := p.template.executeTemplate(w, "podcasts.tmpl", &data); err != nil {
 		logger.Error().Err(err).Str("mod", "web").Msg("execute template error")
-		internal.WriteError(w, r, http.StatusInternalServerError, nil)
+		internal.WriteError(w, r, http.StatusInternalServerError, "")
 	}
 }

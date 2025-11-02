@@ -10,10 +10,10 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/samber/do/v2"
+	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/repository"
@@ -21,9 +21,9 @@ import (
 )
 
 var (
-	ErrUnauthorized      = errors.New("unauthorized")
-	ErrUserAccountLocked = errors.New("account is locked")
-	ErrUserExists        = errors.New("user already exists")
+	ErrUnauthorized      = aerr.New("unauthorized").WithUserMsg("authorization failed")
+	ErrUserAccountLocked = aerr.New("locked account").WithUserMsg("account is locked")
+	ErrUserExists        = aerr.New("username exists").WithUserMsg("user name already exists")
 )
 
 type Users struct {
@@ -42,7 +42,7 @@ func NewUsersServiceI(i do.Injector) (*Users, error) {
 func (u *Users) LoginUser(ctx context.Context, username, password string) (model.User, error) {
 	conn, err := u.db.GetConnection(ctx)
 	if err != nil {
-		return model.User{}, fmt.Errorf("get db connection error: %w", err)
+		return model.User{}, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
 	defer conn.Close()
@@ -51,7 +51,7 @@ func (u *Users) LoginUser(ctx context.Context, username, password string) (model
 	if errors.Is(err, repository.ErrNoData) {
 		return model.User{}, ErrUnknownUser
 	} else if err != nil {
-		return model.User{}, fmt.Errorf("get user error: %w", err)
+		return model.User{}, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
 	if user.Password == model.UserLockedPassword {
@@ -68,21 +68,27 @@ func (u *Users) LoginUser(ctx context.Context, username, password string) (model
 func (u *Users) AddUser(ctx context.Context, user model.User) (int64, error) {
 	tx, err := u.db.Begin(ctx)
 	if err != nil {
-		return 0, fmt.Errorf("get db connection error: %w", err)
+		return 0, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
 	defer tx.Rollback()
 
 	// is user exists?
-	if _, err := u.usersRepo.GetUser(ctx, tx, user.Username); err != nil && !errors.Is(err, repository.ErrNoData) {
-		return 0, fmt.Errorf("check user exists error: %w", err)
-	} else if err == nil {
+	_, err = u.usersRepo.GetUser(ctx, tx, user.Username)
+	switch {
+	case errors.Is(err, repository.ErrNoData):
+		// ok; user not exists
+	case err == nil:
+		// user exists
 		return 0, ErrUserExists
+	default:
+		// failed to get user
+		return 0, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
 	hashedPass, err := u.passHasher.HashPassword(user.Password)
 	if err != nil {
-		return 0, fmt.Errorf("hash password error: %w", err)
+		return 0, aerr.Wrapf(err, "hash password failed")
 	}
 
 	now := time.Now()
@@ -97,11 +103,11 @@ func (u *Users) AddUser(ctx context.Context, user model.User) (int64, error) {
 
 	id, err := u.usersRepo.SaveUser(ctx, tx, &udb)
 	if err != nil {
-		return 0, fmt.Errorf("save user error: %w", err)
+		return 0, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return 0, fmt.Errorf("commit error: %w", err)
+		return 0, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
 	return id, nil
@@ -110,7 +116,7 @@ func (u *Users) AddUser(ctx context.Context, user model.User) (int64, error) {
 func (u *Users) ChangePassword(ctx context.Context, user model.User) error {
 	tx, err := u.db.Begin(ctx)
 	if err != nil {
-		return fmt.Errorf("start tx error: %w", err)
+		return aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
 	defer tx.Rollback()
@@ -120,22 +126,22 @@ func (u *Users) ChangePassword(ctx context.Context, user model.User) error {
 	if errors.Is(err, repository.ErrNoData) {
 		return ErrUnknownUser
 	} else if err != nil {
-		return fmt.Errorf("get user error: %w", err)
+		return aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
 	udb.Password, err = u.passHasher.HashPassword(user.Password)
 	if err != nil {
-		return fmt.Errorf("hash password error: %w", err)
+		return aerr.Wrapf(err, "hash password failed")
 	}
 
 	udb.UpdatedAt = time.Now()
 
 	if _, err := u.usersRepo.SaveUser(ctx, tx, &udb); err != nil {
-		return fmt.Errorf("save user error: %w", err)
+		return aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit error: %w", err)
+		return aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
 	return nil
@@ -144,14 +150,14 @@ func (u *Users) ChangePassword(ctx context.Context, user model.User) error {
 func (u *Users) GetUsers(ctx context.Context, activeOnly bool) ([]model.User, error) {
 	conn, err := u.db.GetConnection(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("get db connection error: %w", err)
+		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
 	defer conn.Close()
 
 	users, err := u.usersRepo.ListUsers(ctx, conn, activeOnly)
 	if err != nil {
-		return nil, fmt.Errorf("get user error: %w", err)
+		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
 	res := make([]model.User, 0, len(users))
@@ -169,23 +175,20 @@ func (u *Users) LockAccount(ctx context.Context, username string) error {
 		if errors.Is(err, repository.ErrNoData) {
 			return ErrUnknownUser
 		} else if err != nil {
-			return fmt.Errorf("get user error: %w", err)
+			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
 		udb.Password = model.UserLockedPassword
 		udb.UpdatedAt = time.Now()
 
 		if _, err = u.usersRepo.SaveUser(ctx, dbctx, &udb); err != nil {
-			return fmt.Errorf("save user error: %w", err)
+			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
 		return nil
 	})
-	if err != nil {
-		return fmt.Errorf("lock user account error: %w", err)
-	}
 
-	return nil
+	return err //nolint:wrapcheck
 }
 
 //---------------------------

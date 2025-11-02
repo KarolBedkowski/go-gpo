@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"gitlab.com/kabes/go-gpo/internal"
+	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/service"
 
@@ -88,9 +89,11 @@ func (er episodesResource) uploadEpisodeActions(
 	}
 
 	if err = er.episodesSrv.SaveEpisodesActions(ctx, user, actions...); err != nil {
-		logger.Debug().Interface("req", request).Msg("save episodes error")
-		logger.Warn().Err(err).Msg("save episodes error")
-		internal.WriteError(w, r, http.StatusInternalServerError, nil)
+		if internal.CheckAndWriteError(w, r, err) {
+			logger.Warn().Err(err).Str("mod", "api").Str("mod", "api").Msg("save episodes error")
+		} else {
+			logger.Debug().Err(err).Str("mod", "api").Str("mod", "api").Msg("save episodes error")
+		}
 
 		return
 	}
@@ -119,15 +122,18 @@ func (er episodesResource) getEpisodeActions(
 	since, err := internal.GetSinceParameter(r)
 	if err != nil {
 		logger.Debug().Err(err).Msgf("parse since parameter to time error")
-		internal.WriteError(w, r, http.StatusBadRequest, nil)
+		internal.WriteError(w, r, http.StatusBadRequest, "")
 
 		return
 	}
 
 	res, err := er.episodesSrv.GetEpisodesActions(ctx, user, podcast, device, since, aggregated)
 	if err != nil {
-		logger.Warn().Err(err).Msgf("get episodes error")
-		internal.WriteError(w, r, http.StatusInternalServerError, nil)
+		if internal.CheckAndWriteError(w, r, err) {
+			logger.Warn().Err(err).Str("mod", "api").Msg("get episodes actions error")
+		} else {
+			logger.Debug().Err(err).Str("mod", "api").Msg("get episodes actions error")
+		}
 
 		return
 	}
@@ -200,11 +206,11 @@ func (e *episode) sanitize() [][]string {
 
 func (e *episode) validate() error {
 	if e.Podcast == "" {
-		return NewValidationError("empty `podcast`")
+		return aerr.NewSimple("empty `podcast`").WithTag(aerr.DataError)
 	}
 
 	if e.Episode == "" {
-		return NewValidationError("empty `episode`")
+		return aerr.NewSimple("empty `episode`").WithTag(aerr.DataError)
 	}
 
 	var err error

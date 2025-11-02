@@ -51,8 +51,8 @@ func (u settingsResource) getSettings(
 
 	key, err := u.getKey(r)
 	if err != nil {
-		logger.Debug().Err(err).Msg("get key error")
-		internal.WriteError(w, r, http.StatusBadRequest, nil)
+		logger.Debug().Err(err).Str("mod", "api").Msg("get key error")
+		internal.WriteError(w, r, http.StatusBadRequest, "")
 
 		return
 	}
@@ -61,8 +61,11 @@ func (u settingsResource) getSettings(
 
 	res, err := u.settingsSrv.GetSettings(ctx, user, scope, key)
 	if err != nil {
-		logger.Warn().Err(err).Str("scope", "scope").Msgf("get settings error")
-		internal.WriteError(w, r, http.StatusInternalServerError, nil)
+		if internal.CheckAndWriteError(w, r, err) {
+			logger.Warn().Err(err).Str("mod", "api").Msg("get settings error")
+		} else {
+			logger.Debug().Err(err).Str("mod", "api").Msg("get settings error")
+		}
 
 		return
 	}
@@ -85,16 +88,16 @@ func (u settingsResource) setSettings(
 	}
 
 	if err := render.DecodeJSON(r.Body, &req); err != nil {
-		logger.Debug().Err(err).Msg("decode request error")
-		internal.WriteError(w, r, http.StatusBadRequest, nil)
+		logger.Debug().Err(err).Str("mod", "api").Msg("decode request error")
+		internal.WriteError(w, r, http.StatusBadRequest, "")
 
 		return
 	}
 
 	key, err := u.getKey(r)
 	if err != nil {
-		logger.Debug().Err(err).Msg("get key error")
-		internal.WriteError(w, r, http.StatusBadRequest, nil)
+		logger.Debug().Err(err).Str("mod", "api").Msg("get key error")
+		internal.WriteError(w, r, http.StatusBadRequest, "")
 
 		return
 	}
@@ -102,8 +105,11 @@ func (u settingsResource) setSettings(
 	scope := chi.URLParam(r, "scope")
 
 	if err := u.settingsSrv.SaveSettings(ctx, user, scope, key, req.Set, req.Remove); err != nil {
-		logger.Warn().Err(err).Str("scope", "scope").Msgf("save settings error")
-		internal.WriteError(w, r, http.StatusInternalServerError, nil)
+		if internal.CheckAndWriteError(w, r, err) {
+			logger.Warn().Err(err).Str("mod", "api").Msg("save settings error")
+		} else {
+			logger.Debug().Err(err).Str("mod", "api").Msg("save settings error")
+		}
 
 		return
 	}

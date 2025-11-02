@@ -13,10 +13,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/rs/zerolog/log"
+	"gitlab.com/kabes/go-gpo/internal/aerr"
 )
 
 var ErrDuplicatedSID = errors.New("sid already exists")
@@ -27,7 +27,7 @@ func (s sqliteRepository) DeleteSession(ctx context.Context, dbctx DBContext, si
 
 	_, err := dbctx.ExecContext(ctx, "DELETE FROM sessions WHERE key=?", sid)
 	if err != nil {
-		return fmt.Errorf("delete session %q error: %w", sid, err)
+		return aerr.Wrapf(err, "delete session failed").WithMeta("sid", sid)
 	}
 
 	return nil
@@ -41,7 +41,7 @@ func (s sqliteRepository) SaveSession(ctx context.Context, dbctx DBContext, sid 
 		"UPDATE sessions SET data=?, created_at=? WHERE key=?",
 		data, time.Now(), sid)
 	if err != nil {
-		return fmt.Errorf("put session into db error: %w", err)
+		return aerr.Wrapf(err, "update session failed").WithMeta("sid", sid)
 	}
 
 	return nil
@@ -53,17 +53,17 @@ func (s sqliteRepository) RegenerateSession(ctx context.Context, dbctx DBContext
 
 	res, err := dbctx.ExecContext(ctx, "UPDATE sessions SET key=? WHERE key=?", newsid, oldsid)
 	if err != nil {
-		return fmt.Errorf("update key for session %q error: %w", oldsid, err)
+		return aerr.Wrapf(err, "update session key failed").WithMeta("oldsid", oldsid, "newsid", newsid)
 	}
 
 	cnt, err := res.RowsAffected()
 	switch {
 	case err != nil:
-		return fmt.Errorf("update session %q get affected rows error: %w", oldsid, err)
+		return aerr.Wrapf(err, "update session failed get affected rows").WithMeta("oldsid", oldsid)
 	case cnt == 1:
 		return nil
 	case cnt > 1:
-		return fmt.Errorf("update session %q - duplicated sessions", oldsid) //nolint: err113
+		return aerr.Wrapf(err, "update session - duplicated sessions").WithMeta("oldsid", oldsid)
 	}
 
 	// session not exists - insert
@@ -71,7 +71,7 @@ func (s sqliteRepository) RegenerateSession(ctx context.Context, dbctx DBContext
 		"INSERT INTO sessions(key, data, created_at) VALUES(?, '', ?)",
 		newsid, time.Now())
 	if err != nil {
-		return fmt.Errorf("insert new session %q error: %w", newsid, err)
+		return aerr.Wrapf(err, "insert new session failed").WithMeta("sid", newsid)
 	}
 
 	return nil
@@ -84,7 +84,7 @@ func (s sqliteRepository) CountSessions(ctx context.Context, dbctx DBContext) (i
 	var total int
 
 	if err := dbctx.GetContext(ctx, &total, "SELECT COUNT(*) AS num FROM sessions"); err != nil {
-		return 0, fmt.Errorf("error counting records: %w", err)
+		return 0, aerr.Wrapf(err, "count sessions failed")
 	}
 
 	return total, nil
@@ -131,10 +131,10 @@ func (s sqliteRepository) ReadOrCreate(ctx context.Context, dbctx DBContext, sid
 		// create empty session
 		_, err := dbctx.ExecContext(ctx, "INSERT INTO sessions(key, created_at) VALUES(?, ?)", sid, createdat)
 		if err != nil {
-			return nil, time.Time{}, fmt.Errorf("insert session into db error: %w", err)
+			return nil, time.Time{}, aerr.Wrapf(err, "insert session failed").WithMeta("sid", sid)
 		}
 	} else if err != nil {
-		return nil, time.Time{}, fmt.Errorf("get session data from db error: %w", err)
+		return nil, time.Time{}, aerr.Wrapf(err, "select session failed").WithMeta("sid", sid)
 	}
 
 	return data, createdat, nil
@@ -150,7 +150,7 @@ func (s sqliteRepository) SessionExists(ctx context.Context, dbctx DBContext, si
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
 	} else if err != nil {
-		return false, fmt.Errorf("check session %q exists error: %w", sid, err)
+		return false, aerr.Wrapf(err, "check session exists failed").WithMeta("sid", sid)
 	}
 
 	return true, nil

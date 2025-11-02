@@ -43,8 +43,13 @@ func (d devicePages) list(ctx context.Context, w http.ResponseWriter, r *http.Re
 
 	devices, err := d.deviceSrv.ListDevices(ctx, user)
 	if err != nil {
-		logger.Error().Err(err).Str("mod", "web").Msg("get list devices error")
-		internal.WriteError(w, r, http.StatusInternalServerError, nil)
+		if internal.CheckAndWriteError(w, r, err) {
+			logger.Warn().Err(err).Str("mod", "web").Msg("list devices error")
+		} else {
+			logger.Debug().Err(err).Str("mod", "web").Msg("list devices error")
+		}
+
+		return
 	}
 
 	data := struct {
@@ -55,6 +60,6 @@ func (d devicePages) list(ctx context.Context, w http.ResponseWriter, r *http.Re
 
 	if err := d.template.executeTemplate(w, "devices.tmpl", &data); err != nil {
 		logger.Error().Err(err).Str("mod", "web").Msg("execute template error")
-		internal.WriteError(w, r, http.StatusInternalServerError, nil)
+		internal.WriteError(w, r, http.StatusInternalServerError, "")
 	}
 }

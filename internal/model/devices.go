@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
@@ -54,7 +55,7 @@ func (d Device) Validate() error {
 	}
 
 	if len(errs) > 0 {
-		return fmt.Errorf("%w, %s", ErrInvalidData, strings.Join(errs, ";"))
+		return aerr.New(strings.Join(errs, ";")).WithTag(aerr.ValidationError)
 	}
 
 	return nil

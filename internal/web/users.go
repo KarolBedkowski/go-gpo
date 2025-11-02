@@ -53,7 +53,7 @@ func (u userPages) changePassword(
 	if r.Method == http.MethodPost {
 		if err := r.ParseForm(); err != nil {
 			logger.Info().Err(err).Str("mod", "web").Msg("parse form error")
-			internal.WriteError(w, r, http.StatusBadRequest, nil)
+			internal.WriteError(w, r, http.StatusBadRequest, "")
 
 			return
 		}
@@ -63,7 +63,7 @@ func (u userPages) changePassword(
 
 	if err := u.template.executeTemplate(w, "users_change_password.tmpl", &data); err != nil {
 		logger.Error().Err(err).Str("mod", "web").Msg("execute template error")
-		internal.WriteError(w, r, http.StatusInternalServerError, nil)
+		internal.WriteError(w, r, http.StatusInternalServerError, "")
 	}
 }
 

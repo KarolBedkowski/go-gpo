@@ -7,7 +7,6 @@ package api
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"strconv"
 	"time"
@@ -69,21 +68,12 @@ func (sr subscriptionsResource) devSubscriptions(
 	}
 
 	added, removed, err := sr.subsSrv.GetDeviceSubscriptionChanges(ctx, user, deviceid, sinceTS)
-	switch {
-	case err == nil:
-	case errors.Is(err, service.ErrUnknownUser):
-		logger.Warn().Msgf("unknown user: %q", user)
-		internal.WriteError(w, r, http.StatusBadRequest, nil)
-
-		return
-	case errors.Is(err, service.ErrUnknownDevice):
-		logger.Debug().Msgf("unknown device: %q", deviceid)
-		internal.WriteError(w, r, http.StatusBadRequest, nil)
-
-		return
-	default:
-		logger.Warn().Err(err).Msg("get subscriptions changes error")
-		internal.WriteError(w, r, http.StatusInternalServerError, nil)
+	if err != nil {
+		if internal.CheckAndWriteError(w, r, err) {
+			logger.Warn().Err(err).Str("mod", "api").Msg("get device subscriptions changes error")
+		} else {
+			logger.Debug().Err(err).Str("mod", "api").Msg("get device subscriptions changes error")
+		}
 
 		return
 	}
@@ -112,16 +102,12 @@ func (sr subscriptionsResource) userSubscriptions(
 	user := internal.ContextUser(ctx)
 
 	subs, err := sr.subsSrv.GetUserSubscriptions(ctx, user, time.Time{})
-	switch {
-	case err == nil:
-	case errors.Is(err, service.ErrUnknownUser):
-		logger.Warn().Msgf("unknown user: %q", user)
-		internal.WriteError(w, r, http.StatusBadRequest, nil)
-
-		return
-	default:
-		logger.Warn().Err(err).Msg("get user subscriptions error")
-		internal.WriteError(w, r, http.StatusInternalServerError, nil)
+	if err != nil {
+		if internal.CheckAndWriteError(w, r, err) {
+			logger.Warn().Err(err).Str("mod", "api").Msg("get user subscriptions error")
+		} else {
+			logger.Debug().Err(err).Str("mod", "api").Msg("get user subscriptions error")
+		}
 
 		return
 	}
@@ -131,8 +117,8 @@ func (sr subscriptionsResource) userSubscriptions(
 
 	result, err := o.XML()
 	if err != nil {
-		logger.Warn().Err(err).Msg("get opml xml error")
-		internal.WriteError(w, r, http.StatusInternalServerError, nil)
+		logger.Warn().Err(err).Str("mod", "api").Msg("get opml xml error")
+		internal.WriteError(w, r, http.StatusInternalServerError, "")
 
 		return
 	}
@@ -153,7 +139,7 @@ func (sr subscriptionsResource) uploadSubscriptionChanges(
 	changes := subscriptionChangesRequest{}
 	if err := render.DecodeJSON(r.Body, &changes); err != nil {
 		logger.Debug().Err(err).Msgf("parse json error")
-		internal.WriteError(w, r, http.StatusBadRequest, nil)
+		internal.WriteError(w, r, http.StatusBadRequest, "")
 
 		return
 	}
@@ -161,17 +147,19 @@ func (sr subscriptionsResource) uploadSubscriptionChanges(
 	subChanges := model.NewSubscriptionChanges(changes.Add, changes.Remove)
 
 	if err := subChanges.Validate(); err != nil {
-		logger.Debug().Err(err).Msg("validate request error")
-		internal.WriteError(w, r, http.StatusBadRequest, nil)
+		logger.Debug().Err(err).Str("mod", "api").Msg("validate request error")
+		internal.WriteError(w, r, http.StatusBadRequest, "")
 
 		return
 	}
 
 	err := sr.subsSrv.UpdateDeviceSubscriptionChanges(ctx, user, deviceid, &subChanges)
 	if err != nil {
-		logger.Debug().Interface("changes", changes).Msg("update subscriptions data")
-		logger.Warn().Err(err).Msg("update subscriptions error")
-		internal.WriteError(w, r, http.StatusBadRequest, nil)
+		if internal.CheckAndWriteError(w, r, err) {
+			logger.Warn().Err(err).Str("mod", "api").Msg("update device subscription changes error")
+		} else {
+			logger.Debug().Err(err).Str("mod", "api").Msg("update device subscription changes error")
+		}
 
 		return
 	}

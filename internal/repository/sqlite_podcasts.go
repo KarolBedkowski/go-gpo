@@ -11,10 +11,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/rs/zerolog/log"
+	"gitlab.com/kabes/go-gpo/internal/aerr"
 )
 
 func (s sqliteRepository) ListSubscribedPodcasts(ctx context.Context, dbctx DBContext, userid int64, since time.Time,
@@ -29,7 +29,7 @@ func (s sqliteRepository) ListSubscribedPodcasts(ctx context.Context, dbctx DBCo
 			"FROM podcasts p "+
 			"WHERE p.user_id=? AND p.updated_at > ? and subscribed", userid, since)
 	if err != nil {
-		return nil, fmt.Errorf("query subscriptions error: %w", err)
+		return nil, aerr.Wrapf(err, "query podcasts failed").WithMeta("user_id", userid, "since", since)
 	}
 
 	return res, nil
@@ -47,7 +47,7 @@ func (s sqliteRepository) ListPodcasts(ctx context.Context, dbctx DBContext, use
 			"FROM podcasts p "+
 			"WHERE p.user_id=? AND p.updated_at > ?", userid, since)
 	if err != nil {
-		return nil, fmt.Errorf("query subscriptions error: %w", err)
+		return nil, aerr.Wrapf(err, "query podcasts failed").WithMeta("user_id", userid, "since", since)
 	}
 
 	return res, nil
@@ -74,7 +74,7 @@ func (s sqliteRepository) GetPodcast(
 	case errors.Is(err, sql.ErrNoRows):
 		return podcast, ErrNoData
 	default:
-		return podcast, fmt.Errorf("query podcast %q error: %w", podcasturl, err)
+		return podcast, aerr.Wrapf(err, "query podcast failed").WithMeta("podcasturl", podcasturl)
 	}
 }
 
@@ -96,12 +96,12 @@ func (s sqliteRepository) SavePodcast(ctx context.Context, dbctx DBContext, podc
 			time.Now(),
 		)
 		if err != nil {
-			return 0, fmt.Errorf("insert new podcast %q error: %w", podcast.URL, err)
+			return 0, aerr.Wrapf(err, "insert podcast failed").WithMeta("podcast_url", podcast.URL)
 		}
 
 		id, err := res.LastInsertId()
 		if err != nil {
-			return 0, fmt.Errorf("get last id for %q error: %w", podcast.URL, err)
+			return 0, aerr.Wrapf(err, "get last id failed").WithMeta("podcast_url", podcast.URL)
 		}
 
 		logger.Debug().Object("podcast", podcast).Msg("podcast created")
@@ -116,7 +116,8 @@ func (s sqliteRepository) SavePodcast(ctx context.Context, dbctx DBContext, podc
 		"UPDATE podcasts SET subscribed=?, title=?, url=?, updated_at=? WHERE id=?",
 		podcast.Subscribed, podcast.Title, podcast.URL, time.Now(), podcast.ID)
 	if err != nil {
-		return 0, fmt.Errorf("update subscriptions %d error: %w", podcast.ID, err)
+		return 0, aerr.Wrapf(err, "update podcast failed").
+			WithMeta("podcast_id", podcast.ID, "podcast_url", podcast.URL)
 	}
 
 	return podcast.ID, nil

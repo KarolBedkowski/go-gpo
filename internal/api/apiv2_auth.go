@@ -50,11 +50,11 @@ func (ar authResource) logout(ctx context.Context, w http.ResponseWriter, r *htt
 	user := internal.ContextUser(ctx)
 	username := internal.SessionUser(sess)
 
-	logger.Info().Str("user", user).Msg("logout user")
+	logger.Info().Str("user", user).Str("mod", "api").Msg("logout user")
 
 	if username != "" && user != username {
 		logger.Info().Str("user", user).Msgf("logout user error; session user %q not match user", username)
-		internal.WriteError(w, r, http.StatusBadRequest, nil)
+		internal.WriteError(w, r, http.StatusBadRequest, "")
 
 		return
 	}

@@ -11,10 +11,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/rs/zerolog/log"
+	"gitlab.com/kabes/go-gpo/internal/aerr"
 )
 
 func (s sqliteRepository) GetUser(ctx context.Context, dbctx DBContext, username string) (UserDB, error) {
@@ -34,7 +34,7 @@ func (s sqliteRepository) GetUser(ctx context.Context, dbctx DBContext, username
 	case errors.Is(err, sql.ErrNoRows):
 		return user, ErrNoData
 	default:
-		return user, fmt.Errorf("get user error: %w", err)
+		return user, aerr.Wrapf(err, "select user failed").WithTag(aerr.InternalError)
 	}
 }
 
@@ -49,12 +49,12 @@ func (s sqliteRepository) SaveUser(ctx context.Context, dbctx DBContext, user *U
 				"VALUES(?, ?, ?, ?, ?, ?)",
 			user.Username, user.Password, user.Email, user.Name, time.Now(), time.Now())
 		if err != nil {
-			return 0, fmt.Errorf("insert new user error: %w", err)
+			return 0, aerr.Wrapf(err, "insert user failed").WithTag(aerr.InternalError)
 		}
 
 		id, err := res.LastInsertId()
 		if err != nil {
-			return 0, fmt.Errorf("get last id error: %w", err)
+			return 0, aerr.Wrapf(err, "get insert id failed").WithTag(aerr.InternalError)
 		}
 
 		return id, nil
@@ -67,7 +67,7 @@ func (s sqliteRepository) SaveUser(ctx context.Context, dbctx DBContext, user *U
 		"UPDATE users SET password=?, email=?, name=?, updated_at=? WHERE id=?",
 		user.Password, user.Email, user.Name, time.Now(), user.ID)
 	if err != nil {
-		return user.ID, fmt.Errorf("update user error: %w", err)
+		return 0, aerr.Wrapf(err, "update user failed").WithTag(aerr.InternalError)
 	}
 
 	return user.ID, nil
@@ -87,7 +87,7 @@ func (s sqliteRepository) ListUsers(ctx context.Context, dbctx DBContext, active
 
 	err := dbctx.SelectContext(ctx, &users, sql)
 	if err != nil {
-		return nil, fmt.Errorf("get user error: %w", err)
+		return nil, aerr.Wrapf(err, "select users failed").WithTag(aerr.InternalError)
 	}
 
 	return users, nil

@@ -10,11 +10,11 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	"slices"
 	"time"
 
 	"github.com/samber/do/v2"
+	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/repository"
@@ -42,14 +42,14 @@ func (e *Episodes) GetPodcastEpisodes(ctx context.Context, username, podcast, de
 ) ([]model.Episode, error) {
 	conn, err := e.db.GetConnection(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("get connection error: %w", err)
+		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
 	defer conn.Close()
 
 	actions, err := e.getEpisodesActions(ctx, conn, username, podcast, devicename, time.Time{}, false)
 	if err != nil {
-		return nil, fmt.Errorf("get episodes error: %w", err)
+		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
 	if len(actions) == 0 {
@@ -92,7 +92,7 @@ func (e *Episodes) SaveEpisodesActions(ctx context.Context, username string, act
 		if errors.Is(err, repository.ErrNoData) {
 			return ErrUnknownUser
 		} else if err != nil {
-			return fmt.Errorf("get user error: %w", err)
+			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
 		episodes := make([]repository.EpisodeDB, 0, len(action))
@@ -112,16 +112,13 @@ func (e *Episodes) SaveEpisodesActions(ctx context.Context, username string, act
 		}
 
 		if err := e.episodesRepo.SaveEpisode(ctx, dbctx, user.ID, episodes...); err != nil {
-			return fmt.Errorf("save episodes error: %w", err)
+			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
 		return nil
 	})
-	if err != nil {
-		return fmt.Errorf("save episodes error: %w", err)
-	}
 
-	return nil
+	return err //nolint:wrapcheck
 }
 
 func (e *Episodes) GetEpisodesActions(ctx context.Context, username, podcast, devicename string,
@@ -129,14 +126,14 @@ func (e *Episodes) GetEpisodesActions(ctx context.Context, username, podcast, de
 ) ([]model.Episode, error) {
 	conn, err := e.db.GetConnection(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("get connection error: %w", err)
+		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
 	defer conn.Close()
 
 	episodes, err := e.getEpisodesActions(ctx, conn, username, podcast, devicename, since, aggregated)
 	if err != nil {
-		return nil, fmt.Errorf("get episodes error: %w", err)
+		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
 	res := make([]model.Episode, 0, len(episodes))
@@ -168,12 +165,12 @@ func (e *Episodes) GetEpisodesUpdates(ctx context.Context, username, devicename 
 
 	conn, err := e.db.GetConnection(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("get connection error: %w", err)
+		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
 	episodes, err := e.getEpisodesActions(ctx, conn, username, "", devicename, since, true)
 	if err != nil {
-		return nil, fmt.Errorf("get episodes error: %w", err)
+		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
 	res := make([]model.EpisodeUpdate, 0, len(episodes))
@@ -205,15 +202,17 @@ func (e *Episodes) getEpisodesActions(
 	if errors.Is(err, repository.ErrNoData) {
 		return nil, ErrUnknownUser
 	} else if err != nil {
-		return nil, fmt.Errorf("get user error: %w", err)
+		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
 	var deviceid int64
 
 	if devicename != "" {
 		device, err := e.devicesRepo.GetDevice(ctx, dbctx, user.ID, devicename)
-		if err != nil {
+		if errors.Is(err, repository.ErrNoData) {
 			return nil, ErrUnknownDevice
+		} else if err != nil {
+			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
 		deviceid = device.ID
@@ -223,8 +222,10 @@ func (e *Episodes) getEpisodesActions(
 
 	if podcast != "" {
 		p, err := e.podcastsRepo.GetPodcast(ctx, dbctx, user.ID, podcast)
-		if err != nil {
+		if errors.Is(err, repository.ErrNoData) {
 			return nil, ErrUnknownPodcast
+		} else if err != nil {
+			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
 		podcastid = p.ID
@@ -232,7 +233,7 @@ func (e *Episodes) getEpisodesActions(
 
 	episodes, err := e.episodesRepo.ListEpisodes(ctx, dbctx, user.ID, deviceid, podcastid, since, aggregated)
 	if err != nil {
-		return nil, fmt.Errorf("get episodes error: %w", err)
+		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
 	return episodes, nil

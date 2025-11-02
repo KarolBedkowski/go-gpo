@@ -7,7 +7,6 @@ package api
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -59,12 +58,10 @@ func (s *simpleResource) downloadAllSubscriptions(
 
 	subs, err := s.subServ.GetUserSubscriptions(ctx, user, time.Time{})
 	if err != nil {
-		if errors.Is(err, service.ErrUnknownUser) {
-			logger.Warn().Msgf("unknown user: %q", user)
-			internal.WriteError(w, r, http.StatusBadRequest, nil)
+		if internal.CheckAndWriteError(w, r, err) {
+			logger.Warn().Err(err).Str("mod", "api").Msg("get user subscriptions error")
 		} else {
-			logger.Warn().Err(err).Msg("update device error")
-			internal.WriteError(w, r, http.StatusInternalServerError, nil)
+			logger.Debug().Err(err).Str("mod", "api").Msg("get user subscriptions error")
 		}
 
 		return
@@ -77,8 +74,8 @@ func (s *simpleResource) downloadAllSubscriptions(
 
 		result, err := o.XML()
 		if err != nil {
-			logger.Warn().Err(err).Msg("get opml xml error")
-			internal.WriteError(w, r, http.StatusInternalServerError, nil)
+			logger.Warn().Err(err).Str("mod", "api").Msg("get opml xml error")
+			internal.WriteError(w, r, http.StatusBadRequest, "invalid opml content")
 
 			return
 		}
@@ -93,7 +90,7 @@ func (s *simpleResource) downloadAllSubscriptions(
 		render.PlainText(w, r, strings.Join(subs, "\n"))
 	default:
 		logger.Info().Msgf("unknown format %q", format)
-		internal.WriteError(w, r, http.StatusBadRequest, nil)
+		internal.WriteError(w, r, http.StatusNotFound, "")
 	}
 }
 
@@ -107,21 +104,12 @@ func (s *simpleResource) downloadSubscriptions(
 	deviceid := internal.ContextDevice(ctx)
 
 	subs, err := s.subServ.GetDeviceSubscriptions(ctx, user, deviceid, time.Time{})
-	switch {
-	case err == nil:
-	case errors.Is(err, service.ErrUnknownUser):
-		logger.Warn().Msgf("unknown user: %q", user)
-		internal.WriteError(w, r, http.StatusBadRequest, nil)
-
-		return
-	case errors.Is(err, service.ErrUnknownDevice):
-		logger.Debug().Msgf("unknown device: %q", deviceid)
-		internal.WriteError(w, r, http.StatusBadRequest, nil)
-
-		return
-	default:
-		logger.Warn().Err(err).Msg("get device subscriptions failed")
-		internal.WriteError(w, r, http.StatusInternalServerError, nil)
+	if err != nil {
+		if internal.CheckAndWriteError(w, r, err) {
+			logger.Warn().Err(err).Str("mod", "api").Msg("get device subscriptions error")
+		} else {
+			logger.Debug().Err(err).Str("mod", "api").Msg("get device subscriptions error")
+		}
 
 		return
 	}
@@ -130,8 +118,8 @@ func (s *simpleResource) downloadSubscriptions(
 	case "opml":
 		result, err := formatOMPL(subs)
 		if err != nil {
-			logger.Warn().Err(err).Msg("build opml error")
-			internal.WriteError(w, r, http.StatusInternalServerError, nil)
+			logger.Warn().Err(err).Str("mod", "api").Msg("build opml error")
+			internal.WriteError(w, r, http.StatusInternalServerError, "")
 
 			return
 		}
@@ -146,7 +134,7 @@ func (s *simpleResource) downloadSubscriptions(
 		render.PlainText(w, r, strings.Join(subs, "\n"))
 	default:
 		logger.Info().Msgf("unknown format %q", format)
-		internal.WriteError(w, r, http.StatusBadRequest, nil)
+		internal.WriteError(w, r, http.StatusNotFound, "")
 	}
 }
 
@@ -179,23 +167,25 @@ func (s *simpleResource) uploadSubscriptions(
 		}
 	default:
 		logger.Debug().Msgf("unknown format %q", format)
-		internal.WriteError(w, r, http.StatusBadRequest, nil)
+		internal.WriteError(w, r, http.StatusNotFound, "")
 
 		return
 	}
 
 	if err != nil {
 		logger.Debug().Err(err).Msgf("parse %q error", format)
-		internal.WriteError(w, r, http.StatusBadRequest, nil)
+		internal.WriteError(w, r, http.StatusBadRequest, "invalid request data")
 
 		return
 	}
 
 	subscribed := model.NewSubscribedURLS(subs)
 	if err := s.subServ.UpdateDeviceSubscriptions(ctx, user, deviceid, subscribed, time.Now()); err != nil {
-		logger.Debug().Strs("subs", subs).Msg("update subscriptions data")
-		logger.Warn().Err(err).Msg("update subscriptions error")
-		internal.WriteError(w, r, http.StatusInternalServerError, nil)
+		if internal.CheckAndWriteError(w, r, err) {
+			logger.Warn().Err(err).Str("mod", "api").Msg("update subscriptions error")
+		} else {
+			logger.Debug().Err(err).Str("mod", "api").Msg("update subscriptions error")
+		}
 	} else {
 		w.WriteHeader(http.StatusOK)
 	}

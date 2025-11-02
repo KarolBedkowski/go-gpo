@@ -53,7 +53,7 @@ func (u updatesResource) getUpdates(
 	since, err := internal.GetSinceParameter(r)
 	if err != nil {
 		logger.Debug().Err(err).Msgf("parse since error")
-		internal.WriteError(w, r, http.StatusBadRequest, nil)
+		internal.WriteError(w, r, http.StatusBadRequest, "")
 
 		return
 	}
@@ -62,16 +62,22 @@ func (u updatesResource) getUpdates(
 
 	added, removed, err := u.subsSrv.GetSubscriptionChanges(ctx, user, deviceid, since)
 	if err != nil {
-		logger.Warn().Err(err).Msgf("load subscription changes error")
-		internal.WriteError(w, r, http.StatusInternalServerError, nil)
+		if internal.CheckAndWriteError(w, r, err) {
+			logger.Warn().Err(err).Str("mod", "api").Msg("get subscription changes error")
+		} else {
+			logger.Debug().Err(err).Str("mod", "api").Msg("get subscription changes error")
+		}
 
 		return
 	}
 
 	updates, err := u.episodesSrv.GetEpisodesUpdates(ctx, user, deviceid, since, includeActions)
 	if err != nil {
-		logger.Warn().Err(err).Msgf("load episodes updates error")
-		internal.WriteError(w, r, http.StatusInternalServerError, nil)
+		if internal.CheckAndWriteError(w, r, err) {
+			logger.Warn().Err(err).Str("mod", "api").Msg("get episodes updates error")
+		} else {
+			logger.Debug().Err(err).Str("mod", "api").Msg("get episodes updates error")
+		}
 
 		return
 	}

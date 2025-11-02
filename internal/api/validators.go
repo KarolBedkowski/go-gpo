@@ -8,22 +8,9 @@ package api
 //
 
 import (
-	"fmt"
 	"net/url"
 	"strings"
 )
-
-type ValidationError struct {
-	msg string
-}
-
-func NewValidationError(msg string, args ...any) ValidationError {
-	return ValidationError{fmt.Sprintf(msg, args...)}
-}
-
-func (v ValidationError) Error() string {
-	return v.msg
-}
 
 // --------------------------------
 

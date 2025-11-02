@@ -70,7 +70,7 @@ func (w *WEB) indexPage(ctx context.Context, writer http.ResponseWriter, r *http
 
 	if err := w.template.executeTemplate(writer, "index.tmpl", nil); err != nil {
 		logger.Error().Err(err).Str("mod", "web").Msg("execute template error")
-		internal.WriteError(writer, r, http.StatusInternalServerError, nil)
+		internal.WriteError(writer, r, http.StatusInternalServerError, "")
 	}
 }
 
