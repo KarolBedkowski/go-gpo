@@ -18,7 +18,7 @@ import (
 )
 
 func (s sqliteRepository) GetUser(ctx context.Context, dbctx DBContext, username string) (UserDB, error) {
-	logger := log.Ctx(ctx)
+	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_user").Logger()
 	logger.Debug().Str("user_name", username).Msg("get user")
 
 	user := UserDB{}
@@ -39,7 +39,7 @@ func (s sqliteRepository) GetUser(ctx context.Context, dbctx DBContext, username
 }
 
 func (s sqliteRepository) SaveUser(ctx context.Context, dbctx DBContext, user *UserDB) (int64, error) {
-	logger := log.Ctx(ctx)
+	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_user").Logger()
 
 	if user.ID == 0 {
 		logger.Debug().Object("user", user).Msg("insert user")
@@ -75,7 +75,7 @@ func (s sqliteRepository) SaveUser(ctx context.Context, dbctx DBContext, user *U
 
 // ListUsers get all users from database.
 func (s sqliteRepository) ListUsers(ctx context.Context, dbctx DBContext, activeOnly bool) ([]UserDB, error) {
-	logger := log.Ctx(ctx)
+	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_user").Logger()
 	logger.Debug().Msgf("list users, active_only=%v", activeOnly)
 
 	var users []UserDB

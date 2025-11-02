@@ -23,7 +23,7 @@ func (s sqliteRepository) GetDevice(
 	userid int64,
 	devicename string,
 ) (DeviceDB, error) {
-	logger := log.Ctx(ctx)
+	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_dev").Logger()
 	logger.Debug().Int64("user_id", userid).Str("device_name", devicename).Msg("get device")
 
 	device := DeviceDB{}
@@ -52,7 +52,7 @@ func (s sqliteRepository) GetDevice(
 }
 
 func (s sqliteRepository) SaveDevice(ctx context.Context, dbctx DBContext, device *DeviceDB) (int64, error) {
-	logger := log.Ctx(ctx)
+	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_dev").Logger()
 
 	if device.ID == 0 {
 		logger.Debug().Object("device", device).Msg("insert device")
@@ -86,7 +86,7 @@ func (s sqliteRepository) SaveDevice(ctx context.Context, dbctx DBContext, devic
 }
 
 func (s sqliteRepository) ListDevices(ctx context.Context, dbctx DBContext, userid int64) (DevicesDB, error) {
-	logger := log.Ctx(ctx)
+	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_dev").Logger()
 	logger.Debug().Int64("user_id", userid).Msg("list devices - count subscriptions")
 
 	// all device have the same number of subscriptions

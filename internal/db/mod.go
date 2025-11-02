@@ -41,7 +41,7 @@ func (r *Database) Connect(ctx context.Context, driver, connstr string) error {
 		return err
 	}
 
-	logger := log.Ctx(ctx)
+	logger := log.Ctx(ctx).With().Str("mod", "db").Logger()
 	logger.Info().Msgf("connecting to %s/%s", driver, connstr)
 
 	r.db, err = sqlx.Open(driver, connstr)
@@ -70,7 +70,7 @@ func (r *Database) Shutdown(ctx context.Context) error {
 	}
 
 	logger := log.Ctx(ctx)
-	logger.Debug().Msg("db closed")
+	logger.Debug().Str("mod", "db").Msg("db closed")
 
 	return nil
 }

@@ -69,7 +69,7 @@ func (w *WEB) indexPage(ctx context.Context, writer http.ResponseWriter, r *http
 	_ = ctx
 
 	if err := w.template.executeTemplate(writer, "index.tmpl", nil); err != nil {
-		logger.Error().Err(err).Msg("execute template error")
+		logger.Error().Err(err).Str("mod", "web").Msg("execute template error")
 		internal.WriteError(writer, r, http.StatusInternalServerError, nil)
 	}
 }
@@ -80,7 +80,7 @@ type templates map[string]*template.Template
 
 // newTemplate loads templates.
 func newTemplates(webroot string) templates {
-	logger := log.Logger
+	logger := log.Logger.With().Str("mod", "web").Logger()
 	funcs := template.FuncMap{"webroot": func() string { return webroot }}
 	base := template.Must(template.New("").Funcs(funcs).ParseFS(templatesFS, "templates/_base*"))
 

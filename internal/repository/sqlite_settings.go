@@ -18,7 +18,7 @@ import (
 
 func (s sqliteRepository) GetSettings(ctx context.Context, db DBContext, userid int64, scope, key string,
 ) (SettingsDB, error) {
-	logger := log.Ctx(ctx)
+	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_settings").Logger()
 	logger.Debug().Int64("user_id", userid).Str("settings_scope", scope).Str("settings_key", key).Msg("get settings")
 
 	res := SettingsDB{}
@@ -42,7 +42,7 @@ func (s sqliteRepository) GetSettings(ctx context.Context, db DBContext, userid 
 }
 
 func (s sqliteRepository) SaveSettings(ctx context.Context, db DBContext, sett *SettingsDB) error {
-	logger := log.Ctx(ctx)
+	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_settings").Logger()
 	logger.Debug().Object("settings", sett).Msg("save settings")
 
 	_, err := db.ExecContext(

@@ -27,7 +27,7 @@ func createInjector(ctx context.Context) *do.RootScope {
 	injector := do.NewWithOpts(
 		&do.InjectorOpts{
 			Logf: func(format string, args ...any) {
-				logger.Debug().Msgf(format, args...)
+				logger.Debug().Str("mod", "do").Msgf(format, args...)
 			},
 		},
 		service.Package,
@@ -45,13 +45,13 @@ func enableDoDebug(ctx context.Context, injector *do.RootScope) {
 	fmt.Println(explanation.String())
 
 	// injector.AddAfterInvocationHook(func(_ *do.Scope, serviceName string, err error) {
-	// 	logger.Debug().Err(err).Msgf("service %q after invocation", serviceName)
+	// 	logger.Debug().Str("mod", "do").Err(err).Msgf("service %q after invocation", serviceName)
 	// })
 	// injector.AddBeforeShutdownHook(func(_ *do.Scope, serviceName string) {
-	// 	logger.Debug().Msgf("service %q start shutdown", serviceName)
+	// 	logger.Debug().Str("mod", "do").Msgf("service %q start shutdown", serviceName)
 	// })
 	injector.AddAfterShutdownHook(func(_ *do.Scope, serviceName string, err error) {
-		logger.Debug().Err(err).Msgf("service %q shutdown complete", serviceName)
+		logger.Debug().Str("mod", "do").Err(err).Msgf("service %q shutdown complete", serviceName)
 	})
 }
 

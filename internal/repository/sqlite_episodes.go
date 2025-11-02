@@ -20,7 +20,7 @@ import (
 func (s sqliteRepository) ListEpisodes(
 	ctx context.Context, dbctx DBContext, userid, deviceid, podcastid int64, since time.Time, aggregated bool,
 ) ([]EpisodeDB, error) {
-	logger := log.Ctx(ctx)
+	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_episodes").Logger()
 	logger.Debug().Int64("user_id", userid).Int64("podcast_id", podcastid).Int64("device_id", deviceid).
 		Msgf("get episodes since=%s aggregated=%v", since, aggregated)
 
@@ -67,7 +67,7 @@ func (s sqliteRepository) ListEpisodes(
 }
 
 func (s sqliteRepository) SaveEpisode(ctx context.Context, dbctx DBContext, userid int64, episode ...EpisodeDB) error {
-	logger := log.Ctx(ctx)
+	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_episodes").Logger()
 	logger.Debug().Int64("user_id", userid).Msgf("save episode")
 
 	podcasts, err := s.ListSubscribedPodcasts(ctx, dbctx, userid, time.Time{})
@@ -125,7 +125,7 @@ func (s sqliteRepository) SaveEpisode(ctx context.Context, dbctx DBContext, user
 }
 
 func (s sqliteRepository) saveEpisode(ctx context.Context, dbctx DBContext, episode EpisodeDB) error {
-	logger := log.Ctx(ctx)
+	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_episodes").Logger()
 	logger.Debug().Object("episode", episode).Msg("save episode")
 
 	_, err := dbctx.ExecContext(
