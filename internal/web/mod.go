@@ -46,7 +46,7 @@ func New(i do.Injector) (WEB, error) {
 		episodePages: do.MustInvoke[episodePages](i),
 		podcastPages: do.MustInvoke[podcastPages](i),
 		webroot:      webroot,
-		template:     newTemplates(webroot),
+		template:     do.MustInvoke[templates](i),
 	}, nil
 }
 

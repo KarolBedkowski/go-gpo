@@ -9,6 +9,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -40,33 +41,23 @@ const (
 )
 
 type Server struct {
-	sessionMW func(http.Handler) http.Handler
-	authMW    authenticator
-	api       gpoapi.API
-	web       gpoweb.WEB
-
-	// for debug only
-	injector do.Injector
+	router chi.Router
 
 	s *http.Server
 }
 
 func New(injector do.Injector) (Server, error) {
+	cfg := do.MustInvoke[*Configuration](injector)
+
 	sessionMW, err := newSessionMiddleware(injector)
 	if err != nil {
 		panic(err)
 	}
 
-	return Server{
-		sessionMW: sessionMW,
-		authMW:    do.MustInvoke[authenticator](injector),
-		api:       do.MustInvoke[gpoapi.API](injector),
-		web:       do.MustInvoke[gpoweb.WEB](injector),
-		injector:  injector,
-	}, nil
-}
+	authMW := do.MustInvoke[authenticator](injector)
+	api := do.MustInvoke[gpoapi.API](injector)
+	web := do.MustInvoke[gpoweb.WEB](injector)
 
-func (s *Server) Start(ctx context.Context, cfg *Configuration) error {
 	// routes
 	router := chi.NewRouter()
 	router.Use(middleware.Heartbeat(cfg.WebRoot + "/ping"))
@@ -79,42 +70,47 @@ func (s *Server) Start(ctx context.Context, cfg *Configuration) error {
 		group.Use(newLogMiddleware(cfg))
 		group.Use(newRecoverMiddleware)
 		group.Use(middleware.CleanPath)
-		group.Use(s.sessionMW)
-		group.Use(s.authMW.handle)
+		group.Use(sessionMW)
+		group.Use(authMW.handle)
 		group.Use(AuthenticatedOnly)
 		group.
 			With(newPromMiddleware("api", nil).Handler).
 			With(middleware.NoCache).
-			Mount(cfg.WebRoot+"/", s.api.Routes())
+			Mount(cfg.WebRoot+"/", api.Routes())
 		group.
 			With(newPromMiddleware("web", nil).Handler).
-			Mount(cfg.WebRoot+"/web", s.web.Routes())
-
-		group.Get(cfg.WebRoot+"/", func(w http.ResponseWriter, r *http.Request) {
-			http.Redirect(w, r, cfg.WebRoot+"/web", http.StatusMovedPermanently)
-		})
+			Mount(cfg.WebRoot+"/web", web.Routes())
+		group.
+			Get(cfg.WebRoot+"/", func(w http.ResponseWriter, r *http.Request) {
+				http.Redirect(w, r, cfg.WebRoot+"/web", http.StatusMovedPermanently)
+			})
 	})
 
 	if cfg.DebugFlags.HasFlag(config.DebugDo) {
-		dochi.Use(router, cfg.WebRoot+"/debug/do", s.injector)
+		dochi.Use(router, cfg.WebRoot+"/debug/do", injector)
 	}
 
 	if cfg.DebugFlags.HasFlag(config.DebugGo) {
 		router.Mount(cfg.WebRoot+"/debug", middleware.Profiler())
 	}
 
-	logRoutes(ctx, router)
+	return Server{
+		router: router,
+		s: &http.Server{
+			Addr:           cfg.Listen,
+			Handler:        router,
+			ReadTimeout:    defaultReadTimeout,
+			WriteTimeout:   defaultWriteTimeout,
+			MaxHeaderBytes: defaultMaxHeaderBytes,
+		},
+	}, nil
+}
 
-	s.s = &http.Server{
-		Addr:           cfg.Listen,
-		Handler:        router,
-		ReadTimeout:    defaultReadTimeout,
-		WriteTimeout:   defaultWriteTimeout,
-		MaxHeaderBytes: defaultMaxHeaderBytes,
-	}
+func (s *Server) Start(ctx context.Context) error {
+	logRoutes(ctx, s.router)
 
-	if err := s.s.ListenAndServe(); err != nil {
-		return fmt.Errorf("start listen error: %w", err)
+	if err := s.s.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		return fmt.Errorf("listen error: %w", err)
 	}
 
 	return nil

@@ -9,6 +9,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os/signal"
 	"strings"
@@ -16,11 +17,14 @@ import (
 
 	"github.com/Merovius/systemd"
 	"github.com/oklog/run"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/do/v2"
+	gpoapi "gitlab.com/kabes/go-gpo/internal/api"
 	"gitlab.com/kabes/go-gpo/internal/config"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/server"
+	gpoweb "gitlab.com/kabes/go-gpo/internal/web"
 )
 
 type Server struct {
@@ -30,24 +34,22 @@ type Server struct {
 	DebugFlags config.DebugFlags
 }
 
+func (s *Server) Validate() error {
+	s.WebRoot = strings.TrimSuffix(s.WebRoot, "/")
+
+	return nil
+}
+
 func (s *Server) Start(ctx context.Context) error {
 	logger := log.Ctx(ctx)
 	logger.Log().Msgf("Starting server on %q...", s.Listen)
 
-	injector := createInjector(ctx)
+	s.startSystemdWatchdog(logger)
+
+	injector := s.createInjector(createInjector(ctx))
 
 	if s.DebugFlags.HasFlag("do") {
-		explainDoInjecor(injector)
-	}
-
-	s.WebRoot = strings.TrimSuffix(s.WebRoot, "/")
-
-	do.ProvideNamedValue(injector, "server.webroot", s.WebRoot)
-
-	if ok, dur, err := systemd.AutoWatchdog(); ok {
-		logger.Info().Msgf("systemd autowatchdog started; duration=%s", dur)
-	} else if err != nil {
-		logger.Warn().Err(err).Msg("systemd autowatchdog start error")
+		explainDoInjecor(injector.RootScope())
 	}
 
 	db := do.MustInvoke[*db.Database](injector)
@@ -59,33 +61,21 @@ func (s *Server) Start(ctx context.Context) error {
 	defer cancel()
 
 	var group run.Group
+	group.Add(run.ContextHandler(ctx))
 
 	srv := do.MustInvoke[server.Server](injector)
 	group.Add(func() error {
-		cfg := server.Configuration{
-			Listen:     s.Listen,
-			DebugFlags: s.DebugFlags,
-			WebRoot:    s.WebRoot,
-		}
-		if err := srv.Start(ctx, &cfg); err != nil {
+		if err := srv.Start(ctx); err != nil {
 			return fmt.Errorf("start server error: %w", err)
 		}
 
 		return nil
 	}, srv.Stop)
-	group.Add(
-		func() error {
-			<-ctx.Done()
-			logger.Warn().Msg("stopping")
 
-			return nil
-		},
-		func(_ error) {},
-	)
 	systemd.NotifyReady()           //nolint:errcheck
 	systemd.NotifyStatus("running") //nolint:errcheck
 
-	if err := group.Run(); err != nil {
+	if err := group.Run(); err != nil && !errors.Is(err, context.Canceled) {
 		return fmt.Errorf("start failed: %w", err)
 	}
 
@@ -94,4 +84,29 @@ func (s *Server) Start(ctx context.Context) error {
 	systemd.NotifyStatus("stopped") //nolint:errcheck
 
 	return nil
+}
+
+func (*Server) startSystemdWatchdog(logger *zerolog.Logger) {
+	if ok, dur, err := systemd.AutoWatchdog(); ok {
+		logger.Info().Msgf("systemd autowatchdog started; duration=%s", dur)
+	} else if err != nil {
+		logger.Warn().Err(err).Msg("systemd autowatchdog start error")
+	}
+}
+
+func (s *Server) createInjector(root do.Injector) do.Injector {
+	injector := root.Scope("server",
+		gpoweb.Package,
+		gpoapi.Package,
+		server.Package,
+	)
+
+	do.ProvideNamedValue(injector, "server.webroot", s.WebRoot)
+	do.ProvideValue(injector, &server.Configuration{
+		Listen:     s.Listen,
+		DebugFlags: s.DebugFlags,
+		WebRoot:    s.WebRoot,
+	})
+
+	return injector
 }
