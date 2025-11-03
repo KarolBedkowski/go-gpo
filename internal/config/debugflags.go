@@ -17,10 +17,19 @@ import (
 type DebugFlag string
 
 const (
+	// DebugMsgBody enable logging request and response body and headers.
 	DebugMsgBody = DebugFlag("logbody")
-	DebugDo      = DebugFlag("do")
-	DebugGo      = DebugFlag("go")
-	DebugRouter  = DebugFlag("router")
+	// DebugDo enable logging samber/do and /debug/do endpoint.
+	DebugDo = DebugFlag("do")
+	// DebugGo enable /debug/pprof endpoint.
+	DebugGo = DebugFlag("go")
+	// DebugRouter show defined routes.
+	DebugRouter = DebugFlag("router")
+
+	// DebugAll enable all debug flags.
+	DebugAll = DebugFlag("all")
+	// DebugNone disable all debug flags.
+	DebugNone = DebugFlag("")
 )
 
 type DebugFlags []string
