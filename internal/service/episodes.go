@@ -168,6 +168,8 @@ func (e *Episodes) GetEpisodesUpdates(ctx context.Context, username, devicename 
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
+	defer conn.Close()
+
 	episodes, err := e.getEpisodesActions(ctx, conn, username, "", devicename, since, true)
 	if err != nil {
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)
