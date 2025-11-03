@@ -6,6 +6,8 @@ import (
 	"maps"
 	"runtime"
 	"slices"
+	"strconv"
+	"strings"
 
 	"github.com/rs/zerolog"
 )
@@ -17,18 +19,18 @@ const (
 )
 
 type AppError struct {
-	location string
-	err      error
-	tags     []string
-	msg      string
-	userMsg  string
-	meta     map[string]any
+	err     error
+	tags    []string
+	msg     string
+	userMsg string
+	meta    map[string]any
+	stack   []string
 }
 
 func New(msg string) *AppError {
 	return &AppError{
-		location: getLocation(),
-		msg:      msg,
+		stack: getStack(),
+		msg:   msg,
 	}
 }
 
@@ -38,8 +40,8 @@ func NewSimple(msg string) *AppError {
 
 func Newf(msg string, args ...any) *AppError {
 	return &AppError{
-		location: getLocation(),
-		msg:      fmt.Sprintf(msg, args...),
+		stack: getStack(),
+		msg:   fmt.Sprintf(msg, args...),
 	}
 }
 
@@ -49,8 +51,8 @@ func Wrap(err error) *AppError {
 	}
 
 	return &AppError{
-		location: getLocation(),
-		err:      err,
+		stack: getStack(),
+		err:   err,
 	}
 }
 
@@ -60,9 +62,9 @@ func Wrapf(err error, msg string, args ...any) *AppError {
 	}
 
 	return &AppError{
-		location: getLocation(),
-		err:      err,
-		msg:      fmt.Sprintf(msg, args...),
+		stack: getStack(),
+		err:   err,
+		msg:   fmt.Sprintf(msg, args...),
 	}
 }
 
@@ -179,12 +181,12 @@ func (a *AppError) Clone() *AppError {
 	}
 
 	return &AppError{
-		location: getLocation(),
-		msg:      a.msg,
-		tags:     slices.Clone(a.tags),
-		userMsg:  a.userMsg,
-		meta:     maps.Clone(a.meta),
-		err:      a.err,
+		stack:   getStack(),
+		msg:     a.msg,
+		tags:    slices.Clone(a.tags),
+		userMsg: a.userMsg,
+		meta:    maps.Clone(a.meta),
+		err:     a.err,
 	}
 }
 
@@ -197,12 +199,12 @@ func ApplyFor(aerr *AppError, err error) *AppError {
 	}
 
 	return &AppError{
-		location: getLocation(),
-		msg:      aerr.msg,
-		tags:     slices.Clone(aerr.tags),
-		userMsg:  aerr.userMsg,
-		meta:     maps.Clone(aerr.meta),
-		err:      err,
+		stack:   getStack(),
+		msg:     aerr.msg,
+		tags:    slices.Clone(aerr.tags),
+		userMsg: aerr.userMsg,
+		meta:    maps.Clone(aerr.meta),
+		err:     err,
 	}
 }
 
@@ -275,15 +277,13 @@ func GetUserMessageOr(err error, defaultmsg string) string {
 }
 
 func GetStack(err error) []string {
-	stack := []string{}
-
 	for _, ae := range Flatten(err) {
-		if ae.location != "" {
-			stack = append(stack, ae.location)
+		if len(ae.stack) > 0 {
+			return ae.stack
 		}
 	}
 
-	return stack
+	return nil
 }
 
 func GetErrors(err error) []string {
@@ -322,18 +322,30 @@ func Flatten(err error) []*AppError {
 
 //-------------------------------------------------------------
 
+type uniqueList []string
+
+func (u *uniqueList) append(value ...string) {
+	for _, v := range value {
+		if !slices.Contains(*u, v) {
+			*u = append(*u, v)
+		}
+	}
+}
+
+//-------------------------------------------------------------
+
 type zerologErrorMarshaller struct {
 	err error
 }
 
 func (m zerologErrorMarshaller) MarshalZerologObject(event *zerolog.Event) { //nolint:cyclop
-	var usermsg, stack, errs, tags []string
+	var (
+		stack, errs   []string
+		usermsg, tags uniqueList
+		meta          map[string]any
+	)
 
-	var meta map[string]any
-
-	err := m.err
-
-	for ; err != nil; err = errors.Unwrap(err) {
+	for err := m.err; err != nil; err = errors.Unwrap(err) {
 		apperr, ok := err.(*AppError) //nolint:errorlint
 		if !ok {
 			errs = append(errs, err.Error())
@@ -342,11 +354,11 @@ func (m zerologErrorMarshaller) MarshalZerologObject(event *zerolog.Event) { //n
 		}
 
 		if apperr.userMsg != "" {
-			usermsg = append(usermsg, apperr.userMsg)
+			usermsg.append(apperr.userMsg)
 		}
 
-		if apperr.location != "" {
-			stack = append(stack, apperr.location)
+		if apperr.stack != nil {
+			stack = apperr.stack
 		}
 
 		if apperr.msg != "" {
@@ -354,7 +366,7 @@ func (m zerologErrorMarshaller) MarshalZerologObject(event *zerolog.Event) { //n
 		}
 
 		if apperr.tags != nil {
-			tags = append(tags, apperr.tags...)
+			tags.append(apperr.tags...)
 		}
 
 		if apperr.meta != nil {
@@ -372,7 +384,6 @@ func (m zerologErrorMarshaller) MarshalZerologObject(event *zerolog.Event) { //n
 	}
 
 	if stack != nil {
-		slices.Reverse(stack)
 		event.Strs("stack", stack)
 	}
 
@@ -400,11 +411,48 @@ func ErrorMarshalFunc(err error) any {
 
 //-------------------------------------------------------------
 
-func getLocation() string {
-	_, file, line, ok := runtime.Caller(2) //nolint:mnd
-	if ok {
-		return fmt.Sprintf("%s:%d", file, line)
+// func getLocation() string {
+// 	_, file, line, ok := runtime.Caller(2) //nolint:mnd
+// 	if ok {
+// 		return fmt.Sprintf("%s:%d", file, line)
+// 	}
+
+// 	return ""
+// }
+
+var skipFunctions = []string{
+	"net/http.HandlerFunc.ServeHTTP",
+	"runtime.goexit",
+}
+
+const maxStack = 10
+
+func getStack() []string {
+	pc := make([]uintptr, 32) //nolint:mnd
+
+	n := runtime.Callers(3, pc) //nolint:mnd
+	if n == 0 {
+		return nil
 	}
 
-	return ""
+	pc = pc[:n]
+	frames := runtime.CallersFrames(pc)
+	stack := make([]string, 0, n)
+
+	for {
+		frame, more := frames.Next()
+		funcname := frame.Func.Name()
+
+		if !slices.Contains(skipFunctions, funcname) {
+			funcname = funcname[strings.LastIndex(funcname, "/")+1:]
+			funcname = funcname[strings.Index(funcname, ".")+1:]
+			stack = append(stack, frame.File+":"+strconv.Itoa(frame.Line)+":"+funcname)
+		}
+
+		if !more || len(stack) == maxStack {
+			break
+		}
+	}
+
+	return stack
 }
