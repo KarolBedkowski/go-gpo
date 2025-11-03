@@ -28,10 +28,11 @@ import (
 )
 
 type Server struct {
-	Database   string
-	Listen     string
-	WebRoot    string
-	DebugFlags config.DebugFlags
+	Database      string
+	Listen        string
+	WebRoot       string
+	DebugFlags    config.DebugFlags
+	EnableMetrics bool
 }
 
 func (s *Server) Validate() error {
@@ -103,9 +104,10 @@ func (s *Server) createInjector(root do.Injector) do.Injector {
 
 	do.ProvideNamedValue(injector, "server.webroot", s.WebRoot)
 	do.ProvideValue(injector, &server.Configuration{
-		Listen:     s.Listen,
-		DebugFlags: s.DebugFlags,
-		WebRoot:    s.WebRoot,
+		Listen:        s.Listen,
+		DebugFlags:    s.DebugFlags,
+		WebRoot:       s.WebRoot,
+		EnableMetrics: s.EnableMetrics,
 	})
 
 	return injector

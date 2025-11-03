@@ -149,14 +149,20 @@ func startServerCmd() *cli.Command {
 				Aliases: []string{"a"},
 				Sources: cli.EnvVars("GOGPO_SERVER_WEBROOT"),
 			},
+			&cli.BoolFlag{
+				Name:    "enable-metrics",
+				Usage:   "enable prometheus metrics (/metrics endpoint)",
+				Sources: cli.EnvVars("GOGPO_SERVER_METRICS"),
+			},
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
 			initializeLogger(c.String("log.level"), c.String("log.format"))
 			s := cmd.Server{
-				Database:   c.String("database"),
-				Listen:     c.String("address"),
-				DebugFlags: config.NewDebugFLags(c.String("debug")),
-				WebRoot:    c.String("web-root"),
+				Database:      c.String("database"),
+				Listen:        c.String("address"),
+				DebugFlags:    config.NewDebugFLags(c.String("debug")),
+				WebRoot:       c.String("web-root"),
+				EnableMetrics: c.Bool("enable-metrics"),
 			}
 
 			if err := s.Validate(); err != nil {

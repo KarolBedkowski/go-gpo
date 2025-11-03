@@ -27,9 +27,10 @@ import (
 )
 
 type Configuration struct {
-	Listen     string
-	WebRoot    string
-	DebugFlags config.DebugFlags
+	Listen        string
+	WebRoot       string
+	DebugFlags    config.DebugFlags
+	EnableMetrics bool
 }
 
 const (
@@ -60,8 +61,6 @@ func New(injector do.Injector) (Server, error) {
 	router.Use(middleware.Heartbeat(cfg.WebRoot + "/ping"))
 	router.Use(middleware.RealIP)
 
-	router.Method("GET", cfg.WebRoot+"/metrics", newMetricsHandler())
-
 	router.Group(func(group chi.Router) {
 		group.Use(hlog.RequestIDHandler("req_id", "Request-Id"))
 		group.Use(logMW)
@@ -89,6 +88,10 @@ func New(injector do.Injector) (Server, error) {
 
 	if cfg.DebugFlags.HasFlag(config.DebugGo) {
 		router.Mount(cfg.WebRoot+"/debug", middleware.Profiler())
+	}
+
+	if cfg.EnableMetrics {
+		router.Method("GET", cfg.WebRoot+"/metrics", newMetricsHandler())
 	}
 
 	return Server{
