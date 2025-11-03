@@ -49,15 +49,11 @@ type Server struct {
 
 func New(injector do.Injector) (Server, error) {
 	cfg := do.MustInvoke[*Configuration](injector)
-
-	sessionMW, err := newSessionMiddleware(injector)
-	if err != nil {
-		panic(err)
-	}
-
 	authMW := do.MustInvoke[authenticator](injector)
 	api := do.MustInvoke[gpoapi.API](injector)
 	web := do.MustInvoke[gpoweb.WEB](injector)
+	sessionMW := do.MustInvoke[sessionMiddleware](injector)
+	logMW := do.MustInvoke[logMiddleware](injector)
 
 	// routes
 	router := chi.NewRouter()
@@ -68,7 +64,7 @@ func New(injector do.Injector) (Server, error) {
 
 	router.Group(func(group chi.Router) {
 		group.Use(hlog.RequestIDHandler("req_id", "Request-Id"))
-		group.Use(newLogMiddleware(cfg))
+		group.Use(logMW)
 		group.Use(newRecoverMiddleware)
 		group.Use(middleware.CleanPath)
 		group.Use(sessionMW)

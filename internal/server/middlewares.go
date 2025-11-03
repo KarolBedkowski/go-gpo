@@ -239,12 +239,16 @@ func shouldSkipLogRequest(request *http.Request) bool {
 
 //-------------------------------------------------------------
 
-func newLogMiddleware(cfg *Configuration) func(http.Handler) http.Handler {
+type logMiddleware func(http.Handler) http.Handler
+
+func newLogMiddleware(i do.Injector) (logMiddleware, error) {
+	cfg := do.MustInvoke[*Configuration](i)
+
 	if cfg.DebugFlags.HasFlag(config.DebugMsgBody) {
-		return newFullLogMiddleware
+		return newFullLogMiddleware, nil
 	}
 
-	return newSimpleLogMiddleware
+	return newSimpleLogMiddleware, nil
 }
 
 //-------------------------------------------------------------
@@ -283,7 +287,9 @@ func newRecoverMiddleware(next http.Handler) http.Handler {
 
 //-------------------------------------------------------------
 
-func newSessionMiddleware(i do.Injector) (func(http.Handler) http.Handler, error) {
+type sessionMiddleware func(http.Handler) http.Handler
+
+func newSessionMiddleware(i do.Injector) (sessionMiddleware, error) {
 	db := do.MustInvoke[*db.Database](i)
 	repo := do.MustInvoke[repository.SessionRepository](i)
 
