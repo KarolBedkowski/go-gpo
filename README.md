@@ -9,6 +9,7 @@ Features:
 * multi user
 * single binary
 * sqlite3 database
+* simple (very!) web gui
 
 Missing features from mygpo:
 
@@ -19,12 +20,14 @@ Missing features from mygpo:
 * webgui
 * not supported formats: jsonp, xml
 
+
 ## Building and running
 
 ### Dependency
 
 * go 1.25+
 * cgo
+
 
 ### Local Build
 
@@ -33,6 +36,7 @@ Missing features from mygpo:
 or
 
     go build -o go-gpo ./cli/
+
 
 ### Run
 
@@ -44,6 +48,9 @@ Run
 
     ./go-gpo serve
 
+Configure database file:
+
+	./go-gpo --database='/some/path/database.sqlite?_fk=1&_journal_mode=WAL&_synchronous=NORMAL' ...
 
 For other options / commands:
 
