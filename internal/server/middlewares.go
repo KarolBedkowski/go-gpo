@@ -84,6 +84,7 @@ func (a authenticator) handle(next http.Handler) http.Handler {
 				return
 			} else if err != nil {
 				logger.Error().Err(err).Msg("login user internal error")
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 
 				return
 			}
