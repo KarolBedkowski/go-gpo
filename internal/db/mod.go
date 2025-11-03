@@ -13,9 +13,12 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/pressly/goose/v3"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
@@ -49,6 +52,14 @@ func (r *Database) Connect(ctx context.Context, driver, connstr string) error {
 	if err != nil {
 		return aerr.Wrapf(err, "open database failed").WithTag(aerr.InternalError).WithMeta("connstr", connstr)
 	}
+
+	r.db.SetConnMaxIdleTime(30 * time.Second) //nolint:mnd
+	r.db.SetConnMaxLifetime(60 * time.Second) //nolint:mnd
+	r.db.SetMaxIdleConns(1)
+	r.db.SetMaxOpenConns(10) //nolint:mnd
+
+	// gather stats from database
+	prometheus.DefaultRegisterer.MustRegister(collectors.NewDBStatsCollector(r.db.DB, "main"))
 
 	if err := r.onConnect(ctx, r.db); err != nil {
 		return aerr.Wrapf(err, "call startup scripts error").WithTag(aerr.InternalError)
