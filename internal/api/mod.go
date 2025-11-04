@@ -40,7 +40,7 @@ func New(i do.Injector) (API, error) {
 	}, nil
 }
 
-func (a *API) Routes() chi.Router {
+func (a *API) Routes() *chi.Mux {
 	router := chi.NewRouter()
 	router.Route("/subscriptions", func(r chi.Router) {
 		r.Mount("/", a.simpleResource.Routes())

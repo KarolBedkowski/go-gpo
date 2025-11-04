@@ -31,7 +31,7 @@ func newUpdatesResource(i do.Injector) (updatesResource, error) {
 	}, nil
 }
 
-func (u updatesResource) Routes() chi.Router {
+func (u updatesResource) Routes() *chi.Mux {
 	r := chi.NewRouter()
 	r.Use(AuthenticatedOnly)
 

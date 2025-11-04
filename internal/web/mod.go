@@ -50,7 +50,7 @@ func New(i do.Injector) (WEB, error) {
 	}, nil
 }
 
-func (w *WEB) Routes() chi.Router {
+func (w *WEB) Routes() *chi.Mux {
 	router := chi.NewRouter()
 
 	router.Get("/", internal.Wrap(w.indexPage))

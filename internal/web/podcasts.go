@@ -31,7 +31,7 @@ func newPodcastPages(i do.Injector) (podcastPages, error) {
 	}, nil
 }
 
-func (p podcastPages) Routes() chi.Router {
+func (p podcastPages) Routes() *chi.Mux {
 	r := chi.NewRouter()
 	r.Get(`/`, internal.Wrap(p.list))
 

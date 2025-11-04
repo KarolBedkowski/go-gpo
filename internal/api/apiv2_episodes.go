@@ -33,7 +33,7 @@ func newEpisodesResource(i do.Injector) (episodesResource, error) {
 	}, nil
 }
 
-func (er episodesResource) Routes() chi.Router {
+func (er episodesResource) Routes() *chi.Mux {
 	r := chi.NewRouter()
 	r.Use(AuthenticatedOnly)
 

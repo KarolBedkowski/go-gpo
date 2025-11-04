@@ -29,7 +29,7 @@ func newSettingsResource(i do.Injector) (settingsResource, error) {
 	}, nil
 }
 
-func (u settingsResource) Routes() chi.Router {
+func (u settingsResource) Routes() *chi.Mux {
 	r := chi.NewRouter()
 	r.Use(AuthenticatedOnly)
 

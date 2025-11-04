@@ -60,9 +60,12 @@ clean:
 test:
 	go test ./...
 
+
 .PHONY: lint
-lint:
+lint: 
 	golangci-lint run
+	# go install fillmore-labs.com/errortype@latest
+	errortype ./... || true
 	# go install go.uber.org/nilaway/cmd/nilaway@latest
 	nilaway ./... || true
 	typos

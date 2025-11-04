@@ -31,7 +31,7 @@ func newDeviceResource(i do.Injector) (deviceResource, error) {
 	}, nil
 }
 
-func (d deviceResource) Routes() chi.Router {
+func (d deviceResource) Routes() *chi.Mux {
 	r := chi.NewRouter()
 	r.Use(AuthenticatedOnly)
 

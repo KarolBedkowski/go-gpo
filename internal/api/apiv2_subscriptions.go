@@ -32,7 +32,7 @@ func newSubscriptionsResource(i do.Injector) (subscriptionsResource, error) {
 	}, nil
 }
 
-func (sr subscriptionsResource) Routes() chi.Router {
+func (sr subscriptionsResource) Routes() *chi.Mux {
 	router := chi.NewRouter()
 	router.Use(AuthenticatedOnly)
 

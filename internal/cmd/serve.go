@@ -95,7 +95,7 @@ func (*Server) startSystemdWatchdog(logger *zerolog.Logger) {
 	}
 }
 
-func (s *Server) createInjector(root do.Injector) do.Injector {
+func (s *Server) createInjector(root do.Injector) *do.Scope {
 	injector := root.Scope("server",
 		gpoweb.Package,
 		gpoapi.Package,

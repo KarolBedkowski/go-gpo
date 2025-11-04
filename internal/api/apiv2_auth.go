@@ -22,7 +22,7 @@ func newAuthResource(_ do.Injector) (authResource, error) {
 	return authResource{}, nil
 }
 
-func (ar authResource) Routes() chi.Router {
+func (ar authResource) Routes() *chi.Mux {
 	r := chi.NewRouter()
 	r.Post(`/{user:[\w.+-]}/login.json`, internal.Wrap(ar.login))
 	r.Post(`/{user:[\w.+-]}/logout.json`, internal.Wrap(ar.logout))

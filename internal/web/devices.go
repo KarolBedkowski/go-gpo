@@ -31,7 +31,7 @@ func newDevicePages(i do.Injector) (devicePages, error) {
 	}, nil
 }
 
-func (d devicePages) Routes() chi.Router {
+func (d devicePages) Routes() *chi.Mux {
 	r := chi.NewRouter()
 	r.Get(`/`, internal.Wrap(d.list))
 

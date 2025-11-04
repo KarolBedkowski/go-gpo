@@ -98,24 +98,8 @@ func main() {
 		Commands: []*cli.Command{
 			startServerCmd(),
 			listCmd(),
-			{
-				Name:  "database",
-				Usage: "manage database",
-				Commands: []*cli.Command{
-					migrateCmd(),
-					maintenanceCmd(),
-				},
-			},
-			{
-				Name:  "user",
-				Usage: "manage users",
-				Commands: []*cli.Command{
-					addUserCmd(),
-					listUsersCmd(),
-					lockUserCmd(),
-					changeUserPasswordCmd(),
-				},
-			},
+			databaseSubCmd(),
+			usersSubCmd(),
 		},
 	}
 
@@ -170,6 +154,19 @@ func startServerCmd() *cli.Command {
 			}
 
 			return s.Start(log.Logger.WithContext(ctx))
+		},
+	}
+}
+
+func usersSubCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "user",
+		Usage: "manage users",
+		Commands: []*cli.Command{
+			addUserCmd(),
+			listUsersCmd(),
+			lockUserCmd(),
+			changeUserPasswordCmd(),
 		},
 	}
 }
@@ -271,6 +268,17 @@ func lockUserCmd() *cli.Command {
 			}
 
 			return s.Start(log.Logger.WithContext(ctx))
+		},
+	}
+}
+
+func databaseSubCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "database",
+		Usage: "manage database",
+		Commands: []*cli.Command{
+			migrateCmd(),
+			maintenanceCmd(),
 		},
 	}
 }

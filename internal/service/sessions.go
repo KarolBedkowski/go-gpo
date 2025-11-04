@@ -134,7 +134,7 @@ func (p *SessionProvider) Init(gclifetime int64, config string) error {
 }
 
 // Read returns raw session store by session ID.
-func (p *SessionProvider) Read(sid string) (session.RawStore, error) {
+func (p *SessionProvider) Read(sid string) (session.RawStore, error) { //nolint:ireturn
 	ctx := context.Background()
 
 	conn, err := p.db.Begin(ctx)
@@ -190,7 +190,7 @@ func (p *SessionProvider) Destroy(sid string) error {
 }
 
 // Regenerate regenerates a session store from old session ID to new one.
-func (p *SessionProvider) Regenerate(oldsid, sid string) (session.RawStore, error) {
+func (p *SessionProvider) Regenerate(oldsid, sid string) (session.RawStore, error) { //nolint:ireturn
 	p.logger.Debug().Str("sid", sid).Str("old_sid", oldsid).Msg("regenerate session")
 
 	ctx := context.Background()
@@ -255,7 +255,7 @@ func (p *SessionProvider) readOrCreate(
 	ctx context.Context,
 	db repository.DBContext,
 	sid string,
-) (session.RawStore, error) {
+) (*SessionStore, error) {
 	data, createdat, err := p.repo.ReadOrCreate(ctx, db, sid)
 	if err != nil {
 		return nil, fmt.Errorf("read or create session %q from db error: %w", sid, err)

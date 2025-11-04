@@ -11,11 +11,10 @@ linters:
     - exhaustruct
     - forbidigo
     - gochecknoglobals
-    - gochecknoinits
-    - ireturn
     - tagliatelle
     - wsl
     - noinlineerr
+    - dupl
     # tmp
     - errcheck
     - godoclint

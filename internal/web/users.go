@@ -30,7 +30,7 @@ func newUserPages(i do.Injector) (userPages, error) {
 	}, nil
 }
 
-func (u userPages) Routes() chi.Router {
+func (u userPages) Routes() *chi.Mux {
 	r := chi.NewRouter()
 	r.Get(`/password`, internal.Wrap(u.changePassword))
 	r.Post(`/password`, internal.Wrap(u.changePassword))

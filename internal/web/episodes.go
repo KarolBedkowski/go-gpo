@@ -31,7 +31,7 @@ func newEpisodePages(i do.Injector) (episodePages, error) {
 	}, nil
 }
 
-func (e episodePages) Routes() chi.Router {
+func (e episodePages) Routes() *chi.Mux {
 	r := chi.NewRouter()
 	r.Get(`/`, internal.Wrap(e.list))
 
