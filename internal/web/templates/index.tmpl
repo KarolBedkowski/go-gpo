@@ -15,5 +15,34 @@
 		<li><a href="{{ webroot }}/web/user/password">Change user password</a></li>
 	</ul>
 
+	<h2>Last actions</h2>
+	<table>
+		<thead>
+		<tr>
+			<th>Timestamp</th>
+			<th>Podcast</th>
+			<th>Episode</th>
+			<th>Device</th>
+			<th>Action</th>
+			<th>Started / Position / Total</th>
+		</tr>
+		</thead>
+		<tbody>
+		{{ range .LastActions }}
+			<tr>
+				<td>{{ .Timestamp}}</td>
+				<td>{{ .Podcast }}</td>
+				<td>{{ .Episode }}</td>
+				<td>{{ .Device }}</td>
+				<td>{{ .Action}}</td>
+				<td>
+					{{ if eq .Action "play" }}
+						{{ .Started }} / {{ .Position }} / {{ .Total }}
+					{{ end }}
+				</td>
+			</tr>
+		{{ end }}
+		</tbody>
+  </table>
 
 {{ end }}

@@ -14,12 +14,15 @@ import (
 	"html/template"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal"
+	"gitlab.com/kabes/go-gpo/internal/model"
+	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
 //go:embed templates/*.tmpl
@@ -35,6 +38,8 @@ type WEB struct {
 	podcastPages podcastPages
 	template     templates
 	webroot      string
+
+	episodeSrv *service.Episodes
 }
 
 func New(i do.Injector) (WEB, error) {
@@ -47,6 +52,7 @@ func New(i do.Injector) (WEB, error) {
 		podcastPages: do.MustInvoke[podcastPages](i),
 		webroot:      webroot,
 		template:     do.MustInvoke[templates](i),
+		episodeSrv:   do.MustInvoke[*service.Episodes](i),
 	}, nil
 }
 
@@ -65,10 +71,27 @@ func (w *WEB) Routes() *chi.Mux {
 	return router
 }
 
-func (w *WEB) indexPage(ctx context.Context, writer http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
-	_ = ctx
+const maxLastAction = 25
 
-	if err := w.template.executeTemplate(writer, "index.tmpl", nil); err != nil {
+func (w *WEB) indexPage(ctx context.Context, writer http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
+	user := internal.ContextUser(ctx)
+
+	lastactions, err := w.episodeSrv.GetLastActions(ctx, user, time.Time{}, maxLastAction)
+	if err != nil {
+		if internal.CheckAndWriteError(writer, r, err) {
+			logger.Warn().Err(err).Str("mod", "web").Msg("get last actions error")
+		} else {
+			logger.Debug().Err(err).Str("mod", "web").Msg("get last actions error")
+		}
+
+		return
+	}
+
+	data := struct {
+		LastActions []model.Episode
+	}{lastactions}
+
+	if err := w.template.executeTemplate(writer, "index.tmpl", data); err != nil {
 		logger.Error().Err(err).Str("mod", "web").Msg("execute template error")
 		internal.WriteError(writer, r, http.StatusInternalServerError, "")
 	}

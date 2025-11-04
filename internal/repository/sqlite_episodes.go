@@ -11,6 +11,7 @@ import (
 	"context"
 	"maps"
 	"slices"
+	"strconv"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -18,7 +19,12 @@ import (
 )
 
 func (s sqliteRepository) ListEpisodes(
-	ctx context.Context, dbctx DBContext, userid, deviceid, podcastid int64, since time.Time, aggregated bool,
+	ctx context.Context,
+	dbctx DBContext,
+	userid, deviceid, podcastid int64,
+	since time.Time,
+	aggregated bool,
+	lastelements int,
 ) ([]EpisodeDB, error) {
 	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_episodes").Logger()
 	logger.Debug().Int64("user_id", userid).Int64("podcast_id", podcastid).Int64("device_id", deviceid).
@@ -40,7 +46,11 @@ func (s sqliteRepository) ListEpisodes(
 		args = append(args, podcastid) //nolint:wsl_v5
 	}
 
-	query += " ORDER BY e.updated_at"
+	query += " ORDER BY e.updated_at DESC"
+
+	if lastelements > 0 {
+		query += " LIMIT " + strconv.Itoa(lastelements)
+	}
 
 	logger.Debug().Msgf("get episodes - query=%q, args=%v", query, args)
 

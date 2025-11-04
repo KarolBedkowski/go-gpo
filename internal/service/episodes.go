@@ -47,7 +47,7 @@ func (e *Episodes) GetPodcastEpisodes(ctx context.Context, username, podcast, de
 
 	defer conn.Close()
 
-	actions, err := e.getEpisodesActions(ctx, conn, username, podcast, devicename, time.Time{}, false)
+	actions, err := e.getEpisodesActions(ctx, conn, username, podcast, devicename, time.Time{}, false, 0)
 	if err != nil {
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
@@ -131,7 +131,7 @@ func (e *Episodes) GetEpisodesActions(ctx context.Context, username, podcast, de
 
 	defer conn.Close()
 
-	episodes, err := e.getEpisodesActions(ctx, conn, username, podcast, devicename, since, aggregated)
+	episodes, err := e.getEpisodesActions(ctx, conn, username, podcast, devicename, since, aggregated, 0)
 	if err != nil {
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
@@ -170,7 +170,7 @@ func (e *Episodes) GetEpisodesUpdates(ctx context.Context, username, devicename 
 
 	defer conn.Close()
 
-	episodes, err := e.getEpisodesActions(ctx, conn, username, "", devicename, since, true)
+	episodes, err := e.getEpisodesActions(ctx, conn, username, "", devicename, since, true, 0)
 	if err != nil {
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
@@ -193,12 +193,56 @@ func (e *Episodes) GetEpisodesUpdates(ctx context.Context, username, devicename 
 	return res, nil
 }
 
+func (e *Episodes) GetLastActions(ctx context.Context, username string, since time.Time, lastelements int,
+) ([]model.Episode, error) {
+	conn, err := e.db.GetConnection(ctx)
+	if err != nil {
+		return nil, aerr.ApplyFor(ErrRepositoryError, err)
+	}
+
+	defer conn.Close()
+
+	episodes, err := e.getEpisodesActions(ctx, conn, username, "", "", since, false, lastelements)
+	if err != nil {
+		return nil, aerr.ApplyFor(ErrRepositoryError, err)
+	}
+
+	res := make([]model.Episode, 0, len(episodes))
+
+	for _, e := range episodes {
+		ep := model.Episode{
+			Podcast:   nvl(e.PodcastTitle, e.PodcastURL),
+			Episode:   nvl(e.Title, e.URL),
+			Device:    e.Device,
+			Action:    e.Action,
+			Started:   e.Started,
+			Position:  e.Position,
+			Total:     e.Total,
+			Timestamp: e.UpdatedAt,
+		}
+		res = append(res, ep)
+	}
+
+	return res, nil
+}
+
+func nvl(value ...string) string {
+	for _, v := range value {
+		if v != "" {
+			return v
+		}
+	}
+
+	return ""
+}
+
 func (e *Episodes) getEpisodesActions(
 	ctx context.Context,
 	dbctx repository.DBContext,
 	username, podcast, devicename string,
 	since time.Time,
 	aggregated bool,
+	lastelements int,
 ) ([]repository.EpisodeDB, error) {
 	user, err := e.usersRepo.GetUser(ctx, dbctx, username)
 	if errors.Is(err, repository.ErrNoData) {
@@ -233,7 +277,8 @@ func (e *Episodes) getEpisodesActions(
 		podcastid = p.ID
 	}
 
-	episodes, err := e.episodesRepo.ListEpisodes(ctx, dbctx, user.ID, deviceid, podcastid, since, aggregated)
+	episodes, err := e.episodesRepo.ListEpisodes(ctx, dbctx, user.ID, deviceid, podcastid, since, aggregated,
+		lastelements)
 	if err != nil {
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
