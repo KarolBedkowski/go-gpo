@@ -28,6 +28,8 @@ import (
 //go:embed "migrations/*.sql"
 var embedMigrations embed.FS
 
+var ErrInvalidConf = aerr.NewSimple("invalid configuration").WithTag(aerr.ConfigurationError)
+
 type Database struct {
 	db *sqlx.DB
 }
@@ -170,9 +172,17 @@ func (r *Database) onConnect(ctx context.Context, db sqlx.ExecerContext) error {
 }
 
 func prepareSqliteConnstr(connstr string) (string, error) {
+	if connstr == "" {
+		return "", ErrInvalidConf.Clone().WithUserMsg("invalid (empty) database connection string")
+	}
+
 	parsed, err := url.Parse(connstr)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse connections string: %w", err)
+		return "", aerr.ApplyFor(ErrInvalidConf, err).WithUserMsg("failed to parse database connections string")
+	}
+
+	if parsed.Path == "" {
+		return "", ErrInvalidConf.Clone().WithUserMsg("invalid database connection string - missing path")
 	}
 
 	query := parsed.Query()

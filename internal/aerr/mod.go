@@ -13,9 +13,10 @@ import (
 )
 
 const (
-	InternalError   = "internal error"
-	ValidationError = "validation error"
-	DataError       = "data error"
+	InternalError      = "internal error"
+	ValidationError    = "validation error"
+	DataError          = "data error"
+	ConfigurationError = "configuration error"
 )
 
 type AppError struct {
@@ -27,15 +28,17 @@ type AppError struct {
 	stack   []string
 }
 
-func New(msg string) *AppError {
+func New(msg string, args ...any) *AppError {
 	return &AppError{
 		stack: getStack(),
-		msg:   msg,
+		msg:   fmt.Sprintf(msg, args...),
 	}
 }
 
-func NewSimple(msg string) *AppError {
-	return &AppError{msg: msg}
+func NewSimple(msg string, args ...any) *AppError {
+	return &AppError{
+		msg: fmt.Sprintf(msg, args...),
+	}
 }
 
 func Newf(msg string, args ...any) *AppError {
@@ -68,12 +71,12 @@ func Wrapf(err error, msg string, args ...any) *AppError {
 	}
 }
 
-func (a *AppError) WithMsg(msg string) *AppError {
+func (a *AppError) WithMsg(msg string, args ...any) *AppError {
 	if a == nil {
 		return nil
 	}
 
-	a.msg = msg
+	a.msg = fmt.Sprintf(msg, args...)
 
 	return a
 }
@@ -92,12 +95,12 @@ func (a *AppError) WithTag(tag string) *AppError {
 	return a
 }
 
-func (a *AppError) WithUserMsg(msg string) *AppError {
+func (a *AppError) WithUserMsg(msg string, args ...any) *AppError {
 	if a == nil {
 		return nil
 	}
 
-	a.userMsg = msg
+	a.userMsg = fmt.Sprintf(msg, args...)
 
 	return a
 }
