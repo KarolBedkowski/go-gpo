@@ -55,7 +55,7 @@ func (d Device) Validate() error {
 	}
 
 	if len(errs) > 0 {
-		return aerr.New(strings.Join(errs, ";")).WithTag(aerr.ValidationError)
+		return aerr.New("%s", strings.Join(errs, ";")).WithTag(aerr.ValidationError)
 	}
 
 	return nil

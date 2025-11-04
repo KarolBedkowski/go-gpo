@@ -8,21 +8,15 @@ package web
 //
 
 import (
-	"context"
 	"embed"
 	"fmt"
 	"html/template"
 	"io"
 	"net/http"
-	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/do/v2"
-	"gitlab.com/kabes/go-gpo/internal"
-	"gitlab.com/kabes/go-gpo/internal/model"
-	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
 //go:embed templates/*.tmpl
@@ -32,69 +26,32 @@ var templatesFS embed.FS
 var staticFS embed.FS
 
 type WEB struct {
-	devicePages  devicePages
-	userPages    userPages
-	episodePages episodePages
-	podcastPages podcastPages
-	template     templates
-	webroot      string
-
-	episodeSrv *service.Episodes
+	router *chi.Mux
 }
 
 func New(i do.Injector) (WEB, error) {
-	webroot := do.MustInvokeNamed[string](i, "server.webroot")
+	indexPage := do.MustInvoke[indexPage](i)
+	devicePages := do.MustInvoke[devicePages](i)
+	userPages := do.MustInvoke[userPages](i)
+	episodePages := do.MustInvoke[episodePages](i)
+	podcastPages := do.MustInvoke[podcastPages](i)
 
-	return WEB{
-		devicePages:  do.MustInvoke[devicePages](i),
-		userPages:    do.MustInvoke[userPages](i),
-		episodePages: do.MustInvoke[episodePages](i),
-		podcastPages: do.MustInvoke[podcastPages](i),
-		webroot:      webroot,
-		template:     do.MustInvoke[templates](i),
-		episodeSrv:   do.MustInvoke[*service.Episodes](i),
-	}, nil
-}
-
-func (w *WEB) Routes() *chi.Mux {
 	router := chi.NewRouter()
 
-	router.Get("/", internal.Wrap(w.indexPage))
-	router.Mount("/device", w.devicePages.Routes())
-	router.Mount("/podcast", w.podcastPages.Routes())
-	router.Mount("/episode", w.episodePages.Routes())
-	router.Mount("/user", w.userPages.Routes())
+	router.Mount("/", indexPage.Routes())
+	router.Mount("/device", devicePages.Routes())
+	router.Mount("/podcast", podcastPages.Routes())
+	router.Mount("/episode", episodePages.Routes())
+	router.Mount("/user", userPages.Routes())
 
 	fs := http.FileServerFS(staticFS)
 	router.Method("GET", "/static/*", http.StripPrefix("/web/", fs))
 
-	return router
+	return WEB{router: router}, nil
 }
 
-const maxLastAction = 25
-
-func (w *WEB) indexPage(ctx context.Context, writer http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
-	user := internal.ContextUser(ctx)
-
-	lastactions, err := w.episodeSrv.GetLastActions(ctx, user, time.Time{}, maxLastAction)
-	if err != nil {
-		if internal.CheckAndWriteError(writer, r, err) {
-			logger.Warn().Err(err).Str("mod", "web").Msg("get last actions error")
-		} else {
-			logger.Debug().Err(err).Str("mod", "web").Msg("get last actions error")
-		}
-
-		return
-	}
-
-	data := struct {
-		LastActions []model.Episode
-	}{lastactions}
-
-	if err := w.template.executeTemplate(writer, "index.tmpl", data); err != nil {
-		logger.Error().Err(err).Str("mod", "web").Msg("execute template error")
-		internal.WriteError(writer, r, http.StatusInternalServerError, "")
-	}
+func (w *WEB) Routes() *chi.Mux {
+	return w.router
 }
 
 //-----------------------------------------------

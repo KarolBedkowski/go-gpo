@@ -16,4 +16,5 @@ var Package = do.Package(
 	do.Lazy(newEpisodePages),
 	do.Lazy(newPodcastPages),
 	do.Lazy(newUserPages),
+	do.Lazy(newIndexPage),
 )

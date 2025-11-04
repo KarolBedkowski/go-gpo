@@ -19,41 +19,36 @@ type Configuration struct {
 }
 
 type API struct {
-	simpleResource        simpleResource
-	authResource          authResource
-	deviceResource        deviceResource
-	subscriptionsResource subscriptionsResource
-	episodesResource      episodesResource
-	updatesResource       updatesResource
-	settingsResource      settingsResource
+	router *chi.Mux
 }
 
 func New(i do.Injector) (API, error) {
-	return API{
-		simpleResource:        do.MustInvoke[simpleResource](i),
-		authResource:          do.MustInvoke[authResource](i),
-		deviceResource:        do.MustInvoke[deviceResource](i),
-		subscriptionsResource: do.MustInvoke[subscriptionsResource](i),
-		episodesResource:      do.MustInvoke[episodesResource](i),
-		updatesResource:       do.MustInvoke[updatesResource](i),
-		settingsResource:      do.MustInvoke[settingsResource](i),
-	}, nil
-}
+	simpleResource := do.MustInvoke[simpleResource](i)
+	authResource := do.MustInvoke[authResource](i)
+	deviceResource := do.MustInvoke[deviceResource](i)
+	subscriptionsResource := do.MustInvoke[subscriptionsResource](i)
+	episodesResource := do.MustInvoke[episodesResource](i)
+	updatesResource := do.MustInvoke[updatesResource](i)
+	settingsResource := do.MustInvoke[settingsResource](i)
 
-func (a *API) Routes() *chi.Mux {
 	router := chi.NewRouter()
+
 	router.Route("/subscriptions", func(r chi.Router) {
-		r.Mount("/", a.simpleResource.Routes())
+		r.Mount("/", simpleResource.Routes())
 	})
 
 	router.Route("/api/2", func(r chi.Router) {
-		r.Mount("/auth", a.authResource.Routes())
-		r.Mount("/devices", a.deviceResource.Routes())
-		r.Mount("/subscriptions", a.subscriptionsResource.Routes())
-		r.Mount("/episodes", a.episodesResource.Routes())
-		r.Mount("/updates", a.updatesResource.Routes())
-		r.Mount("/settings", a.settingsResource.Routes())
+		r.Mount("/auth", authResource.Routes())
+		r.Mount("/devices", deviceResource.Routes())
+		r.Mount("/subscriptions", subscriptionsResource.Routes())
+		r.Mount("/episodes", episodesResource.Routes())
+		r.Mount("/updates", updatesResource.Routes())
+		r.Mount("/settings", settingsResource.Routes())
 	})
 
-	return router
+	return API{router}, nil
+}
+
+func (a *API) Routes() *chi.Mux {
+	return a.router
 }
