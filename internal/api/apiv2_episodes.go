@@ -35,7 +35,6 @@ func newEpisodesResource(i do.Injector) (episodesResource, error) {
 
 func (er episodesResource) Routes() *chi.Mux {
 	r := chi.NewRouter()
-	r.Use(AuthenticatedOnly)
 
 	r.With(checkUserMiddleware).
 		Post(`/{user:[\w+.-]+}.json`, internal.Wrap(er.uploadEpisodeActions))

@@ -34,7 +34,6 @@ func newSubscriptionsResource(i do.Injector) (subscriptionsResource, error) {
 
 func (sr subscriptionsResource) Routes() *chi.Mux {
 	router := chi.NewRouter()
-	router.Use(AuthenticatedOnly)
 
 	router.With(checkUserMiddleware).
 		Get(`/{user:[\w+.-]+}.opml`, internal.Wrap(sr.userSubscriptions))

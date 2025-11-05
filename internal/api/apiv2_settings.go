@@ -31,7 +31,6 @@ func newSettingsResource(i do.Injector) (settingsResource, error) {
 
 func (u settingsResource) Routes() *chi.Mux {
 	r := chi.NewRouter()
-	r.Use(AuthenticatedOnly)
 
 	r.With(checkUserMiddleware).
 		Get(`/{user:[\w+.-]+}/{scope:[a-z]+}.json`, internal.Wrap(u.getSettings))

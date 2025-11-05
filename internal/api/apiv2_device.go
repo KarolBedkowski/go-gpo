@@ -33,7 +33,6 @@ func newDeviceResource(i do.Injector) (deviceResource, error) {
 
 func (d deviceResource) Routes() *chi.Mux {
 	r := chi.NewRouter()
-	r.Use(AuthenticatedOnly)
 
 	r.With(checkUserMiddleware).
 		Get(`/{user:[\w+.-]+}.json`, internal.Wrap(d.list))

@@ -16,28 +16,6 @@ import (
 	"gitlab.com/kabes/go-gpo/internal"
 )
 
-func AuthenticatedOnly(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		logger := hlog.FromRequest(r)
-		sess := session.GetSession(r)
-		user := internal.SessionUser(sess)
-
-		logger.Debug().Str("session_user", user).Str("mod", "api").Msg("authenticated only check")
-
-		if user != "" {
-			ctx := internal.ContextWithUser(r.Context(), user)
-			next.ServeHTTP(w, r.WithContext(ctx))
-
-			return
-		}
-
-		_ = sess.Destroy(w, r)
-
-		w.Header().Add("WWW-Authenticate", "Basic realm=\"go-gpo\"")
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-	})
-}
-
 //-------------------------------------------------------------
 
 func checkUserMiddleware(next http.Handler) http.Handler {

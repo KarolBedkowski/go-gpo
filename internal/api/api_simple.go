@@ -36,7 +36,6 @@ func newSimpleResource(i do.Injector) (simpleResource, error) {
 
 func (s *simpleResource) Routes() *chi.Mux {
 	r := chi.NewRouter()
-	r.Use(AuthenticatedOnly)
 
 	r.With(checkUserMiddleware).
 		Get(`/{user:[\w+.-]+}.{format}`, internal.Wrap(s.downloadAllSubscriptions))
