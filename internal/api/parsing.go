@@ -45,13 +45,13 @@ func parseDate(str string) (time.Time, error) {
 	for _, df := range dateFormats {
 		ts, err := time.Parse(df, str)
 		if err == nil {
-			return ts, nil
+			return ts.UTC(), nil
 		}
 	}
 
 	val, err := strconv.ParseInt(str, 10, 64)
 	if err == nil {
-		return time.Unix(val, 0), nil
+		return time.Unix(val, 0).UTC(), nil
 	}
 
 	return time.Time{}, NewParseError("cant parse %q as date", str)
@@ -60,11 +60,11 @@ func parseDate(str string) (time.Time, error) {
 func parseTimestamp(timestamp any) (time.Time, error) {
 	switch v := timestamp.(type) {
 	case int:
-		return time.Unix(int64(v), 0), nil
+		return time.Unix(int64(v), 0).UTC(), nil
 	case int64:
-		return time.Unix(v, 0), nil
+		return time.Unix(v, 0).UTC(), nil
 	case int32:
-		return time.Unix(int64(v), 0), nil
+		return time.Unix(int64(v), 0).UTC(), nil
 	case string:
 		if ts, err := parseDate(v); err == nil {
 			return ts, nil
