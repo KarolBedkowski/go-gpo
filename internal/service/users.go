@@ -66,85 +66,64 @@ func (u *Users) LoginUser(ctx context.Context, username, password string) (model
 }
 
 func (u *Users) AddUser(ctx context.Context, user model.NewUser) (int64, error) {
-	tx, err := u.db.Begin(ctx)
-	if err != nil {
-		return 0, aerr.ApplyFor(ErrRepositoryError, err)
-	}
+	//nolint:wrapcheck
+	return db.InTransactionR(ctx, u.db, func(dbctx repository.DBContext) (int64, error) {
+		// is user exists?
+		_, err := u.usersRepo.GetUser(ctx, dbctx, user.Username)
+		switch {
+		case errors.Is(err, repository.ErrNoData):
+			// ok; user not exists
+		case err == nil:
+			// user exists
+			return 0, ErrUserExists
+		default:
+			// failed to get user
+			return 0, aerr.ApplyFor(ErrRepositoryError, err)
+		}
 
-	defer tx.Rollback()
+		hashedPass, err := u.passHasher.HashPassword(user.Password)
+		if err != nil {
+			return 0, aerr.Wrapf(err, "hash password failed")
+		}
 
-	// is user exists?
-	_, err = u.usersRepo.GetUser(ctx, tx, user.Username)
-	switch {
-	case errors.Is(err, repository.ErrNoData):
-		// ok; user not exists
-	case err == nil:
-		// user exists
-		return 0, ErrUserExists
-	default:
-		// failed to get user
-		return 0, aerr.ApplyFor(ErrRepositoryError, err)
-	}
+		now := time.Now()
+		udb := repository.UserDB{
+			Username:  user.Username,
+			Password:  hashedPass,
+			Email:     user.Email,
+			Name:      user.Name,
+			CreatedAt: now,
+			UpdatedAt: now,
+		}
 
-	hashedPass, err := u.passHasher.HashPassword(user.Password)
-	if err != nil {
-		return 0, aerr.Wrapf(err, "hash password failed")
-	}
-
-	now := time.Now()
-	udb := repository.UserDB{
-		Username:  user.Username,
-		Password:  hashedPass,
-		Email:     user.Email,
-		Name:      user.Name,
-		CreatedAt: now,
-		UpdatedAt: now,
-	}
-
-	id, err := u.usersRepo.SaveUser(ctx, tx, &udb)
-	if err != nil {
-		return 0, aerr.ApplyFor(ErrRepositoryError, err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return 0, aerr.ApplyFor(ErrRepositoryError, err)
-	}
-
-	return id, nil
+		return u.usersRepo.SaveUser(ctx, dbctx, &udb)
+	})
 }
 
 func (u *Users) ChangePassword(ctx context.Context, user model.UserPassword) error {
-	tx, err := u.db.Begin(ctx)
-	if err != nil {
-		return aerr.ApplyFor(ErrRepositoryError, err)
-	}
+	//nolint: wrapcheck
+	return u.db.InTransaction(ctx, func(dbctx repository.DBContext) error {
+		// is user exists?
+		udb, err := u.usersRepo.GetUser(ctx, dbctx, user.Username)
+		if errors.Is(err, repository.ErrNoData) {
+			return ErrUnknownUser
+		} else if err != nil {
+			return aerr.ApplyFor(ErrRepositoryError, err)
+		}
 
-	defer tx.Rollback()
+		udb.Password, err = u.passHasher.HashPassword(user.Password)
+		if err != nil {
+			return aerr.Wrapf(err, "hash password failed")
+		}
 
-	// is user exists?
-	udb, err := u.usersRepo.GetUser(ctx, tx, user.Username)
-	if errors.Is(err, repository.ErrNoData) {
-		return ErrUnknownUser
-	} else if err != nil {
-		return aerr.ApplyFor(ErrRepositoryError, err)
-	}
+		udb.UpdatedAt = time.Now()
 
-	udb.Password, err = u.passHasher.HashPassword(user.Password)
-	if err != nil {
-		return aerr.Wrapf(err, "hash password failed")
-	}
+		if _, err = u.usersRepo.SaveUser(ctx, dbctx, &udb); err != nil {
+			return aerr.ApplyFor(ErrRepositoryError, err)
+		}
 
-	udb.UpdatedAt = time.Now()
-
-	if _, err := u.usersRepo.SaveUser(ctx, tx, &udb); err != nil {
-		return aerr.ApplyFor(ErrRepositoryError, err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return aerr.ApplyFor(ErrRepositoryError, err)
-	}
-
-	return nil
+		return nil
+	})
 }
 
 func (u *Users) GetUsers(ctx context.Context, activeOnly bool) ([]model.User, error) {
@@ -170,7 +149,8 @@ func (u *Users) GetUsers(ctx context.Context, activeOnly bool) ([]model.User, er
 }
 
 func (u *Users) LockAccount(ctx context.Context, username string) error {
-	err := u.db.InTransaction(ctx, func(dbctx repository.DBContext) error {
+	//nolint:wrapcheck
+	return u.db.InTransaction(ctx, func(dbctx repository.DBContext) error {
 		udb, err := u.usersRepo.GetUser(ctx, dbctx, username)
 		if errors.Is(err, repository.ErrNoData) {
 			return ErrUnknownUser
@@ -187,8 +167,6 @@ func (u *Users) LockAccount(ctx context.Context, username string) error {
 
 		return nil
 	})
-
-	return err //nolint:wrapcheck
 }
 
 //---------------------------

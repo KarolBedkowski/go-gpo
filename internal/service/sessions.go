@@ -19,6 +19,7 @@ import (
 	"gitea.com/go-chi/session"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
@@ -137,20 +138,11 @@ func (p *SessionProvider) Init(gclifetime int64, config string) error {
 func (p *SessionProvider) Read(sid string) (session.RawStore, error) { //nolint:ireturn
 	ctx := context.Background()
 
-	conn, err := p.db.Begin(ctx)
+	store, err := db.InTransactionR(ctx, p.db, func(dbctx repository.DBContext) (session.RawStore, error) {
+		return p.readOrCreate(ctx, dbctx, sid)
+	})
 	if err != nil {
-		return nil, fmt.Errorf("get db connection error: %w", err)
-	}
-
-	store, err := p.readOrCreate(ctx, conn, sid)
-	if err != nil {
-		conn.Rollback()
-
-		return nil, err
-	}
-
-	if err := conn.Commit(); err != nil {
-		return nil, fmt.Errorf("commit changes error: %w", err)
+		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
 	return store, nil
@@ -195,24 +187,15 @@ func (p *SessionProvider) Regenerate(oldsid, sid string) (session.RawStore, erro
 
 	ctx := context.Background()
 
-	conn, err := p.db.Begin(ctx)
+	data, err := db.InTransactionR(ctx, p.db, func(dbctx repository.DBContext) (session.RawStore, error) {
+		if err := p.repo.RegenerateSession(ctx, dbctx, oldsid, sid); err != nil {
+			return nil, fmt.Errorf("regenerate session error: %w", err)
+		}
+
+		return p.readOrCreate(ctx, dbctx, sid)
+	})
 	if err != nil {
-		return nil, fmt.Errorf("get db connection error: %w", err)
-	}
-
-	defer conn.Rollback()
-
-	if err := p.repo.RegenerateSession(ctx, conn, oldsid, sid); err != nil {
-		return nil, fmt.Errorf("regenerate session error: %w", err)
-	}
-
-	data, err := p.readOrCreate(ctx, conn, sid)
-	if err != nil {
-		return data, err
-	}
-
-	if err := conn.Commit(); err != nil {
-		return nil, fmt.Errorf("commit changes error: %w", err)
+		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
 	return data, nil
