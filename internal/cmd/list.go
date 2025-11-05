@@ -10,6 +10,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/samber/do/v2"
@@ -26,30 +27,34 @@ type List struct {
 
 const ListSupportedObjects = "devices, subs"
 
-func (a *List) Start(ctx context.Context) error {
+func (l *List) Start(ctx context.Context) error {
+	if err := l.validate(); err != nil {
+		return fmt.Errorf("validation error: %w", err)
+	}
+
 	injector := createInjector(ctx)
 
 	db := do.MustInvoke[*db.Database](injector)
-	if err := db.Connect(ctx, "sqlite3", a.Database); err != nil {
+	if err := db.Connect(ctx, "sqlite3", l.Database); err != nil {
 		return fmt.Errorf("connect to database error: %w", err)
 	}
 
 	devSrv := do.MustInvoke[*service.Device](injector)
 	subsSrv := do.MustInvoke[*service.Subs](injector)
 
-	switch a.Object {
+	switch strings.TrimSpace(l.Object) {
 	case "devices":
-		return a.listDevices(ctx, devSrv)
+		return l.listDevices(ctx, devSrv)
 	case "subs":
-		return a.listSubscriptions(ctx, subsSrv)
+		return l.listSubscriptions(ctx, subsSrv)
 
 	default:
-		return fmt.Errorf("unknown object for query %q", a.Object) //nolint:err113
+		return ErrValidation.Clone().WithUserMsg("unknown object for query %q", l.Object)
 	}
 }
 
-func (a *List) listDevices(ctx context.Context, devsrv *service.Device) error {
-	devices, err := devsrv.ListDevices(ctx, a.Username)
+func (l *List) listDevices(ctx context.Context, devsrv *service.Device) error {
+	devices, err := devsrv.ListDevices(ctx, l.Username)
 	if err != nil {
 		return fmt.Errorf("get device list error: %w", err)
 	}
@@ -64,8 +69,8 @@ func (a *List) listDevices(ctx context.Context, devsrv *service.Device) error {
 	return nil
 }
 
-func (a *List) listSubscriptions(ctx context.Context, subssrv *service.Subs) error {
-	subs, err := subssrv.GetUserSubscriptions(ctx, a.Username, time.Time{})
+func (l *List) listSubscriptions(ctx context.Context, subssrv *service.Subs) error {
+	subs, err := subssrv.GetUserSubscriptions(ctx, l.Username, time.Time{})
 	if err != nil {
 		return fmt.Errorf("get subscriptions list error: %w", err)
 	}
@@ -75,6 +80,23 @@ func (a *List) listSubscriptions(ctx context.Context, subssrv *service.Subs) err
 	}
 
 	fmt.Printf("\nTotal: %d\n", len(subs))
+
+	return nil
+}
+
+func (l *List) validate() error {
+	l.Database = strings.TrimSpace(l.Database)
+	l.Username = strings.TrimSpace(l.Username)
+	l.Object = strings.TrimSpace(l.Object)
+	l.DeviceID = strings.TrimSpace(l.DeviceID)
+
+	if l.Database == "" {
+		return ErrValidation.Clone().WithUserMsg("database can't be empty")
+	}
+
+	if l.Username == "" {
+		return ErrValidation.Clone().WithUserMsg("username can't be empty")
+	}
 
 	return nil
 }

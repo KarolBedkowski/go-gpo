@@ -149,10 +149,6 @@ func startServerCmd() *cli.Command {
 				EnableMetrics: c.Bool("enable-metrics"),
 			}
 
-			if err := s.Validate(); err != nil {
-				return fmt.Errorf("invalid arguments: %w", err)
-			}
-
 			return s.Start(log.Logger.WithContext(ctx))
 		},
 	}

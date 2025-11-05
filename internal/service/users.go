@@ -65,7 +65,7 @@ func (u *Users) LoginUser(ctx context.Context, username, password string) (model
 	return model.NewUserFromUserDB(&user), nil
 }
 
-func (u *Users) AddUser(ctx context.Context, user model.User) (int64, error) {
+func (u *Users) AddUser(ctx context.Context, user model.NewUser) (int64, error) {
 	tx, err := u.db.Begin(ctx)
 	if err != nil {
 		return 0, aerr.ApplyFor(ErrRepositoryError, err)
@@ -113,7 +113,7 @@ func (u *Users) AddUser(ctx context.Context, user model.User) (int64, error) {
 	return id, nil
 }
 
-func (u *Users) ChangePassword(ctx context.Context, user model.User) error {
+func (u *Users) ChangePassword(ctx context.Context, user model.UserPassword) error {
 	tx, err := u.db.Begin(ctx)
 	if err != nil {
 		return aerr.ApplyFor(ErrRepositoryError, err)

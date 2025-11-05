@@ -4,7 +4,9 @@
 // Distributed under terms of the GPLv3 license.
 package model
 
-import "gitlab.com/kabes/go-gpo/internal/repository"
+import (
+	"gitlab.com/kabes/go-gpo/internal/repository"
+)
 
 const UserLockedPassword = "LOCKED"
 
@@ -25,4 +27,22 @@ func NewUserFromUserDB(u *repository.UserDB) User {
 		Name:     u.Name,
 		Locked:   u.Password == UserLockedPassword,
 	}
+}
+
+//---------------------------------------------------------------------
+
+// NewUser define new user to add.
+type NewUser struct {
+	Username string
+	Password string
+	Email    string
+	Name     string
+}
+
+//---------------------------------------------------------------------
+
+// NewUser define new user to add.
+type UserPassword struct {
+	Username string
+	Password string
 }

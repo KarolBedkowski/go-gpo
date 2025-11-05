@@ -15,6 +15,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal"
+	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
@@ -75,16 +76,16 @@ func (u userPages) doChangePassword(ctx context.Context, r *http.Request, logger
 
 	username := internal.ContextUser(ctx)
 
-	user, err := u.usersSrv.LoginUser(ctx, username, cpass)
+	_, err := u.usersSrv.LoginUser(ctx, username, cpass)
 	if err != nil {
 		logger.Info().Err(err).Str("mod", "web").Msg("check current user password for password change failed")
 
 		return "Error: invalid current password"
 	}
 
-	user.Password = npass
+	up := model.UserPassword{Username: username, Password: npass}
 
-	if err := u.usersSrv.ChangePassword(ctx, user); err != nil {
+	if err := u.usersSrv.ChangePassword(ctx, up); err != nil {
 		logger.Info().Err(err).Str("mod", "web").Str("user_name", username).Msg("change user password failed")
 
 		return "Error: change password failed"

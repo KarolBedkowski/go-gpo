@@ -10,6 +10,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/db"
@@ -19,11 +20,15 @@ type Maintenance struct {
 	Database string
 }
 
-func (a *Maintenance) Start(ctx context.Context) error {
+func (m *Maintenance) Start(ctx context.Context) error {
+	if err := m.validate(); err != nil {
+		return fmt.Errorf("validation error: %w", err)
+	}
+
 	injector := createInjector(ctx)
 
 	db := do.MustInvoke[*db.Database](injector)
-	if err := db.Connect(ctx, "sqlite3", a.Database); err != nil {
+	if err := db.Connect(ctx, "sqlite3", m.Database); err != nil {
 		return fmt.Errorf("connect to database error: %w", err)
 	}
 
@@ -33,6 +38,16 @@ func (a *Maintenance) Start(ctx context.Context) error {
 	}
 
 	fmt.Printf("Done")
+
+	return nil
+}
+
+func (m *Maintenance) validate() error {
+	m.Database = strings.TrimSpace(m.Database)
+
+	if m.Database == "" {
+		return ErrValidation.Clone().WithUserMsg("database can't be empty")
+	}
 
 	return nil
 }

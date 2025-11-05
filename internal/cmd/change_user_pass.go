@@ -10,6 +10,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/db"
@@ -17,32 +18,54 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
+//---------------------------------------------------------------------
+
 type ChangeUserPassword struct {
 	Database string
 	Password string
 	Username string
 }
 
-func (a *ChangeUserPassword) Start(ctx context.Context) error {
+func (c *ChangeUserPassword) Start(ctx context.Context) error {
+	if err := c.validate(); err != nil {
+		return fmt.Errorf("validation error: %w", err)
+	}
+
 	injector := createInjector(ctx)
 
 	db := do.MustInvoke[*db.Database](injector)
-	if err := db.Connect(ctx, "sqlite3", a.Database); err != nil {
+	if err := db.Connect(ctx, "sqlite3", c.Database); err != nil {
 		return fmt.Errorf("connect to database error: %w", err)
-	}
-
-	user := model.User{
-		Password: a.Password,
-		Username: a.Username,
 	}
 
 	userv := do.MustInvoke[*service.Users](injector)
 
-	if err := userv.ChangePassword(ctx, user); err != nil {
+	err := userv.ChangePassword(ctx, model.UserPassword{Password: c.Password, Username: c.Username})
+	if err != nil {
 		return fmt.Errorf("change user password error: %w", err)
 	}
 
-	fmt.Printf("Changed password for user %q\n", a.Username)
+	fmt.Printf("Changed password for user %q\n", c.Username)
+
+	return nil
+}
+
+func (c *ChangeUserPassword) validate() error {
+	c.Database = strings.TrimSpace(c.Database)
+	c.Username = strings.TrimSpace(c.Username)
+	c.Password = strings.TrimSpace(c.Password)
+
+	if c.Database == "" {
+		return ErrValidation.Clone().WithUserMsg("database can't be empty")
+	}
+
+	if c.Username == "" {
+		return ErrValidation.Clone().WithUserMsg("username can't be empty")
+	}
+
+	if c.Password == "" {
+		return ErrValidation.Clone().WithUserMsg("password can't be empty")
+	}
 
 	return nil
 }
@@ -55,6 +78,10 @@ type LockUserAccount struct {
 }
 
 func (l *LockUserAccount) Start(ctx context.Context) error {
+	if err := l.validate(); err != nil {
+		return fmt.Errorf("validation error: %w", err)
+	}
+
 	injector := createInjector(ctx)
 
 	db := do.MustInvoke[*db.Database](injector)
@@ -69,6 +96,21 @@ func (l *LockUserAccount) Start(ctx context.Context) error {
 	}
 
 	fmt.Printf("User %q locked\n", l.Username)
+
+	return nil
+}
+
+func (l *LockUserAccount) validate() error {
+	l.Database = strings.TrimSpace(l.Database)
+	l.Username = strings.TrimSpace(l.Username)
+
+	if l.Database == "" {
+		return ErrValidation.Clone().WithUserMsg("database can't be empty")
+	}
+
+	if l.Username == "" {
+		return ErrValidation.Clone().WithUserMsg("username can't be empty")
+	}
 
 	return nil
 }

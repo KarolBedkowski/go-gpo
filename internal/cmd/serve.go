@@ -35,13 +35,11 @@ type Server struct {
 	EnableMetrics bool
 }
 
-func (s *Server) Validate() error {
-	s.WebRoot = strings.TrimSuffix(s.WebRoot, "/")
-
-	return nil
-}
-
 func (s *Server) Start(ctx context.Context) error {
+	if err := s.validate(); err != nil {
+		return fmt.Errorf("validation error: %w", err)
+	}
+
 	logger := log.Ctx(ctx)
 	logger.Log().Msgf("Starting server on %q...", s.Listen)
 
@@ -111,4 +109,20 @@ func (s *Server) createInjector(root do.Injector) *do.Scope {
 	})
 
 	return injector
+}
+
+func (s *Server) validate() error {
+	s.Database = strings.TrimSpace(s.Database)
+	s.Listen = strings.TrimSpace(s.Listen)
+	s.WebRoot = strings.TrimSuffix(s.WebRoot, "/")
+
+	if s.Database == "" {
+		return ErrValidation.Clone().WithUserMsg("database can't be empty")
+	}
+
+	if s.Listen == "" {
+		return ErrValidation.Clone().WithUserMsg("listen address can't be empty")
+	}
+
+	return nil
 }
