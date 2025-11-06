@@ -28,11 +28,6 @@ import (
 //go:embed "migrations/*.sql"
 var embedMigrations embed.FS
 
-var (
-	ErrInvalidConf = aerr.NewSimple("invalid configuration").WithTag(aerr.ConfigurationError)
-	ErrDatabase    = aerr.NewSimple("database error").WithTag(aerr.InternalError).WithUserMsg("database error")
-)
-
 type Database struct {
 	db *sqlx.DB
 }
@@ -100,7 +95,7 @@ func (r *Database) Migrate(ctx context.Context, driver string) error {
 	}
 
 	if err := goose.UpContext(ctx, r.db.DB, "migrations"); err != nil {
-		return aerr.ApplyFor(ErrDatabase, err).WithMsg("migrate database up failed")
+		return aerr.ApplyFor(aerr.ErrDatabase, err, "", "migrate database up failed")
 	}
 
 	return nil
@@ -109,11 +104,11 @@ func (r *Database) Migrate(ctx context.Context, driver string) error {
 func (r *Database) GetConnection(ctx context.Context) (*sqlx.Conn, error) {
 	conn, err := r.db.Connx(ctx)
 	if err != nil {
-		return nil, aerr.ApplyFor(ErrDatabase, err).WithMsg("failed open connection")
+		return nil, aerr.ApplyFor(aerr.ErrDatabase, err, "failed open connection")
 	}
 
 	if err := r.onConnect(ctx, conn); err != nil {
-		return nil, aerr.ApplyFor(ErrDatabase, err).WithMsg("failed run onConnect scripts")
+		return nil, aerr.ApplyFor(aerr.ErrDatabase, err, "failed run onConnect scripts")
 	}
 
 	return conn, nil
@@ -139,7 +134,7 @@ func (r *Database) InTransaction(ctx context.Context, fun func(repository.DBCont
 
 	tx, err := conn.BeginTxx(ctx, nil)
 	if err != nil {
-		return aerr.ApplyFor(ErrDatabase, err).WithMsg("begin tx failed")
+		return aerr.ApplyFor(aerr.ErrDatabase, err, "begin tx failed")
 	}
 
 	err = fun(tx)
@@ -147,14 +142,14 @@ func (r *Database) InTransaction(ctx context.Context, fun func(repository.DBCont
 		if err := tx.Rollback(); err != nil {
 			merr := errors.Join(err, fmt.Errorf("commit error: %w", err))
 
-			return aerr.ApplyFor(ErrDatabase, merr).WithMsg("execute func in trans and rollback error")
+			return aerr.ApplyFor(aerr.ErrDatabase, merr, "execute func in trans and rollback error")
 		}
 
 		return err
 	}
 
 	if err := tx.Commit(); err != nil {
-		return aerr.ApplyFor(ErrDatabase, err).WithMsg("commit tx failed")
+		return aerr.ApplyFor(aerr.ErrDatabase, err, "commit tx failed")
 	}
 
 	return nil
@@ -166,7 +161,7 @@ func (r *Database) Maintenance(ctx context.Context) error {
 			"PRAGMA optimize;",
 	)
 	if err != nil {
-		return aerr.ApplyFor(ErrDatabase, err).WithMsg("execute maintenance script failed")
+		return aerr.ApplyFor(aerr.ErrDatabase, err, "execute maintenance script failed")
 	}
 
 	return nil
@@ -177,7 +172,7 @@ func (r *Database) onConnect(ctx context.Context, db sqlx.ExecerContext) error {
 		"PRAGMA temp_store = MEMORY;",
 	)
 	if err != nil {
-		return aerr.ApplyFor(ErrDatabase, err).WithMsg("execute onConnect script failed")
+		return aerr.ApplyFor(aerr.ErrDatabase, err, "execute onConnect script failed")
 	}
 
 	return nil
@@ -188,7 +183,7 @@ func (r *Database) onClose(ctx context.Context, db sqlx.ExecerContext) error {
 		"PRAGMA optimize",
 	)
 	if err != nil {
-		return aerr.ApplyFor(ErrDatabase, err).WithMsg("execute onClose script failed")
+		return aerr.ApplyFor(aerr.ErrDatabase, err, "execute onClose script failed")
 	}
 
 	return nil
@@ -196,16 +191,16 @@ func (r *Database) onClose(ctx context.Context, db sqlx.ExecerContext) error {
 
 func prepareSqliteConnstr(connstr string) (string, error) {
 	if connstr == "" {
-		return "", ErrInvalidConf.Clone().WithUserMsg("invalid (empty) database connection string")
+		return "", aerr.ErrInvalidConf.WithUserMsg("invalid (empty) database connection string")
 	}
 
 	parsed, err := url.Parse(connstr)
 	if err != nil {
-		return "", aerr.ApplyFor(ErrInvalidConf, err).WithUserMsg("failed to parse database connections string")
+		return "", aerr.ApplyFor(aerr.ErrInvalidConf, err, "", "failed to parse database connections string")
 	}
 
 	if parsed.Path == "" {
-		return "", ErrInvalidConf.Clone().WithUserMsg("invalid database connection string - missing path")
+		return "", aerr.ApplyFor(aerr.ErrInvalidConf, err, "", "invalid database connection string - missing path")
 	}
 
 	query := parsed.Query()
@@ -221,6 +216,8 @@ func prepareSqliteConnstr(connstr string) (string, error) {
 //------------------------------------------------------------------------------
 
 // InTransactionR run `fun` in db transactions; return `fun` result and error.
+//
+//nolint:ireturn
 func InTransactionR[T any](ctx context.Context, r *Database, fun func(repository.DBContext) (T, error)) (T, error) {
 	conn, err := r.GetConnection(ctx)
 	if err != nil {
@@ -231,7 +228,7 @@ func InTransactionR[T any](ctx context.Context, r *Database, fun func(repository
 
 	tx, err := conn.BeginTxx(ctx, nil)
 	if err != nil {
-		return *new(T), aerr.ApplyFor(ErrDatabase, err).WithMsg("begin tx failed")
+		return *new(T), aerr.ApplyFor(aerr.ErrDatabase, err, "begin tx failed")
 	}
 
 	res, err := fun(tx)
@@ -239,14 +236,14 @@ func InTransactionR[T any](ctx context.Context, r *Database, fun func(repository
 		if err := tx.Rollback(); err != nil {
 			merr := errors.Join(err, fmt.Errorf("commit error: %w", err))
 
-			return res, aerr.ApplyFor(ErrDatabase, merr).WithMsg("execute func in trans and rollback error")
+			return res, aerr.ApplyFor(aerr.ErrDatabase, merr, "execute func in trans and rollback error")
 		}
 
 		return res, err
 	}
 
 	if err := tx.Commit(); err != nil {
-		return res, aerr.ApplyFor(ErrDatabase, err).WithMsg("commit tx failed")
+		return res, aerr.ApplyFor(aerr.ErrDatabase, err, "commit tx failed")
 	}
 
 	return res, nil

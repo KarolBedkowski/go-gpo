@@ -117,7 +117,7 @@ func (s *Server) validate() error {
 	s.WebRoot = strings.TrimSuffix(s.WebRoot, "/")
 
 	if s.Listen == "" {
-		return aerr.ErrValidation.Clone().WithUserMsg("listen address can't be empty")
+		return aerr.ErrValidation.WithUserMsg("listen address can't be empty")
 	}
 
 	return nil

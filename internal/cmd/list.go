@@ -50,7 +50,7 @@ func (l *List) Start(ctx context.Context) error {
 		return l.listSubscriptions(ctx, subsSrv)
 
 	default:
-		return aerr.ErrValidation.Clone().WithUserMsg("unknown object for query %q", l.Object)
+		return aerr.ErrValidation.WithUserMsg("unknown object for query %q", l.Object)
 	}
 }
 
@@ -91,7 +91,7 @@ func (l *List) validate() error {
 	l.DeviceID = strings.TrimSpace(l.DeviceID)
 
 	if l.Username == "" {
-		return aerr.ErrValidation.Clone().WithUserMsg("username can't be empty")
+		return aerr.ErrValidation.WithUserMsg("username can't be empty")
 	}
 
 	return nil

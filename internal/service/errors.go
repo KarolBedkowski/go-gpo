@@ -14,7 +14,6 @@ import (
 var (
 	ErrUnknownUser   = aerr.NewSimple("unknown user").WithTag(aerr.DataError)
 	ErrUnknownDevice = aerr.NewSimple("unknown device").WithUserMsg("unknown device").WithTag(aerr.DataError)
-	ErrInvalidData   = aerr.NewSimple("invalid data").WithTag(aerr.DataError)
 
 	ErrRepositoryError = aerr.NewSimple("database error").WithTag(aerr.InternalError).
 				WithUserMsg("database error")

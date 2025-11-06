@@ -69,9 +69,10 @@ func (a *AppError) WithMsg(msg string, args ...any) *AppError {
 		return nil
 	}
 
-	a.msg = fmt.Sprintf(msg, args...)
+	n := a.clone()
+	n.msg = fmt.Sprintf(msg, args...)
 
-	return a
+	return n
 }
 
 func (a *AppError) WithTag(tag string) *AppError {
@@ -83,9 +84,10 @@ func (a *AppError) WithTag(tag string) *AppError {
 		return a
 	}
 
-	a.tags = append(a.tags, tag)
+	n := a.clone()
+	n.tags = append(n.tags, tag)
 
-	return a
+	return n
 }
 
 func (a *AppError) WithUserMsg(msg string, args ...any) *AppError {
@@ -93,7 +95,8 @@ func (a *AppError) WithUserMsg(msg string, args ...any) *AppError {
 		return nil
 	}
 
-	a.userMsg = fmt.Sprintf(msg, args...)
+	n := a.clone()
+	n.userMsg = fmt.Sprintf(msg, args...)
 
 	return a
 }
@@ -107,8 +110,10 @@ func (a *AppError) WithMeta(keyval ...any) *AppError {
 		panic("invalid argument number to call WithMeta")
 	}
 
-	if a.meta == nil {
-		a.meta = make(map[string]any)
+	nerr := a.clone()
+
+	if nerr.meta == nil {
+		nerr.meta = make(map[string]any)
 	}
 
 	for i := 0; i < len(keyval); i += 2 {
@@ -117,20 +122,23 @@ func (a *AppError) WithMeta(keyval ...any) *AppError {
 			key = fmt.Sprintf("%v", keyval[i])
 		}
 
-		a.meta[key] = keyval[i]
+		nerr.meta[key] = keyval[i]
 	}
 
-	return a
+	return nerr
 }
 
+// WithErr create copy of AppError with new error and updated stack.
 func (a *AppError) WithError(err error) *AppError {
 	if err == nil {
 		return nil
 	}
 
-	a.err = err
+	n := a.clone()
+	n.err = err
+	n.stack = getStack()
 
-	return a
+	return n
 }
 
 func (a *AppError) Error() string {
@@ -170,14 +178,14 @@ func (a *AppError) String() string {
 	return a.err.Error()
 }
 
-// Clone AppError, update location.
-func (a *AppError) Clone() *AppError {
+// Clone AppError, do not fill stack.
+func (a *AppError) clone() *AppError {
 	if a == nil {
 		return nil
 	}
 
 	return &AppError{
-		stack:   getStack(),
+		stack:   nil,
 		msg:     a.msg,
 		tags:    slices.Clone(a.tags),
 		userMsg: a.userMsg,
@@ -189,19 +197,29 @@ func (a *AppError) Clone() *AppError {
 //-------------------------------------------------------------
 
 // ApplyFor create copy of AppError with replaced error and updated location.
-func ApplyFor(aerr *AppError, err error) *AppError {
+// Optional arguments set msg and userMsg (if are not empty).
+func ApplyFor(aerr *AppError, err error, msg ...string) *AppError {
 	if err == nil {
 		return nil
 	}
 
-	return &AppError{
-		stack:   getStack(),
-		msg:     aerr.msg,
-		tags:    slices.Clone(aerr.tags),
-		userMsg: aerr.userMsg,
-		meta:    maps.Clone(aerr.meta),
-		err:     err,
+	nerr := aerr.clone()
+	nerr.stack = getStack()
+	nerr.err = err
+
+	if len(msg) == 0 {
+		return nerr
 	}
+
+	if msg[0] != "" {
+		nerr.msg = msg[0]
+	}
+
+	if len(msg) > 1 && msg[1] != "" {
+		nerr.userMsg = msg[1]
+	}
+
+	return nerr
 }
 
 //-------------------------------------------------------------

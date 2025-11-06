@@ -4,6 +4,7 @@ package aerr
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
 //
 // Distributed under terms of the GPLv3 license.
+
 const (
 	InternalError      = "internal error"
 	ValidationError    = "validation error"
@@ -11,4 +12,8 @@ const (
 	ConfigurationError = "configuration error"
 )
 
-var ErrValidation = NewSimple("validation error").WithTag(ValidationError)
+var (
+	ErrValidation  = NewSimple("validation error").WithTag(ValidationError)
+	ErrInvalidConf = NewSimple("invalid configuration").WithTag(ConfigurationError)
+	ErrDatabase    = NewSimple("database error").WithTag(InternalError).WithUserMsg("database error")
+)

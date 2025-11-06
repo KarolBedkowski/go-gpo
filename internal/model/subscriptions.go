@@ -111,7 +111,7 @@ func NewSubscriptionChanges(add, remove []string) SubscriptionChanges {
 func (s *SubscriptionChanges) Validate() error {
 	for _, i := range s.Add {
 		if slices.Contains(s.Remove, i) {
-			return aerr.ErrValidation.Clone().WithUserMsg("duplicated url: %s", i)
+			return aerr.ErrValidation.WithUserMsg("duplicated url: %s", i)
 		}
 	}
 

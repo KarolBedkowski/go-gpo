@@ -51,11 +51,11 @@ func NewNewUser(username, password, email, name string) (NewUser, error) {
 	}
 
 	if user.Username == "" {
-		return NewUser{}, aerr.ErrValidation.Clone().WithUserMsg("username can't be empty")
+		return NewUser{}, aerr.ErrValidation.WithUserMsg("username can't be empty")
 	}
 
 	if user.Password == "" {
-		return NewUser{}, aerr.ErrValidation.Clone().WithUserMsg("password can't be empty")
+		return NewUser{}, aerr.ErrValidation.WithUserMsg("password can't be empty")
 	}
 
 	return user, nil
@@ -76,11 +76,11 @@ func NewUserPassword(username, password string) (UserPassword, error) {
 	}
 
 	if userpass.Username == "" {
-		return UserPassword{}, aerr.ErrValidation.Clone().WithUserMsg("username can't be empty")
+		return UserPassword{}, aerr.ErrValidation.WithUserMsg("username can't be empty")
 	}
 
 	if userpass.Password == "" {
-		return UserPassword{}, aerr.ErrValidation.Clone().WithUserMsg("password can't be empty")
+		return UserPassword{}, aerr.ErrValidation.WithUserMsg("password can't be empty")
 	}
 
 	return userpass, nil
@@ -99,7 +99,7 @@ func NewLockAccount(username string) (LockAccount, error) {
 	}
 
 	if la.Username == "" {
-		return LockAccount{}, aerr.ErrValidation.Clone().WithUserMsg("username can't be empty")
+		return LockAccount{}, aerr.ErrValidation.WithUserMsg("username can't be empty")
 	}
 
 	return la, nil
