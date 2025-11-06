@@ -57,7 +57,7 @@ For other options / commands:
     ./go-gpo --help
 
 
-## Implemented APIs
+##   Implemented APIs
 
 ### Simple API
 
@@ -88,14 +88,23 @@ For other options / commands:
 * [x] Update Device Data `POST /api/2/devices/(username)/(deviceid).json`
 * [x] List Devices [DONE] `GET /api/2/devices/(username).json`
 * [x] Get Device Updates `GET /api/2/updates/(username)/(deviceid).json`
+  * [ ] include_actions
 
 #### Subscriptions API
 
 * [x] Get Subscriptions of Device `GET /subscriptions/(username)/(deviceid).(format)`
+
+ * josnp parameter is not supported.
+
 * [x] Get All Subscriptions `GET /subscriptions/(username).(format)`
+
+ * josnp parameter is not supported.
+
 * [x] Upload Subscriptions of Device `PUT /subscriptions/(username)/(deviceid).(format)`
 * [x] Upload Subscription Changes `POST /api/2/subscriptions/(username)/(deviceid).json`
 * [x] Get Subscription Changes `GET /api/2/subscriptions/(username)/(deviceid).json`
+
+
 
 #### Episode Actions API
 
@@ -109,13 +118,14 @@ For other options / commands:
 
 #### Favorites API
 
-* [-] Get Favorite Episodes `GET /api/2/favorites/(username).json`
+* [ ] Get Favorite Episodes `GET /api/2/favorites/(username).json`
 
 #### Device Synchronization API
 
 * [-] Get Sync Status `GET /api/2/sync-devices/(username).json`
 * [-] Start / Stop Sync `POST /api/2/sync-devices/(username).json`
 
+All devices for one account are always synchronized.
 
 ##  License
 
