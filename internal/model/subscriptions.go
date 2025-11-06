@@ -8,13 +8,13 @@
 package model
 
 import (
-	"fmt"
 	"net/url"
 	"slices"
 	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
+	"gitlab.com/kabes/go-gpo/internal/aerr"
 )
 
 const (
@@ -111,7 +111,7 @@ func NewSubscriptionChanges(add, remove []string) SubscriptionChanges {
 func (s *SubscriptionChanges) Validate() error {
 	for _, i := range s.Add {
 		if slices.Contains(s.Remove, i) {
-			return fmt.Errorf("%w, duplicated url: %s", ErrInvalidData, i)
+			return aerr.ErrValidation.Clone().WithUserMsg("duplicated url: %s", i)
 		}
 	}
 

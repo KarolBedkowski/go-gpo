@@ -5,7 +5,6 @@
 package model
 
 import (
-	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -15,10 +14,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
-var (
-	ValidDevTypes  = []string{"desktop", "laptop", "mobile", "server", "other"}
-	ErrInvalidData = errors.New("invalid data")
-)
+var ValidDevTypes = []string{"desktop", "laptop", "mobile", "server", "other"}
 
 type Device struct {
 	User          string    `json:"user"`

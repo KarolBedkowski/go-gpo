@@ -148,10 +148,10 @@ func (u *Users) GetUsers(ctx context.Context, activeOnly bool) ([]model.User, er
 	return res, nil
 }
 
-func (u *Users) LockAccount(ctx context.Context, username string) error {
+func (u *Users) LockAccount(ctx context.Context, la model.LockAccount) error {
 	//nolint:wrapcheck
 	return u.db.InTransaction(ctx, func(dbctx repository.DBContext) error {
-		udb, err := u.usersRepo.GetUser(ctx, dbctx, username)
+		udb, err := u.usersRepo.GetUser(ctx, dbctx, la.Username)
 		if errors.Is(err, repository.ErrNoData) {
 			return ErrUnknownUser
 		} else if err != nil {

@@ -12,13 +12,6 @@ import (
 	"github.com/rs/zerolog"
 )
 
-const (
-	InternalError      = "internal error"
-	ValidationError    = "validation error"
-	DataError          = "data error"
-	ConfigurationError = "configuration error"
-)
-
 type AppError struct {
 	err     error
 	tags    []string

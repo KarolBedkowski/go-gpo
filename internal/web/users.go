@@ -83,7 +83,7 @@ func (u userPages) doChangePassword(ctx context.Context, r *http.Request, logger
 		return "Error: invalid current password"
 	}
 
-	up := model.UserPassword{Username: username, Password: npass}
+	up, _ := model.NewUserPassword(username, npass)
 
 	if err := u.usersSrv.ChangePassword(ctx, up); err != nil {
 		logger.Info().Err(err).Str("mod", "web").Str("user_name", username).Msg("change user password failed")

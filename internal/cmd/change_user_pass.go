@@ -10,7 +10,6 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/db"
@@ -27,10 +26,6 @@ type ChangeUserPassword struct {
 }
 
 func (c *ChangeUserPassword) Start(ctx context.Context) error {
-	if err := c.validate(); err != nil {
-		return fmt.Errorf("validation error: %w", err)
-	}
-
 	injector := createInjector(ctx)
 
 	db := do.MustInvoke[*db.Database](injector)
@@ -40,32 +35,16 @@ func (c *ChangeUserPassword) Start(ctx context.Context) error {
 
 	userv := do.MustInvoke[*service.Users](injector)
 
-	err := userv.ChangePassword(ctx, model.UserPassword{Password: c.Password, Username: c.Username})
+	up, err := model.NewUserPassword(c.Username, c.Password)
 	if err != nil {
+		return fmt.Errorf("validation error: %w", err)
+	}
+
+	if err = userv.ChangePassword(ctx, up); err != nil {
 		return fmt.Errorf("change user password error: %w", err)
 	}
 
 	fmt.Printf("Changed password for user %q\n", c.Username)
-
-	return nil
-}
-
-func (c *ChangeUserPassword) validate() error {
-	c.Database = strings.TrimSpace(c.Database)
-	c.Username = strings.TrimSpace(c.Username)
-	c.Password = strings.TrimSpace(c.Password)
-
-	if c.Database == "" {
-		return ErrValidation.Clone().WithUserMsg("database can't be empty")
-	}
-
-	if c.Username == "" {
-		return ErrValidation.Clone().WithUserMsg("username can't be empty")
-	}
-
-	if c.Password == "" {
-		return ErrValidation.Clone().WithUserMsg("password can't be empty")
-	}
 
 	return nil
 }
@@ -78,10 +57,6 @@ type LockUserAccount struct {
 }
 
 func (l *LockUserAccount) Start(ctx context.Context) error {
-	if err := l.validate(); err != nil {
-		return fmt.Errorf("validation error: %w", err)
-	}
-
 	injector := createInjector(ctx)
 
 	db := do.MustInvoke[*db.Database](injector)
@@ -91,26 +66,16 @@ func (l *LockUserAccount) Start(ctx context.Context) error {
 
 	userv := do.MustInvoke[*service.Users](injector)
 
-	if err := userv.LockAccount(ctx, l.Username); err != nil {
+	la, err := model.NewLockAccount(l.Username)
+	if err != nil {
+		return fmt.Errorf("validation error: %w", err)
+	}
+
+	if err := userv.LockAccount(ctx, la); err != nil {
 		return fmt.Errorf("change user password error: %w", err)
 	}
 
 	fmt.Printf("User %q locked\n", l.Username)
-
-	return nil
-}
-
-func (l *LockUserAccount) validate() error {
-	l.Database = strings.TrimSpace(l.Database)
-	l.Username = strings.TrimSpace(l.Username)
-
-	if l.Database == "" {
-		return ErrValidation.Clone().WithUserMsg("database can't be empty")
-	}
-
-	if l.Username == "" {
-		return ErrValidation.Clone().WithUserMsg("username can't be empty")
-	}
 
 	return nil
 }

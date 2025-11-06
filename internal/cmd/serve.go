@@ -20,6 +20,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/do/v2"
+	"gitlab.com/kabes/go-gpo/internal/aerr"
 	gpoapi "gitlab.com/kabes/go-gpo/internal/api"
 	"gitlab.com/kabes/go-gpo/internal/config"
 	"gitlab.com/kabes/go-gpo/internal/db"
@@ -112,16 +113,11 @@ func (s *Server) createInjector(root do.Injector) *do.Scope {
 }
 
 func (s *Server) validate() error {
-	s.Database = strings.TrimSpace(s.Database)
 	s.Listen = strings.TrimSpace(s.Listen)
 	s.WebRoot = strings.TrimSuffix(s.WebRoot, "/")
 
-	if s.Database == "" {
-		return ErrValidation.Clone().WithUserMsg("database can't be empty")
-	}
-
 	if s.Listen == "" {
-		return ErrValidation.Clone().WithUserMsg("listen address can't be empty")
+		return aerr.ErrValidation.Clone().WithUserMsg("listen address can't be empty")
 	}
 
 	return nil

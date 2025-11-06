@@ -10,7 +10,6 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/db"
@@ -29,10 +28,6 @@ type AddUser struct {
 }
 
 func (a *AddUser) Start(ctx context.Context) error {
-	if err := a.validate(); err != nil {
-		return err
-	}
-
 	injector := createInjector(ctx)
 
 	db := do.MustInvoke[*db.Database](injector)
@@ -42,34 +37,17 @@ func (a *AddUser) Start(ctx context.Context) error {
 
 	userv := do.MustInvoke[*service.Users](injector)
 
-	id, err := userv.AddUser(ctx, model.NewUser{
-		Name:     a.Name,
-		Password: a.Password,
-		Email:    a.Email,
-		Username: a.Username,
-	})
+	newuser, err := model.NewNewUser(a.Username, a.Password, a.Email, a.Name)
+	if err != nil {
+		return fmt.Errorf("validation error: %w", err)
+	}
+
+	id, err := userv.AddUser(ctx, newuser)
 	if err != nil {
 		return fmt.Errorf("add user error: %w", err)
 	}
 
 	fmt.Printf("User %q created; id: %d\n", a.Username, id)
-
-	return nil
-}
-
-func (a *AddUser) validate() error {
-	a.Username = strings.TrimSpace(a.Username)
-	a.Password = strings.TrimSpace(a.Password)
-	a.Email = strings.TrimSpace(a.Email)
-	a.Name = strings.TrimSpace(a.Name)
-
-	if a.Username == "" {
-		return ErrValidation.Clone().WithUserMsg("username can't be empty")
-	}
-
-	if a.Password == "" {
-		return ErrValidation.Clone().WithUserMsg("password can't be empty")
-	}
 
 	return nil
 }

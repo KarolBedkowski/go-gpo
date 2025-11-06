@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/samber/do/v2"
+	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
@@ -49,7 +50,7 @@ func (l *List) Start(ctx context.Context) error {
 		return l.listSubscriptions(ctx, subsSrv)
 
 	default:
-		return ErrValidation.Clone().WithUserMsg("unknown object for query %q", l.Object)
+		return aerr.ErrValidation.Clone().WithUserMsg("unknown object for query %q", l.Object)
 	}
 }
 
@@ -85,17 +86,12 @@ func (l *List) listSubscriptions(ctx context.Context, subssrv *service.Subs) err
 }
 
 func (l *List) validate() error {
-	l.Database = strings.TrimSpace(l.Database)
 	l.Username = strings.TrimSpace(l.Username)
 	l.Object = strings.TrimSpace(l.Object)
 	l.DeviceID = strings.TrimSpace(l.DeviceID)
 
-	if l.Database == "" {
-		return ErrValidation.Clone().WithUserMsg("database can't be empty")
-	}
-
 	if l.Username == "" {
-		return ErrValidation.Clone().WithUserMsg("username can't be empty")
+		return aerr.ErrValidation.Clone().WithUserMsg("username can't be empty")
 	}
 
 	return nil

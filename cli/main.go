@@ -75,23 +75,27 @@ func main() {
 		Version: buildVersionString(),
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:    "database",
-				Value:   "database.sqlite",
-				Usage:   "Database file",
-				Aliases: []string{"d"},
-				Sources: cli.EnvVars("GOGPO_DB"),
+				Name:      "database",
+				Value:     "database.sqlite",
+				Usage:     "Database file",
+				Aliases:   []string{"d"},
+				Sources:   cli.EnvVars("GOGPO_DB"),
+				Validator: dbConnstrValidator,
+				Config:    cli.StringConfig{TrimSpace: true},
 			},
 			&cli.StringFlag{
 				Name:    "log.level",
 				Value:   "info",
 				Usage:   "Log level (debug, info, warn, error)",
 				Sources: cli.EnvVars("GOGPO_LOGLEVEL"),
+				Config:  cli.StringConfig{TrimSpace: true},
 			},
 			&cli.StringFlag{
 				Name:    "log.format",
 				Value:   "logfmt",
 				Usage:   "Log format (logfmt, json, syslog)",
 				Sources: cli.EnvVars("GOGPO_LOGFORMAT"),
+				Config:  cli.StringConfig{TrimSpace: true},
 			},
 			&cli.StringFlag{Name: "debug", Usage: "Debug flags", Sources: cli.EnvVars("GOGPO_DEBUG")},
 		},
@@ -125,6 +129,7 @@ func startServerCmd() *cli.Command {
 				Usage:   "listen address",
 				Aliases: []string{"a"},
 				Sources: cli.EnvVars("GOGPO_SERVER_ADDRESS"),
+				Config:  cli.StringConfig{TrimSpace: true},
 			},
 			&cli.StringFlag{
 				Name:    "web-root",
@@ -132,6 +137,7 @@ func startServerCmd() *cli.Command {
 				Usage:   "path root",
 				Aliases: []string{"a"},
 				Sources: cli.EnvVars("GOGPO_SERVER_WEBROOT"),
+				Config:  cli.StringConfig{TrimSpace: true},
 			},
 			&cli.BoolFlag{
 				Name:    "enable-metrics",
@@ -338,4 +344,12 @@ func listCmd() *cli.Command {
 			return s.Start(log.Logger.WithContext(ctx))
 		},
 	}
+}
+
+func dbConnstrValidator(connstr string) error {
+	if connstr == "" {
+		return aerr.NewSimple("database connection string cannot be empty")
+	}
+
+	return nil
 }

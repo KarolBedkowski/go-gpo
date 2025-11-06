@@ -10,7 +10,6 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/db"
@@ -23,10 +22,6 @@ type ListUsers struct {
 }
 
 func (l *ListUsers) Start(ctx context.Context) error {
-	if err := l.validate(); err != nil {
-		return fmt.Errorf("validation error: %w", err)
-	}
-
 	injector := createInjector(ctx)
 
 	db := do.MustInvoke[*db.Database](injector)
@@ -53,16 +48,6 @@ func (l *ListUsers) Start(ctx context.Context) error {
 		}
 
 		fmt.Printf("%-30s | %-30s | %-30s | %s \n", u.Username, u.Name, u.Email, status)
-	}
-
-	return nil
-}
-
-func (l *ListUsers) validate() error {
-	l.Database = strings.TrimSpace(l.Database)
-
-	if l.Database == "" {
-		return ErrValidation.Clone().WithUserMsg("database can't be empty")
 	}
 
 	return nil
