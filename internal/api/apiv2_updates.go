@@ -57,7 +57,7 @@ func (u updatesResource) getUpdates(
 		return
 	}
 
-	includeActions := chi.URLParam(r, "include_actions") == "true"
+	includeActions := r.URL.Query().Get("include_actions") == "true"
 
 	added, removed, err := u.subsSrv.GetSubscriptionChanges(ctx, user, deviceid, since)
 	if err != nil {

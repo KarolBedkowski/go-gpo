@@ -13,6 +13,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/db"
@@ -161,7 +162,8 @@ func (e *Episodes) GetEpisodesActions(ctx context.Context, username, podcast, de
 func (e *Episodes) GetEpisodesUpdates(ctx context.Context, username, devicename string, since time.Time,
 	includeActions bool,
 ) ([]model.EpisodeUpdate, error) {
-	_ = includeActions
+	log.Ctx(ctx).Debug().Str("username", username).Str("devicename", devicename).
+		Msgf("get episodes updates since %s includeActions %v", since, includeActions)
 
 	conn, err := e.db.GetConnection(ctx)
 	if err != nil {
@@ -177,17 +179,33 @@ func (e *Episodes) GetEpisodesUpdates(ctx context.Context, username, devicename 
 
 	res := make([]model.EpisodeUpdate, 0, len(episodes))
 
-	for _, e := range episodes {
-		ep := model.EpisodeUpdate{
-			Title:        e.Title,
-			URL:          e.URL,
-			PodcastTitle: e.PodcastTitle,
-			PodcastURL:   e.PodcastURL,
-			Status:       e.Action,
+	for _, episodedb := range episodes {
+		episodeUpdate := model.EpisodeUpdate{
+			Title:        episodedb.Title,
+			URL:          episodedb.URL,
+			PodcastTitle: episodedb.PodcastTitle,
+			PodcastURL:   episodedb.PodcastURL,
+			Status:       episodedb.Action,
 			// do not tracking released time; use updated time
-			Released: e.UpdatedAt,
+			Released: episodedb.UpdatedAt,
 		}
-		res = append(res, ep)
+
+		if includeActions && episodedb.Action != "new" {
+			episodeUpdate.Episode = &model.Episode{
+				Podcast:   nvl(episodedb.PodcastTitle, episodedb.PodcastURL),
+				Episode:   nvl(episodedb.Title, episodedb.URL),
+				Device:    episodedb.Device,
+				Action:    episodedb.Action,
+				Timestamp: episodedb.UpdatedAt,
+			}
+			if episodedb.Action == "play" {
+				episodeUpdate.Episode.Started = episodedb.Started
+				episodeUpdate.Episode.Position = episodedb.Position
+				episodeUpdate.Episode.Total = episodedb.Total
+			}
+		}
+
+		res = append(res, episodeUpdate)
 	}
 
 	return res, nil

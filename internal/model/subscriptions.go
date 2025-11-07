@@ -41,15 +41,17 @@ type Subscription struct {
 
 // ------------------------------------------------------
 
+// TODO: guid?
+
 type Episode struct {
-	Podcast   string
-	Episode   string
-	Device    string
-	Action    string
-	Timestamp time.Time
-	Started   *int
-	Position  *int
-	Total     *int
+	Podcast   string    `json:"podcast"`
+	Episode   string    `json:"episode"`
+	Device    string    `json:"device,omitempty"`
+	Action    string    `json:"action"`
+	Timestamp time.Time `json:"timestamp"`
+	Started   *int      `json:"started,omitempty"`
+	Position  *int      `json:"position,omitempty"`
+	Total     *int      `json:"total,omitempty"`
 }
 
 func (e Episode) MarshalZerologObject(event *zerolog.Event) {
@@ -83,6 +85,8 @@ type EpisodeUpdate struct {
 	MygpoLink    string    `json:"mygpo_link"`
 	Released     time.Time `json:"released"`
 	Status       string    `json:"status"`
+
+	Episode *Episode `json:"episode,omitempty"`
 }
 
 // ------------------------------------------------------
