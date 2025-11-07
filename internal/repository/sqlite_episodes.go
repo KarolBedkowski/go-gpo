@@ -77,6 +77,26 @@ func (s sqliteRepository) ListEpisodes(
 	return slices.Collect(maps.Values(agr)), nil
 }
 
+func (s sqliteRepository) ListFavorites(ctx context.Context, dbctx DBContext, userid int64) ([]EpisodeDB, error) {
+	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_episodes").Logger()
+	logger.Debug().Int64("user_id", userid).Msg("get favorites")
+
+	query := "SELECT e.id, e.podcast_id, e.url, e.title, " +
+		" e.created_at, e.updated_at, p.url as podcast_url, p.title as podcast_title, d.name as device_name " +
+		"FROM episodes e JOIN podcasts p on p.id = e.podcast_id JOIN devices d on d.id=e.device_id " +
+		"JOIN settings s on s.key = e.url " +
+		"WHERE p.user_id=? AND s.scope = 'episode' and s.value = 'is_favorite'"
+
+	res := []EpisodeDB{}
+
+	err := dbctx.SelectContext(ctx, &res, query, userid)
+	if err != nil {
+		return nil, aerr.Wrapf(err, "query episodes failed").WithTag(aerr.InternalError)
+	}
+
+	return res, nil
+}
+
 func (s sqliteRepository) SaveEpisode(ctx context.Context, dbctx DBContext, userid int64, episode ...EpisodeDB) error {
 	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_episodes").Logger()
 	logger.Debug().Int64("user_id", userid).Msgf("save episode")

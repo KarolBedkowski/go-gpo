@@ -244,6 +244,41 @@ func (e *Episodes) GetLastActions(ctx context.Context, username string, since ti
 	return res, nil
 }
 
+func (e *Episodes) GetFavorites(ctx context.Context, username string) ([]model.Favorite, error) {
+	conn, err := e.db.GetConnection(ctx)
+	if err != nil {
+		return nil, aerr.ApplyFor(ErrRepositoryError, err)
+	}
+
+	defer conn.Close()
+
+	user, err := e.usersRepo.GetUser(ctx, conn, username)
+	if errors.Is(err, repository.ErrNoData) {
+		return nil, ErrUnknownUser
+	} else if err != nil {
+		return nil, aerr.ApplyFor(ErrRepositoryError, err)
+	}
+
+	episodes, err := e.episodesRepo.ListFavorites(ctx, conn, user.ID)
+	if err != nil {
+		return nil, aerr.ApplyFor(ErrRepositoryError, err)
+	}
+
+	res := make([]model.Favorite, 0, len(episodes))
+
+	for _, e := range episodes {
+		ep := model.Favorite{
+			Title:        nvl(e.Title, e.URL),
+			URL:          e.URL,
+			PodcastTitle: nvl(e.PodcastTitle, e.PodcastURL),
+			PodcastURL:   e.PodcastURL,
+		}
+		res = append(res, ep)
+	}
+
+	return res, nil
+}
+
 func nvl(value ...string) string {
 	for _, v := range value {
 		if v != "" {

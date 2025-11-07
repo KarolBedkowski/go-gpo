@@ -88,7 +88,6 @@ For other options / commands:
 * [x] Update Device Data `POST /api/2/devices/(username)/(deviceid).json`
 * [x] List Devices [DONE] `GET /api/2/devices/(username).json`
 * [x] Get Device Updates `GET /api/2/updates/(username)/(deviceid).json`
-  * [ ] include_actions
 
 #### Subscriptions API
 
@@ -118,7 +117,7 @@ For other options / commands:
 
 #### Favorites API
 
-* [ ] Get Favorite Episodes `GET /api/2/favorites/(username).json`
+* [X] Get Favorite Episodes `GET /api/2/favorites/(username).json`
 
 #### Device Synchronization API
 

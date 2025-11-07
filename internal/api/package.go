@@ -18,4 +18,5 @@ var Package = do.Package(
 	do.Lazy(newSettingsResource),
 	do.Lazy(newSubscriptionsResource),
 	do.Lazy(newUpdatesResource),
+	do.Lazy(newFavoritesResource),
 )

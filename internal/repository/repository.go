@@ -47,6 +47,7 @@ type EpisodesRepository interface {
 		lastelements int,
 	) ([]EpisodeDB, error)
 	SaveEpisode(ctx context.Context, db DBContext, userid int64, episode ...EpisodeDB) error
+	ListFavorites(ctx context.Context, db DBContext, userid int64) ([]EpisodeDB, error)
 }
 
 type PodcastsRepository interface {

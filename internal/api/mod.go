@@ -30,6 +30,7 @@ func New(i do.Injector) (API, error) {
 	episodesResource := do.MustInvoke[episodesResource](i)
 	updatesResource := do.MustInvoke[updatesResource](i)
 	settingsResource := do.MustInvoke[settingsResource](i)
+	favoritesResource := do.MustInvoke[favoritesResource](i)
 
 	router := chi.NewRouter()
 
@@ -44,6 +45,7 @@ func New(i do.Injector) (API, error) {
 		r.Mount("/episodes", episodesResource.Routes())
 		r.Mount("/updates", updatesResource.Routes())
 		r.Mount("/settings", settingsResource.Routes())
+		r.Mount("/favorites", favoritesResource.Routes())
 	})
 
 	return API{router}, nil
