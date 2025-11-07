@@ -126,12 +126,7 @@ func (u settingsResource) getKey(r *http.Request) (string, error) {
 	case "device":
 		key = r.URL.Query().Get("device")
 	case "episode":
-		e := r.URL.Query().Get("episode")
-		p := r.URL.Query().Get("podcast")
-
-		if e != "" && p != "" {
-			key = p + "|" + e
-		}
+		key = r.URL.Query().Get("episode")
 	case "podcast":
 		key = r.URL.Query().Get("podcast")
 	default:
