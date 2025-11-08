@@ -56,7 +56,7 @@ func enableDoDebug(ctx context.Context, injector *do.RootScope) {
 	})
 }
 
-func shudownInjector(ctx context.Context, injector do.Injector) {
+func shutdownInjector(ctx context.Context, injector do.Injector) {
 	shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), shutdownInjectorTimeout)
 	defer cancel()
 

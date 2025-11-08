@@ -79,7 +79,7 @@ func (s *Server) Start(ctx context.Context) error {
 		return fmt.Errorf("start failed: %w", err)
 	}
 
-	shudownInjector(ctx, injector)
+	shutdownInjector(ctx, injector)
 	logger.Info().Msg("stopped")
 	systemd.NotifyStatus("stopped") //nolint:errcheck
 

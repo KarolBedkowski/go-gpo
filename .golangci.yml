@@ -23,7 +23,7 @@ linters:
     misspell:
       locale: US
       ignore-rules:
-      # - routeros
+      # - xxx
     varnamelen:
       max-distance: 12
       ignore-names:

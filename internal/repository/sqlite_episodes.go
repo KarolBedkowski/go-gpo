@@ -43,7 +43,7 @@ func (s sqliteRepository) GetEpisode(
 	return res, nil
 }
 
-// ListEpisodeActions for user, and opitionally for device and podcastid.
+// ListEpisodeActions for user, and optionally for device and podcastid.
 // If deviceid is given, return actions from OTHER than given devices.
 func (s sqliteRepository) ListEpisodeActions(
 	ctx context.Context,
