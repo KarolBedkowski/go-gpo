@@ -6,11 +6,10 @@ package api
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"net/http"
 
 	"gitlab.com/kabes/go-gpo/internal"
+	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/service"
 
 	"github.com/go-chi/chi/v5"
@@ -48,17 +47,15 @@ func (u settingsResource) getSettings(
 ) {
 	user := internal.ContextUser(ctx)
 
-	key, err := u.getKey(r)
+	key, err := newKey(user, r)
 	if err != nil {
-		logger.Debug().Err(err).Str("mod", "api").Msg("get key error")
+		logger.Debug().Err(err).Str("mod", "api").Msg("bad request parameters")
 		internal.WriteError(w, r, http.StatusBadRequest, "")
 
 		return
 	}
 
-	scope := chi.URLParam(r, "scope")
-
-	res, err := u.settingsSrv.GetSettings(ctx, user, scope, key)
+	res, err := u.settingsSrv.GetSettings(ctx, &key)
 	if err != nil {
 		if internal.CheckAndWriteError(w, r, err) {
 			logger.Warn().Err(err).Str("mod", "api").Msg("get settings error")
@@ -86,6 +83,14 @@ func (u settingsResource) setSettings(
 		Remove []string          `json:"remove"`
 	}
 
+	key, err := newKey(user, r)
+	if err != nil {
+		logger.Debug().Err(err).Str("mod", "api").Msg("bad request parameters")
+		internal.WriteError(w, r, http.StatusBadRequest, "")
+
+		return
+	}
+
 	if err := render.DecodeJSON(r.Body, &req); err != nil {
 		logger.Debug().Err(err).Str("mod", "api").Msg("decode request error")
 		internal.WriteError(w, r, http.StatusBadRequest, "")
@@ -93,17 +98,9 @@ func (u settingsResource) setSettings(
 		return
 	}
 
-	key, err := u.getKey(r)
-	if err != nil {
-		logger.Debug().Err(err).Str("mod", "api").Msg("get key error")
-		internal.WriteError(w, r, http.StatusBadRequest, "")
+	logger.Debug().Any("key", key).Any("req", req).Msg("req")
 
-		return
-	}
-
-	scope := chi.URLParam(r, "scope")
-
-	if err := u.settingsSrv.SaveSettings(ctx, user, scope, key, req.Set, req.Remove); err != nil {
+	if err := u.settingsSrv.SaveSettings(ctx, &key, req.Set, req.Remove); err != nil {
 		if internal.CheckAndWriteError(w, r, err) {
 			logger.Warn().Err(err).Str("mod", "api").Msg("save settings error")
 		} else {
@@ -116,26 +113,11 @@ func (u settingsResource) setSettings(
 	w.WriteHeader(http.StatusOK)
 }
 
-func (u settingsResource) getKey(r *http.Request) (string, error) {
-	var key string
-
-	scope := chi.URLParam(r, "scope")
-	switch scope {
-	case "account":
-		return "", nil
-	case "device":
-		key = r.URL.Query().Get("device")
-	case "episode":
-		key = r.URL.Query().Get("episode")
-	case "podcast":
-		key = r.URL.Query().Get("podcast")
-	default:
-		return "", fmt.Errorf("unknown scope: %q", scope) //nolint:err113
-	}
-
-	if key == "" {
-		return "", errors.New("missing required keys") //nolint:err113
-	}
-
-	return key, nil
+func newKey(user string, r *http.Request) (model.SettingsKey, error) {
+	//nolint:wrapcheck
+	return model.NewSettingsKey(user,
+		chi.URLParam(r, "scope"),
+		r.URL.Query().Get("device"),
+		r.URL.Query().Get("episode"),
+		r.URL.Query().Get("podcast"))
 }

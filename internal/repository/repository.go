@@ -42,6 +42,7 @@ type UsersRepository interface {
 }
 
 type EpisodesRepository interface {
+	GetEpisode(ctx context.Context, dbctx DBContext, userid, podcastid int64, episodeURL string) (EpisodeDB, error)
 	ListEpisodes(
 		ctx context.Context, db DBContext, userid, deviceid, podcastid int64, since time.Time, aggregated bool,
 		lastelements int,
@@ -58,7 +59,9 @@ type PodcastsRepository interface {
 }
 
 type SettingsRepository interface {
-	GetSettings(ctx context.Context, db DBContext, userid int64, scope, key string) (SettingsDB, error)
+	ListSettings(ctx context.Context, db DBContext, userid int64, podcastid, episodeid, deviceid *int64, scope string,
+	) ([]SettingsDB, error)
+	// save (insert or update) or delete settings
 	SaveSettings(ctx context.Context, db DBContext, sett *SettingsDB) error
 }
 

@@ -9,32 +9,37 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"maps"
 
 	//	"gitlab.com/kabes/go-gpo/internal/model"
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/db"
+	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
 type Settings struct {
-	db        *db.Database
-	settRepo  repository.SettingsRepository
-	usersRepo repository.UsersRepository
+	db           *db.Database
+	settRepo     repository.SettingsRepository
+	usersRepo    repository.UsersRepository
+	episodesRepo repository.EpisodesRepository
+	devicesRepo  repository.DevicesRepository
+	podcastsRepo repository.PodcastsRepository
 }
 
 func NewSettingsServiceI(i do.Injector) (*Settings, error) {
 	return &Settings{
-		db:        do.MustInvoke[*db.Database](i),
-		settRepo:  do.MustInvoke[repository.SettingsRepository](i),
-		usersRepo: do.MustInvoke[repository.UsersRepository](i),
+		db:           do.MustInvoke[*db.Database](i),
+		settRepo:     do.MustInvoke[repository.SettingsRepository](i),
+		usersRepo:    do.MustInvoke[repository.UsersRepository](i),
+		episodesRepo: do.MustInvoke[repository.EpisodesRepository](i),
+		devicesRepo:  do.MustInvoke[repository.DevicesRepository](i),
+		podcastsRepo: do.MustInvoke[repository.PodcastsRepository](i),
 	}, nil
 }
 
-func (s Settings) GetSettings(ctx context.Context, username, scope, key string) (map[string]string, error) {
+func (s Settings) GetSettings(ctx context.Context, key *model.SettingsKey) (map[string]string, error) {
 	conn, err := s.db.GetConnection(ctx)
 	if err != nil {
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)
@@ -42,77 +47,132 @@ func (s Settings) GetSettings(ctx context.Context, username, scope, key string) 
 
 	defer conn.Close()
 
-	user, err := s.usersRepo.GetUser(ctx, conn, username)
-	if errors.Is(err, repository.ErrNoData) {
-		return nil, ErrUnknownUser
-	} else if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err)
+	setkey, err := s.newSettingKeys(ctx, conn, key)
+	if err != nil {
+		return nil, err
 	}
 
-	sett, err := s.settRepo.GetSettings(ctx, conn, user.ID, scope, key)
+	sett, err := s.settRepo.ListSettings(ctx, conn, setkey.userid, setkey.podcastid, setkey.episodeid,
+		setkey.deviceid, key.Scope)
 	if err != nil {
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
 	settings := make(map[string]string)
-
-	if len(sett.Value) == 0 {
-		return settings, nil
-	}
-
-	if err := json.Unmarshal([]byte(sett.Value), &settings); err != nil {
-		return nil, aerr.Wrapf(err, "failed unmarshal settings from database").WithMeta("value", sett.Value)
+	for _, s := range sett {
+		settings[s.Key] = s.Value
 	}
 
 	return settings, nil
 }
 
-func (s Settings) SaveSettings(
-	ctx context.Context,
-	username, scope, key string,
-	set map[string]string,
-	del []string,
-) error {
+func (s Settings) SaveSettings(ctx context.Context, key *model.SettingsKey, set map[string]string, del []string) error {
 	err := s.db.InTransaction(ctx, func(dbctx repository.DBContext) error {
-		user, err := s.usersRepo.GetUser(ctx, dbctx, username)
-		if errors.Is(err, repository.ErrNoData) {
-			return ErrUnknownUser
-		} else if err != nil {
-			return aerr.ApplyFor(ErrRepositoryError, err)
-		}
-
-		dbsett, err := s.settRepo.GetSettings(ctx, dbctx, user.ID, scope, key)
+		setkey, err := s.newSettingKeys(ctx, dbctx, key)
 		if err != nil {
-			return aerr.ApplyFor(ErrRepositoryError, err)
+			return err
 		}
 
-		settings := make(map[string]string)
+		dbsett := repository.SettingsDB{
+			UserID:    setkey.userid,
+			PodcastID: setkey.podcastid,
+			EpisodeID: setkey.episodeid,
+			DeviceID:  setkey.deviceid,
+			Scope:     key.Scope,
+		}
 
-		if len(dbsett.Value) > 0 {
-			if err := json.Unmarshal([]byte(dbsett.Value), &settings); err != nil {
-				return aerr.Wrapf(err, "failed unmarshal settings from database").WithMeta("value", dbsett.Value)
+		for key, value := range set {
+			dbsett.Key = key
+			dbsett.Value = value
+
+			if err := s.settRepo.SaveSettings(ctx, dbctx, &dbsett); err != nil {
+				return aerr.ApplyFor(ErrRepositoryError, err)
 			}
 		}
 
-		maps.Copy(settings, set)
+		dbsett.Value = ""
 
-		for _, k := range del {
-			delete(settings, k)
-		}
+		for _, key := range del {
+			dbsett.Key = key
 
-		data, err := json.Marshal(settings)
-		if err != nil {
-			return aerr.Wrapf(err, "failed marshal settings").WithMeta("value", settings)
-		}
-
-		dbsett.Value = string(data)
-
-		if err := s.settRepo.SaveSettings(ctx, dbctx, &dbsett); err != nil {
-			return aerr.ApplyFor(ErrRepositoryError, err)
+			if err := s.settRepo.SaveSettings(ctx, dbctx, &dbsett); err != nil {
+				return aerr.ApplyFor(ErrRepositoryError, err)
+			}
 		}
 
 		return nil
 	})
 
 	return err //nolint:wrapcheck
+}
+
+type settingsKeys struct {
+	userid    int64
+	podcastid *int64
+	deviceid  *int64
+	episodeid *int64
+}
+
+func (s Settings) newSettingKeys( //nolint:cyclop
+	ctx context.Context,
+	dbctx repository.DBContext,
+	key *model.SettingsKey,
+) (settingsKeys, error) {
+	settkey := settingsKeys{}
+
+	user, err := s.usersRepo.GetUser(ctx, dbctx, key.Username)
+	if errors.Is(err, repository.ErrNoData) {
+		return settkey, ErrUnknownUser
+	} else if err != nil {
+		return settkey, aerr.ApplyFor(ErrRepositoryError, err)
+	}
+
+	settkey.userid = user.ID
+
+	switch key.Scope {
+	case "device":
+		device, err := s.devicesRepo.GetDevice(ctx, dbctx, user.ID, key.Device)
+		if errors.Is(err, repository.ErrNoData) {
+			return settkey, ErrUnknownDevice
+		} else if err != nil {
+			return settkey, aerr.ApplyFor(ErrRepositoryError, err)
+		}
+
+		settkey.deviceid = &device.ID
+
+	case "podcast":
+		p, err := s.podcastsRepo.GetPodcast(ctx, dbctx, user.ID, key.Podcast)
+		if errors.Is(err, repository.ErrNoData) {
+			return settkey, ErrUnknownPodcast
+		} else if err != nil {
+			return settkey, aerr.ApplyFor(ErrRepositoryError, err)
+		}
+
+		settkey.podcastid = &p.ID
+
+	case "episode":
+		p, err := s.podcastsRepo.GetPodcast(ctx, dbctx, user.ID, key.Podcast)
+		if errors.Is(err, repository.ErrNoData) {
+			return settkey, ErrUnknownEpisode
+		} else if err != nil {
+			return settkey, aerr.ApplyFor(ErrRepositoryError, err)
+		}
+
+		settkey.podcastid = &p.ID
+
+		e, err := s.episodesRepo.GetEpisode(ctx, dbctx, user.ID, p.ID, key.Episode)
+		if errors.Is(err, repository.ErrNoData) {
+			return settkey, ErrUnknownPodcast // TODO: fixme
+		} else if err != nil {
+			return settkey, aerr.ApplyFor(ErrRepositoryError, err)
+		}
+
+		settkey.episodeid = &e.ID
+	case "account":
+		// no extra data
+	default:
+		return settkey, aerr.NewSimple("unknown scope")
+	}
+
+	return settkey, nil
 }

@@ -18,6 +18,32 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 )
 
+func (s sqliteRepository) GetEpisode(
+	ctx context.Context,
+	dbctx DBContext,
+	userid, podcastid int64,
+	episodeURL string,
+) (EpisodeDB, error) {
+	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_episodes").Logger()
+	logger.Debug().Int64("user_id", userid).Int64("podcast_id", podcastid).Str("episode_urk", episodeURL).
+		Msgf("get episode")
+
+	query := "SELECT e.id, e.podcast_id, e.url, e.title, e.action, e.started, e.position, e.total, " +
+		" e.created_at, e.updated_at, p.url as podcast_url, p.title as podcast_title " +
+		"FROM episodes e JOIN podcasts p on p.id = e.podcast_id " +
+		"WHERE p.user_id=? AND e.podcast_id = ? and e.url = ?"
+
+	res := EpisodeDB{}
+
+	err := dbctx.GetContext(ctx, &res, query, userid, podcastid, episodeURL)
+	if err != nil {
+		return res, aerr.Wrapf(err, "query episode failed").WithTag(aerr.InternalError)
+	}
+
+	return res, nil
+}
+
+// FIXME: drop device!!!
 func (s sqliteRepository) ListEpisodes(
 	ctx context.Context,
 	dbctx DBContext,
@@ -82,10 +108,10 @@ func (s sqliteRepository) ListFavorites(ctx context.Context, dbctx DBContext, us
 	logger.Debug().Int64("user_id", userid).Msg("get favorites")
 
 	query := "SELECT e.id, e.podcast_id, e.url, e.title, " +
-		" e.created_at, e.updated_at, p.url as podcast_url, p.title as podcast_title, d.name as device_name " +
-		"FROM episodes e JOIN podcasts p on p.id = e.podcast_id JOIN devices d on d.id=e.device_id " +
-		"JOIN settings s on s.key = e.url " +
-		"WHERE p.user_id=? AND s.scope = 'episode' and s.value = 'is_favorite'"
+		" e.created_at, e.updated_at, p.url as podcast_url, p.title as podcast_title " +
+		"FROM episodes e JOIN podcasts p on p.id = e.podcast_id " +
+		"JOIN settings s on s.episode_id = e.id " +
+		"WHERE p.user_id=? AND s.scope = 'episode' and s.key = 'is_favorite'"
 
 	res := []EpisodeDB{}
 

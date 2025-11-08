@@ -216,9 +216,9 @@ func prepareSqliteConnstr(connstr string) (string, error) {
 //------------------------------------------------------------------------------
 
 // InTransactionR run `fun` in db transactions; return `fun` result and error.
-//
-//nolint:ireturn
-func InTransactionR[T any](ctx context.Context, r *Database, fun func(repository.DBContext) (T, error)) (T, error) {
+func InTransactionR[T any](ctx context.Context, r *Database, //nolint:ireturn
+	fun func(repository.DBContext) (T, error),
+) (T, error) {
 	conn, err := r.GetConnection(ctx)
 	if err != nil {
 		return *new(T), err
