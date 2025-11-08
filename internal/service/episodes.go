@@ -122,6 +122,8 @@ func (e *Episodes) SaveEpisodesActions(ctx context.Context, username string, act
 	return err //nolint:wrapcheck
 }
 
+// GetEpisodesActions return list of episode actions for username and optional podcast and devicename.
+// If devicename is not empty - get actions from other devices.
 func (e *Episodes) GetEpisodesActions(ctx context.Context, username, podcast, devicename string,
 	since time.Time, aggregated bool,
 ) ([]model.Episode, error) {
@@ -304,7 +306,7 @@ func (e *Episodes) getEpisodesActions(
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
-	var deviceid int64
+	var deviceid *int64
 
 	if devicename != "" {
 		device, err := e.devicesRepo.GetDevice(ctx, dbctx, user.ID, devicename)
@@ -314,10 +316,10 @@ func (e *Episodes) getEpisodesActions(
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		deviceid = device.ID
+		deviceid = &device.ID
 	}
 
-	var podcastid int64
+	var podcastid *int64
 
 	if podcast != "" {
 		p, err := e.podcastsRepo.GetPodcast(ctx, dbctx, user.ID, podcast)
@@ -327,10 +329,10 @@ func (e *Episodes) getEpisodesActions(
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		podcastid = p.ID
+		podcastid = &p.ID
 	}
 
-	episodes, err := e.episodesRepo.ListEpisodes(ctx, dbctx, user.ID, deviceid, podcastid, since, aggregated,
+	episodes, err := e.episodesRepo.ListEpisodeActions(ctx, dbctx, user.ID, deviceid, podcastid, since, aggregated,
 		lastelements)
 	if err != nil {
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)

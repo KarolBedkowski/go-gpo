@@ -43,8 +43,8 @@ type UsersRepository interface {
 
 type EpisodesRepository interface {
 	GetEpisode(ctx context.Context, dbctx DBContext, userid, podcastid int64, episodeURL string) (EpisodeDB, error)
-	ListEpisodes(
-		ctx context.Context, db DBContext, userid, deviceid, podcastid int64, since time.Time, aggregated bool,
+	ListEpisodeActions(
+		ctx context.Context, db DBContext, userid int64, deviceid, podcastid *int64, since time.Time, aggregated bool,
 		lastelements int,
 	) ([]EpisodeDB, error)
 	SaveEpisode(ctx context.Context, db DBContext, userid int64, episode ...EpisodeDB) error

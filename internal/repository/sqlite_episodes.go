@@ -43,17 +43,18 @@ func (s sqliteRepository) GetEpisode(
 	return res, nil
 }
 
-// FIXME: drop device!!!
-func (s sqliteRepository) ListEpisodes(
+// ListEpisodeActions for user, and opitionally for device and podcastid.
+// If deviceid is given, return actions from OTHER than given devices.
+func (s sqliteRepository) ListEpisodeActions(
 	ctx context.Context,
 	dbctx DBContext,
-	userid, deviceid, podcastid int64,
+	userid int64, deviceid, podcastid *int64,
 	since time.Time,
 	aggregated bool,
 	lastelements int,
 ) ([]EpisodeDB, error) {
 	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_episodes").Logger()
-	logger.Debug().Int64("user_id", userid).Int64("podcast_id", podcastid).Int64("device_id", deviceid).
+	logger.Debug().Int64("user_id", userid).Any("podcast_id", podcastid).Any("device_id", deviceid).
 		Msgf("get episodes since=%s aggregated=%v", since, aggregated)
 
 	query := "SELECT e.id, e.podcast_id, e.url, e.title, e.action, e.started, e.position, e.total, " +
@@ -62,14 +63,14 @@ func (s sqliteRepository) ListEpisodes(
 		"WHERE p.user_id=? AND e.updated_at > ?"
 	args := []any{userid, since}
 
-	if deviceid > 0 {
-		query += " AND e.device_id = ?"
-		args = append(args, deviceid) //nolint:wsl_v5
+	if deviceid != nil {
+		query += " AND e.device_id != ?"
+		args = append(args, *deviceid) //nolint:wsl_v5
 	}
 
-	if podcastid > 0 {
+	if podcastid != nil {
 		query += " AND e.podcast_id = ?"
-		args = append(args, podcastid) //nolint:wsl_v5
+		args = append(args, *podcastid) //nolint:wsl_v5
 	}
 
 	query += " ORDER BY e.updated_at DESC"
