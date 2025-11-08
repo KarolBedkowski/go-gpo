@@ -50,7 +50,7 @@ func (e *Episodes) GetPodcastEpisodes(ctx context.Context, username, podcast, de
 
 	actions, err := e.getEpisodesActions(ctx, conn, username, podcast, devicename, time.Time{}, false, 0)
 	if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err)
+		return nil, err
 	}
 
 	if len(actions) == 0 {
@@ -134,7 +134,7 @@ func (e *Episodes) GetEpisodesActions(ctx context.Context, username, podcast, de
 
 	episodes, err := e.getEpisodesActions(ctx, conn, username, podcast, devicename, since, aggregated, 0)
 	if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err)
+		return nil, err
 	}
 
 	res := make([]model.Episode, 0, len(episodes))
@@ -174,7 +174,7 @@ func (e *Episodes) GetEpisodesUpdates(ctx context.Context, username, devicename 
 
 	episodes, err := e.getEpisodesActions(ctx, conn, username, "", devicename, since, true, 0)
 	if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err)
+		return nil, err
 	}
 
 	res := make([]model.EpisodeUpdate, 0, len(episodes))
@@ -222,7 +222,7 @@ func (e *Episodes) GetLastActions(ctx context.Context, username string, since ti
 
 	episodes, err := e.getEpisodesActions(ctx, conn, username, "", "", since, false, lastelements)
 	if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err)
+		return nil, err
 	}
 
 	res := make([]model.Episode, 0, len(episodes))

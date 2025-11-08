@@ -96,7 +96,7 @@ func (s *Subs) GetDeviceSubscriptionChanges(ctx context.Context, username, devic
 ) ([]string, []string, error) {
 	podcasts, err := s.getPodcasts(ctx, username, devicename, since)
 	if err != nil {
-		return nil, nil, aerr.ApplyFor(ErrRepositoryError, err)
+		return nil, nil, err
 	}
 
 	var added, removed []string
@@ -130,7 +130,7 @@ func (s *Subs) UpdateDeviceSubscriptions(ctx context.Context, //nolint:cyclop
 		}
 
 		if err != nil {
-			return aerr.ApplyFor(ErrRepositoryError, err)
+			return err
 		}
 
 		subscribed, err := s.podcastsRepo.ListPodcasts(ctx, dbctx, user.ID, time.Time{})
@@ -185,12 +185,12 @@ func (s *Subs) UpdateDeviceSubscriptionChanges( //nolint:cyclop
 	err := s.db.InTransaction(ctx, func(dbctx repository.DBContext) error {
 		user, err := s.getUser(ctx, dbctx, username)
 		if err != nil {
-			return aerr.ApplyFor(ErrRepositoryError, err)
+			return err
 		}
 
 		// check service
 		if _, err = s.getUserDevice(ctx, dbctx, user.ID, devicename); err != nil {
-			return aerr.ApplyFor(ErrRepositoryError, err)
+			return err
 		}
 
 		subscribed, err := s.podcastsRepo.ListPodcasts(ctx, dbctx, user.ID, time.Time{})
@@ -240,7 +240,7 @@ func (s *Subs) GetSubscriptionChanges(ctx context.Context, username, devicename 
 ) {
 	podcasts, err := s.getPodcasts(ctx, username, devicename, since)
 	if err != nil {
-		return nil, nil, aerr.ApplyFor(ErrRepositoryError, err)
+		return nil, nil, err
 	}
 
 	added := make([]model.Podcast, 0)
@@ -305,7 +305,7 @@ func (s *Subs) createUserDevice(
 
 	_, err := s.devicesRepo.SaveDevice(ctx, dbctx, &device)
 	if err != nil {
-		return device, aerr.ApplyFor(ErrRepositoryError, err)
+		return device, aerr.ApplyFor(ErrRepositoryError, err, "save device failed")
 	}
 
 	return s.getUserDevice(ctx, dbctx, username, devicename)
@@ -320,7 +320,7 @@ func (s *Subs) getPodcasts(
 ) {
 	conn, err := s.db.GetConnection(ctx)
 	if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err)
+		return nil, aerr.ApplyFor(ErrRepositoryError, err, "get connection failed")
 	}
 
 	defer conn.Close()
@@ -329,19 +329,19 @@ func (s *Subs) getPodcasts(
 	if errors.Is(err, repository.ErrNoData) {
 		return nil, ErrUnknownUser
 	} else if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err)
+		return nil, aerr.ApplyFor(ErrRepositoryError, err, "get user failed")
 	}
 
 	_, err = s.devicesRepo.GetDevice(ctx, conn, user.ID, devicename)
 	if errors.Is(err, repository.ErrNoData) {
 		return nil, ErrUnknownDevice
 	} else if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err)
+		return nil, aerr.ApplyFor(ErrRepositoryError, err, "get device failed")
 	}
 
 	podcasts, err := s.podcastsRepo.ListPodcasts(ctx, conn, user.ID, since)
 	if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err)
+		return nil, aerr.ApplyFor(ErrRepositoryError, err, "list podcasts failed")
 	}
 
 	return podcasts, nil
