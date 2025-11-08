@@ -98,7 +98,7 @@ func (a *AppError) WithUserMsg(msg string, args ...any) *AppError {
 	n := a.clone()
 	n.userMsg = fmt.Sprintf(msg, args...)
 
-	return a
+	return n
 }
 
 func (a *AppError) WithMeta(keyval ...any) *AppError {
@@ -122,7 +122,7 @@ func (a *AppError) WithMeta(keyval ...any) *AppError {
 			key = fmt.Sprintf("%v", keyval[i])
 		}
 
-		nerr.meta[key] = keyval[i]
+		nerr.meta[key] = keyval[i+1]
 	}
 
 	return nerr
@@ -172,7 +172,7 @@ func (a *AppError) String() string {
 	}
 
 	if msg != "" {
-		return a.userMsg
+		return msg
 	}
 
 	return a.err.Error()
@@ -180,12 +180,8 @@ func (a *AppError) String() string {
 
 // Clone AppError, do not fill stack.
 func (a *AppError) clone() *AppError {
-	if a == nil {
-		return nil
-	}
-
 	return &AppError{
-		stack:   nil,
+		stack:   a.stack,
 		msg:     a.msg,
 		tags:    slices.Clone(a.tags),
 		userMsg: a.userMsg,
@@ -201,6 +197,10 @@ func (a *AppError) clone() *AppError {
 func ApplyFor(aerr *AppError, err error, msg ...string) *AppError {
 	if err == nil {
 		return nil
+	}
+
+	if aerr == nil {
+		panic("apperror for apply is nil")
 	}
 
 	nerr := aerr.clone()
