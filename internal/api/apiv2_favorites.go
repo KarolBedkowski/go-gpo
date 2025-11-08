@@ -12,6 +12,7 @@ import (
 	"net/http"
 
 	"gitlab.com/kabes/go-gpo/internal"
+	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/service"
 
 	"github.com/go-chi/chi/v5"
@@ -49,11 +50,8 @@ func (u favoritesResource) getFafovites(
 
 	favorites, err := u.episodesSrv.GetFavorites(ctx, user)
 	if err != nil {
-		if internal.CheckAndWriteError(w, r, err) {
-			logger.Warn().Err(err).Str("mod", "api").Msg("get episodes updates error")
-		} else {
-			logger.Debug().Err(err).Str("mod", "api").Msg("get episodes updates error")
-		}
+		internal.CheckAndWriteError(w, r, err)
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Str("mod", "api").Msg("get episodes updates error")
 
 		return
 	}

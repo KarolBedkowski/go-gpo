@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"gitlab.com/kabes/go-gpo/internal"
+	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/service"
 
@@ -57,11 +58,8 @@ func (u settingsResource) getSettings(
 
 	res, err := u.settingsSrv.GetSettings(ctx, &key)
 	if err != nil {
-		if internal.CheckAndWriteError(w, r, err) {
-			logger.Warn().Err(err).Str("mod", "api").Msg("get settings error")
-		} else {
-			logger.Debug().Err(err).Str("mod", "api").Msg("get settings error")
-		}
+		internal.CheckAndWriteError(w, r, err)
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Str("mod", "api").Msg("get settings error")
 
 		return
 	}
@@ -101,11 +99,8 @@ func (u settingsResource) setSettings(
 	logger.Debug().Any("key", key).Any("req", req).Msg("req")
 
 	if err := u.settingsSrv.SaveSettings(ctx, &key, req.Set, req.Remove); err != nil {
-		if internal.CheckAndWriteError(w, r, err) {
-			logger.Warn().Err(err).Str("mod", "api").Msg("save settings error")
-		} else {
-			logger.Debug().Err(err).Str("mod", "api").Msg("save settings error")
-		}
+		internal.CheckAndWriteError(w, r, err)
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Str("mod", "api").Msg("save settings error")
 
 		return
 	}

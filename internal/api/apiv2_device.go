@@ -79,11 +79,8 @@ func (d deviceResource) update(ctx context.Context, w http.ResponseWriter, r *ht
 	}
 
 	if err := d.deviceSrv.UpdateDevice(ctx, user, deviceid, udd.Caption, udd.Type); err != nil {
-		if internal.CheckAndWriteError(w, r, err) {
-			logger.Warn().Err(err).Str("mod", "api").Msg("update device error")
-		} else {
-			logger.Debug().Err(err).Str("mod", "api").Msg("update device error")
-		}
+		internal.CheckAndWriteError(w, r, err)
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Str("mod", "api").Msg("update device error")
 
 		return
 	}
@@ -97,11 +94,8 @@ func (d deviceResource) list(ctx context.Context, w http.ResponseWriter, r *http
 
 	devices, err := d.deviceSrv.ListDevices(ctx, user)
 	if err != nil {
-		if internal.CheckAndWriteError(w, r, err) {
-			logger.Warn().Err(err).Str("mod", "api").Msg("get devices error")
-		} else {
-			logger.Debug().Err(err).Str("mod", "api").Msg("get devices error")
-		}
+		internal.CheckAndWriteError(w, r, err)
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Str("mod", "api").Msg("get devices error")
 
 		return
 	}

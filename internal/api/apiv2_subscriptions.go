@@ -14,6 +14,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal"
+	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/opml"
 	"gitlab.com/kabes/go-gpo/internal/service"
@@ -68,11 +69,11 @@ func (sr subscriptionsResource) devSubscriptions(
 
 	added, removed, err := sr.subsSrv.GetDeviceSubscriptionChanges(ctx, user, deviceid, sinceTS)
 	if err != nil {
-		if internal.CheckAndWriteError(w, r, err) {
-			logger.Warn().Err(err).Str("mod", "api").Msg("get device subscriptions changes error")
-		} else {
-			logger.Debug().Err(err).Str("mod", "api").Msg("get device subscriptions changes error")
-		}
+		internal.CheckAndWriteError(w, r, err)
+		logger.WithLevel(aerr.LogLevelForError(err)).
+			Err(err).
+			Str("mod", "api").
+			Msg("get device subscriptions changes error")
 
 		return
 	}
@@ -102,11 +103,8 @@ func (sr subscriptionsResource) userSubscriptions(
 
 	subs, err := sr.subsSrv.GetUserSubscriptions(ctx, user, time.Time{})
 	if err != nil {
-		if internal.CheckAndWriteError(w, r, err) {
-			logger.Warn().Err(err).Str("mod", "api").Msg("get user subscriptions error")
-		} else {
-			logger.Debug().Err(err).Str("mod", "api").Msg("get user subscriptions error")
-		}
+		internal.CheckAndWriteError(w, r, err)
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Str("mod", "api").Msg("get user subscriptions error")
 
 		return
 	}
@@ -154,11 +152,11 @@ func (sr subscriptionsResource) uploadSubscriptionChanges(
 
 	err := sr.subsSrv.UpdateDeviceSubscriptionChanges(ctx, user, deviceid, &subChanges)
 	if err != nil {
-		if internal.CheckAndWriteError(w, r, err) {
-			logger.Warn().Err(err).Str("mod", "api").Msg("update device subscription changes error")
-		} else {
-			logger.Debug().Err(err).Str("mod", "api").Msg("update device subscription changes error")
-		}
+		internal.CheckAndWriteError(w, r, err)
+		logger.WithLevel(aerr.LogLevelForError(err)).
+			Err(err).
+			Str("mod", "api").
+			Msg("update device subscription changes error")
 
 		return
 	}

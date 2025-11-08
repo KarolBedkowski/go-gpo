@@ -15,6 +15,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal"
+	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
@@ -51,11 +52,8 @@ func (e episodePages) list(ctx context.Context, w http.ResponseWriter, r *http.R
 
 	episodes, err := e.episodeSrv.GetPodcastEpisodes(ctx, user, podcast, "")
 	if err != nil {
-		if internal.CheckAndWriteError(w, r, err) {
-			logger.Warn().Err(err).Str("mod", "web").Msg("get podcast episodes error")
-		} else {
-			logger.Debug().Err(err).Str("mod", "web").Msg("get podcast episodes error")
-		}
+		internal.CheckAndWriteError(w, r, err)
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Str("mod", "web").Msg("get podcast episodes error")
 
 		return
 	}

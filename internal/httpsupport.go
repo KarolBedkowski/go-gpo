@@ -80,23 +80,20 @@ func WriteError(w http.ResponseWriter, r *http.Request, code int, msg string) {
 	http.Error(w, msg, code)
 }
 
-// CheckAndWriteError decode and write error. Return true for errors that should be logged as error.
-func CheckAndWriteError(w http.ResponseWriter, r *http.Request, err error) bool {
+// CheckAndWriteError decode and write error to ResponseWriter.
+func CheckAndWriteError(w http.ResponseWriter, r *http.Request, err error) {
 	msg := aerr.GetUserMessage(err)
 
 	switch {
 	case aerr.HasTag(err, aerr.InternalError):
-		WriteError(w, r, http.StatusInternalServerError, "")
+		// write message if is defined in error
+		WriteError(w, r, http.StatusInternalServerError, msg)
 
 	case aerr.HasTag(err, aerr.DataError):
 		WriteError(w, r, http.StatusBadRequest, msg)
 
-		return false
-
 	default:
-		// unknown error
+		// unknown error; newer show details
 		WriteError(w, r, http.StatusInternalServerError, "")
 	}
-
-	return true
 }

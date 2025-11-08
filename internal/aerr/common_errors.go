@@ -1,5 +1,7 @@
 package aerr
 
+import "github.com/rs/zerolog"
+
 // common_errors.go
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
 //
@@ -17,3 +19,16 @@ var (
 	ErrInvalidConf = NewSimple("invalid configuration").WithTag(ConfigurationError)
 	ErrDatabase    = NewSimple("database error").WithTag(InternalError).WithUserMsg("database error")
 )
+
+func IsSerious(err error) bool {
+	return HasTag(err, InternalError)
+}
+
+func LogLevelForError(err error) zerolog.Level {
+	if IsSerious(err) {
+		return zerolog.WarnLevel
+	}
+
+	// all others are usually user errors and not required logging.
+	return zerolog.DebugLevel
+}

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"gitlab.com/kabes/go-gpo/internal"
+	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/service"
 
@@ -61,22 +62,16 @@ func (u updatesResource) getUpdates(
 
 	added, removed, err := u.subsSrv.GetSubscriptionChanges(ctx, user, deviceid, since)
 	if err != nil {
-		if internal.CheckAndWriteError(w, r, err) {
-			logger.Warn().Err(err).Str("mod", "api").Msg("get subscription changes error")
-		} else {
-			logger.Debug().Err(err).Str("mod", "api").Msg("get subscription changes error")
-		}
+		internal.CheckAndWriteError(w, r, err)
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Str("mod", "api").Msg("get subscription changes error")
 
 		return
 	}
 
 	updates, err := u.episodesSrv.GetEpisodesUpdates(ctx, user, "", since, includeActions)
 	if err != nil {
-		if internal.CheckAndWriteError(w, r, err) {
-			logger.Warn().Err(err).Str("mod", "api").Msg("get episodes updates error")
-		} else {
-			logger.Debug().Err(err).Str("mod", "api").Msg("get episodes updates error")
-		}
+		internal.CheckAndWriteError(w, r, err)
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Str("mod", "api").Msg("get episodes updates error")
 
 		return
 	}

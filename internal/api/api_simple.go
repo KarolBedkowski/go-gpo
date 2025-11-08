@@ -19,6 +19,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal"
+	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/opml"
 	"gitlab.com/kabes/go-gpo/internal/service"
@@ -57,11 +58,8 @@ func (s *simpleResource) downloadAllSubscriptions(
 
 	subs, err := s.subServ.GetUserSubscriptions(ctx, user, time.Time{})
 	if err != nil {
-		if internal.CheckAndWriteError(w, r, err) {
-			logger.Warn().Err(err).Str("mod", "api").Msg("get user subscriptions error")
-		} else {
-			logger.Debug().Err(err).Str("mod", "api").Msg("get user subscriptions error")
-		}
+		internal.CheckAndWriteError(w, r, err)
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Str("mod", "api").Msg("get user subscriptions error")
 
 		return
 	}
@@ -104,11 +102,8 @@ func (s *simpleResource) downloadSubscriptions(
 
 	subs, err := s.subServ.GetDeviceSubscriptions(ctx, user, deviceid, time.Time{})
 	if err != nil {
-		if internal.CheckAndWriteError(w, r, err) {
-			logger.Warn().Err(err).Str("mod", "api").Msg("get device subscriptions error")
-		} else {
-			logger.Debug().Err(err).Str("mod", "api").Msg("get device subscriptions error")
-		}
+		internal.CheckAndWriteError(w, r, err)
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Str("mod", "api").Msg("get device subscriptions error")
 
 		return
 	}
@@ -180,11 +175,8 @@ func (s *simpleResource) uploadSubscriptions(
 
 	subscribed := model.NewSubscribedURLS(subs)
 	if err := s.subServ.UpdateDeviceSubscriptions(ctx, user, deviceid, subscribed, time.Now()); err != nil {
-		if internal.CheckAndWriteError(w, r, err) {
-			logger.Warn().Err(err).Str("mod", "api").Msg("update subscriptions error")
-		} else {
-			logger.Debug().Err(err).Str("mod", "api").Msg("update subscriptions error")
-		}
+		internal.CheckAndWriteError(w, r, err)
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Str("mod", "api").Msg("update subscriptions error")
 	} else {
 		w.WriteHeader(http.StatusOK)
 	}
