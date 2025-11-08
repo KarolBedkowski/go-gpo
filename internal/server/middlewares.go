@@ -202,13 +202,11 @@ func newFullLogMiddleware(next http.Handler) http.Handler {
 		defer func() {
 			if !shouldSkipLogRequest(request) {
 				llog.Debug().
-					Str("request_body", reqBody.String()).
 					Interface("req-headers", request.Header).
-					Msg("request data")
+					Msg("request data: " + reqBody.String())
 				llog.Debug().
-					Str("response_body", respBody.String()).
 					Interface("resp-headers", lrw.Header()).
-					Msg("response data")
+					Msg("response data: " + respBody.String())
 			}
 
 			loglevel := zerolog.InfoLevel
