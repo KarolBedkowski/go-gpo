@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/journald"
 	"github.com/rs/zerolog/log"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 )
@@ -21,19 +22,27 @@ func initializeLogger(level, format string) {
 	var llog zerolog.Logger
 
 	switch format {
-	default:
-		log.Error().Msgf("logger: unknown log format %q; using logfmt", format)
+	case "json":
+		llog = log.Logger
 
-		fallthrough
-	case "syslog":
+	case "journald":
 		llog = log.Output(zerolog.ConsoleWriter{ //nolint:exhaustruct
 			Out:          os.Stderr,
 			NoColor:      true,
 			PartsExclude: []string{zerolog.TimestampFieldName},
 		})
-	case "logfmt":
+
+	case "syslog":
+		llog = log.Output(journald.NewJournalDWriter())
+
+	default:
+		if format != "" && format != "logfmt" {
+			log.Error().Msgf("logger: unknown log format %q; using logfmt", format)
+		}
+
 		console := outputIsConsole()
 
+		// log full datetime when log is written to file; skip date on console.
 		tformat := time.RFC3339
 		if console {
 			tformat = time.TimeOnly
@@ -44,8 +53,6 @@ func initializeLogger(level, format string) {
 			NoColor:    !outputIsConsole(),
 			TimeFormat: tformat,
 		})
-	case "json":
-		llog = log.Logger
 	}
 
 	if l, err := zerolog.ParseLevel(level); err == nil {

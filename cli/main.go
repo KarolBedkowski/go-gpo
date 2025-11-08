@@ -93,7 +93,7 @@ func main() {
 			&cli.StringFlag{
 				Name:    "log.format",
 				Value:   "logfmt",
-				Usage:   "Log format (logfmt, json, syslog)",
+				Usage:   "Log format (logfmt, json, journald, syslog)",
 				Sources: cli.EnvVars("GOGPO_LOGFORMAT"),
 				Config:  cli.StringConfig{TrimSpace: true},
 			},
