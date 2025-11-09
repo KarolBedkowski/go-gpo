@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -259,7 +260,7 @@ func newRecoverMiddleware(next http.Handler) http.Handler {
 				return
 			}
 
-			logger := log.Ctx(ctx).With().Str("mod", "server").Logger()
+			logger := log.Ctx(ctx).With().Str("mod", "server").Str("stack", string(debug.Stack())).Logger()
 
 			switch t := rec.(type) {
 			case error:
