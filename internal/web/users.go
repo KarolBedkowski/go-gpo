@@ -85,7 +85,7 @@ func (u userPages) doChangePassword(ctx context.Context, r *http.Request, logger
 
 	up, _ := model.NewUserPassword(username, npass)
 
-	if err := u.usersSrv.ChangePassword(ctx, up); err != nil {
+	if err := u.usersSrv.ChangePassword(ctx, &up); err != nil {
 		logger.Info().Err(err).Str("mod", "web").Str("user_name", username).Msg("change user password failed")
 
 		return "Error: change password failed"

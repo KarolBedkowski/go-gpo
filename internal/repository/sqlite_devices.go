@@ -17,7 +17,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 )
 
-func (s sqliteRepository) GetDevice(
+func (s SqliteRepository) GetDevice(
 	ctx context.Context,
 	dbctx DBContext,
 	userid int64,
@@ -51,7 +51,7 @@ func (s sqliteRepository) GetDevice(
 	return device, nil
 }
 
-func (s sqliteRepository) SaveDevice(ctx context.Context, dbctx DBContext, device *DeviceDB) (int64, error) {
+func (s SqliteRepository) SaveDevice(ctx context.Context, dbctx DBContext, device *DeviceDB) (int64, error) {
 	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_dev").Logger()
 
 	if device.ID == 0 {
@@ -86,7 +86,7 @@ func (s sqliteRepository) SaveDevice(ctx context.Context, dbctx DBContext, devic
 	return device.ID, nil
 }
 
-func (s sqliteRepository) ListDevices(ctx context.Context, dbctx DBContext, userid int64) (DevicesDB, error) {
+func (s SqliteRepository) ListDevices(ctx context.Context, dbctx DBContext, userid int64) (DevicesDB, error) {
 	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_dev").Logger()
 	logger.Debug().Int64("user_id", userid).Msg("list devices - count subscriptions")
 

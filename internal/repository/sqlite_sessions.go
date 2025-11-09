@@ -21,7 +21,7 @@ import (
 
 var ErrDuplicatedSID = errors.New("sid already exists")
 
-func (s sqliteRepository) DeleteSession(ctx context.Context, dbctx DBContext, sid string) error {
+func (s SqliteRepository) DeleteSession(ctx context.Context, dbctx DBContext, sid string) error {
 	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_session").Logger()
 	logger.Debug().Str("sid", sid).Msg("delete session")
 
@@ -33,7 +33,7 @@ func (s sqliteRepository) DeleteSession(ctx context.Context, dbctx DBContext, si
 	return nil
 }
 
-func (s sqliteRepository) SaveSession(ctx context.Context, dbctx DBContext, sid string, data []byte) error {
+func (s SqliteRepository) SaveSession(ctx context.Context, dbctx DBContext, sid string, data []byte) error {
 	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_session").Logger()
 	logger.Debug().Str("sid", sid).Msg("save session")
 
@@ -47,7 +47,7 @@ func (s sqliteRepository) SaveSession(ctx context.Context, dbctx DBContext, sid 
 	return nil
 }
 
-func (s sqliteRepository) RegenerateSession(ctx context.Context, dbctx DBContext, oldsid, newsid string) error {
+func (s SqliteRepository) RegenerateSession(ctx context.Context, dbctx DBContext, oldsid, newsid string) error {
 	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_session").Logger()
 	logger.Debug().Str("sid", newsid).Str("old_sid", oldsid).Msg("regenerate session")
 
@@ -77,7 +77,7 @@ func (s sqliteRepository) RegenerateSession(ctx context.Context, dbctx DBContext
 	return nil
 }
 
-func (s sqliteRepository) CountSessions(ctx context.Context, dbctx DBContext) (int, error) {
+func (s SqliteRepository) CountSessions(ctx context.Context, dbctx DBContext) (int, error) {
 	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_session").Logger()
 	logger.Debug().Msg("count sessions")
 
@@ -90,7 +90,7 @@ func (s sqliteRepository) CountSessions(ctx context.Context, dbctx DBContext) (i
 	return total, nil
 }
 
-func (s sqliteRepository) CleanSessions(
+func (s SqliteRepository) CleanSessions(
 	ctx context.Context,
 	dbctx DBContext,
 	maxLifeTime, maxLifeTimeForEmpty time.Duration,
@@ -116,7 +116,7 @@ func (s sqliteRepository) CleanSessions(
 	return nil
 }
 
-func (s sqliteRepository) ReadOrCreate(ctx context.Context, dbctx DBContext, sid string) ([]byte, time.Time, error) {
+func (s SqliteRepository) ReadOrCreate(ctx context.Context, dbctx DBContext, sid string) ([]byte, time.Time, error) {
 	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_session").Logger()
 	logger.Debug().Str("sid", sid).Msg("read or create session")
 
@@ -140,7 +140,7 @@ func (s sqliteRepository) ReadOrCreate(ctx context.Context, dbctx DBContext, sid
 	return data, createdat, nil
 }
 
-func (s sqliteRepository) SessionExists(ctx context.Context, dbctx DBContext, sid string) (bool, error) {
+func (s SqliteRepository) SessionExists(ctx context.Context, dbctx DBContext, sid string) (bool, error) {
 	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_session").Logger()
 	logger.Debug().Msg("count sessions")
 

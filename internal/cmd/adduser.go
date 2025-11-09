@@ -42,7 +42,7 @@ func (a *AddUser) Start(ctx context.Context) error {
 		return fmt.Errorf("validation error: %w", err)
 	}
 
-	id, err := userv.AddUser(ctx, newuser)
+	id, err := userv.AddUser(ctx, &newuser)
 	if err != nil {
 		return fmt.Errorf("add user error: %w", err)
 	}

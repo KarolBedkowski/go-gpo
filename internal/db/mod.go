@@ -206,6 +206,10 @@ func prepareSqliteConnstr(connstr string) (string, error) {
 		return "", aerr.ErrInvalidConf.WithUserMsg("invalid (empty) database connection string")
 	}
 
+	if connstr == ":memory:" {
+		return ":memory:?_fk=ON", nil
+	}
+
 	parsed, err := url.Parse(connstr)
 	if err != nil {
 		return "", aerr.ApplyFor(aerr.ErrInvalidConf, err, "", "failed to parse database connections string")

@@ -40,32 +40,28 @@ func NewUsersServiceI(i do.Injector) (*Users, error) {
 }
 
 func (u *Users) LoginUser(ctx context.Context, username, password string) (model.User, error) {
-	conn, err := u.db.GetConnection(ctx)
-	if err != nil {
-		return model.User{}, aerr.ApplyFor(ErrRepositoryError, err)
-	}
+	//nolint:wrapcheck
+	return db.InConnectionR(ctx, u.db, func(conn repository.DBContext) (model.User, error) {
+		user, err := u.usersRepo.GetUser(ctx, conn, username)
+		if errors.Is(err, repository.ErrNoData) {
+			return model.User{}, ErrUnknownUser
+		} else if err != nil {
+			return model.User{}, aerr.ApplyFor(ErrRepositoryError, err)
+		}
 
-	defer conn.Close()
+		if user.Password == model.UserLockedPassword {
+			return model.User{}, ErrUserAccountLocked
+		}
 
-	user, err := u.usersRepo.GetUser(ctx, conn, username)
-	if errors.Is(err, repository.ErrNoData) {
-		return model.User{}, ErrUnknownUser
-	} else if err != nil {
-		return model.User{}, aerr.ApplyFor(ErrRepositoryError, err)
-	}
+		if !u.passHasher.CheckPassword(password, user.Password) {
+			return model.User{}, ErrUnauthorized
+		}
 
-	if user.Password == model.UserLockedPassword {
-		return model.User{}, ErrUserAccountLocked
-	}
-
-	if !u.passHasher.CheckPassword(password, user.Password) {
-		return model.User{}, ErrUnauthorized
-	}
-
-	return model.NewUserFromUserDB(&user), nil
+		return model.NewUserFromUserDB(&user), nil
+	})
 }
 
-func (u *Users) AddUser(ctx context.Context, user model.NewUser) (int64, error) {
+func (u *Users) AddUser(ctx context.Context, user *model.NewUser) (int64, error) {
 	//nolint:wrapcheck
 	return db.InTransactionR(ctx, u.db, func(dbctx repository.DBContext) (int64, error) {
 		// is user exists?
@@ -96,11 +92,16 @@ func (u *Users) AddUser(ctx context.Context, user model.NewUser) (int64, error) 
 			UpdatedAt: now,
 		}
 
-		return u.usersRepo.SaveUser(ctx, dbctx, &udb)
+		uid, err := u.usersRepo.SaveUser(ctx, dbctx, &udb)
+		if err != nil {
+			return 0, aerr.ApplyFor(ErrRepositoryError, err)
+		}
+
+		return uid, nil
 	})
 }
 
-func (u *Users) ChangePassword(ctx context.Context, user model.UserPassword) error {
+func (u *Users) ChangePassword(ctx context.Context, user *model.UserPassword) error {
 	//nolint: wrapcheck
 	return u.db.InTransaction(ctx, func(dbctx repository.DBContext) error {
 		// is user exists?
@@ -127,25 +128,21 @@ func (u *Users) ChangePassword(ctx context.Context, user model.UserPassword) err
 }
 
 func (u *Users) GetUsers(ctx context.Context, activeOnly bool) ([]model.User, error) {
-	conn, err := u.db.GetConnection(ctx)
-	if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err)
-	}
+	//nolint:wrapcheck
+	return db.InConnectionR(ctx, u.db, func(dbctx repository.DBContext) ([]model.User, error) {
+		users, err := u.usersRepo.ListUsers(ctx, dbctx, activeOnly)
+		if err != nil {
+			return nil, aerr.ApplyFor(ErrRepositoryError, err)
+		}
 
-	defer conn.Close()
+		res := make([]model.User, 0, len(users))
 
-	users, err := u.usersRepo.ListUsers(ctx, conn, activeOnly)
-	if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err)
-	}
+		for _, u := range users {
+			res = append(res, model.NewUserFromUserDB(&u))
+		}
 
-	res := make([]model.User, 0, len(users))
-
-	for _, u := range users {
-		res = append(res, model.NewUserFromUserDB(&u))
-	}
-
-	return res, nil
+		return res, nil
+	})
 }
 
 func (u *Users) LockAccount(ctx context.Context, la model.LockAccount) error {

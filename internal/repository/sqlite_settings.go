@@ -16,7 +16,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 )
 
-func (s sqliteRepository) ListSettings(ctx context.Context, dbctx DBContext,
+func (s SqliteRepository) ListSettings(ctx context.Context, dbctx DBContext,
 	userid int64, podcastid, episodeid, deviceid *int64, scope string,
 ) ([]SettingsDB, error) {
 	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_settings").Logger()
@@ -38,7 +38,7 @@ func (s sqliteRepository) ListSettings(ctx context.Context, dbctx DBContext,
 }
 
 // GetSettings return setting for user, scope and key. Create empty SettingsDB object when no data found in db.
-func (s sqliteRepository) GetSettings(ctx context.Context, dbctx DBContext,
+func (s SqliteRepository) GetSettings(ctx context.Context, dbctx DBContext,
 	userid int64, podcastid, episodeid, deviceid *int64, scope, key string,
 ) (SettingsDB, error) {
 	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_settings").Logger()
@@ -84,7 +84,7 @@ func (s sqliteRepository) GetSettings(ctx context.Context, dbctx DBContext,
 }
 
 // SaveSettings insert or update setting.
-func (s sqliteRepository) SaveSettings(ctx context.Context, dbctx DBContext, sett *SettingsDB) error {
+func (s SqliteRepository) SaveSettings(ctx context.Context, dbctx DBContext, sett *SettingsDB) error {
 	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_settings").Logger()
 	logger.Debug().Object("settings", sett).Msg("save settings")
 

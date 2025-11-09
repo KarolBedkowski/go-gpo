@@ -17,7 +17,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 )
 
-func (s sqliteRepository) GetUser(ctx context.Context, dbctx DBContext, username string) (UserDB, error) {
+func (s SqliteRepository) GetUser(ctx context.Context, dbctx DBContext, username string) (UserDB, error) {
 	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_user").Logger()
 	logger.Debug().Str("user_name", username).Msg("get user")
 
@@ -38,7 +38,7 @@ func (s sqliteRepository) GetUser(ctx context.Context, dbctx DBContext, username
 	}
 }
 
-func (s sqliteRepository) SaveUser(ctx context.Context, dbctx DBContext, user *UserDB) (int64, error) {
+func (s SqliteRepository) SaveUser(ctx context.Context, dbctx DBContext, user *UserDB) (int64, error) {
 	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_user").Logger()
 
 	if user.ID == 0 {
@@ -74,7 +74,7 @@ func (s sqliteRepository) SaveUser(ctx context.Context, dbctx DBContext, user *U
 }
 
 // ListUsers get all users from database.
-func (s sqliteRepository) ListUsers(ctx context.Context, dbctx DBContext, activeOnly bool) ([]UserDB, error) {
+func (s SqliteRepository) ListUsers(ctx context.Context, dbctx DBContext, activeOnly bool) ([]UserDB, error) {
 	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_user").Logger()
 	logger.Debug().Msgf("list users, active_only=%v", activeOnly)
 
@@ -84,6 +84,8 @@ func (s sqliteRepository) ListUsers(ctx context.Context, dbctx DBContext, active
 	if activeOnly {
 		sql += " WHERE password != 'LOCKED'"
 	}
+
+	sql += " ORDER BY username"
 
 	err := dbctx.SelectContext(ctx, &users, sql)
 	if err != nil {

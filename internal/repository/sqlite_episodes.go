@@ -18,7 +18,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 )
 
-func (s sqliteRepository) GetEpisode(
+func (s SqliteRepository) GetEpisode(
 	ctx context.Context,
 	dbctx DBContext,
 	userid, podcastid int64,
@@ -47,7 +47,7 @@ func (s sqliteRepository) GetEpisode(
 
 // ListEpisodeActions for user, and optionally for device and podcastid.
 // If deviceid is given, return actions from OTHER than given devices.
-func (s sqliteRepository) ListEpisodeActions(
+func (s SqliteRepository) ListEpisodeActions(
 	ctx context.Context,
 	dbctx DBContext,
 	userid int64, deviceid, podcastid *int64,
@@ -106,7 +106,7 @@ func (s sqliteRepository) ListEpisodeActions(
 	return slices.Collect(maps.Values(agr)), nil
 }
 
-func (s sqliteRepository) ListFavorites(ctx context.Context, dbctx DBContext, userid int64) ([]EpisodeDB, error) {
+func (s SqliteRepository) ListFavorites(ctx context.Context, dbctx DBContext, userid int64) ([]EpisodeDB, error) {
 	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_episodes").Logger()
 	logger.Debug().Int64("user_id", userid).Msg("get favorites")
 
@@ -126,7 +126,7 @@ func (s sqliteRepository) ListFavorites(ctx context.Context, dbctx DBContext, us
 	return res, nil
 }
 
-func (s sqliteRepository) SaveEpisode(ctx context.Context, dbctx DBContext, userid int64, episode ...EpisodeDB) error {
+func (s SqliteRepository) SaveEpisode(ctx context.Context, dbctx DBContext, userid int64, episode ...EpisodeDB) error {
 	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_episodes").Logger()
 	logger.Debug().Int64("user_id", userid).Msgf("save episode")
 
@@ -184,7 +184,7 @@ func (s sqliteRepository) SaveEpisode(ctx context.Context, dbctx DBContext, user
 	return nil
 }
 
-func (s sqliteRepository) saveEpisode(ctx context.Context, dbctx DBContext, episode EpisodeDB) error {
+func (s SqliteRepository) saveEpisode(ctx context.Context, dbctx DBContext, episode EpisodeDB) error {
 	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_episodes").Logger()
 	logger.Debug().Object("episode", episode).Msg("save episode")
 

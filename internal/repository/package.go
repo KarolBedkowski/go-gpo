@@ -11,21 +11,21 @@ import "github.com/samber/do/v2"
 
 var Package = do.Package(
 	do.Lazy(func(_ do.Injector) (SessionRepository, error) {
-		return &sqliteRepository{}, nil
+		return &SqliteRepository{}, nil
 	}),
 	do.Lazy(func(_ do.Injector) (UsersRepository, error) {
-		return &sqliteRepository{}, nil
+		return &SqliteRepository{}, nil
 	}),
 	do.Lazy(func(_ do.Injector) (PodcastsRepository, error) {
-		return &sqliteRepository{}, nil
+		return &SqliteRepository{}, nil
 	}),
 	do.Lazy(func(_ do.Injector) (DevicesRepository, error) {
-		return &sqliteRepository{}, nil
+		return &SqliteRepository{}, nil
 	}),
 	do.Lazy(func(_ do.Injector) (EpisodesRepository, error) {
-		return &sqliteRepository{}, nil
+		return &SqliteRepository{}, nil
 	}),
 	do.Lazy(func(_ do.Injector) (SettingsRepository, error) {
-		return &sqliteRepository{}, nil
+		return &SqliteRepository{}, nil
 	}),
 )

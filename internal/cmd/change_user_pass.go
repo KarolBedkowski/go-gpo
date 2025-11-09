@@ -40,7 +40,7 @@ func (c *ChangeUserPassword) Start(ctx context.Context) error {
 		return fmt.Errorf("validation error: %w", err)
 	}
 
-	if err = userv.ChangePassword(ctx, up); err != nil {
+	if err = userv.ChangePassword(ctx, &up); err != nil {
 		return fmt.Errorf("change user password error: %w", err)
 	}
 
