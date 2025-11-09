@@ -42,7 +42,8 @@ type UsersRepository interface {
 }
 
 type EpisodesRepository interface {
-	GetEpisode(ctx context.Context, dbctx DBContext, userid, podcastid int64, episodeURL string) (EpisodeDB, error)
+	// GetEpisode from repository. episode can be episode url or guid.
+	GetEpisode(ctx context.Context, dbctx DBContext, userid, podcastid int64, episode string) (EpisodeDB, error)
 	ListEpisodeActions(
 		ctx context.Context, db DBContext, userid int64, deviceid, podcastid *int64, since time.Time, aggregated bool,
 		lastelements int,

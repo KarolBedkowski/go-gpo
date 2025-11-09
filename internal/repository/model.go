@@ -141,6 +141,7 @@ type EpisodeDB struct {
 	Total     *int      `db:"total"`
 	CreatedAt time.Time `db:"created_at"`
 	UpdatedAt time.Time `db:"updated_at"`
+	GUID      *string   `db:"guid"`
 
 	PodcastURL   string `db:"podcast_url"`
 	PodcastTitle string `db:"podcast_title"`
@@ -153,28 +154,17 @@ func (e EpisodeDB) MarshalZerologObject(event *zerolog.Event) {
 		Int64("device_id", e.DeviceID).
 		Str("title", e.Title).
 		Str("url", e.URL).
-		Str("action", e.Action)
-
-	if e.Started != nil {
-		event.Int("started", *e.Started)
-	}
-
-	if e.Position != nil {
-		event.Int("position", *e.Position)
-	}
-
-	if e.Total != nil {
-		event.Int("total", *e.Total)
-	}
-
-	event.Time("created_at", e.CreatedAt).
-		Time("updated_at", e.UpdatedAt)
-
-	event.Dict("podcast", zerolog.Dict().
-		Str("podcast_url", e.PodcastURL).
-		Str("podcast_title", e.PodcastTitle))
-
-	event.Str("device", e.Device)
+		Str("action", e.Action).
+		Any("guid", e.GUID).
+		Any("started", e.Started).
+		Any("position", e.Position).
+		Any("total", e.Total).
+		Time("created_at", e.CreatedAt).
+		Time("updated_at", e.UpdatedAt).
+		Dict("podcast", zerolog.Dict().
+			Str("podcast_url", e.PodcastURL).
+			Str("podcast_title", e.PodcastTitle)).
+		Str("device", e.Device)
 }
 
 type UserDB struct {

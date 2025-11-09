@@ -90,10 +90,7 @@ func (er episodesResource) uploadEpisodeActions(
 	if err = er.episodesSrv.SaveEpisodesActions(ctx, user, actions...); err != nil {
 		internal.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).
-			Err(err).
-			Str("mod", "api").
-			Str("mod", "api").
-			Msg("save episodes error")
+			Err(err).Str("mod", "api").Msg("save episodes error")
 
 		return
 	}
@@ -154,14 +151,15 @@ func (er episodesResource) getEpisodeActions(
 // -----------------------------
 
 type episode struct {
-	Podcast   string `json:"podcast"`
-	Episode   string `json:"episode"`
-	Device    string `json:"device"`
-	Action    string `json:"action"`
-	Timestamp any    `json:"timestamp"`
-	Started   *int   `json:"started,omitempty"`
-	Position  *int   `json:"position,omitempty"`
-	Total     *int   `json:"total,omitempty"`
+	Podcast   string  `json:"podcast"`
+	Episode   string  `json:"episode"`
+	Device    string  `json:"device"`
+	Action    string  `json:"action"`
+	Timestamp any     `json:"timestamp"`
+	Started   *int    `json:"started,omitempty"`
+	Position  *int    `json:"position,omitempty"`
+	Total     *int    `json:"total,omitempty"`
+	GUID      *string `json:"guid,omitempty"`
 
 	ts time.Time `json:"-"`
 }
@@ -176,6 +174,9 @@ func newEpisodesFromModel(e model.Episode) episode {
 		Started:   e.Started,
 		Position:  e.Position,
 		Total:     e.Total,
+		GUID:      e.GUID,
+
+		ts: time.Time{},
 	}
 }
 
@@ -230,5 +231,6 @@ func (e *episode) toModel() model.Episode {
 		Started:   e.Started,
 		Position:  e.Position,
 		Total:     e.Total,
+		GUID:      e.GUID,
 	}
 }

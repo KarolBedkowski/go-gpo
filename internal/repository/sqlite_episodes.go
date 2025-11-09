@@ -22,20 +22,22 @@ func (s sqliteRepository) GetEpisode(
 	ctx context.Context,
 	dbctx DBContext,
 	userid, podcastid int64,
-	episodeURL string,
+	episode string,
 ) (EpisodeDB, error) {
 	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_episodes").Logger()
-	logger.Debug().Int64("user_id", userid).Int64("podcast_id", podcastid).Str("episode_urk", episodeURL).
+	logger.Debug().Int64("user_id", userid).Int64("podcast_id", podcastid).Str("episode", episode).
 		Msgf("get episode")
+
+		// FIXME: or in where
 
 	query := "SELECT e.id, e.podcast_id, e.url, e.title, e.action, e.started, e.position, e.total, " +
 		" e.created_at, e.updated_at, p.url as podcast_url, p.title as podcast_title " +
 		"FROM episodes e JOIN podcasts p on p.id = e.podcast_id " +
-		"WHERE p.user_id=? AND e.podcast_id = ? and e.url = ?"
+		"WHERE p.user_id=? AND e.podcast_id = ? and (e.url = ? or e.guid = ?)"
 
 	res := EpisodeDB{}
 
-	err := dbctx.GetContext(ctx, &res, query, userid, podcastid, episodeURL)
+	err := dbctx.GetContext(ctx, &res, query, userid, podcastid, episode, episode)
 	if err != nil {
 		return res, aerr.Wrapf(err, "query episode failed").WithTag(aerr.InternalError)
 	}
@@ -57,7 +59,7 @@ func (s sqliteRepository) ListEpisodeActions(
 	logger.Debug().Int64("user_id", userid).Any("podcast_id", podcastid).Any("device_id", deviceid).
 		Msgf("get episodes since=%s aggregated=%v", since, aggregated)
 
-	query := "SELECT e.id, e.podcast_id, e.url, e.title, e.action, e.started, e.position, e.total, " +
+	query := "SELECT e.id, e.podcast_id, e.url, e.title, e.action, e.started, e.position, e.total, e.guid, " +
 		" e.created_at, e.updated_at, p.url as podcast_url, p.title as podcast_title, d.name as device_name " +
 		"FROM episodes e JOIN podcasts p on p.id = e.podcast_id JOIN devices d on d.id=e.device_id " +
 		"WHERE p.user_id=? AND e.updated_at > ?"
@@ -108,7 +110,7 @@ func (s sqliteRepository) ListFavorites(ctx context.Context, dbctx DBContext, us
 	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_episodes").Logger()
 	logger.Debug().Int64("user_id", userid).Msg("get favorites")
 
-	query := "SELECT e.id, e.podcast_id, e.url, e.title, " +
+	query := "SELECT e.id, e.podcast_id, e.url, e.title, e.guid, " +
 		" e.created_at, e.updated_at, p.url as podcast_url, p.title as podcast_title " +
 		"FROM episodes e JOIN podcasts p on p.id = e.podcast_id " +
 		"JOIN settings s on s.episode_id = e.id " +
@@ -188,9 +190,9 @@ func (s sqliteRepository) saveEpisode(ctx context.Context, dbctx DBContext, epis
 
 	_, err := dbctx.ExecContext(
 		ctx,
-		"INSERT INTO episodes (podcast_id, device_id, title, url, action, started, position, total, "+
+		"INSERT INTO episodes (podcast_id, device_id, title, url, action, started, position, total, guid, "+
 			"created_at, updated_at) "+
-			"VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+			"VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		episode.PodcastID,
 		episode.DeviceID,
 		episode.Title,
@@ -199,6 +201,7 @@ func (s sqliteRepository) saveEpisode(ctx context.Context, dbctx DBContext, epis
 		episode.Started,
 		episode.Position,
 		episode.Total,
+		episode.GUID,
 		episode.CreatedAt,
 		episode.UpdatedAt,
 	)

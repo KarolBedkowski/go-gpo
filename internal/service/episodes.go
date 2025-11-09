@@ -79,6 +79,7 @@ func (e *Episodes) GetPodcastEpisodes(ctx context.Context, username, podcast, de
 			Position:  episode.Position,
 			Total:     episode.Total,
 			Podcast:   episode.PodcastURL,
+			GUID:      episode.GUID,
 		})
 	}
 
@@ -99,7 +100,7 @@ func (e *Episodes) SaveEpisodesActions(ctx context.Context, username string, act
 		episodes := make([]repository.EpisodeDB, 0, len(action))
 
 		for _, act := range action {
-			episodes = append(episodes, repository.EpisodeDB{
+			episodes = append(episodes, repository.EpisodeDB{ //nolint:exhaustruct
 				URL:        act.Episode,
 				Device:     act.Device,
 				Action:     act.Action,
@@ -109,6 +110,7 @@ func (e *Episodes) SaveEpisodesActions(ctx context.Context, username string, act
 				Position:   act.Position,
 				Total:      act.Total,
 				PodcastURL: act.Podcast,
+				GUID:       act.GUID,
 			})
 		}
 
@@ -134,25 +136,29 @@ func (e *Episodes) GetEpisodesActions(ctx context.Context, username, podcast, de
 
 	defer conn.Close()
 
-	episodes, err := e.getEpisodesActions(ctx, conn, username, podcast, devicename, since, aggregated, 0)
+	actions, err := e.getEpisodesActions(ctx, conn, username, podcast, devicename, since, aggregated, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	res := make([]model.Episode, 0, len(episodes))
+	res := make([]model.Episode, 0, len(actions))
 
-	for _, e := range episodes {
+	for _, action := range actions {
 		episode := model.Episode{
-			Podcast:   e.PodcastURL,
-			Device:    e.Device,
-			Episode:   e.URL,
-			Action:    e.Action,
-			Timestamp: e.UpdatedAt,
+			Podcast:   action.PodcastURL,
+			Device:    action.Device,
+			Episode:   action.URL,
+			Action:    action.Action,
+			Timestamp: action.UpdatedAt,
+			GUID:      action.GUID,
+			Started:   nil,
+			Position:  nil,
+			Total:     nil,
 		}
-		if e.Action == "play" {
-			episode.Started = e.Started
-			episode.Position = e.Position
-			episode.Total = e.Total
+		if action.Action == "play" {
+			episode.Started = action.Started
+			episode.Position = action.Position
+			episode.Total = action.Total
 		}
 
 		res = append(res, episode)
@@ -189,7 +195,10 @@ func (e *Episodes) GetEpisodesUpdates(ctx context.Context, username, devicename 
 			PodcastURL:   episodedb.PodcastURL,
 			Status:       episodedb.Action,
 			// do not tracking released time; use updated time
-			Released: episodedb.UpdatedAt,
+			Released:  episodedb.UpdatedAt,
+			Episode:   nil,
+			Website:   "",
+			MygpoLink: "",
 		}
 
 		if includeActions && episodedb.Action != "new" {
@@ -199,6 +208,10 @@ func (e *Episodes) GetEpisodesUpdates(ctx context.Context, username, devicename 
 				Device:    episodedb.Device,
 				Action:    episodedb.Action,
 				Timestamp: episodedb.UpdatedAt,
+				GUID:      episodedb.GUID,
+				Started:   nil,
+				Position:  nil,
+				Total:     nil,
 			}
 			if episodedb.Action == "play" {
 				episodeUpdate.Episode.Started = episodedb.Started
@@ -239,6 +252,7 @@ func (e *Episodes) GetLastActions(ctx context.Context, username string, since ti
 			Position:  e.Position,
 			Total:     e.Total,
 			Timestamp: e.UpdatedAt,
+			GUID:      e.GUID,
 		}
 		res = append(res, ep)
 	}
@@ -274,6 +288,9 @@ func (e *Episodes) GetFavorites(ctx context.Context, username string) ([]model.F
 			URL:          e.URL,
 			PodcastTitle: nvl(e.PodcastTitle, e.PodcastURL),
 			PodcastURL:   e.PodcastURL,
+			Website:      "",
+			MygpoLink:    "",
+			Released:     e.CreatedAt, // FIXME: this is not release date...
 		}
 		res = append(res, ep)
 	}

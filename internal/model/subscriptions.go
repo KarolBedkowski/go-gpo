@@ -41,7 +41,7 @@ type Subscription struct {
 
 // ------------------------------------------------------
 
-// TODO: guid?
+// TODO: remove json
 
 type Episode struct {
 	Podcast   string    `json:"podcast"`
@@ -52,6 +52,7 @@ type Episode struct {
 	Started   *int      `json:"started,omitempty"`
 	Position  *int      `json:"position,omitempty"`
 	Total     *int      `json:"total,omitempty"`
+	GUID      *string
 }
 
 func (e Episode) MarshalZerologObject(event *zerolog.Event) {
@@ -59,19 +60,11 @@ func (e Episode) MarshalZerologObject(event *zerolog.Event) {
 		Str("episode", e.Episode).
 		Str("device", e.Device).
 		Str("action", e.Action).
-		Time("timestamp", e.Timestamp)
-
-	if e.Started != nil {
-		event.Int("started", *e.Started)
-	}
-
-	if e.Position != nil {
-		event.Int("position", *e.Position)
-	}
-
-	if e.Total != nil {
-		event.Int("total", *e.Total)
-	}
+		Time("timestamp", e.Timestamp).
+		Any("guid", e.GUID).
+		Any("started", e.Started).
+		Any("position", e.Position).
+		Any("total", e.Total)
 }
 
 type Favorite struct {
