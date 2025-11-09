@@ -9,7 +9,6 @@ package aerr
 
 import (
 	"errors"
-	"slices"
 	"testing"
 
 	"gitlab.com/kabes/go-gpo/internal/assert"
@@ -116,17 +115,17 @@ func TestAppErrorTags(t *testing.T) {
 	aerr0 := New("error1")
 
 	aerr1 := aerr0.WithTag("k1")
-	assert.True(t, slices.Equal(GetTags(aerr1), []string{"k1"}))
+	assert.Equal(t, GetTags(aerr1), []string{"k1"})
 
 	aerr1 = aerr1.WithTag("k2")
-	assert.True(t, slices.Equal(GetTags(aerr1), []string{"k1", "k2"}))
+	assert.Equal(t, GetTags(aerr1), []string{"k1", "k2"})
 	assert.True(t, HasTag(aerr1, "k1"))
 	assert.True(t, HasTag(aerr1, "k2"))
 	assert.True(t, !HasTag(aerr1, "k3"))
 
 	aerr2 := aerr1.WithTag("k3")
-	assert.True(t, slices.Equal(GetTags(aerr2), []string{"k1", "k2", "k3"}))
-	assert.True(t, slices.Equal(GetTags(aerr1), []string{"k1", "k2"}))
+	assert.Equal(t, GetTags(aerr2), []string{"k1", "k2", "k3"})
+	assert.Equal(t, GetTags(aerr1), []string{"k1", "k2"})
 	assert.True(t, HasTag(aerr2, "k1"))
 	assert.True(t, HasTag(aerr2, "k2"))
 }
@@ -140,7 +139,7 @@ func TestAppErrorErr(t *testing.T) {
 	assert.True(t, aerr1.Unwrap() == err0)
 	assert.Equal(t, aerr1.String(), "simple error1")
 	// new stack
-	assert.True(t, !slices.Equal(aerr1.stack, err0.stack))
+	assert.NotEqual(t, aerr1.stack, err0.stack)
 	// getstack return stack from deepest error
-	assert.True(t, slices.Equal(GetStack(aerr1), err0.stack))
+	assert.Equal(t, GetStack(aerr1), err0.stack)
 }
