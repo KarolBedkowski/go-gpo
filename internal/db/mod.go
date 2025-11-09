@@ -158,13 +158,22 @@ func (r *Database) InTransaction(ctx context.Context, fun func(repository.DBCont
 func (r *Database) Maintenance(ctx context.Context) error {
 	logger := log.Ctx(ctx)
 
-	for _, sql := range maintScripts {
-		logger.Debug().Msgf("run maintenance script: %q", sql)
+	for idx, sql := range maintScripts {
+		logger.Debug().Msgf("run maintenance script[%d]: %q", idx, sql)
 
-		if _, err := r.db.ExecContext(ctx, sql); err != nil {
+		res, err := r.db.ExecContext(ctx, sql)
+		if err != nil {
 			return aerr.ApplyFor(aerr.ErrDatabase, err, "execute maintenance script failed").
 				WithMeta("sql", sql)
 		}
+
+		rowsaffected, err := res.RowsAffected()
+		if err != nil {
+			return aerr.ApplyFor(aerr.ErrDatabase, err, "execute maintenance script - failed get rows affected").
+				WithMeta("sql", sql)
+		}
+
+		logger.Debug().Msgf("run maintenance script[%d] finished; row affected: %d", idx, rowsaffected)
 	}
 
 	return nil
@@ -274,9 +283,20 @@ func InTransactionR[T any](ctx context.Context, r *Database,
 //------------------------------------------------------------------------------
 
 var maintScripts = []string{
+	// delete actions for episode if given episode has been deleted
 	"DELETE FROM episodes AS e " +
-		"WHERE action != 'delete' AND EXISTS (" +
-		"SELECT NULL FROM episodes AS ed WHERE ed.url = e.url AND ed.action = 'delete' AND ed.updated_at > e.updated_at);",
+		"WHERE action != 'delete' " +
+		"AND updated_at < datetime('now','-1 month') " +
+		"AND EXISTS (" +
+		" SELECT NULL FROM episodes AS ed " +
+		" WHERE ed.url = e.url AND ed.action = 'delete' AND ed.updated_at > e.updated_at);",
+	// delete play actions when for given episode never play action exists
+	"DELETE FROM episodes AS e " +
+		"WHERE action = 'play' " +
+		"AND updated_at < datetime('now','-14 day') " +
+		"AND EXISTS (" +
+		" SELECT NULL FROM episodes AS ed " +
+		" WHERE ed.url = e.url AND ed.action = 'play' AND ed.updated_at > e.updated_at);",
 	"VACUUM;",
 	"ANALYZE;",
 	"PRAGMA optimize;",
