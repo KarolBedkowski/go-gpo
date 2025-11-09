@@ -11,7 +11,7 @@ linters:
     - exhaustruct
     - forbidigo
     - gochecknoglobals
-    - tagliatelle
+    # - tagliatelle
     - wsl
     - noinlineerr
     - dupl
@@ -19,6 +19,7 @@ linters:
     - errcheck
     - godoclint
     - godox
+    - ireturn
   settings:
     misspell:
       locale: US
@@ -55,6 +56,11 @@ linters:
       allow-first-in-block: true
       allow-whole-block: false
       branch-max-lines: 2
+    tagliatelle:
+      case:
+        extended-rules:
+          json:
+            case: snake
   exclusions:
     generated: lax
     presets:

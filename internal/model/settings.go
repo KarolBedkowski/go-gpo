@@ -53,3 +53,7 @@ func NewSettingsKey(username, scope, device, episode, podcast string) (SettingsK
 
 	return settkey, nil
 }
+
+//------------------------------------------------------------------------------
+
+type Settings map[string]string

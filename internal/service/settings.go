@@ -39,23 +39,36 @@ func NewSettingsServiceI(i do.Injector) (*Settings, error) {
 	}, nil
 }
 
-func (s Settings) GetSettings(ctx context.Context, key *model.SettingsKey) (map[string]string, error) {
-	conn, err := s.db.GetConnection(ctx)
-	if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err)
+func (s Settings) GetSettings(ctx context.Context, key *model.SettingsKey) (model.Settings, error) {
+	//nolint:wrapcheck
+	return db.InConnectionR(ctx, s.db, func(dbctx repository.DBContext) (model.Settings, error) {
+		return s.getSettings(ctx, dbctx, key)
+	})
+}
+
+// SaveSettings for `key` and values in `set`. If value is set to "" for given key - delete it.
+func (s Settings) SaveSettings(ctx context.Context, key *model.SettingsKey, set model.Settings) error {
+	if len(set) == 0 {
+		return nil
 	}
 
-	defer conn.Close()
+	//nolint:wrapcheck
+	return s.db.InTransaction(ctx, func(dbctx repository.DBContext) error {
+		return s.saveSettings(ctx, dbctx, key, set)
+	})
+}
 
-	setkey, err := s.newSettingKeys(ctx, conn, key)
+func (s Settings) getSettings(ctx context.Context, dbctx repository.DBContext, key *model.SettingsKey,
+) (model.Settings, error) {
+	setkey, err := s.newSettingKeys(ctx, dbctx, key)
 	if err != nil {
 		return nil, err
 	}
 
-	sett, err := s.settRepo.ListSettings(ctx, conn, setkey.userid, setkey.podcastid, setkey.episodeid,
+	sett, err := s.settRepo.ListSettings(ctx, dbctx, setkey.userid, setkey.podcastid, setkey.episodeid,
 		setkey.deviceid, key.Scope)
 	if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err)
+		return nil, aerr.ApplyFor(ErrRepositoryError, err, "failed get list settings")
 	}
 
 	settings := make(map[string]string)
@@ -66,45 +79,35 @@ func (s Settings) GetSettings(ctx context.Context, key *model.SettingsKey) (map[
 	return settings, nil
 }
 
-func (s Settings) SaveSettings(ctx context.Context, key *model.SettingsKey, set map[string]string, del []string) error {
-	err := s.db.InTransaction(ctx, func(dbctx repository.DBContext) error {
-		setkey, err := s.newSettingKeys(ctx, dbctx, key)
-		if err != nil {
-			return err
+func (s Settings) saveSettings(ctx context.Context, dbctx repository.DBContext, key *model.SettingsKey,
+	set model.Settings,
+) error {
+	setkey, err := s.newSettingKeys(ctx, dbctx, key)
+	if err != nil {
+		return err
+	}
+
+	dbsett := repository.SettingsDB{
+		UserID:    setkey.userid,
+		PodcastID: setkey.podcastid,
+		EpisodeID: setkey.episodeid,
+		DeviceID:  setkey.deviceid,
+		Scope:     key.Scope,
+	}
+
+	for key, value := range set {
+		dbsett.Key = key
+		dbsett.Value = value
+
+		if err := s.settRepo.SaveSettings(ctx, dbctx, &dbsett); err != nil {
+			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
+	}
 
-		dbsett := repository.SettingsDB{
-			UserID:    setkey.userid,
-			PodcastID: setkey.podcastid,
-			EpisodeID: setkey.episodeid,
-			DeviceID:  setkey.deviceid,
-			Scope:     key.Scope,
-		}
-
-		for key, value := range set {
-			dbsett.Key = key
-			dbsett.Value = value
-
-			if err := s.settRepo.SaveSettings(ctx, dbctx, &dbsett); err != nil {
-				return aerr.ApplyFor(ErrRepositoryError, err)
-			}
-		}
-
-		dbsett.Value = ""
-
-		for _, key := range del {
-			dbsett.Key = key
-
-			if err := s.settRepo.SaveSettings(ctx, dbctx, &dbsett); err != nil {
-				return aerr.ApplyFor(ErrRepositoryError, err)
-			}
-		}
-
-		return nil
-	})
-
-	return err //nolint:wrapcheck
+	return nil
 }
+
+//------------------------------------------------------------------------------
 
 type settingsKeys struct {
 	userid    int64

@@ -5,9 +5,7 @@
 package model
 
 import (
-	"fmt"
 	"slices"
-	"strings"
 	"time"
 
 	"gitlab.com/kabes/go-gpo/internal/aerr"
@@ -15,6 +13,8 @@ import (
 )
 
 var ValidDevTypes = []string{"desktop", "laptop", "mobile", "server", "other"}
+
+//------------------------------------------------------------------------------
 
 type Device struct {
 	User          string
@@ -25,8 +25,8 @@ type Device struct {
 	UpdatedAt     time.Time
 }
 
-func NewDeviceFromDeviceDB(d *repository.DeviceDB) *Device {
-	return &Device{
+func NewDeviceFromDeviceDB(d *repository.DeviceDB) Device {
+	return Device{
 		Name:          d.Name,
 		DevType:       d.DevType,
 		Caption:       d.Caption,
@@ -35,24 +35,33 @@ func NewDeviceFromDeviceDB(d *repository.DeviceDB) *Device {
 	}
 }
 
-func (d Device) Validate() error {
-	var errs []string
+//------------------------------------------------------------------------------
 
-	if d.Name == "" {
-		errs = append(errs, "empty name")
+type UpdatedDevice struct {
+	UserName   string
+	DeviceName string
+	DeviceType string
+	Caption    string
+}
+
+func NewUpdatedDevice(username, devicename, devicetype, caption string) (UpdatedDevice, error) {
+	if devicename == "" {
+		return UpdatedDevice{}, aerr.ErrValidation.WithMsg("device name can't be empty")
 	}
 
-	if d.User == "" {
-		errs = append(errs, "empty user")
+	if devicetype == "" {
+		return UpdatedDevice{}, aerr.ErrValidation.WithMsg("device type can't be empty")
 	}
 
-	if !slices.Contains(ValidDevTypes, d.DevType) {
-		errs = append(errs, fmt.Sprintf("invalid device type %q", d.DevType))
+	if !slices.Contains(ValidDevTypes, devicetype) {
+		return UpdatedDevice{},
+			aerr.ErrValidation.WithMsg("invalid device type %q", devicetype)
 	}
 
-	if len(errs) > 0 {
-		return aerr.New("%s", strings.Join(errs, ";")).WithTag(aerr.ValidationError)
-	}
-
-	return nil
+	return UpdatedDevice{
+		UserName:   username,
+		DeviceName: devicename,
+		DeviceType: devicetype,
+		Caption:    caption,
+	}, nil
 }

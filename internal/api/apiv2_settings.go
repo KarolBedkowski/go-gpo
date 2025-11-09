@@ -96,9 +96,17 @@ func (u settingsResource) setSettings(
 		return
 	}
 
-	logger.Debug().Any("key", key).Any("req", req).Msg("req")
+	// combine set and remove - add empty value for deleted string.
+	settings := req.Set
+	if settings == nil {
+		settings = make(map[string]string)
+	}
 
-	if err := u.settingsSrv.SaveSettings(ctx, &key, req.Set, req.Remove); err != nil {
+	for _, k := range req.Remove {
+		settings[k] = ""
+	}
+
+	if err := u.settingsSrv.SaveSettings(ctx, &key, settings); err != nil {
 		internal.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Str("mod", "api").Msg("save settings error")
 

@@ -8,7 +8,6 @@ package api
 import (
 	"context"
 	"net/http"
-	"slices"
 
 	"github.com/rs/zerolog"
 	"github.com/samber/do/v2"
@@ -42,27 +41,16 @@ func (d deviceResource) Routes() *chi.Mux {
 	return r
 }
 
-type updateDeviceReq struct {
-	Caption string `json:"caption"`
-	Type    string `json:"type"`
-}
-
-func (u updateDeviceReq) validate() error {
-	if !slices.Contains(model.ValidDevTypes, u.Type) {
-		return aerr.Newf("invalid device type %q", u.Type).WithTag(aerr.ValidationError).
-			WithUserMsg("invalid device type")
-	}
-
-	return nil
-}
-
 // update device data.
 func (d deviceResource) update(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
 	user := internal.ContextUser(ctx)
 	deviceid := internal.ContextDevice(ctx)
 
 	// update device data
-	var udd updateDeviceReq
+	udd := struct {
+		Caption string `json:"caption"`
+		Type    string `json:"type"`
+	}{}
 
 	if err := render.DecodeJSON(r.Body, &udd); err != nil {
 		logger.Debug().Err(err).Str("mod", "api").Msg("error decoding json payload")
@@ -71,14 +59,15 @@ func (d deviceResource) update(ctx context.Context, w http.ResponseWriter, r *ht
 		return
 	}
 
-	if err := udd.validate(); err != nil {
+	updateddev, err := model.NewUpdatedDevice(user, deviceid, udd.Type, udd.Caption)
+	if err != nil {
 		logger.Debug().Err(err).Msgf("validation error")
 		internal.WriteError(w, r, http.StatusBadRequest, aerr.GetUserMessageOr(err, "bad request data"))
 
 		return
 	}
 
-	if err := d.deviceSrv.UpdateDevice(ctx, user, deviceid, udd.Caption, udd.Type); err != nil {
+	if err := d.deviceSrv.UpdateDevice(ctx, &updateddev); err != nil {
 		internal.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Str("mod", "api").Msg("update device error")
 
