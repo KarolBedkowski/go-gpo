@@ -76,17 +76,81 @@ func (u updatesResource) getUpdates(
 		return
 	}
 
+	podcasts := make([]podcast, len(added))
+	for i, a := range added {
+		podcasts[i] = newPodcastFromModel(&a)
+	}
+
+	eupdates := make([]episodeUpdate, len(updates))
+	for i, u := range updates {
+		eupdates[i] = newEpisodeUpdateFromModel(&u)
+	}
+
 	result := struct {
-		Add        []model.Podcast       `json:"add"`
-		Remove     []string              `json:"remove"`
-		Updates    []model.EpisodeUpdate `json:"updates"`
-		Timestamps int64                 `json:"timestamp"`
+		Add        []podcast       `json:"add"`
+		Remove     []string        `json:"remove"`
+		Updates    []episodeUpdate `json:"updates"`
+		Timestamps int64           `json:"timestamp"`
 	}{
-		Add:        added,
+		Add:        podcasts,
 		Remove:     removed,
-		Updates:    updates,
+		Updates:    eupdates,
 		Timestamps: time.Now().Unix(),
 	}
 
 	render.JSON(w, r, &result)
+}
+
+type episodeUpdate struct {
+	Title        string    `json:"title"`
+	URL          string    `json:"url"`
+	PodcastTitle string    `json:"podcast_title"`
+	PodcastURL   string    `json:"podcast_url"`
+	Website      string    `json:"website"`
+	MygpoLink    string    `json:"mygpo_link"`
+	Released     time.Time `json:"released"`
+	Status       string    `json:"status"`
+
+	Episode *episode `json:"episode,omitempty"`
+}
+
+func newEpisodeUpdateFromModel(eup *model.EpisodeUpdate) episodeUpdate {
+	episodeupdate := episodeUpdate{
+		Title:        eup.Title,
+		URL:          eup.URL,
+		PodcastTitle: eup.PodcastTitle,
+		PodcastURL:   eup.PodcastURL,
+		Website:      eup.Website,
+		MygpoLink:    eup.MygpoLink,
+		Released:     eup.Released,
+		Status:       eup.Status,
+	}
+	if eup.Episode != nil {
+		ep := newEpisodesFromModel(eup.Episode)
+		episodeupdate.Episode = &ep
+	}
+
+	return episodeupdate
+}
+
+type podcast struct {
+	Title       string `json:"title"`
+	URL         string `json:"url"`
+	Description string `json:"description"`
+	Subscribers int    `json:"subscribers"`
+	LogoURL     string `json:"logo_url"`
+	Website     string `json:"website"`
+	MygpoLink   string `json:"mygpo_link"`
+}
+
+func newPodcastFromModel(p *model.Podcast) podcast {
+	return podcast{
+		Title:       p.Title,
+		URL:         p.URL,
+		Description: p.Description,
+		Subscribers: p.Subscribers,
+		LogoURL:     p.LogoURL,
+		Website:     p.Website,
+		MygpoLink:   p.MygpoLink,
+	}
 }

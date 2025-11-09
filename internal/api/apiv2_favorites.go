@@ -10,9 +10,11 @@ package api
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/service"
 
 	"github.com/go-chi/chi/v5"
@@ -56,5 +58,32 @@ func (u favoritesResource) getFafovites(
 		return
 	}
 
-	render.JSON(w, r, &favorites)
+	resfavs := make([]favorite, len(favorites))
+	for i, f := range favorites {
+		resfavs[i] = newFavoriteFromModel(&f)
+	}
+
+	render.JSON(w, r, resfavs)
+}
+
+type favorite struct {
+	Title        string    `json:"title"`
+	URL          string    `json:"url"`
+	PodcastTitle string    `json:"podcast_title"`
+	PodcastURL   string    `json:"podcast_url"`
+	Website      string    `json:"website"`
+	MygpoLink    string    `json:"mygpo_link"`
+	Released     time.Time `json:"released"`
+}
+
+func newFavoriteFromModel(f *model.Favorite) favorite {
+	return favorite{
+		Title:        f.Title,
+		URL:          f.URL,
+		PodcastTitle: f.PodcastTitle,
+		PodcastURL:   f.PodcastURL,
+		Website:      f.Website,
+		MygpoLink:    f.MygpoLink,
+		Released:     f.Released,
+	}
 }

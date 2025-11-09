@@ -23,13 +23,13 @@ const (
 )
 
 type Podcast struct {
-	Title       string `json:"title"`
-	URL         string `json:"url"`
-	Description string `json:"description"`
-	Subscribers int    `json:"subscribers"`
-	LogoURL     string `json:"logo_url"`
-	Website     string `json:"website"`
-	MygpoLink   string `json:"mygpo_link"`
+	Title       string
+	URL         string
+	Description string
+	Subscribers int
+	LogoURL     string
+	Website     string
+	MygpoLink   string
 }
 
 type Subscription struct {
@@ -41,17 +41,15 @@ type Subscription struct {
 
 // ------------------------------------------------------
 
-// TODO: remove json
-
 type Episode struct {
-	Podcast   string    `json:"podcast"`
-	Episode   string    `json:"episode"`
-	Device    string    `json:"device,omitempty"`
-	Action    string    `json:"action"`
-	Timestamp time.Time `json:"timestamp"`
-	Started   *int      `json:"started,omitempty"`
-	Position  *int      `json:"position,omitempty"`
-	Total     *int      `json:"total,omitempty"`
+	Podcast   string
+	Episode   string
+	Device    string
+	Action    string
+	Timestamp time.Time
+	Started   *int
+	Position  *int
+	Total     *int
 	GUID      *string
 }
 
@@ -68,28 +66,28 @@ func (e Episode) MarshalZerologObject(event *zerolog.Event) {
 }
 
 type Favorite struct {
-	Title        string    `json:"title"`
-	URL          string    `json:"url"`
-	PodcastTitle string    `json:"podcast_title"`
-	PodcastURL   string    `json:"podcast_url"`
-	Website      string    `json:"website"`
-	MygpoLink    string    `json:"mygpo_link"`
-	Released     time.Time `json:"released"`
+	Title        string
+	URL          string
+	PodcastTitle string
+	PodcastURL   string
+	Website      string
+	MygpoLink    string
+	Released     time.Time
 }
 
 // ------------------------------------------------------
 
 type EpisodeUpdate struct {
-	Title        string    `json:"title"`
-	URL          string    `json:"url"`
-	PodcastTitle string    `json:"podcast_title"`
-	PodcastURL   string    `json:"podcast_url"`
-	Website      string    `json:"website"`
-	MygpoLink    string    `json:"mygpo_link"`
-	Released     time.Time `json:"released"`
-	Status       string    `json:"status"`
+	Title        string
+	URL          string
+	PodcastTitle string
+	PodcastURL   string
+	Website      string
+	MygpoLink    string
+	Released     time.Time
+	Status       string
 
-	Episode *Episode `json:"episode,omitempty"`
+	Episode *Episode
 }
 
 // ------------------------------------------------------

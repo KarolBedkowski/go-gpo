@@ -17,12 +17,12 @@ import (
 var ValidDevTypes = []string{"desktop", "laptop", "mobile", "server", "other"}
 
 type Device struct {
-	User          string    `json:"user"`
-	Name          string    `json:"id"`
-	DevType       string    `json:"type"`
-	Caption       string    `json:"caption"`
-	Subscriptions int       `json:"subscriptions"`
-	UpdatedAt     time.Time `json:"-"`
+	User          string
+	Name          string
+	DevType       string
+	Caption       string
+	Subscriptions int
+	UpdatedAt     time.Time
 }
 
 func NewDeviceFromDeviceDB(d *repository.DeviceDB) *Device {

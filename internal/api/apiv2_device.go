@@ -100,6 +100,29 @@ func (d deviceResource) list(ctx context.Context, w http.ResponseWriter, r *http
 		return
 	}
 
+	resdevices := make([]device, len(devices))
+	for i, d := range devices {
+		resdevices[i] = newDeviceFromModel(&d)
+	}
+
 	render.Status(r, http.StatusOK)
-	render.JSON(w, r, ensureList(devices))
+	render.JSON(w, r, resdevices)
+}
+
+type device struct {
+	User          string `json:"user"`
+	Name          string `json:"id"`
+	DevType       string `json:"type"`
+	Caption       string `json:"caption"`
+	Subscriptions int    `json:"subscriptions"`
+}
+
+func newDeviceFromModel(d *model.Device) device {
+	return device{
+		User:          d.User,
+		Name:          d.Name,
+		DevType:       d.DevType,
+		Caption:       d.Caption,
+		Subscriptions: d.Subscriptions,
+	}
 }

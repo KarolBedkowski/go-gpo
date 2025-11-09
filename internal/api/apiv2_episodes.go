@@ -132,10 +132,9 @@ func (er episodesResource) getEpisodeActions(
 		return
 	}
 
-	actions := make([]episode, 0, len(res))
-
-	for _, r := range res {
-		actions = append(actions, newEpisodesFromModel(r))
+	actions := make([]episode, len(res))
+	for i, r := range res {
+		actions[i] = newEpisodesFromModel(&r)
 	}
 
 	resp := struct {
@@ -164,7 +163,7 @@ type episode struct {
 	ts time.Time `json:"-"`
 }
 
-func newEpisodesFromModel(e model.Episode) episode {
+func newEpisodesFromModel(e *model.Episode) episode {
 	return episode{
 		Podcast:   e.Podcast,
 		Episode:   e.Episode,
