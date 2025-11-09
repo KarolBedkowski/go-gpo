@@ -41,14 +41,123 @@ func NewEpisodesServiceI(i do.Injector) (*Episodes, error) {
 
 func (e *Episodes) GetPodcastEpisodes(ctx context.Context, username, podcast, devicename string,
 ) ([]model.Episode, error) {
-	conn, err := e.db.GetConnection(ctx)
+	//nolint:wrapcheck
+	return db.InConnectionR(ctx, e.db, func(conn repository.DBContext) ([]model.Episode, error) {
+		return e.getPodcastEpisodes(ctx, conn, username, podcast, devicename)
+	})
+}
+
+func (e *Episodes) SaveEpisodesActions(ctx context.Context, username string, action ...model.Episode) error {
+	//nolint:wrapcheck
+	return e.db.InTransaction(ctx, func(dbctx repository.DBContext) error {
+		return e.saveEpisodesActions(ctx, dbctx, username, action...)
+	})
+}
+
+// GetEpisodesActions return list of episode actions for username and optional podcast and devicename.
+// If devicename is not empty - get actions from other devices.
+func (e *Episodes) GetEpisodesActions(ctx context.Context, username, podcast, devicename string,
+	since time.Time, aggregated bool,
+) ([]model.Episode, error) {
+	//nolint:wrapcheck
+	return db.InConnectionR(ctx, e.db, func(conn repository.DBContext) ([]model.Episode, error) {
+		return e.getEpisodesActions(ctx, conn, username, podcast, devicename, since, aggregated)
+	})
+}
+
+func (e *Episodes) GetEpisodesUpdates(ctx context.Context, username, devicename string, since time.Time,
+	includeActions bool,
+) ([]model.EpisodeUpdate, error) {
+	log.Ctx(ctx).Debug().Str("username", username).Str("devicename", devicename).
+		Msgf("get episodes updates since %s includeActions %v", since, includeActions)
+
+	//nolint:wrapcheck
+	return db.InConnectionR(ctx, e.db, func(conn repository.DBContext) ([]model.EpisodeUpdate, error) {
+		return e.getEpisodesUpdates(ctx, conn, username, devicename, since, includeActions)
+	})
+}
+
+func (e *Episodes) GetLastActions(ctx context.Context, username string, since time.Time, lastelements int,
+) ([]model.Episode, error) {
+	//nolint:wrapcheck
+	return db.InConnectionR(ctx, e.db, func(conn repository.DBContext) ([]model.Episode, error) {
+		return e.getLastActions(ctx, conn, username, since, lastelements)
+	})
+}
+
+func (e *Episodes) GetFavorites(ctx context.Context, username string) ([]model.Favorite, error) {
+	//nolint: wrapcheck
+	return db.InConnectionR(ctx, e.db, func(conn repository.DBContext) ([]model.Favorite, error) {
+		return e.getFavorites(ctx, conn, username)
+	})
+}
+
+func (e *Episodes) getEpisodesActions(ctx context.Context, conn repository.DBContext,
+	username, podcast, devicename string,
+	since time.Time, aggregated bool,
+) ([]model.Episode, error) {
+	actions, err := e.getEpisodesActionsInternal(ctx, conn, username, podcast, devicename, since, aggregated, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	res := make([]model.Episode, len(actions))
+	for i, action := range actions {
+		res[i] = model.NewEpisodeFromDBModel(&action)
+	}
+
+	return res, nil
+}
+
+func (e *Episodes) getEpisodesUpdates(ctx context.Context, conn repository.DBContext,
+	username, devicename string, since time.Time,
+	includeActions bool,
+) ([]model.EpisodeUpdate, error) {
+	episodes, err := e.getEpisodesActionsInternal(ctx, conn, username, "", devicename, since, true, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	createFunc := model.NewEpisodeUpdateFromDBModel
+	if includeActions {
+		createFunc = model.NewEpisodeUpdateWithEpisodeFromDBModel
+	}
+
+	res := make([]model.EpisodeUpdate, len(episodes))
+	for i, episodedb := range episodes {
+		res[i] = createFunc(&episodedb)
+	}
+
+	return res, nil
+}
+
+func (e *Episodes) getFavorites(ctx context.Context, dbctx repository.DBContext,
+	username string,
+) ([]model.Favorite, error) {
+	user, err := e.usersRepo.GetUser(ctx, dbctx, username)
+	if errors.Is(err, repository.ErrNoData) {
+		return nil, ErrUnknownUser
+	} else if err != nil {
+		return nil, aerr.ApplyFor(ErrRepositoryError, err)
+	}
+
+	episodes, err := e.episodesRepo.ListFavorites(ctx, dbctx, user.ID)
 	if err != nil {
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
-	defer conn.Close()
+	res := make([]model.Favorite, 0, len(episodes))
+	for i, e := range episodes {
+		res[i] = model.NewFavoriteFromDBModel(&e)
+	}
 
-	actions, err := e.getEpisodesActions(ctx, conn, username, podcast, devicename, time.Time{}, false, 0)
+	return res, nil
+}
+
+func (e *Episodes) getPodcastEpisodes(ctx context.Context, conn repository.DBContext,
+	username, podcast, devicename string,
+) ([]model.Episode, error) {
+	actions, err := e.getEpisodesActionsInternal(ctx, conn, username, podcast, devicename, time.Time{}, false, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -70,17 +179,7 @@ func (e *Episodes) GetPodcastEpisodes(ctx context.Context, username, podcast, de
 		}
 
 		seen[episode.URL] = struct{}{}
-		episodes = append(episodes, model.Episode{
-			Episode:   episode.URL,
-			Device:    episode.Device,
-			Action:    episode.Action,
-			Timestamp: episode.UpdatedAt,
-			Started:   episode.Started,
-			Position:  episode.Position,
-			Total:     episode.Total,
-			Podcast:   episode.PodcastURL,
-			GUID:      episode.GUID,
-		})
+		episodes = append(episodes, model.NewEpisodeFromDBModel(&episode))
 	}
 
 	slices.Reverse(episodes)
@@ -88,227 +187,45 @@ func (e *Episodes) GetPodcastEpisodes(ctx context.Context, username, podcast, de
 	return episodes, nil
 }
 
-func (e *Episodes) SaveEpisodesActions(ctx context.Context, username string, action ...model.Episode) error {
-	err := e.db.InTransaction(ctx, func(dbctx repository.DBContext) error {
-		user, err := e.usersRepo.GetUser(ctx, dbctx, username)
-		if errors.Is(err, repository.ErrNoData) {
-			return ErrUnknownUser
-		} else if err != nil {
-			return aerr.ApplyFor(ErrRepositoryError, err)
-		}
-
-		episodes := make([]repository.EpisodeDB, 0, len(action))
-
-		for _, act := range action {
-			episodes = append(episodes, repository.EpisodeDB{ //nolint:exhaustruct
-				URL:        act.Episode,
-				Device:     act.Device,
-				Action:     act.Action,
-				UpdatedAt:  act.Timestamp,
-				CreatedAt:  act.Timestamp,
-				Started:    act.Started,
-				Position:   act.Position,
-				Total:      act.Total,
-				PodcastURL: act.Podcast,
-				GUID:       act.GUID,
-			})
-		}
-
-		if err := e.episodesRepo.SaveEpisode(ctx, dbctx, user.ID, episodes...); err != nil {
-			return aerr.ApplyFor(ErrRepositoryError, err)
-		}
-
-		return nil
-	})
-
-	return err //nolint:wrapcheck
-}
-
-// GetEpisodesActions return list of episode actions for username and optional podcast and devicename.
-// If devicename is not empty - get actions from other devices.
-func (e *Episodes) GetEpisodesActions(ctx context.Context, username, podcast, devicename string,
-	since time.Time, aggregated bool,
+func (e *Episodes) getLastActions(ctx context.Context, dbctx repository.DBContext,
+	username string, since time.Time, lastelements int,
 ) ([]model.Episode, error) {
-	conn, err := e.db.GetConnection(ctx)
-	if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err)
-	}
-
-	defer conn.Close()
-
-	actions, err := e.getEpisodesActions(ctx, conn, username, podcast, devicename, since, aggregated, 0)
+	episodes, err := e.getEpisodesActionsInternal(ctx, dbctx, username, "", "", since, false, lastelements)
 	if err != nil {
 		return nil, err
 	}
 
-	res := make([]model.Episode, 0, len(actions))
-
-	for _, action := range actions {
-		episode := model.Episode{
-			Podcast:   action.PodcastURL,
-			Device:    action.Device,
-			Episode:   action.URL,
-			Action:    action.Action,
-			Timestamp: action.UpdatedAt,
-			GUID:      action.GUID,
-			Started:   nil,
-			Position:  nil,
-			Total:     nil,
-		}
-		if action.Action == "play" {
-			episode.Started = action.Started
-			episode.Position = action.Position
-			episode.Total = action.Total
-		}
-
-		res = append(res, episode)
+	res := make([]model.Episode, len(episodes))
+	for i, e := range episodes {
+		res[i] = model.NewEpisodeFromDBModel(&e)
 	}
 
 	return res, nil
 }
 
-func (e *Episodes) GetEpisodesUpdates(ctx context.Context, username, devicename string, since time.Time,
-	includeActions bool,
-) ([]model.EpisodeUpdate, error) {
-	log.Ctx(ctx).Debug().Str("username", username).Str("devicename", devicename).
-		Msgf("get episodes updates since %s includeActions %v", since, includeActions)
-
-	conn, err := e.db.GetConnection(ctx)
-	if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err)
-	}
-
-	defer conn.Close()
-
-	episodes, err := e.getEpisodesActions(ctx, conn, username, "", devicename, since, true, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	res := make([]model.EpisodeUpdate, 0, len(episodes))
-
-	for _, episodedb := range episodes {
-		episodeUpdate := model.EpisodeUpdate{
-			Title:        episodedb.Title,
-			URL:          episodedb.URL,
-			PodcastTitle: episodedb.PodcastTitle,
-			PodcastURL:   episodedb.PodcastURL,
-			Status:       episodedb.Action,
-			// do not tracking released time; use updated time
-			Released:  episodedb.UpdatedAt,
-			Episode:   nil,
-			Website:   "",
-			MygpoLink: "",
-		}
-
-		if includeActions && episodedb.Action != "new" {
-			episodeUpdate.Episode = &model.Episode{
-				Podcast:   nvl(episodedb.PodcastTitle, episodedb.PodcastURL),
-				Episode:   nvl(episodedb.Title, episodedb.URL),
-				Device:    episodedb.Device,
-				Action:    episodedb.Action,
-				Timestamp: episodedb.UpdatedAt,
-				GUID:      episodedb.GUID,
-				Started:   nil,
-				Position:  nil,
-				Total:     nil,
-			}
-			if episodedb.Action == "play" {
-				episodeUpdate.Episode.Started = episodedb.Started
-				episodeUpdate.Episode.Position = episodedb.Position
-				episodeUpdate.Episode.Total = episodedb.Total
-			}
-		}
-
-		res = append(res, episodeUpdate)
-	}
-
-	return res, nil
-}
-
-func (e *Episodes) GetLastActions(ctx context.Context, username string, since time.Time, lastelements int,
-) ([]model.Episode, error) {
-	conn, err := e.db.GetConnection(ctx)
-	if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err)
-	}
-
-	defer conn.Close()
-
-	episodes, err := e.getEpisodesActions(ctx, conn, username, "", "", since, false, lastelements)
-	if err != nil {
-		return nil, err
-	}
-
-	res := make([]model.Episode, 0, len(episodes))
-
-	for _, e := range episodes {
-		ep := model.Episode{
-			Podcast:   nvl(e.PodcastTitle, e.PodcastURL),
-			Episode:   nvl(e.Title, e.URL),
-			Device:    e.Device,
-			Action:    e.Action,
-			Started:   e.Started,
-			Position:  e.Position,
-			Total:     e.Total,
-			Timestamp: e.UpdatedAt,
-			GUID:      e.GUID,
-		}
-		res = append(res, ep)
-	}
-
-	return res, nil
-}
-
-func (e *Episodes) GetFavorites(ctx context.Context, username string) ([]model.Favorite, error) {
-	conn, err := e.db.GetConnection(ctx)
-	if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err)
-	}
-
-	defer conn.Close()
-
-	user, err := e.usersRepo.GetUser(ctx, conn, username)
+func (e *Episodes) saveEpisodesActions(ctx context.Context, dbctx repository.DBContext, username string,
+	action ...model.Episode,
+) error {
+	user, err := e.usersRepo.GetUser(ctx, dbctx, username)
 	if errors.Is(err, repository.ErrNoData) {
-		return nil, ErrUnknownUser
+		return ErrUnknownUser
 	} else if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err)
+		return aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
-	episodes, err := e.episodesRepo.ListFavorites(ctx, conn, user.ID)
-	if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err)
+	episodes := make([]repository.EpisodeDB, len(action))
+	for i, act := range action {
+		episodes[i] = act.ToDBModel()
 	}
 
-	res := make([]model.Favorite, 0, len(episodes))
-
-	for _, e := range episodes {
-		ep := model.Favorite{
-			Title:        nvl(e.Title, e.URL),
-			URL:          e.URL,
-			PodcastTitle: nvl(e.PodcastTitle, e.PodcastURL),
-			PodcastURL:   e.PodcastURL,
-			Website:      "",
-			MygpoLink:    "",
-			Released:     e.CreatedAt, // FIXME: this is not release date...
-		}
-		res = append(res, ep)
+	if err := e.episodesRepo.SaveEpisode(ctx, dbctx, user.ID, episodes...); err != nil {
+		return aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
-	return res, nil
+	return nil
 }
 
-func nvl(value ...string) string {
-	for _, v := range value {
-		if v != "" {
-			return v
-		}
-	}
-
-	return ""
-}
-
-func (e *Episodes) getEpisodesActions(
+func (e *Episodes) getEpisodesActionsInternal(
 	ctx context.Context,
 	dbctx repository.DBContext,
 	username, podcast, devicename string,
