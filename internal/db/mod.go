@@ -156,12 +156,15 @@ func (r *Database) InTransaction(ctx context.Context, fun func(repository.DBCont
 }
 
 func (r *Database) Maintenance(ctx context.Context) error {
-	_, err := r.db.ExecContext(ctx,
-		"VACUUM;"+
-			"PRAGMA optimize;",
-	)
-	if err != nil {
-		return aerr.ApplyFor(aerr.ErrDatabase, err, "execute maintenance script failed")
+	logger := log.Ctx(ctx)
+
+	for _, sql := range maintScripts {
+		logger.Debug().Msgf("run maintenance script: %q", sql)
+
+		if _, err := r.db.ExecContext(ctx, sql); err != nil {
+			return aerr.ApplyFor(aerr.ErrDatabase, err, "execute maintenance script failed").
+				WithMeta("sql", sql)
+		}
 	}
 
 	return nil
@@ -266,4 +269,15 @@ func InTransactionR[T any](ctx context.Context, r *Database,
 	}
 
 	return res, nil
+}
+
+//------------------------------------------------------------------------------
+
+var maintScripts = []string{
+	"DELETE FROM episodes AS e " +
+		"WHERE action != 'delete' AND EXISTS (" +
+		"SELECT NULL FROM episodes AS ed WHERE ed.url = e.url AND ed.action = 'delete' AND ed.updated_at > e.updated_at);",
+	"VACUUM;",
+	"ANALYZE;",
+	"PRAGMA optimize;",
 }
