@@ -58,9 +58,6 @@ func (r *Database) Connect(ctx context.Context, driver, connstr string) error {
 	r.db.SetMaxIdleConns(1)
 	r.db.SetMaxOpenConns(10) //nolint:mnd
 
-	// gather stats from database
-	prometheus.DefaultRegisterer.MustRegister(collectors.NewDBStatsCollector(r.db.DB, "main"))
-
 	if err := r.onConnect(ctx, r.db); err != nil {
 		return aerr.Wrapf(err, "call startup scripts error").WithTag(aerr.InternalError)
 	}
@@ -70,6 +67,11 @@ func (r *Database) Connect(ctx context.Context, driver, connstr string) error {
 	}
 
 	return nil
+}
+
+func (r *Database) RegisterMetrics() {
+	// gather stats from database
+	prometheus.DefaultRegisterer.MustRegister(collectors.NewDBStatsCollector(r.db.DB, "main"))
 }
 
 func (r *Database) Shutdown(ctx context.Context) error {
