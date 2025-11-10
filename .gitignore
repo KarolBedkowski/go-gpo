@@ -8,6 +8,7 @@ stamp_*
 *.orig
 /tmp/
 *.sqlite*
+cover.*
 
 !.gitignore
 !.golangci.yml

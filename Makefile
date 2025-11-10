@@ -58,7 +58,8 @@ clean:
 
 .PHONY: test
 test:
-	go test ./...
+	go test -coverprofile=cover.out ./...
+	go tool cover -html=cover.out -o cover.html
 
 
 .PHONY: lint
