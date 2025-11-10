@@ -196,7 +196,7 @@ func (a *AppError) clone() *AppError {
 // Optional arguments set msg and userMsg (if are not empty).
 func ApplyFor(aerr *AppError, err error, msg ...string) *AppError {
 	if err == nil {
-		return nil
+		panic("err for apply is nil")
 	}
 
 	if aerr == nil {

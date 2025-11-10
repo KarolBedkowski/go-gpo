@@ -84,8 +84,11 @@ func (e *Episodes) SaveEpisodesActions(ctx context.Context, username string, act
 			creator: func(key string) (int64, error) {
 				id, err := e.podcastsRepo.SavePodcast(ctx, dbctx,
 					&repository.PodcastDB{UserID: user.ID, URL: key, Subscribed: true})
+				if err != nil {
+					return 0, aerr.Wrapf(err, "create new podcast failed")
+				}
 
-				return id, aerr.Wrapf(err, "create new podcast failed")
+				return id, nil
 			},
 		}
 
@@ -99,8 +102,11 @@ func (e *Episodes) SaveEpisodesActions(ctx context.Context, username string, act
 			creator: func(key string) (int64, error) {
 				did, err := e.devicesRepo.SaveDevice(ctx, dbctx,
 					&repository.DeviceDB{UserID: user.ID, Name: key, DevType: "other"})
+				if err != nil {
+					return 0, aerr.Wrapf(err, "create new device failed")
+				}
 
-				return did, aerr.Wrapf(err, "create new device failed")
+				return did, nil
 			},
 		}
 
@@ -121,9 +127,11 @@ func (e *Episodes) SaveEpisodesActions(ctx context.Context, username string, act
 			episodes[idx] = episode
 		}
 
-		err = e.episodesRepo.SaveEpisode(ctx, dbctx, user.ID, episodes...)
+		if err = e.episodesRepo.SaveEpisode(ctx, dbctx, user.ID, episodes...); err != nil {
+			return aerr.ApplyFor(ErrRepositoryError, err)
+		}
 
-		return aerr.ApplyFor(ErrRepositoryError, err)
+		return nil
 	})
 }
 
