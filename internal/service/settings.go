@@ -42,7 +42,23 @@ func NewSettingsServiceI(i do.Injector) (*Settings, error) {
 func (s Settings) GetSettings(ctx context.Context, key *model.SettingsKey) (model.Settings, error) {
 	//nolint:wrapcheck
 	return db.InConnectionR(ctx, s.db, func(dbctx repository.DBContext) (model.Settings, error) {
-		return s.getSettings(ctx, dbctx, key)
+		setkey, err := s.newSettingKeys(ctx, dbctx, key)
+		if err != nil {
+			return nil, err
+		}
+
+		sett, err := s.settRepo.ListSettings(ctx, dbctx, setkey.userid, setkey.podcastid, setkey.episodeid,
+			setkey.deviceid, key.Scope)
+		if err != nil {
+			return nil, aerr.ApplyFor(ErrRepositoryError, err, "failed get list settings")
+		}
+
+		settings := make(map[string]string)
+		for _, s := range sett {
+			settings[s.Key] = s.Value
+		}
+
+		return settings, nil
 	})
 }
 
@@ -54,57 +70,30 @@ func (s Settings) SaveSettings(ctx context.Context, key *model.SettingsKey, set 
 
 	//nolint:wrapcheck
 	return s.db.InTransaction(ctx, func(dbctx repository.DBContext) error {
-		return s.saveSettings(ctx, dbctx, key, set)
-	})
-}
-
-func (s Settings) getSettings(ctx context.Context, dbctx repository.DBContext, key *model.SettingsKey,
-) (model.Settings, error) {
-	setkey, err := s.newSettingKeys(ctx, dbctx, key)
-	if err != nil {
-		return nil, err
-	}
-
-	sett, err := s.settRepo.ListSettings(ctx, dbctx, setkey.userid, setkey.podcastid, setkey.episodeid,
-		setkey.deviceid, key.Scope)
-	if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err, "failed get list settings")
-	}
-
-	settings := make(map[string]string)
-	for _, s := range sett {
-		settings[s.Key] = s.Value
-	}
-
-	return settings, nil
-}
-
-func (s Settings) saveSettings(ctx context.Context, dbctx repository.DBContext, key *model.SettingsKey,
-	set model.Settings,
-) error {
-	setkey, err := s.newSettingKeys(ctx, dbctx, key)
-	if err != nil {
-		return err
-	}
-
-	dbsett := repository.SettingsDB{
-		UserID:    setkey.userid,
-		PodcastID: setkey.podcastid,
-		EpisodeID: setkey.episodeid,
-		DeviceID:  setkey.deviceid,
-		Scope:     key.Scope,
-	}
-
-	for key, value := range set {
-		dbsett.Key = key
-		dbsett.Value = value
-
-		if err := s.settRepo.SaveSettings(ctx, dbctx, &dbsett); err != nil {
-			return aerr.ApplyFor(ErrRepositoryError, err)
+		setkey, err := s.newSettingKeys(ctx, dbctx, key)
+		if err != nil {
+			return err
 		}
-	}
 
-	return nil
+		dbsett := repository.SettingsDB{
+			UserID:    setkey.userid,
+			PodcastID: setkey.podcastid,
+			EpisodeID: setkey.episodeid,
+			DeviceID:  setkey.deviceid,
+			Scope:     key.Scope,
+		}
+
+		for key, value := range set {
+			dbsett.Key = key
+			dbsett.Value = value
+
+			if err := s.settRepo.SaveSettings(ctx, dbctx, &dbsett); err != nil {
+				return aerr.ApplyFor(ErrRepositoryError, err)
+			}
+		}
+
+		return nil
+	})
 }
 
 //------------------------------------------------------------------------------
