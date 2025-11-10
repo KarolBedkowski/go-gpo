@@ -11,7 +11,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"maps"
 	"slices"
 	"strconv"
 	"time"
@@ -49,6 +48,8 @@ func (s SqliteRepository) GetEpisode(
 
 // ListEpisodeActions for user, and optionally for device and podcastid.
 // If deviceid is given, return actions from OTHER than given devices.
+// Episodes are sorted by updated_at asc.
+// When aggregate get only last action for each episode.
 func (s SqliteRepository) ListEpisodeActions(
 	ctx context.Context,
 	dbctx DBContext,
@@ -77,7 +78,7 @@ func (s SqliteRepository) ListEpisodeActions(
 		args = append(args, *podcastid) //nolint:wsl_v5
 	}
 
-	query += " ORDER BY e.updated_at DESC"
+	query += " ORDER BY e.updated_at"
 
 	if lastelements > 0 {
 		query += " LIMIT " + strconv.Itoa(lastelements)
@@ -93,19 +94,16 @@ func (s SqliteRepository) ListEpisodeActions(
 			WithMeta("sql", query, "args", args)
 	}
 
-	if !aggregated {
-		return res, nil
+	logger.Debug().Msgf("get episodes - found %d episodes", len(res))
+
+	if aggregated {
+		// TODO: refactor; load only last entries for each podcast from db
+		res = aggregateEpisodes(res)
+
+		logger.Debug().Msgf("get episodes - aggregate %d episodes", len(res))
 	}
 
-	logger.Debug().Msgf("get episodes - aggregate %d episodes", len(res))
-
-	// TODO: refactor; load only last entries for each podcast from db
-	agr := make(map[int64]EpisodeDB)
-	for _, t := range res {
-		agr[t.PodcastID] = t
-	}
-
-	return slices.Collect(maps.Values(agr)), nil
+	return res, nil
 }
 
 func (s SqliteRepository) ListFavorites(ctx context.Context, dbctx DBContext, userid int64) ([]EpisodeDB, error) {
@@ -245,4 +243,24 @@ func (s SqliteRepository) saveEpisode(ctx context.Context, dbctx DBContext, epis
 	}
 
 	return nil
+}
+
+func aggregateEpisodes(episodes []EpisodeDB) []EpisodeDB {
+	res := make([]EpisodeDB, 0, len(episodes))
+	seen := make(map[string]struct{})
+
+	// episodes are sorted by ts asc, so get last first
+	slices.Reverse(episodes)
+
+	for _, e := range episodes {
+		if _, ok := seen[e.URL]; !ok {
+			res = append(res, e)
+			seen[e.URL] = struct{}{}
+		}
+	}
+
+	// back to sorting by ts asc
+	slices.Reverse(res)
+
+	return res
 }
