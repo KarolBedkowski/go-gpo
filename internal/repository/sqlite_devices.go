@@ -106,7 +106,8 @@ func (s SqliteRepository) ListDevices(ctx context.Context, dbctx DBContext, user
 
 	err = dbctx.SelectContext(ctx, &res,
 		"SELECT id, user_id, name, dev_type, caption, ? as subscriptions, created_at, updated_at "+
-			"FROM devices WHERE user_id=?",
+			"FROM devices WHERE user_id=? "+
+			"ORDER BY name",
 		subscriptions, userid)
 	if err != nil {
 		return nil, aerr.Wrapf(err, "select device failed").WithMeta("user_id", userid)
