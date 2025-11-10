@@ -35,8 +35,8 @@ func prepareTests(ctx context.Context, t *testing.T) *do.RootScope {
 	return i
 }
 
-func prepareTestUser(ctx context.Context, t *testing.T, i do.Injector) int64 {
-	newuser, _ := model.NewNewUser("test", "test123", "test@example.com", "test user 1")
+func prepareTestUser(ctx context.Context, t *testing.T, i do.Injector, name string) int64 {
+	newuser, _ := model.NewNewUser(name, name+"123", name+"@example.com", "test user "+name)
 
 	usersSrv := do.MustInvoke[*Users](i)
 	uid, err := usersSrv.AddUser(ctx, &newuser)

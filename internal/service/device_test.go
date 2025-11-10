@@ -21,7 +21,7 @@ func TestDevice(t *testing.T) {
 	ctx := context.Background()
 	i := prepareTests(ctx, t)
 	deviceSrv := do.MustInvoke[*Device](i)
-	_ = prepareTestUser(ctx, t, i)
+	_ = prepareTestUser(ctx, t, i, "test")
 
 	// add device
 	udev, err := model.NewUpdatedDevice("test", "dev1", "mobile", "device caption")
