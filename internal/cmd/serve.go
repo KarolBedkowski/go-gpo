@@ -73,6 +73,7 @@ func (s *Server) Start(ctx context.Context) error {
 
 		return nil
 	}, srv.Stop)
+	group.Add(func() error { return db.StartBackgroundMaintenance(ctx) }, func(_ error) {})
 
 	systemd.NotifyReady()           //nolint:errcheck
 	systemd.NotifyStatus("running") //nolint:errcheck

@@ -100,6 +100,11 @@ func (r *Database) Migrate(ctx context.Context, driver string) error {
 		return aerr.ApplyFor(aerr.ErrDatabase, err, "", "migrate database up failed")
 	}
 
+	_, err := r.db.ExecContext(ctx, "PRAGMA optimize")
+	if err != nil {
+		return aerr.ApplyFor(aerr.ErrDatabase, err, "execute optimize script failed")
+	}
+
 	return nil
 }
 
@@ -179,6 +184,33 @@ func (r *Database) Maintenance(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (r Database) StartBackgroundMaintenance(ctx context.Context) error {
+	const startHour = 4
+
+	logger := log.Ctx(ctx)
+	logger.Info().Msg("start background maintenance task")
+
+	for {
+		now := time.Now()
+		nextRun := time.Date(now.Year(), now.Month(), now.Day(), startHour, 0, 0, 0, time.UTC)
+
+		if nextRun.Before(now) {
+			nextRun = nextRun.Add(time.Duration(60*60*24) * time.Second) //nolint:mnd
+		}
+
+		wait := nextRun.Sub(now)
+
+		logger.Debug().Msgf("maintenance task - next run %s wait %s", nextRun, wait)
+
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-time.After(wait):
+			r.Maintenance(ctx)
+		}
+	}
 }
 
 func (r *Database) onConnect(ctx context.Context, db sqlx.ExecerContext) error {
