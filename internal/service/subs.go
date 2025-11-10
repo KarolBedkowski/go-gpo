@@ -38,58 +38,50 @@ func NewSubssServiceI(i do.Injector) (*Subs, error) {
 
 // GetUserSubscriptions is simple api.
 func (s *Subs) GetUserSubscriptions(ctx context.Context, username string, since time.Time) ([]string, error) {
-	conn, err := s.db.GetConnection(ctx)
-	if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err)
-	}
+	//nolint:wrapcheck
+	return db.InConnectionR(ctx, s.db, func(dbctx repository.DBContext) ([]string, error) {
+		user, err := s.usersRepo.GetUser(ctx, dbctx, username)
+		if errors.Is(err, repository.ErrNoData) {
+			return nil, ErrUnknownUser
+		} else if err != nil {
+			return nil, aerr.ApplyFor(ErrRepositoryError, err)
+		}
 
-	defer conn.Close()
+		subs, err := s.podcastsRepo.ListSubscribedPodcasts(ctx, dbctx, user.ID, since)
+		if err != nil {
+			return nil, aerr.ApplyFor(ErrRepositoryError, err)
+		}
 
-	user, err := s.usersRepo.GetUser(ctx, conn, username)
-	if errors.Is(err, repository.ErrNoData) {
-		return nil, ErrUnknownUser
-	} else if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err)
-	}
-
-	subs, err := s.podcastsRepo.ListSubscribedPodcasts(ctx, conn, user.ID, since)
-	if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err)
-	}
-
-	return subs.ToURLs(), nil
+		return subs.ToURLs(), nil
+	})
 }
 
 // GetDeviceSubscriptions is simple api.
 func (s *Subs) GetDeviceSubscriptions(ctx context.Context, username, devicename string, since time.Time,
 ) ([]string, error) {
-	conn, err := s.db.GetConnection(ctx)
-	if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err)
-	}
+	//nolint:wrapcheck
+	return db.InConnectionR(ctx, s.db, func(dbctx repository.DBContext) ([]string, error) {
+		user, err := s.usersRepo.GetUser(ctx, dbctx, username)
+		if errors.Is(err, repository.ErrNoData) {
+			return nil, ErrUnknownUser
+		} else if err != nil {
+			return nil, aerr.ApplyFor(ErrRepositoryError, err)
+		}
 
-	defer conn.Close()
+		_, err = s.devicesRepo.GetDevice(ctx, dbctx, user.ID, devicename)
+		if errors.Is(err, repository.ErrNoData) {
+			return nil, ErrUnknownDevice
+		} else if err != nil {
+			return nil, aerr.ApplyFor(ErrRepositoryError, err)
+		}
 
-	user, err := s.usersRepo.GetUser(ctx, conn, username)
-	if errors.Is(err, repository.ErrNoData) {
-		return nil, ErrUnknownUser
-	} else if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err)
-	}
+		podcasts, err := s.podcastsRepo.ListSubscribedPodcasts(ctx, dbctx, user.ID, since)
+		if err != nil {
+			return nil, aerr.ApplyFor(ErrRepositoryError, err)
+		}
 
-	_, err = s.devicesRepo.GetDevice(ctx, conn, user.ID, devicename)
-	if errors.Is(err, repository.ErrNoData) {
-		return nil, ErrUnknownDevice
-	} else if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err)
-	}
-
-	podcasts, err := s.podcastsRepo.ListSubscribedPodcasts(ctx, conn, user.ID, since)
-	if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err)
-	}
-
-	return podcasts.ToURLs(), nil
+		return podcasts.ToURLs(), nil
+	})
 }
 
 func (s *Subs) GetDeviceSubscriptionChanges(ctx context.Context, username, devicename string, since time.Time,
@@ -117,7 +109,8 @@ func (s *Subs) UpdateDeviceSubscriptions(ctx context.Context, //nolint:cyclop
 ) error {
 	_ = ts
 
-	err := s.db.InTransaction(ctx, func(dbctx repository.DBContext) error {
+	//nolint:wrapcheck
+	return s.db.InTransaction(ctx, func(dbctx repository.DBContext) error {
 		user, err := s.getUser(ctx, dbctx, username)
 		if err != nil {
 			return err
@@ -173,8 +166,6 @@ func (s *Subs) UpdateDeviceSubscriptions(ctx context.Context, //nolint:cyclop
 
 		return nil
 	})
-
-	return err //nolint:wrapcheck
 }
 
 func (s *Subs) UpdateDeviceSubscriptionChanges( //nolint:cyclop
@@ -182,7 +173,8 @@ func (s *Subs) UpdateDeviceSubscriptionChanges( //nolint:cyclop
 	username, devicename string,
 	changes *model.SubscriptionChanges,
 ) error {
-	err := s.db.InTransaction(ctx, func(dbctx repository.DBContext) error {
+	//nolint:wrapcheck
+	return s.db.InTransaction(ctx, func(dbctx repository.DBContext) error {
 		user, err := s.getUser(ctx, dbctx, username)
 		if err != nil {
 			return err
@@ -231,8 +223,6 @@ func (s *Subs) UpdateDeviceSubscriptionChanges( //nolint:cyclop
 
 		return nil
 	})
-
-	return err //nolint:wrapcheck
 }
 
 func (s *Subs) GetSubscriptionChanges(ctx context.Context, username, devicename string, since time.Time) (
@@ -318,31 +308,27 @@ func (s *Subs) getPodcasts(
 ) (
 	[]repository.PodcastDB, error,
 ) {
-	conn, err := s.db.GetConnection(ctx)
-	if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err, "get connection failed")
-	}
+	//nolint:wrapcheck
+	return db.InConnectionR(ctx, s.db, func(dbctx repository.DBContext) ([]repository.PodcastDB, error) {
+		user, err := s.usersRepo.GetUser(ctx, dbctx, username)
+		if errors.Is(err, repository.ErrNoData) {
+			return nil, ErrUnknownUser
+		} else if err != nil {
+			return nil, aerr.ApplyFor(ErrRepositoryError, err, "get user failed")
+		}
 
-	defer conn.Close()
+		_, err = s.devicesRepo.GetDevice(ctx, dbctx, user.ID, devicename)
+		if errors.Is(err, repository.ErrNoData) {
+			return nil, ErrUnknownDevice
+		} else if err != nil {
+			return nil, aerr.ApplyFor(ErrRepositoryError, err, "get device failed")
+		}
 
-	user, err := s.usersRepo.GetUser(ctx, conn, username)
-	if errors.Is(err, repository.ErrNoData) {
-		return nil, ErrUnknownUser
-	} else if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err, "get user failed")
-	}
+		podcasts, err := s.podcastsRepo.ListPodcasts(ctx, dbctx, user.ID, since)
+		if err != nil {
+			return nil, aerr.ApplyFor(ErrRepositoryError, err, "list podcasts failed")
+		}
 
-	_, err = s.devicesRepo.GetDevice(ctx, conn, user.ID, devicename)
-	if errors.Is(err, repository.ErrNoData) {
-		return nil, ErrUnknownDevice
-	} else if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err, "get device failed")
-	}
-
-	podcasts, err := s.podcastsRepo.ListPodcasts(ctx, conn, user.ID, since)
-	if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err, "list podcasts failed")
-	}
-
-	return podcasts, nil
+		return podcasts, nil
+	})
 }
