@@ -250,7 +250,7 @@ func prepareSqliteConnstr(connstr string) (string, error) {
 	}
 
 	if parsed.Path == "" {
-		return "", aerr.ApplyFor(aerr.ErrInvalidConf, err, "", "invalid database connection string - missing path")
+		return "", aerr.ErrInvalidConf.WithUserMsg("invalid database connection string - missing path")
 	}
 
 	query := parsed.Query()

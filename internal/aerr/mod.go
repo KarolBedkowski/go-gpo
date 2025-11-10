@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"reflect"
 	"runtime"
 	"slices"
 	"strconv"
@@ -21,65 +22,49 @@ type AppError struct {
 	stack   []string
 }
 
-func New(msg string, args ...any) *AppError {
-	return &AppError{
+func New(msg string, args ...any) AppError {
+	return AppError{
 		stack: getStack(),
 		msg:   fmt.Sprintf(msg, args...),
 	}
 }
 
-func NewSimple(msg string, args ...any) *AppError {
-	return &AppError{
+func NewSimple(msg string, args ...any) AppError {
+	return AppError{
 		msg: fmt.Sprintf(msg, args...),
 	}
 }
 
-func Newf(msg string, args ...any) *AppError {
-	return &AppError{
+func Newf(msg string, args ...any) AppError {
+	return AppError{
 		stack: getStack(),
 		msg:   fmt.Sprintf(msg, args...),
 	}
 }
 
-func Wrap(err error) *AppError {
-	if err == nil {
-		return nil
-	}
-
-	return &AppError{
+func Wrap(err error) AppError {
+	return AppError{
 		stack: getStack(),
 		err:   err,
 	}
 }
 
-func Wrapf(err error, msg string, args ...any) *AppError {
-	if err == nil {
-		return nil
-	}
-
-	return &AppError{
+func Wrapf(err error, msg string, args ...any) AppError {
+	return AppError{
 		stack: getStack(),
 		err:   err,
 		msg:   fmt.Sprintf(msg, args...),
 	}
 }
 
-func (a *AppError) WithMsg(msg string, args ...any) *AppError {
-	if a == nil {
-		return nil
-	}
-
+func (a AppError) WithMsg(msg string, args ...any) AppError {
 	n := a.clone()
 	n.msg = fmt.Sprintf(msg, args...)
 
 	return n
 }
 
-func (a *AppError) WithTag(tag string) *AppError {
-	if a == nil {
-		return nil
-	}
-
+func (a AppError) WithTag(tag string) AppError {
 	if slices.Contains(a.tags, tag) {
 		return a
 	}
@@ -90,22 +75,14 @@ func (a *AppError) WithTag(tag string) *AppError {
 	return n
 }
 
-func (a *AppError) WithUserMsg(msg string, args ...any) *AppError {
-	if a == nil {
-		return nil
-	}
-
+func (a AppError) WithUserMsg(msg string, args ...any) AppError {
 	n := a.clone()
 	n.userMsg = fmt.Sprintf(msg, args...)
 
 	return n
 }
 
-func (a *AppError) WithMeta(keyval ...any) *AppError {
-	if a == nil {
-		return nil
-	}
-
+func (a AppError) WithMeta(keyval ...any) AppError {
 	if len(keyval)%2 != 0 {
 		panic("invalid argument number to call WithMeta")
 	}
@@ -129,11 +106,7 @@ func (a *AppError) WithMeta(keyval ...any) *AppError {
 }
 
 // WithErr create copy of AppError with new error and updated stack.
-func (a *AppError) WithError(err error) *AppError {
-	if err == nil {
-		return nil
-	}
-
+func (a AppError) WithError(err error) AppError {
 	n := a.clone()
 	n.err = err
 	n.stack = getStack()
@@ -141,11 +114,11 @@ func (a *AppError) WithError(err error) *AppError {
 	return n
 }
 
-func (a *AppError) Error() string {
-	if a == nil {
-		return ""
-	}
+func (a AppError) Is(target error) bool {
+	return reflect.DeepEqual(a, target)
+}
 
+func (a AppError) Error() string {
 	if a.msg != "" {
 		return a.msg
 	}
@@ -153,19 +126,11 @@ func (a *AppError) Error() string {
 	return a.err.Error()
 }
 
-func (a *AppError) Unwrap() error {
-	if a == nil {
-		return nil
-	}
-
+func (a AppError) Unwrap() error {
 	return a.err
 }
 
-func (a *AppError) String() string {
-	if a == nil {
-		return ""
-	}
-
+func (a AppError) String() string {
 	msg := a.userMsg
 	if msg == "" {
 		msg = a.msg
@@ -179,8 +144,8 @@ func (a *AppError) String() string {
 }
 
 // Clone AppError, do not fill stack.
-func (a *AppError) clone() *AppError {
-	return &AppError{
+func (a AppError) clone() AppError {
+	return AppError{
 		stack:   a.stack,
 		msg:     a.msg,
 		tags:    slices.Clone(a.tags),
@@ -194,13 +159,9 @@ func (a *AppError) clone() *AppError {
 
 // ApplyFor create copy of AppError with replaced error and updated location.
 // Optional arguments set msg and userMsg (if are not empty).
-func ApplyFor(aerr *AppError, err error, msg ...string) *AppError {
+func ApplyFor(aerr AppError, err error, msg ...string) AppError {
 	if err == nil {
 		panic("err for apply is nil")
-	}
-
-	if aerr == nil {
-		panic("apperror for apply is nil")
 	}
 
 	nerr := aerr.clone()
@@ -224,8 +185,8 @@ func ApplyFor(aerr *AppError, err error, msg ...string) *AppError {
 
 //-------------------------------------------------------------
 
-func AsAppError(err error) (*AppError, bool) {
-	var ae *AppError
+func AsAppError(err error) (AppError, bool) {
+	var ae AppError
 	if errors.As(err, &ae) {
 		return ae, true
 	}
@@ -304,7 +265,7 @@ func GetErrors(err error) []string {
 	errs := []string{}
 
 	for err != nil {
-		if ae, ok := err.(*AppError); ok { //nolint:errorlint
+		if ae, ok := err.(AppError); ok { //nolint:errorlint
 			if ae.msg != "" {
 				errs = append(errs, ae.msg)
 			}
@@ -320,11 +281,11 @@ func GetErrors(err error) []string {
 	return errs
 }
 
-func Flatten(err error) []*AppError {
-	errs := []*AppError{}
+func Flatten(err error) []AppError {
+	errs := []AppError{}
 
 	for ; err != nil; err = errors.Unwrap(err) {
-		if ae, ok := err.(*AppError); ok { //nolint:errorlint
+		if ae, ok := err.(AppError); ok { //nolint:errorlint
 			errs = append(errs, ae)
 		}
 	}
@@ -360,7 +321,7 @@ func (m zerologErrorMarshaller) MarshalZerologObject(event *zerolog.Event) { //n
 	)
 
 	for err := m.err; err != nil; err = errors.Unwrap(err) {
-		apperr, ok := err.(*AppError) //nolint:errorlint
+		apperr, ok := err.(AppError) //nolint:errorlint
 		if !ok {
 			errs = append(errs, err.Error())
 

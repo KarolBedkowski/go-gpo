@@ -65,12 +65,21 @@ func TestAppErrorWrap(t *testing.T) {
 	assert.Equal(t, aerr1.String(), "error1")
 }
 
+func TestAppErrorSimple(t *testing.T) {
+	err := NewSimple("error1")
+
+	aerr1 := Wrap(err)
+	assert.True(t, errors.Is(aerr1, err))
+	assert.True(t, errors.Is(errors.Unwrap(aerr1), err))
+	assert.True(t, aerr1.stack != nil)
+	assert.Equal(t, aerr1.String(), "error1")
+}
+
 func TestAppErrorMsg(t *testing.T) {
 	err := errors.New("error1")
 
 	aerr0 := Wrap(err)
 	aerr1 := aerr0.WithMsg("apperror%d", 1)
-	assert.True(t, aerr1 != aerr0)
 	assert.Equal(t, aerr1.stack, aerr0.stack)
 	assert.True(t, errors.Is(aerr1, err))
 	assert.Equal(t, aerr1.msg, "apperror1")
@@ -80,8 +89,6 @@ func TestAppErrorMsg(t *testing.T) {
 	assert.Equal(t, GetUserMessageOr(aerr1, "--"), "--")
 
 	aerr2 := aerr1.WithUserMsg("user message %d", 123)
-	assert.True(t, aerr2 != nil)
-	assert.True(t, aerr2 != aerr1)
 	assert.True(t, errors.Is(aerr2, err))
 	assert.Equal(t, aerr2.stack, aerr0.stack)
 	assert.Equal(t, aerr2.msg, "apperror1")
@@ -135,8 +142,8 @@ func TestAppErrorErr(t *testing.T) {
 	err0 := Newf("error %s-%d", "1", 2)
 
 	aerr1 := err.WithError(err0)
-	assert.True(t, aerr1.err == err0)
-	assert.True(t, aerr1.Unwrap() == err0)
+	assert.True(t, errors.Is(aerr1.err, err0))
+	assert.True(t, errors.Is(aerr1.Unwrap(), err0))
 	assert.Equal(t, aerr1.String(), "simple error1")
 	// new stack
 	assert.NotEqual(t, aerr1.stack, err0.stack)
