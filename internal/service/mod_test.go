@@ -46,3 +46,18 @@ func prepareTestUser(ctx context.Context, t *testing.T, i do.Injector, name stri
 
 	return uid
 }
+
+func prepareTestDevice(ctx context.Context, t *testing.T, i do.Injector,
+	username, devicename string,
+) {
+	udev, err := model.NewUpdatedDevice(username, devicename, "other", "device "+devicename+" caption")
+	if err != nil {
+		t.Fatalf("create test device failed: %#+v", err)
+	}
+
+	deviceSrv := do.MustInvoke[*Device](i)
+	err = deviceSrv.UpdateDevice(ctx, &udev)
+	if err != nil {
+		t.Fatalf("create test device failed: %#+v", err)
+	}
+}
