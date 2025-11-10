@@ -14,17 +14,13 @@ import (
 	"github.com/samber/do/v2"
 
 	"gitlab.com/kabes/go-gpo/internal/assert"
-	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
-	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
 func TestUsers(t *testing.T) {
-	i := do.New(Package, db.Package, repository.Package)
-	usersSrv := do.MustInvoke[*Users](i)
-	prepareDB(t, usersSrv.db)
-
 	ctx := context.Background()
+	i := prepareTests(ctx, t)
+	usersSrv := do.MustInvoke[*Users](i)
 
 	_, err := usersSrv.LoginUser(ctx, "test", "test123")
 	assert.ErrSpec(t, err, ErrUnknownUser)
@@ -84,21 +80,4 @@ func TestUsers(t *testing.T) {
 	assert.NoErr(t, err)
 	assert.Equal(t, len(users), 1)
 	assert.Equal(t, users[0].Username, "test")
-}
-
-func prepareDB(t *testing.T, d *db.Database) *db.Database {
-	t.Helper()
-
-	ctx := context.Background()
-
-	//	d := &db.Database{}
-	if err := d.Connect(ctx, "sqlite3", ":memory:"); err != nil {
-		t.Fatalf("connect to db error: %#+v", err)
-	}
-
-	if err := d.Migrate(ctx, "sqlite3"); err != nil {
-		t.Fatalf("prepare db error: %#+v", err)
-	}
-
-	return d
 }

@@ -1,7 +1,5 @@
 package repository
 
-import _ "github.com/mattn/go-sqlite3"
-
 //
 // sqlite.go
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
