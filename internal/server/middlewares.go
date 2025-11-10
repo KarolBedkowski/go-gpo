@@ -201,7 +201,7 @@ func newFullLogMiddleware(next http.Handler) http.Handler {
 		lrw.Tee(&respBody)
 
 		defer func() {
-			if !shouldSkipLogRequest(request) {
+			if shouldLogRequestBody(request) {
 				llog.Debug().
 					Interface("req-headers", request.Header).
 					Msg("request data: " + reqBody.String())
@@ -234,6 +234,12 @@ func shouldSkipLogRequest(request *http.Request) bool {
 	path := request.URL.Path
 
 	return strings.HasPrefix(path, "/metrics") || strings.HasPrefix(path, "/debug")
+}
+
+func shouldLogRequestBody(request *http.Request) bool {
+	path := request.URL.Path
+
+	return strings.HasPrefix(path, "/api")
 }
 
 //-------------------------------------------------------------
