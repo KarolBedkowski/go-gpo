@@ -50,6 +50,8 @@ type EpisodesRepository interface {
 	) ([]EpisodeDB, error)
 	SaveEpisode(ctx context.Context, db DBContext, userid int64, episode ...EpisodeDB) error
 	ListFavorites(ctx context.Context, db DBContext, userid int64) ([]EpisodeDB, error)
+	GetLastEpisodeAction(ctx context.Context, dbctx DBContext,
+		userid, podcastid int64, excludeDelete bool) (EpisodeDB, error)
 }
 
 type PodcastsRepository interface {
