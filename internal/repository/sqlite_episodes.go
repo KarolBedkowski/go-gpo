@@ -162,51 +162,8 @@ func (s SqliteRepository) SaveEpisode(ctx context.Context, dbctx DBContext, user
 	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_episodes").Logger()
 	logger.Debug().Int64("user_id", userid).Msgf("save episode")
 
-	podcasts, err := s.ListSubscribedPodcasts(ctx, dbctx, userid, time.Time{})
-	if err != nil {
-		return err
-	}
-
-	// cache podcasts
-	podcastsmap := podcasts.ToIDsMap()
-
-	devices, err := s.ListDevices(ctx, dbctx, userid)
-	if err != nil {
-		return err
-	}
-
-	// cache devices
-	devicesmap := devices.ToIDsMap()
-
 	for _, eps := range episode {
 		logger.Debug().Object("episode", eps).Msg("update episode")
-
-		if pid, ok := podcastsmap[eps.PodcastURL]; ok {
-			// podcast already created
-			eps.PodcastID = pid
-		} else {
-			// insert podcast
-			id, err := s.SavePodcast(ctx, dbctx, &PodcastDB{UserID: userid, URL: eps.PodcastURL, Subscribed: true})
-			if err != nil {
-				return aerr.Wrapf(err, "create new podcast failed")
-			}
-
-			eps.PodcastID = id
-			podcastsmap[eps.PodcastURL] = id
-		}
-
-		if did, ok := devicesmap[eps.Device]; ok {
-			eps.DeviceID = did
-		} else {
-			// create device
-			did, err := s.SaveDevice(ctx, dbctx, &DeviceDB{UserID: userid, Name: eps.Device, DevType: "other"})
-			if err != nil {
-				return aerr.Wrapf(err, "create new device failed")
-			}
-
-			eps.DeviceID = did
-			devicesmap[eps.Device] = did
-		}
 
 		if err := s.saveEpisode(ctx, dbctx, eps); err != nil {
 			return err
