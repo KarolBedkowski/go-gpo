@@ -8,9 +8,13 @@ package service
 //
 import (
 	"context"
+	stdlog "log"
+	"os"
 	"testing"
 
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/db"
@@ -20,6 +24,11 @@ import (
 
 func prepareTests(ctx context.Context, t *testing.T) *do.RootScope {
 	t.Helper()
+
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
+	zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	stdlog.SetFlags(0)
+	stdlog.SetOutput(log.Logger)
 
 	i := do.New(Package, db.Package, repository.Package)
 
