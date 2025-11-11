@@ -44,7 +44,7 @@ func NoErr(tb testing.TB, got error) bool {
 	tb.Helper()
 
 	if got != nil {
-		tb.Errorf("got unexpected error: %v", got)
+		tb.Errorf("got unexpected error: %#+v", got)
 
 		return false
 	}
