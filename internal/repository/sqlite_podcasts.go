@@ -92,8 +92,8 @@ func (s SqliteRepository) SavePodcast(ctx context.Context, dbctx DBContext, podc
 			podcast.Title,
 			podcast.URL,
 			podcast.Subscribed,
-			time.Now(),
-			time.Now(),
+			podcast.CreatedAt,
+			podcast.UpdatedAt,
 		)
 		if err != nil {
 			return 0, aerr.Wrapf(err, "insert podcast failed").WithMeta("podcast_url", podcast.URL)
@@ -114,7 +114,7 @@ func (s SqliteRepository) SavePodcast(ctx context.Context, dbctx DBContext, podc
 
 	_, err := dbctx.ExecContext(ctx,
 		"UPDATE podcasts SET subscribed=?, title=?, url=?, updated_at=? WHERE id=?",
-		podcast.Subscribed, podcast.Title, podcast.URL, time.Now(), podcast.ID)
+		podcast.Subscribed, podcast.Title, podcast.URL, podcast.UpdatedAt, podcast.ID)
 	if err != nil {
 		return 0, aerr.Wrapf(err, "update podcast failed").
 			WithMeta("podcast_id", podcast.ID, "podcast_url", podcast.URL)

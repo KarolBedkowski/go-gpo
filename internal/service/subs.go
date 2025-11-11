@@ -105,10 +105,8 @@ func (s *Subs) GetDeviceSubscriptionChanges(ctx context.Context, username, devic
 }
 
 func (s *Subs) UpdateDeviceSubscriptions(ctx context.Context, //nolint:cyclop
-	username, devicename string, subs model.SubscribedURLs, ts time.Time,
+	username, devicename string, currentSubs model.SubscribedURLs, timestamp time.Time,
 ) error {
-	_ = ts
-
 	//nolint:wrapcheck
 	return s.db.InTransaction(ctx, func(dbctx repository.DBContext) error {
 		user, err := s.getUser(ctx, dbctx, username)
@@ -126,33 +124,38 @@ func (s *Subs) UpdateDeviceSubscriptions(ctx context.Context, //nolint:cyclop
 			return err
 		}
 
+		// get all podcasts for user
 		subscribed, err := s.podcastsRepo.ListPodcasts(ctx, dbctx, user.ID, time.Time{})
 		if err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		changes := make([]repository.PodcastDB, 0, len(subs))
-		// removed
+		changes := make([]repository.PodcastDB, 0, len(currentSubs))
+		// remove subscriptions found in db but not in currentSubs
 		for _, sub := range subscribed {
-			if sub.Subscribed && !slices.Contains(subs, sub.URL) {
+			if sub.Subscribed && !slices.Contains(currentSubs, sub.URL) {
 				sub.Subscribed = false
+				sub.UpdatedAt = timestamp
 				changes = append(changes, sub)
 			}
 		}
 
-		// added
-		for _, sub := range subs {
+		// add or set subscribed flag for podcast in currentSubs; update updated_at
+		for _, sub := range currentSubs {
 			podcast, ok := subscribed.FindPodcastByURL(sub)
 			switch {
 			case ok && podcast.Subscribed:
 				// ignore already subscribed podcasts
 				continue
 			case !ok:
-				// exists but not subscribed
-				podcast = repository.PodcastDB{UserID: user.ID, URL: sub, Subscribed: true}
+				// not exists
+				podcast = repository.PodcastDB{
+					UserID: user.ID, URL: sub, Subscribed: true, UpdatedAt: timestamp, CreatedAt: timestamp,
+				}
 			default:
 				// not subscribed
 				podcast.Subscribed = true
+				podcast.UpdatedAt = timestamp
 			}
 
 			changes = append(changes, podcast)
