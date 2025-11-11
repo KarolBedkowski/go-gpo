@@ -10,7 +10,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"slices"
 	"testing"
 	"time"
 
@@ -161,17 +160,6 @@ func TestSubsServiceChanges(t *testing.T) {
 	assert.NoErr(t, err)
 	assert.Equal(t, len(removed), 0)
 	assert.Equal(t, len(added), 0)
-}
-
-func podcastsToUrls(podcasts []model.Podcast) []string {
-	res := make([]string, len(podcasts))
-	for i, p := range podcasts {
-		res[i] = p.URL
-	}
-
-	slices.Sort(res)
-
-	return res
 }
 
 func TestSubsServieUpdateDevSubsChanges(t *testing.T) {

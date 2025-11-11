@@ -10,13 +10,16 @@ import (
 	"context"
 	stdlog "log"
 	"os"
+	"slices"
 	"testing"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
 	"github.com/samber/do/v2"
+	"gitlab.com/kabes/go-gpo/internal/assert"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/repository"
@@ -45,6 +48,8 @@ func prepareTests(ctx context.Context, t *testing.T) *do.RootScope {
 }
 
 func prepareTestUser(ctx context.Context, t *testing.T, i do.Injector, name string) int64 {
+	t.Helper()
+
 	newuser, _ := model.NewNewUser(name, name+"123", name+"@example.com", "test user "+name)
 
 	usersSrv := do.MustInvoke[*Users](i)
@@ -59,6 +64,8 @@ func prepareTestUser(ctx context.Context, t *testing.T, i do.Injector, name stri
 func prepareTestDevice(ctx context.Context, t *testing.T, i do.Injector,
 	username, devicename string,
 ) {
+	t.Helper()
+
 	udev, err := model.NewUpdatedDevice(username, devicename, "other", "device "+devicename+" caption")
 	if err != nil {
 		t.Fatalf("create test device failed: %#+v", err)
@@ -69,4 +76,27 @@ func prepareTestDevice(ctx context.Context, t *testing.T, i do.Injector,
 	if err != nil {
 		t.Fatalf("create test device failed: %#+v", err)
 	}
+}
+
+func prepareTestSub(ctx context.Context, t *testing.T, i do.Injector,
+	username, devicename string, subs ...string,
+) {
+	t.Helper()
+
+	subsSrv := do.MustInvoke[*Subs](i)
+	err := subsSrv.UpdateDeviceSubscriptions(ctx,
+		username, devicename, model.NewSubscribedURLS(subs),
+		time.Date(2025, 1, 2, 10, 0, 0, 0, time.UTC))
+	assert.NoErr(t, err)
+}
+
+func podcastsToUrls(podcasts []model.Podcast) []string {
+	res := make([]string, len(podcasts))
+	for i, p := range podcasts {
+		res[i] = p.URL
+	}
+
+	slices.Sort(res)
+
+	return res
 }
