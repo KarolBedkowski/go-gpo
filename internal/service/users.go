@@ -136,7 +136,6 @@ func (u *Users) GetUsers(ctx context.Context, activeOnly bool) ([]model.User, er
 		}
 
 		res := make([]model.User, 0, len(users))
-
 		for _, u := range users {
 			res = append(res, model.NewUserFromUserDB(&u))
 		}
@@ -166,7 +165,7 @@ func (u *Users) LockAccount(ctx context.Context, la model.LockAccount) error {
 	})
 }
 
-//---------------------------
+//-------------------------------------------------------------
 
 type PasswordHasher interface {
 	HashPassword(password string) (string, error)

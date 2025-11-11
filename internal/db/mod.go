@@ -186,7 +186,7 @@ func (r *Database) Maintenance(ctx context.Context) error {
 	return nil
 }
 
-func (r Database) StartBackgroundMaintenance(ctx context.Context) error {
+func (r *Database) StartBackgroundMaintenance(ctx context.Context) error {
 	const startHour = 4
 
 	logger := log.Ctx(ctx)

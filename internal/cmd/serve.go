@@ -52,15 +52,15 @@ func (s *Server) Start(ctx context.Context) error {
 		enableDoDebug(ctx, injector.RootScope())
 	}
 
-	db := do.MustInvoke[*db.Database](injector)
-	if err := db.Connect(ctx, "sqlite3", s.Database); err != nil {
+	ctx, cancel := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGINT)
+	defer cancel()
+
+	database := do.MustInvoke[*db.Database](injector)
+	if err := database.Connect(ctx, "sqlite3", s.Database); err != nil {
 		return fmt.Errorf("connect to database error: %w", err)
 	}
 
-	db.RegisterMetrics()
-
-	ctx, cancel := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGINT)
-	defer cancel()
+	database.RegisterMetrics()
 
 	var group run.Group
 	group.Add(run.ContextHandler(ctx))
@@ -73,7 +73,7 @@ func (s *Server) Start(ctx context.Context) error {
 
 		return nil
 	}, srv.Stop)
-	group.Add(func() error { return db.StartBackgroundMaintenance(ctx) }, func(_ error) {})
+	group.Add(func() error { return database.StartBackgroundMaintenance(ctx) }, func(_ error) {})
 
 	systemd.NotifyReady()           //nolint:errcheck
 	systemd.NotifyStatus("running") //nolint:errcheck

@@ -162,7 +162,7 @@ func TestSubsServiceChanges(t *testing.T) {
 	assert.Equal(t, len(added), 0)
 }
 
-func TestSubsServieUpdateDevSubsChanges(t *testing.T) {
+func TestSubsServiceUpdateDevSubsChanges(t *testing.T) {
 	ctx := context.Background()
 	i := prepareTests(ctx, t)
 	ctx = log.Logger.WithContext(ctx)
@@ -202,7 +202,7 @@ func TestSubsServieUpdateDevSubsChanges(t *testing.T) {
 	assert.Equal(t, len(added), 2)
 	assert.Equal(t, podcastsToUrls(added), []string{"http://example.com/p4", "http://example.com/p5"})
 
-	// check for oother device; shoud be the same
+	// check for other device; should be the same
 	addedurl, removed, err := subsSrv.GetDeviceSubscriptionChanges(ctx, "user1", "dev2",
 		time.Date(2025, 1, 2, 11, 0, 0, 0, time.UTC))
 	assert.NoErr(t, err)
