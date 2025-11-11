@@ -74,40 +74,14 @@ func (e *Episodes) SaveEpisodesActions(ctx context.Context, username string, act
 		}
 
 		// cache devices and podcasts
-		podcasts, err := e.podcastsRepo.ListSubscribedPodcasts(ctx, dbctx, user.ID, time.Time{})
+		podcastscache, err := e.createPodcastsCache(ctx, dbctx, user.ID)
 		if err != nil {
 			return err
 		}
 
-		podcastscache := DynamicCache[string, int64]{
-			items: podcasts.ToIDsMap(),
-			creator: func(key string) (int64, error) {
-				id, err := e.podcastsRepo.SavePodcast(ctx, dbctx,
-					&repository.PodcastDB{UserID: user.ID, URL: key, Subscribed: true})
-				if err != nil {
-					return 0, aerr.Wrapf(err, "create new podcast failed")
-				}
-
-				return id, nil
-			},
-		}
-
-		devices, err := e.devicesRepo.ListDevices(ctx, dbctx, user.ID)
+		devicescache, err := e.createDevicesCache(ctx, dbctx, user.ID)
 		if err != nil {
 			return err
-		}
-
-		devicescache := DynamicCache[string, int64]{
-			items: devices.ToIDsMap(),
-			creator: func(key string) (int64, error) {
-				did, err := e.devicesRepo.SaveDevice(ctx, dbctx,
-					&repository.DeviceDB{UserID: user.ID, Name: key, DevType: "other"})
-				if err != nil {
-					return 0, aerr.Wrapf(err, "create new device failed")
-				}
-
-				return did, nil
-			},
 		}
 
 		episodes := make([]repository.EpisodeDB, len(action))
@@ -276,4 +250,52 @@ func (e *Episodes) getEpisodesActionsInternal(
 	}
 
 	return episodes, nil
+}
+
+func (e *Episodes) createPodcastsCache(ctx context.Context, dbctx repository.DBContext,
+	userid int64,
+) (DynamicCache[string, int64], error) {
+	podcasts, err := e.podcastsRepo.ListSubscribedPodcasts(ctx, dbctx, userid, time.Time{})
+	if err != nil {
+		return DynamicCache[string, int64]{}, aerr.Wrapf(err, "load podcasts into cache failed")
+	}
+
+	podcastscache := DynamicCache[string, int64]{
+		items: podcasts.ToIDsMap(),
+		creator: func(key string) (int64, error) {
+			id, err := e.podcastsRepo.SavePodcast(ctx, dbctx,
+				&repository.PodcastDB{UserID: userid, URL: key, Subscribed: true})
+			if err != nil {
+				return 0, aerr.Wrapf(err, "create new podcast failed")
+			}
+
+			return id, nil
+		},
+	}
+
+	return podcastscache, nil
+}
+
+func (e *Episodes) createDevicesCache(ctx context.Context, dbctx repository.DBContext,
+	userid int64,
+) (DynamicCache[string, int64], error) {
+	devices, err := e.devicesRepo.ListDevices(ctx, dbctx, userid)
+	if err != nil {
+		return DynamicCache[string, int64]{}, aerr.Wrapf(err, "load devices into cache failed")
+	}
+
+	devicescache := DynamicCache[string, int64]{
+		items: devices.ToIDsMap(),
+		creator: func(key string) (int64, error) {
+			did, err := e.devicesRepo.SaveDevice(ctx, dbctx,
+				&repository.DeviceDB{UserID: userid, Name: key, DevType: "other"})
+			if err != nil {
+				return 0, aerr.Wrapf(err, "create new device failed")
+			}
+
+			return did, nil
+		},
+	}
+
+	return devicescache, nil
 }
