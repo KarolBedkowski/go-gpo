@@ -183,6 +183,18 @@ func (r *Database) Maintenance(ctx context.Context) error {
 		logger.Debug().Msgf("run maintenance script[%d] finished; row affected: %d", idx, rowsaffected)
 	}
 
+	// print some stats
+	var numEpisodes, numPodcasts int
+	if err := r.db.GetContext(ctx, &numEpisodes, "SELECT count(*) FROM episodes"); err != nil {
+		return aerr.ApplyFor(aerr.ErrDatabase, err, "execute maintenance - count episodes failed")
+	}
+
+	if err := r.db.GetContext(ctx, &numPodcasts, "SELECT count(*) FROM podcasts"); err != nil {
+		return aerr.ApplyFor(aerr.ErrDatabase, err, "execute maintenance - count podcasts failed")
+	}
+
+	logger.Info().Msgf("database maintenance finished; podcasts: %d; episodes: %d", numPodcasts, numEpisodes)
+
 	return nil
 }
 
