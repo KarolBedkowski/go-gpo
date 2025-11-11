@@ -96,6 +96,10 @@ func TestAppErrorMsg(t *testing.T) {
 
 	assert.Equal(t, GetUserMessage(aerr2), "user message 123")
 	assert.Equal(t, GetUserMessageOr(aerr2, "--"), "user message 123")
+
+	// no changes in aerr1
+	assert.Equal(t, GetUserMessage(aerr1), "")
+	assert.Equal(t, GetUserMessageOr(aerr1, "--"), "--")
 }
 
 func TestAppErrorMeta(t *testing.T) {
@@ -116,6 +120,8 @@ func TestAppErrorMeta(t *testing.T) {
 	assert.Equal(t, aerr2.meta["22"], "v22")
 	// no changes in aerr1
 	assert.Equal(t, len(aerr1.meta), 2)
+	assert.Equal(t, aerr1.meta["k1"], 1)
+	assert.Equal(t, aerr1.meta["k2"], "v2")
 }
 
 func TestAppErrorTags(t *testing.T) {

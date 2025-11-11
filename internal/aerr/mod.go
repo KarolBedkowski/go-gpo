@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"maps"
-	"reflect"
 	"runtime"
 	"slices"
 	"strconv"
@@ -115,7 +114,17 @@ func (a AppError) WithError(err error) AppError {
 }
 
 func (a AppError) Is(target error) bool {
-	return reflect.DeepEqual(a, target)
+	tapperr, ok := target.(AppError)
+	if !ok {
+		return false
+	}
+
+	return tapperr.err == a.err &&
+		tapperr.msg == a.msg &&
+		tapperr.userMsg == a.userMsg &&
+		slices.Compare(tapperr.tags, a.tags) == 0 &&
+		slices.Compare(tapperr.stack, a.stack) == 0 &&
+		maps.Equal(tapperr.meta, a.meta)
 }
 
 func (a AppError) Error() string {
