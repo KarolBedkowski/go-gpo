@@ -120,3 +120,56 @@ func TestSettingsDevice(t *testing.T) {
 	assert.NoErr(t, err)
 	assert.Equal(t, rset, d2set1)
 }
+
+func TestSettingsPdocast(t *testing.T) {
+	ctx := context.Background()
+	i := prepareTests(ctx, t)
+	settSrv := do.MustInvoke[*Settings](i)
+	_ = prepareTestUser(ctx, t, i, "user1")
+	prepareTestDevice(ctx, t, i, "user1", "dev1")
+	prepareTestDevice(ctx, t, i, "user1", "dev2")
+	prepareTestSub(
+		ctx,
+		t,
+		i,
+		"user1",
+		"dev1",
+		"http://example.com/p1",
+		"http://example.com/p2",
+		"http://example.com/p3",
+	)
+
+	d1skey, err := model.NewSettingsKey("user1", "podcast", "dev1", "", "http://example.com/p1")
+	assert.NoErr(t, err)
+	d1set1 := map[string]string{"key1": "val1", "key2": "val2"}
+
+	err = settSrv.SaveSettings(ctx, &d1skey, d1set1)
+	assert.NoErr(t, err)
+
+	d2skey, err := model.NewSettingsKey("user1", "podcast", "dev2", "", "http://example.com/p2")
+	assert.NoErr(t, err)
+	d2set1 := map[string]string{"key1": "val1-d2", "key3": "val3"}
+
+	err = settSrv.SaveSettings(ctx, &d2skey, d2set1)
+	assert.NoErr(t, err)
+
+	rset, err := settSrv.GetSettings(ctx, &d1skey)
+	assert.NoErr(t, err)
+	assert.Equal(t, len(rset), 2)
+	assert.Equal(t, rset, d1set1)
+
+	u1set2 := map[string]string{"key1": "val1-new", "key3": "val3"}
+	err = settSrv.SaveSettings(ctx, &d1skey, u1set2)
+	assert.NoErr(t, err)
+
+	rset, err = settSrv.GetSettings(ctx, &d1skey)
+	assert.NoErr(t, err)
+	assert.Equal(t, len(rset), 3)
+	assert.Equal(t, rset["key1"], "val1-new")
+	assert.Equal(t, rset["key2"], "val2")
+	assert.Equal(t, rset["key3"], "val3")
+
+	rset, err = settSrv.GetSettings(ctx, &d2skey)
+	assert.NoErr(t, err)
+	assert.Equal(t, rset, d2set1)
+}
