@@ -25,14 +25,14 @@ func initializeLogger(level, format string) {
 	case "json":
 		llog = log.Logger
 
-	case "journald":
+	case "syslog":
 		llog = log.Output(zerolog.ConsoleWriter{ //nolint:exhaustruct
 			Out:          os.Stderr,
 			NoColor:      true,
 			PartsExclude: []string{zerolog.TimestampFieldName},
 		})
 
-	case "syslog":
+	case "journald":
 		llog = log.Output(journald.NewJournalDWriter())
 
 	default:
