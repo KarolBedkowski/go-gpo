@@ -173,3 +173,52 @@ func podcastsToUrls(podcasts []model.Podcast) []string {
 
 	return res
 }
+
+func TestSubsServieUpdateDevSubsChanges(t *testing.T) {
+	ctx := context.Background()
+	i := prepareTests(ctx, t)
+	ctx = log.Logger.WithContext(ctx)
+	subsSrv := do.MustInvoke[*Subs](i)
+	_ = prepareTestUser(ctx, t, i, "user1")
+	prepareTestDevice(ctx, t, i, "user1", "dev1")
+	prepareTestDevice(ctx, t, i, "user1", "dev2")
+
+	// init some data
+	newSubscribed := []string{
+		"http://example.com/p1",
+		"http://example.com/p2",
+		"http://example.com/p3",
+	}
+
+	err := subsSrv.UpdateDeviceSubscriptions(ctx, "user1", "dev1", model.NewSubscribedURLS(newSubscribed),
+		time.Date(2025, 1, 2, 10, 0, 0, 0, time.UTC))
+	assert.NoErr(t, err)
+
+	changes := model.NewSubscriptionChanges(
+		// add
+		[]string{"http://example.com/p4", "http://example.com/p5"},
+		// remove
+		[]string{"http://example.com/p1"},
+	)
+	assert.NoErr(t, changes.Validate())
+
+	err = subsSrv.UpdateDeviceSubscriptionChanges(ctx, "user1", "dev1", &changes,
+		time.Date(2025, 1, 2, 12, 0, 0, 0, time.UTC))
+	assert.NoErr(t, err)
+
+	// new
+	added, removed, err := subsSrv.GetSubscriptionChanges(ctx, "user1", "dev1",
+		time.Date(2025, 1, 2, 11, 0, 0, 0, time.UTC))
+	assert.NoErr(t, err)
+	assert.Equal(t, removed, []string{"http://example.com/p1"})
+	assert.Equal(t, len(added), 2)
+	assert.Equal(t, podcastsToUrls(added), []string{"http://example.com/p4", "http://example.com/p5"})
+
+	// check for oother device; shoud be the same
+	addedurl, removed, err := subsSrv.GetDeviceSubscriptionChanges(ctx, "user1", "dev2",
+		time.Date(2025, 1, 2, 11, 0, 0, 0, time.UTC))
+	assert.NoErr(t, err)
+	assert.Equal(t, removed, []string{"http://example.com/p1"})
+	assert.Equal(t, len(added), 2)
+	assert.Equal(t, addedurl, []string{"http://example.com/p4", "http://example.com/p5"})
+}

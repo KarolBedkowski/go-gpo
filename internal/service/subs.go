@@ -175,6 +175,7 @@ func (s *Subs) UpdateDeviceSubscriptionChanges( //nolint:cyclop
 	ctx context.Context,
 	username, devicename string,
 	changes *model.SubscriptionChanges,
+	timestamp time.Time,
 ) error {
 	//nolint:wrapcheck
 	return s.db.InTransaction(ctx, func(dbctx repository.DBContext) error {
@@ -199,6 +200,7 @@ func (s *Subs) UpdateDeviceSubscriptionChanges( //nolint:cyclop
 		for _, sub := range changes.Remove {
 			if podcast, ok := subscribed.FindPodcastByURL(sub); ok && podcast.Subscribed {
 				podcast.Subscribed = false
+				podcast.UpdatedAt = timestamp
 				podchanges = append(podchanges, podcast)
 			}
 		}
@@ -210,9 +212,13 @@ func (s *Subs) UpdateDeviceSubscriptionChanges( //nolint:cyclop
 				// skip already subscribed
 				continue
 			case !ok:
-				podcast = repository.PodcastDB{UserID: user.ID, URL: sub}
+				// new
+				podcast = repository.PodcastDB{
+					UserID: user.ID, URL: sub, Subscribed: true, UpdatedAt: timestamp, CreatedAt: timestamp,
+				}
 			default:
 				podcast.Subscribed = true
+				podcast.UpdatedAt = timestamp
 			}
 
 			podchanges = append(podchanges, podcast)
