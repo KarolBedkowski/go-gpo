@@ -1,4 +1,4 @@
-package web
+package web //nolint:dupl
 
 //
 // devices.go

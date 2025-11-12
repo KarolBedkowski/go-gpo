@@ -14,7 +14,6 @@ linters:
     # - tagliatelle
     - wsl
     - noinlineerr
-    - dupl
     # tmp
     - errcheck
     - godoclint
