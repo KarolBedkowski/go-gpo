@@ -24,12 +24,12 @@ import (
 
 // -----------------------------
 type episodesResource struct {
-	episodesSrv *service.Episodes
+	episodesSrv *service.EpisodesSrv
 }
 
 func newEpisodesResource(i do.Injector) (episodesResource, error) {
 	return episodesResource{
-		episodesSrv: do.MustInvoke[*service.Episodes](i),
+		episodesSrv: do.MustInvoke[*service.EpisodesSrv](i),
 	}, nil
 }
 

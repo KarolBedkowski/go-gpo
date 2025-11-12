@@ -23,13 +23,13 @@ import (
 )
 
 type indexPage struct {
-	episodeSrv *service.Episodes
+	episodeSrv *service.EpisodesSrv
 	template   templates
 }
 
 func newIndexPage(i do.Injector) (indexPage, error) {
 	return indexPage{
-		episodeSrv: do.MustInvoke[*service.Episodes](i),
+		episodeSrv: do.MustInvoke[*service.EpisodesSrv](i),
 		template:   do.MustInvoke[templates](i),
 	}, nil
 }

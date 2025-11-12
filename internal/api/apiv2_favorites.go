@@ -24,12 +24,12 @@ import (
 )
 
 type favoritesResource struct {
-	episodesSrv *service.Episodes
+	episodesSrv *service.EpisodesSrv
 }
 
 func newFavoritesResource(i do.Injector) (favoritesResource, error) {
 	return favoritesResource{
-		episodesSrv: do.MustInvoke[*service.Episodes](i),
+		episodesSrv: do.MustInvoke[*service.EpisodesSrv](i),
 	}, nil
 }
 

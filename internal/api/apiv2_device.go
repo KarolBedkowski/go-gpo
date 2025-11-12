@@ -21,12 +21,12 @@ import (
 )
 
 type deviceResource struct {
-	deviceSrv *service.Device
+	deviceSrv *service.DevicesSrv
 }
 
 func newDeviceResource(i do.Injector) (deviceResource, error) {
 	return deviceResource{
-		deviceSrv: do.MustInvoke[*service.Device](i),
+		deviceSrv: do.MustInvoke[*service.DevicesSrv](i),
 	}, nil
 }
 

@@ -18,14 +18,14 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
-type Device struct {
+type DevicesSrv struct {
 	db          *db.Database
 	usersRepo   repository.UsersRepository
 	devicesRepo repository.DevicesRepository
 }
 
-func NewDeviceServiceI(i do.Injector) (*Device, error) {
-	return &Device{
+func NewDevicesSrv(i do.Injector) (*DevicesSrv, error) {
+	return &DevicesSrv{
 		db:          do.MustInvoke[*db.Database](i),
 		usersRepo:   do.MustInvoke[repository.UsersRepository](i),
 		devicesRepo: do.MustInvoke[repository.DevicesRepository](i),
@@ -33,7 +33,7 @@ func NewDeviceServiceI(i do.Injector) (*Device, error) {
 }
 
 // UpdateDevice update or create device.
-func (d *Device) UpdateDevice(ctx context.Context, updateddev *model.UpdatedDevice) error {
+func (d *DevicesSrv) UpdateDevice(ctx context.Context, updateddev *model.UpdatedDevice) error {
 	if err := updateddev.Validate(); err != nil {
 		return aerr.Wrapf(err, "validate dev to update failed")
 	}
@@ -68,7 +68,7 @@ func (d *Device) UpdateDevice(ctx context.Context, updateddev *model.UpdatedDevi
 }
 
 // ListDevices return list of user's devices.
-func (d *Device) ListDevices(ctx context.Context, username string) ([]model.Device, error) {
+func (d *DevicesSrv) ListDevices(ctx context.Context, username string) ([]model.Device, error) {
 	//nolint:wrapcheck
 	return db.InConnectionR(ctx, d.db, func(conn repository.DBContext) ([]model.Device, error) {
 		user, err := d.usersRepo.GetUser(ctx, conn, username)

@@ -21,13 +21,13 @@ import (
 )
 
 type episodePages struct {
-	episodeSrv *service.Episodes
+	episodeSrv *service.EpisodesSrv
 	template   templates
 }
 
 func newEpisodePages(i do.Injector) (episodePages, error) {
 	return episodePages{
-		episodeSrv: do.MustInvoke[*service.Episodes](i),
+		episodeSrv: do.MustInvoke[*service.EpisodesSrv](i),
 		template:   do.MustInvoke[templates](i),
 	}, nil
 }

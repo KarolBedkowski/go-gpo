@@ -29,7 +29,7 @@ func (l *ListUsers) Start(ctx context.Context) error {
 		return fmt.Errorf("connect to database error: %w", err)
 	}
 
-	userv := do.MustInvoke[*service.Users](injector)
+	userv := do.MustInvoke[*service.UsersSrv](injector)
 
 	users, err := userv.GetUsers(ctx, l.ActiveOnly)
 	if err != nil {

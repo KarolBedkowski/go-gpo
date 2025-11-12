@@ -20,15 +20,15 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
-type Subs struct {
+type SubscriptionsSrv struct {
 	db           *db.Database
 	podcastsRepo repository.PodcastsRepository
 	usersRepo    repository.UsersRepository
 	devicesRepo  repository.DevicesRepository
 }
 
-func NewSubssServiceI(i do.Injector) (*Subs, error) {
-	return &Subs{
+func NewSubscriptionsSrv(i do.Injector) (*SubscriptionsSrv, error) {
+	return &SubscriptionsSrv{
 		db:           do.MustInvoke[*db.Database](i),
 		podcastsRepo: do.MustInvoke[repository.PodcastsRepository](i),
 		usersRepo:    do.MustInvoke[repository.UsersRepository](i),
@@ -37,7 +37,11 @@ func NewSubssServiceI(i do.Injector) (*Subs, error) {
 }
 
 // GetUserSubscriptions is simple api.
-func (s *Subs) GetUserSubscriptions(ctx context.Context, username string, since time.Time) ([]string, error) {
+func (s *SubscriptionsSrv) GetUserSubscriptions(
+	ctx context.Context,
+	username string,
+	since time.Time,
+) ([]string, error) {
 	//nolint:wrapcheck
 	return db.InConnectionR(ctx, s.db, func(dbctx repository.DBContext) ([]string, error) {
 		user, err := s.usersRepo.GetUser(ctx, dbctx, username)
@@ -57,7 +61,7 @@ func (s *Subs) GetUserSubscriptions(ctx context.Context, username string, since 
 }
 
 // GetDeviceSubscriptions is simple api.
-func (s *Subs) GetDeviceSubscriptions(ctx context.Context, username, devicename string, since time.Time,
+func (s *SubscriptionsSrv) GetDeviceSubscriptions(ctx context.Context, username, devicename string, since time.Time,
 ) ([]string, error) {
 	//nolint:wrapcheck
 	return db.InConnectionR(ctx, s.db, func(dbctx repository.DBContext) ([]string, error) {
@@ -84,7 +88,10 @@ func (s *Subs) GetDeviceSubscriptions(ctx context.Context, username, devicename 
 	})
 }
 
-func (s *Subs) GetDeviceSubscriptionChanges(ctx context.Context, username, devicename string, since time.Time,
+func (s *SubscriptionsSrv) GetDeviceSubscriptionChanges(
+	ctx context.Context,
+	username, devicename string,
+	since time.Time,
 ) ([]string, []string, error) {
 	podcasts, err := s.getPodcasts(ctx, username, devicename, since)
 	if err != nil {
@@ -104,7 +111,7 @@ func (s *Subs) GetDeviceSubscriptionChanges(ctx context.Context, username, devic
 	return added, removed, nil
 }
 
-func (s *Subs) UpdateDeviceSubscriptions(ctx context.Context, //nolint:cyclop
+func (s *SubscriptionsSrv) UpdateDeviceSubscriptions(ctx context.Context, //nolint:cyclop
 	username, devicename string, currentSubs model.SubscribedURLs, timestamp time.Time,
 ) error {
 	//nolint:wrapcheck
@@ -171,7 +178,7 @@ func (s *Subs) UpdateDeviceSubscriptions(ctx context.Context, //nolint:cyclop
 	})
 }
 
-func (s *Subs) UpdateDeviceSubscriptionChanges( //nolint:cyclop
+func (s *SubscriptionsSrv) UpdateDeviceSubscriptionChanges( //nolint:cyclop
 	ctx context.Context,
 	username, devicename string,
 	changes *model.SubscriptionChanges,
@@ -234,7 +241,7 @@ func (s *Subs) UpdateDeviceSubscriptionChanges( //nolint:cyclop
 	})
 }
 
-func (s *Subs) GetSubscriptionChanges(ctx context.Context, username, devicename string, since time.Time) (
+func (s *SubscriptionsSrv) GetSubscriptionChanges(ctx context.Context, username, devicename string, since time.Time) (
 	[]model.Podcast, []string, error,
 ) {
 	podcasts, err := s.getPodcasts(ctx, username, devicename, since)
@@ -261,7 +268,7 @@ func (s *Subs) GetSubscriptionChanges(ctx context.Context, username, devicename 
 
 // ------------------------------------------------------
 
-func (s *Subs) getUser(ctx context.Context,
+func (s *SubscriptionsSrv) getUser(ctx context.Context,
 	db repository.DBContext,
 	username string,
 ) (repository.UserDB, error) {
@@ -275,7 +282,7 @@ func (s *Subs) getUser(ctx context.Context,
 	return user, nil
 }
 
-func (s *Subs) getUserDevice(
+func (s *SubscriptionsSrv) getUserDevice(
 	ctx context.Context,
 	db repository.DBContext,
 	username int64,
@@ -291,7 +298,7 @@ func (s *Subs) getUserDevice(
 	return device, nil
 }
 
-func (s *Subs) createUserDevice(
+func (s *SubscriptionsSrv) createUserDevice(
 	ctx context.Context,
 	dbctx repository.DBContext,
 	username int64,
@@ -310,7 +317,7 @@ func (s *Subs) createUserDevice(
 	return s.getUserDevice(ctx, dbctx, username, devicename)
 }
 
-func (s *Subs) getPodcasts(
+func (s *SubscriptionsSrv) getPodcasts(
 	ctx context.Context,
 	username, devicename string,
 	since time.Time,

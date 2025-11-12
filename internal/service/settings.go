@@ -19,7 +19,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
-type Settings struct {
+type SettingsSrv struct {
 	db           *db.Database
 	settRepo     repository.SettingsRepository
 	usersRepo    repository.UsersRepository
@@ -28,8 +28,8 @@ type Settings struct {
 	podcastsRepo repository.PodcastsRepository
 }
 
-func NewSettingsServiceI(i do.Injector) (*Settings, error) {
-	return &Settings{
+func NewSettingsSrv(i do.Injector) (*SettingsSrv, error) {
+	return &SettingsSrv{
 		db:           do.MustInvoke[*db.Database](i),
 		settRepo:     do.MustInvoke[repository.SettingsRepository](i),
 		usersRepo:    do.MustInvoke[repository.UsersRepository](i),
@@ -39,7 +39,7 @@ func NewSettingsServiceI(i do.Injector) (*Settings, error) {
 	}, nil
 }
 
-func (s Settings) GetSettings(ctx context.Context, key *model.SettingsKey) (model.Settings, error) {
+func (s SettingsSrv) GetSettings(ctx context.Context, key *model.SettingsKey) (model.Settings, error) {
 	// validate
 	if err := key.Validate(); err != nil {
 		return nil, aerr.Wrapf(err, "validate settings key to load failed").WithMeta("key", key)
@@ -68,7 +68,7 @@ func (s Settings) GetSettings(ctx context.Context, key *model.SettingsKey) (mode
 }
 
 // SaveSettings for `key` and values in `set`. If value is set to "" for given key - delete it.
-func (s Settings) SaveSettings(ctx context.Context, key *model.SettingsKey, settings model.Settings) error {
+func (s SettingsSrv) SaveSettings(ctx context.Context, key *model.SettingsKey, settings model.Settings) error {
 	if len(settings) == 0 {
 		return nil
 	}
@@ -115,7 +115,7 @@ type settingsKeys struct {
 	episodeid *int64
 }
 
-func (s Settings) newSettingKeys( //nolint:cyclop
+func (s SettingsSrv) newSettingKeys( //nolint:cyclop
 	ctx context.Context,
 	dbctx repository.DBContext,
 	key *model.SettingsKey,

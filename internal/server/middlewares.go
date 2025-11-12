@@ -56,12 +56,12 @@ func AuthenticatedOnly(next http.Handler) http.Handler {
 //-------------------------------------------------------------
 
 type authenticator struct {
-	usersSrv *service.Users
+	usersSrv *service.UsersSrv
 }
 
 func newAuthenticator(i do.Injector) (authenticator, error) {
 	return authenticator{
-		usersSrv: do.MustInvoke[*service.Users](i),
+		usersSrv: do.MustInvoke[*service.UsersSrv](i),
 	}, nil
 }
 

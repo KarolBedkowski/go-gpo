@@ -20,7 +20,7 @@ import (
 func TestDevice(t *testing.T) {
 	ctx := context.Background()
 	i := prepareTests(ctx, t)
-	deviceSrv := do.MustInvoke[*Device](i)
+	deviceSrv := do.MustInvoke[*DevicesSrv](i)
 	_ = prepareTestUser(ctx, t, i, "test")
 
 	// add device

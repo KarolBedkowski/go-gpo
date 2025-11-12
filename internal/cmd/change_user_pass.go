@@ -33,7 +33,7 @@ func (c *ChangeUserPassword) Start(ctx context.Context) error {
 		return fmt.Errorf("connect to database error: %w", err)
 	}
 
-	userv := do.MustInvoke[*service.Users](injector)
+	userv := do.MustInvoke[*service.UsersSrv](injector)
 
 	up := model.NewUserPassword(c.Username, c.Password)
 	if err := userv.ChangePassword(ctx, &up); err != nil {
@@ -60,7 +60,7 @@ func (l *LockUserAccount) Start(ctx context.Context) error {
 		return fmt.Errorf("connect to database error: %w", err)
 	}
 
-	userv := do.MustInvoke[*service.Users](injector)
+	userv := do.MustInvoke[*service.UsersSrv](injector)
 
 	la := model.NewLockAccount(l.Username)
 	if err := userv.LockAccount(ctx, la); err != nil {

@@ -24,12 +24,12 @@ import (
 )
 
 type subscriptionsResource struct {
-	subsSrv *service.Subs
+	subsSrv *service.SubscriptionsSrv
 }
 
 func newSubscriptionsResource(i do.Injector) (subscriptionsResource, error) {
 	return subscriptionsResource{
-		subsSrv: do.MustInvoke[*service.Subs](i),
+		subsSrv: do.MustInvoke[*service.SubscriptionsSrv](i),
 	}, nil
 }
 

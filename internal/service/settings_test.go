@@ -19,7 +19,7 @@ import (
 func TestSettingsAccount(t *testing.T) {
 	ctx := context.Background()
 	i := prepareTests(ctx, t)
-	settSrv := do.MustInvoke[*Settings](i)
+	settSrv := do.MustInvoke[*SettingsSrv](i)
 	_ = prepareTestUser(ctx, t, i, "user1")
 	_ = prepareTestUser(ctx, t, i, "user2")
 
@@ -79,7 +79,7 @@ func TestSettingsAccount(t *testing.T) {
 func TestSettingsDevice(t *testing.T) {
 	ctx := context.Background()
 	i := prepareTests(ctx, t)
-	settSrv := do.MustInvoke[*Settings](i)
+	settSrv := do.MustInvoke[*SettingsSrv](i)
 	_ = prepareTestUser(ctx, t, i, "user1")
 	prepareTestDevice(ctx, t, i, "user1", "dev1")
 	prepareTestDevice(ctx, t, i, "user1", "dev2")
@@ -118,7 +118,7 @@ func TestSettingsDevice(t *testing.T) {
 func TestSettingsPdocast(t *testing.T) {
 	ctx := context.Background()
 	i := prepareTests(ctx, t)
-	settSrv := do.MustInvoke[*Settings](i)
+	settSrv := do.MustInvoke[*SettingsSrv](i)
 	_ = prepareTestUser(ctx, t, i, "user1")
 	prepareTestDevice(ctx, t, i, "user1", "dev1")
 	prepareTestDevice(ctx, t, i, "user1", "dev2")
@@ -166,7 +166,7 @@ func TestSettingsPdocast(t *testing.T) {
 func TestSettingsepisode(t *testing.T) {
 	ctx := context.Background()
 	i := prepareTests(ctx, t)
-	settSrv := do.MustInvoke[*Settings](i)
+	settSrv := do.MustInvoke[*SettingsSrv](i)
 	_ = prepareTestUser(ctx, t, i, "user1")
 	prepareTestDevice(ctx, t, i, "user1", "dev1")
 	prepareTestDevice(ctx, t, i, "user1", "dev2")

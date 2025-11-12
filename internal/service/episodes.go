@@ -20,7 +20,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
-type Episodes struct {
+type EpisodesSrv struct {
 	db           *db.Database
 	episodesRepo repository.EpisodesRepository
 	devicesRepo  repository.DevicesRepository
@@ -28,8 +28,8 @@ type Episodes struct {
 	usersRepo    repository.UsersRepository
 }
 
-func NewEpisodesServiceI(i do.Injector) (*Episodes, error) {
-	return &Episodes{
+func NewEpisodesSrv(i do.Injector) (*EpisodesSrv, error) {
+	return &EpisodesSrv{
 		db:           do.MustInvoke[*db.Database](i),
 		episodesRepo: do.MustInvoke[repository.EpisodesRepository](i),
 		devicesRepo:  do.MustInvoke[repository.DevicesRepository](i),
@@ -40,7 +40,7 @@ func NewEpisodesServiceI(i do.Injector) (*Episodes, error) {
 
 // GetPodcastEpisodes return list of episodes for `username`, `podcast` and `devicename` (create by other devices).
 // Return last action.
-func (e *Episodes) GetPodcastEpisodes(ctx context.Context, username, devicename, podcast string,
+func (e *EpisodesSrv) GetPodcastEpisodes(ctx context.Context, username, devicename, podcast string,
 ) ([]model.Episode, error) {
 	//nolint:wrapcheck
 	return db.InConnectionR(ctx, e.db, func(conn repository.DBContext) ([]model.Episode, error) {
@@ -64,7 +64,7 @@ func (e *Episodes) GetPodcastEpisodes(ctx context.Context, username, devicename,
 
 // SaveEpisodesActions save new actions.
 // Podcasts and devices are cached and - if not exists for requested action - created.
-func (e *Episodes) SaveEpisodesActions(ctx context.Context, username string, action ...model.Episode) error {
+func (e *EpisodesSrv) SaveEpisodesActions(ctx context.Context, username string, action ...model.Episode) error {
 	//nolint:wrapcheck
 	return e.db.InTransaction(ctx, func(dbctx repository.DBContext) error {
 		user, err := e.usersRepo.GetUser(ctx, dbctx, username)
@@ -113,7 +113,7 @@ func (e *Episodes) SaveEpisodesActions(ctx context.Context, username string, act
 // GetEpisodesActions return list of episode actions for username and optional podcast and devicename.
 // If devicename is not empty - get actions from other devices.
 // Used by /api/2/episodes.
-func (e *Episodes) GetEpisodesActions(ctx context.Context, username, podcast, devicename string,
+func (e *EpisodesSrv) GetEpisodesActions(ctx context.Context, username, podcast, devicename string,
 	since time.Time, aggregated bool,
 ) ([]model.Episode, error) {
 	//nolint:wrapcheck
@@ -135,7 +135,7 @@ func (e *Episodes) GetEpisodesActions(ctx context.Context, username, podcast, de
 // GetEpisodesUpdates return list of EpisodeUpdate for `username` and optionally `devicename` and `since`.
 // if `includeActions` add to each episode last action.
 // Used by /api/2/updates.
-func (e *Episodes) GetEpisodesUpdates(ctx context.Context, username, devicename string, since time.Time,
+func (e *EpisodesSrv) GetEpisodesUpdates(ctx context.Context, username, devicename string, since time.Time,
 	includeActions bool,
 ) ([]model.EpisodeUpdate, error) {
 	log.Ctx(ctx).Debug().Str("username", username).Str("devicename", devicename).
@@ -163,7 +163,7 @@ func (e *Episodes) GetEpisodesUpdates(ctx context.Context, username, devicename 
 }
 
 // GetLastActions return last `limit` actions for `username`.
-func (e *Episodes) GetLastActions(ctx context.Context, username string, since time.Time, limit int,
+func (e *EpisodesSrv) GetLastActions(ctx context.Context, username string, since time.Time, limit int,
 ) ([]model.Episode, error) {
 	//nolint:wrapcheck
 	return db.InConnectionR(ctx, e.db, func(dbctx repository.DBContext) ([]model.Episode, error) {
@@ -181,7 +181,7 @@ func (e *Episodes) GetLastActions(ctx context.Context, username string, since ti
 	})
 }
 
-func (e *Episodes) GetFavorites(ctx context.Context, username string) ([]model.Favorite, error) {
+func (e *EpisodesSrv) GetFavorites(ctx context.Context, username string) ([]model.Favorite, error) {
 	//nolint: wrapcheck
 	return db.InConnectionR(ctx, e.db, func(dbctx repository.DBContext) ([]model.Favorite, error) {
 		user, err := e.usersRepo.GetUser(ctx, dbctx, username)
@@ -205,7 +205,7 @@ func (e *Episodes) GetFavorites(ctx context.Context, username string) ([]model.F
 	})
 }
 
-func (e *Episodes) getEpisodesActionsInternal(
+func (e *EpisodesSrv) getEpisodesActionsInternal(
 	ctx context.Context,
 	dbctx repository.DBContext,
 	username, podcast, devicename string,
@@ -255,7 +255,7 @@ func (e *Episodes) getEpisodesActionsInternal(
 	return episodes, nil
 }
 
-func (e *Episodes) createPodcastsCache(ctx context.Context, dbctx repository.DBContext,
+func (e *EpisodesSrv) createPodcastsCache(ctx context.Context, dbctx repository.DBContext,
 	userid int64,
 ) (DynamicCache[string, int64], error) {
 	podcasts, err := e.podcastsRepo.ListSubscribedPodcasts(ctx, dbctx, userid, time.Time{})
@@ -279,7 +279,7 @@ func (e *Episodes) createPodcastsCache(ctx context.Context, dbctx repository.DBC
 	return podcastscache, nil
 }
 
-func (e *Episodes) createDevicesCache(ctx context.Context, dbctx repository.DBContext,
+func (e *EpisodesSrv) createDevicesCache(ctx context.Context, dbctx repository.DBContext,
 	userid int64,
 ) (DynamicCache[string, int64], error) {
 	devices, err := e.devicesRepo.ListDevices(ctx, dbctx, userid)

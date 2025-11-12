@@ -24,15 +24,15 @@ var (
 	ErrUnknownEpisode = errors.New("unknown episode")
 )
 
-type Podcasts struct {
+type PodcastsSrv struct {
 	db           *db.Database
 	usersRepo    repository.UsersRepository
 	podcastsRepo repository.PodcastsRepository
 	episodesRepo repository.EpisodesRepository
 }
 
-func NewPodcastsServiceI(i do.Injector) (*Podcasts, error) {
-	return &Podcasts{
+func NewPodcastsSrv(i do.Injector) (*PodcastsSrv, error) {
+	return &PodcastsSrv{
 		db:           do.MustInvoke[*db.Database](i),
 		usersRepo:    do.MustInvoke[repository.UsersRepository](i),
 		podcastsRepo: do.MustInvoke[repository.PodcastsRepository](i),
@@ -40,7 +40,7 @@ func NewPodcastsServiceI(i do.Injector) (*Podcasts, error) {
 	}, nil
 }
 
-func (p *Podcasts) GetUserPodcasts(ctx context.Context, username string) ([]model.Podcast, error) {
+func (p *PodcastsSrv) GetUserPodcasts(ctx context.Context, username string) ([]model.Podcast, error) {
 	conn, err := p.db.GetConnection(ctx)
 	if err != nil {
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)
@@ -72,7 +72,7 @@ func (p *Podcasts) GetUserPodcasts(ctx context.Context, username string) ([]mode
 	return podcasts, nil
 }
 
-func (p *Podcasts) GetUserPodcastsExt(ctx context.Context, username string) ([]model.PodcastWithLastEpisode, error) {
+func (p *PodcastsSrv) GetUserPodcastsExt(ctx context.Context, username string) ([]model.PodcastWithLastEpisode, error) {
 	conn, err := p.db.GetConnection(ctx)
 	if err != nil {
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)

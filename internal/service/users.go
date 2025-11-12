@@ -26,20 +26,20 @@ var (
 	ErrUserExists        = aerr.New("username exists").WithUserMsg("user name already exists")
 )
 
-type Users struct {
+type UsersSrv struct {
 	db         *db.Database
 	usersRepo  repository.UsersRepository
 	passHasher PasswordHasher
 }
 
-func NewUsersServiceI(i do.Injector) (*Users, error) {
+func NewUsersSrv(i do.Injector) (*UsersSrv, error) {
 	db := do.MustInvoke[*db.Database](i)
 	repo := do.MustInvoke[repository.UsersRepository](i)
 
-	return &Users{db, repo, BCryptPasswordHasher{}}, nil
+	return &UsersSrv{db, repo, BCryptPasswordHasher{}}, nil
 }
 
-func (u *Users) LoginUser(ctx context.Context, username, password string) (model.User, error) {
+func (u *UsersSrv) LoginUser(ctx context.Context, username, password string) (model.User, error) {
 	//nolint:wrapcheck
 	return db.InConnectionR(ctx, u.db, func(conn repository.DBContext) (model.User, error) {
 		user, err := u.usersRepo.GetUser(ctx, conn, username)
@@ -61,7 +61,7 @@ func (u *Users) LoginUser(ctx context.Context, username, password string) (model
 	})
 }
 
-func (u *Users) AddUser(ctx context.Context, user *model.NewUser) (int64, error) {
+func (u *UsersSrv) AddUser(ctx context.Context, user *model.NewUser) (int64, error) {
 	if err := user.Validate(); err != nil {
 		return 0, aerr.Wrapf(err, "validate user to add failed")
 	}
@@ -105,7 +105,7 @@ func (u *Users) AddUser(ctx context.Context, user *model.NewUser) (int64, error)
 	})
 }
 
-func (u *Users) ChangePassword(ctx context.Context, user *model.UserPassword) error {
+func (u *UsersSrv) ChangePassword(ctx context.Context, user *model.UserPassword) error {
 	if err := user.Validate(); err != nil {
 		return aerr.Wrapf(err, "validate user/password for save failed")
 	}
@@ -135,7 +135,7 @@ func (u *Users) ChangePassword(ctx context.Context, user *model.UserPassword) er
 	})
 }
 
-func (u *Users) GetUsers(ctx context.Context, activeOnly bool) ([]model.User, error) {
+func (u *UsersSrv) GetUsers(ctx context.Context, activeOnly bool) ([]model.User, error) {
 	//nolint:wrapcheck
 	return db.InConnectionR(ctx, u.db, func(dbctx repository.DBContext) ([]model.User, error) {
 		users, err := u.usersRepo.ListUsers(ctx, dbctx, activeOnly)
@@ -152,7 +152,7 @@ func (u *Users) GetUsers(ctx context.Context, activeOnly bool) ([]model.User, er
 	})
 }
 
-func (u *Users) LockAccount(ctx context.Context, la model.LockAccount) error {
+func (u *UsersSrv) LockAccount(ctx context.Context, la model.LockAccount) error {
 	if err := la.Validate(); err != nil {
 		return aerr.Wrapf(err, "validate account to lock failed")
 	}

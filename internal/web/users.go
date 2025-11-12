@@ -20,13 +20,13 @@ import (
 )
 
 type userPages struct {
-	usersSrv *service.Users
+	usersSrv *service.UsersSrv
 	template templates
 }
 
 func newUserPages(i do.Injector) (userPages, error) {
 	return userPages{
-		usersSrv: do.MustInvoke[*service.Users](i),
+		usersSrv: do.MustInvoke[*service.UsersSrv](i),
 		template: do.MustInvoke[templates](i),
 	}, nil
 }

@@ -35,7 +35,7 @@ func (a *AddUser) Start(ctx context.Context) error {
 		return fmt.Errorf("connect to database error: %w", err)
 	}
 
-	userv := do.MustInvoke[*service.Users](injector)
+	userv := do.MustInvoke[*service.UsersSrv](injector)
 	newuser := model.NewNewUser(a.Username, a.Password, a.Email, a.Name)
 
 	id, err := userv.AddUser(ctx, &newuser)

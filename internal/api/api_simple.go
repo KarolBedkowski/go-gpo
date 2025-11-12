@@ -26,12 +26,12 @@ import (
 )
 
 type simpleResource struct {
-	subServ *service.Subs
+	subServ *service.SubscriptionsSrv
 }
 
 func newSimpleResource(i do.Injector) (simpleResource, error) {
 	return simpleResource{
-		subServ: do.MustInvoke[*service.Subs](i),
+		subServ: do.MustInvoke[*service.SubscriptionsSrv](i),
 	}, nil
 }
 

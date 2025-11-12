@@ -20,12 +20,12 @@ import (
 )
 
 type settingsResource struct {
-	settingsSrv *service.Settings
+	settingsSrv *service.SettingsSrv
 }
 
 func newSettingsResource(i do.Injector) (settingsResource, error) {
 	return settingsResource{
-		settingsSrv: do.MustInvoke[*service.Settings](i),
+		settingsSrv: do.MustInvoke[*service.SettingsSrv](i),
 	}, nil
 }
 

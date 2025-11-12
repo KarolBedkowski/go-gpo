@@ -17,7 +17,7 @@ import (
 func TestPodcastsServiceUserPodcasts(t *testing.T) {
 	ctx := context.Background()
 	i := prepareTests(ctx, t)
-	podcastsSrv := do.MustInvoke[*Podcasts](i)
+	podcastsSrv := do.MustInvoke[*PodcastsSrv](i)
 	_ = prepareTestUser(ctx, t, i, "user1")
 	_ = prepareTestUser(ctx, t, i, "user2")
 	prepareTestDevice(ctx, t, i, "user1", "dev1")
@@ -42,7 +42,7 @@ func TestPodcastsServiceUserPodcasts(t *testing.T) {
 func TestPodcastsServiceUserPodcastsExt(t *testing.T) {
 	ctx := context.Background()
 	i := prepareTests(ctx, t)
-	podcastsSrv := do.MustInvoke[*Podcasts](i)
+	podcastsSrv := do.MustInvoke[*PodcastsSrv](i)
 	_ = prepareTestUser(ctx, t, i, "user1")
 	_ = prepareTestUser(ctx, t, i, "user2")
 	prepareTestDevice(ctx, t, i, "user1", "dev1")

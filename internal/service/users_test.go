@@ -20,7 +20,7 @@ import (
 func TestUsers(t *testing.T) {
 	ctx := context.Background()
 	i := prepareTests(ctx, t)
-	usersSrv := do.MustInvoke[*Users](i)
+	usersSrv := do.MustInvoke[*UsersSrv](i)
 
 	_, err := usersSrv.LoginUser(ctx, "test", "test123")
 	assert.ErrSpec(t, err, ErrUnknownUser)

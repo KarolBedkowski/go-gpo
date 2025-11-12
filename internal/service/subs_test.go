@@ -23,7 +23,7 @@ import (
 func TestSubsServiceUser(t *testing.T) {
 	ctx := context.Background()
 	i := prepareTests(ctx, t)
-	subsSrv := do.MustInvoke[*Subs](i)
+	subsSrv := do.MustInvoke[*SubscriptionsSrv](i)
 	_ = prepareTestUser(ctx, t, i, "user1")
 	prepareTestDevice(ctx, t, i, "user1", "dev1")
 	_ = subsSrv
@@ -59,8 +59,8 @@ func TestSubsServiceUser(t *testing.T) {
 func TestSubsServiceDevice(t *testing.T) {
 	ctx := context.Background()
 	i := prepareTests(ctx, t)
-	subsSrv := do.MustInvoke[*Subs](i)
-	deviceSrv := do.MustInvoke[*Device](i)
+	subsSrv := do.MustInvoke[*SubscriptionsSrv](i)
+	deviceSrv := do.MustInvoke[*DevicesSrv](i)
 	_ = prepareTestUser(ctx, t, i, "user1")
 	prepareTestDevice(ctx, t, i, "user1", "dev1")
 
@@ -106,7 +106,7 @@ func TestSubsServiceChanges(t *testing.T) {
 	ctx := context.Background()
 	i := prepareTests(ctx, t)
 	ctx = log.Logger.WithContext(ctx)
-	subsSrv := do.MustInvoke[*Subs](i)
+	subsSrv := do.MustInvoke[*SubscriptionsSrv](i)
 	_ = prepareTestUser(ctx, t, i, "user1")
 	prepareTestDevice(ctx, t, i, "user1", "dev1")
 
@@ -166,7 +166,7 @@ func TestSubsServiceUpdateDevSubsChanges(t *testing.T) {
 	ctx := context.Background()
 	i := prepareTests(ctx, t)
 	ctx = log.Logger.WithContext(ctx)
-	subsSrv := do.MustInvoke[*Subs](i)
+	subsSrv := do.MustInvoke[*SubscriptionsSrv](i)
 	_ = prepareTestUser(ctx, t, i, "user1")
 	prepareTestDevice(ctx, t, i, "user1", "dev1")
 	prepareTestDevice(ctx, t, i, "user1", "dev2")

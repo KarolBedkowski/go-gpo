@@ -8,10 +8,10 @@ package service
 import "github.com/samber/do/v2"
 
 var Package = do.Package(
-	do.Lazy(NewUsersServiceI),
-	do.Lazy(NewDeviceServiceI),
-	do.Lazy(NewEpisodesServiceI),
-	do.Lazy(NewPodcastsServiceI),
-	do.Lazy(NewSettingsServiceI),
-	do.Lazy(NewSubssServiceI),
+	do.Lazy(NewUsersSrv),
+	do.Lazy(NewDevicesSrv),
+	do.Lazy(NewEpisodesSrv),
+	do.Lazy(NewPodcastsSrv),
+	do.Lazy(NewSettingsSrv),
+	do.Lazy(NewSubscriptionsSrv),
 )

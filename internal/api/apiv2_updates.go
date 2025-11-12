@@ -21,14 +21,14 @@ import (
 )
 
 type updatesResource struct {
-	subsSrv     *service.Subs
-	episodesSrv *service.Episodes
+	subsSrv     *service.SubscriptionsSrv
+	episodesSrv *service.EpisodesSrv
 }
 
 func newUpdatesResource(i do.Injector) (updatesResource, error) {
 	return updatesResource{
-		subsSrv:     do.MustInvoke[*service.Subs](i),
-		episodesSrv: do.MustInvoke[*service.Episodes](i),
+		subsSrv:     do.MustInvoke[*service.SubscriptionsSrv](i),
+		episodesSrv: do.MustInvoke[*service.EpisodesSrv](i),
 	}, nil
 }
 

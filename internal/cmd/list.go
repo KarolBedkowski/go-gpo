@@ -40,8 +40,8 @@ func (l *List) Start(ctx context.Context) error {
 		return fmt.Errorf("connect to database error: %w", err)
 	}
 
-	devSrv := do.MustInvoke[*service.Device](injector)
-	subsSrv := do.MustInvoke[*service.Subs](injector)
+	devSrv := do.MustInvoke[*service.DevicesSrv](injector)
+	subsSrv := do.MustInvoke[*service.SubscriptionsSrv](injector)
 
 	switch strings.TrimSpace(l.Object) {
 	case "devices":
@@ -54,7 +54,7 @@ func (l *List) Start(ctx context.Context) error {
 	}
 }
 
-func (l *List) listDevices(ctx context.Context, devsrv *service.Device) error {
+func (l *List) listDevices(ctx context.Context, devsrv *service.DevicesSrv) error {
 	devices, err := devsrv.ListDevices(ctx, l.Username)
 	if err != nil {
 		return fmt.Errorf("get device list error: %w", err)
@@ -70,7 +70,7 @@ func (l *List) listDevices(ctx context.Context, devsrv *service.Device) error {
 	return nil
 }
 
-func (l *List) listSubscriptions(ctx context.Context, subssrv *service.Subs) error {
+func (l *List) listSubscriptions(ctx context.Context, subssrv *service.SubscriptionsSrv) error {
 	subs, err := subssrv.GetUserSubscriptions(ctx, l.Username, time.Time{})
 	if err != nil {
 		return fmt.Errorf("get subscriptions list error: %w", err)

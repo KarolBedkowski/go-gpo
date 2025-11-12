@@ -51,7 +51,7 @@ func prepareTestUser(ctx context.Context, t *testing.T, i do.Injector, name stri
 	t.Helper()
 
 	newuser := model.NewNewUser(name, name+"123", name+"@example.com", "test user "+name)
-	usersSrv := do.MustInvoke[*Users](i)
+	usersSrv := do.MustInvoke[*UsersSrv](i)
 	uid, err := usersSrv.AddUser(ctx, &newuser)
 	if err != nil {
 		t.Fatalf("create test user failed: %#+v", err)
@@ -67,7 +67,7 @@ func prepareTestDevice(ctx context.Context, t *testing.T, i do.Injector,
 
 	udev := model.NewUpdatedDevice(username, devicename, "other", "device "+devicename+" caption")
 
-	deviceSrv := do.MustInvoke[*Device](i)
+	deviceSrv := do.MustInvoke[*DevicesSrv](i)
 	err := deviceSrv.UpdateDevice(ctx, &udev)
 	if err != nil {
 		t.Fatalf("create test device failed: %#+v", err)
@@ -79,7 +79,7 @@ func prepareTestSub(ctx context.Context, t *testing.T, i do.Injector,
 ) {
 	t.Helper()
 
-	subsSrv := do.MustInvoke[*Subs](i)
+	subsSrv := do.MustInvoke[*SubscriptionsSrv](i)
 	err := subsSrv.UpdateDeviceSubscriptions(ctx,
 		username, devicename, model.NewSubscribedURLS(subs),
 		time.Date(2025, 1, 2, 10, 0, 0, 0, time.UTC))
@@ -102,7 +102,7 @@ func prepareTestEpisode(ctx context.Context, t *testing.T, i do.Injector,
 ) {
 	t.Helper()
 
-	episodesSrv := do.MustInvoke[*Episodes](i)
+	episodesSrv := do.MustInvoke[*EpisodesSrv](i)
 
 	for _, ep := range episode {
 		action := model.Episode{
