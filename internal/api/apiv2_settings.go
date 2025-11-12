@@ -121,6 +121,7 @@ func newKey(user string, r *http.Request) (model.SettingsKey, error) {
 	return model.NewSettingsKey(user,
 		chi.URLParam(r, "scope"),
 		r.URL.Query().Get("device"),
+		r.URL.Query().Get("podcast"),
 		r.URL.Query().Get("episode"),
-		r.URL.Query().Get("podcast"))
+	)
 }

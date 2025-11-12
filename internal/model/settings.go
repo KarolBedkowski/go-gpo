@@ -17,7 +17,7 @@ type SettingsKey struct {
 	Podcast  string
 }
 
-func NewSettingsKey(username, scope, device, episode, podcast string) (SettingsKey, error) {
+func NewSettingsKey(username, scope, device, podcast, episode string) (SettingsKey, error) {
 	if username == "" {
 		return SettingsKey{}, aerr.ErrValidation.WithMsg("username can't be empty")
 	}
