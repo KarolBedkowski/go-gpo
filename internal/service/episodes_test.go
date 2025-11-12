@@ -313,15 +313,13 @@ func TestEpisodesServiceFavorites(t *testing.T) {
 	err := episodesSrv.SaveEpisodesActions(ctx, "user1", episodeActions...)
 	assert.NoErr(t, err)
 
-	setkey, err := model.NewSettingsKey("user1", "episode", "dev1",
+	setkey := model.NewSettingsKey("user1", "episode", "dev1",
 		episodeActions[1].Podcast, episodeActions[1].Episode)
-	assert.NoErr(t, err)
 	err = settSrv.SaveSettings(ctx, &setkey, map[string]string{"is_favorite": "true"})
 	assert.NoErr(t, err)
 
-	setkey, err = model.NewSettingsKey("user1", "episode", "dev1",
+	setkey = model.NewSettingsKey("user1", "episode", "dev1",
 		episodeActions[3].Podcast, episodeActions[3].Episode)
-	assert.NoErr(t, err)
 	err = settSrv.SaveSettings(ctx, &setkey, map[string]string{"is_favorite": "true"})
 	assert.NoErr(t, err)
 

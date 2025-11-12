@@ -36,11 +36,7 @@ func (a *AddUser) Start(ctx context.Context) error {
 	}
 
 	userv := do.MustInvoke[*service.Users](injector)
-
-	newuser, err := model.NewNewUser(a.Username, a.Password, a.Email, a.Name)
-	if err != nil {
-		return fmt.Errorf("validation error: %w", err)
-	}
+	newuser := model.NewNewUser(a.Username, a.Password, a.Email, a.Name)
 
 	id, err := userv.AddUser(ctx, &newuser)
 	if err != nil {

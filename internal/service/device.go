@@ -34,6 +34,10 @@ func NewDeviceServiceI(i do.Injector) (*Device, error) {
 
 // UpdateDevice update or create device.
 func (d *Device) UpdateDevice(ctx context.Context, updateddev *model.UpdatedDevice) error {
+	if err := updateddev.Validate(); err != nil {
+		return aerr.Wrapf(err, "validate dev to update failed")
+	}
+
 	//nolint:wrapcheck
 	return d.db.InTransaction(ctx, func(tx repository.DBContext) error {
 		user, err := d.usersRepo.GetUser(ctx, tx, updateddev.UserName)

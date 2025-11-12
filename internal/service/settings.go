@@ -40,6 +40,11 @@ func NewSettingsServiceI(i do.Injector) (*Settings, error) {
 }
 
 func (s Settings) GetSettings(ctx context.Context, key *model.SettingsKey) (model.Settings, error) {
+	// validate
+	if err := key.Validate(); err != nil {
+		return nil, aerr.Wrapf(err, "validate settings key to load failed").WithMeta("key", key)
+	}
+
 	//nolint:wrapcheck
 	return db.InConnectionR(ctx, s.db, func(dbctx repository.DBContext) (model.Settings, error) {
 		setkey, err := s.newSettingKeys(ctx, dbctx, key)
@@ -63,9 +68,14 @@ func (s Settings) GetSettings(ctx context.Context, key *model.SettingsKey) (mode
 }
 
 // SaveSettings for `key` and values in `set`. If value is set to "" for given key - delete it.
-func (s Settings) SaveSettings(ctx context.Context, key *model.SettingsKey, set model.Settings) error {
-	if len(set) == 0 {
+func (s Settings) SaveSettings(ctx context.Context, key *model.SettingsKey, settings model.Settings) error {
+	if len(settings) == 0 {
 		return nil
+	}
+
+	// validate
+	if err := key.Validate(); err != nil {
+		return aerr.Wrapf(err, "validate settings key to save failed").WithMeta("key", key)
 	}
 
 	//nolint:wrapcheck
@@ -83,7 +93,7 @@ func (s Settings) SaveSettings(ctx context.Context, key *model.SettingsKey, set 
 			Scope:     key.Scope,
 		}
 
-		for key, value := range set {
+		for key, value := range settings {
 			dbsett.Key = key
 			dbsett.Value = value
 

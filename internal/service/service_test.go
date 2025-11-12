@@ -50,8 +50,7 @@ func prepareTests(ctx context.Context, t *testing.T) *do.RootScope {
 func prepareTestUser(ctx context.Context, t *testing.T, i do.Injector, name string) int64 {
 	t.Helper()
 
-	newuser, _ := model.NewNewUser(name, name+"123", name+"@example.com", "test user "+name)
-
+	newuser := model.NewNewUser(name, name+"123", name+"@example.com", "test user "+name)
 	usersSrv := do.MustInvoke[*Users](i)
 	uid, err := usersSrv.AddUser(ctx, &newuser)
 	if err != nil {
@@ -66,13 +65,10 @@ func prepareTestDevice(ctx context.Context, t *testing.T, i do.Injector,
 ) {
 	t.Helper()
 
-	udev, err := model.NewUpdatedDevice(username, devicename, "other", "device "+devicename+" caption")
-	if err != nil {
-		t.Fatalf("create test device failed: %#+v", err)
-	}
+	udev := model.NewUpdatedDevice(username, devicename, "other", "device "+devicename+" caption")
 
 	deviceSrv := do.MustInvoke[*Device](i)
-	err = deviceSrv.UpdateDevice(ctx, &udev)
+	err := deviceSrv.UpdateDevice(ctx, &udev)
 	if err != nil {
 		t.Fatalf("create test device failed: %#+v", err)
 	}
@@ -102,7 +98,7 @@ func podcastsToUrls(podcasts []model.Podcast) []string {
 }
 
 func prepareTestEpisode(ctx context.Context, t *testing.T, i do.Injector,
-	username, devicename string, podcast string, episode ...string,
+	username, devicename, podcast string, episode ...string,
 ) {
 	t.Helper()
 

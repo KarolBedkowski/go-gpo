@@ -62,6 +62,10 @@ func (u *Users) LoginUser(ctx context.Context, username, password string) (model
 }
 
 func (u *Users) AddUser(ctx context.Context, user *model.NewUser) (int64, error) {
+	if err := user.Validate(); err != nil {
+		return 0, aerr.Wrapf(err, "validate user to add failed")
+	}
+
 	//nolint:wrapcheck
 	return db.InTransactionR(ctx, u.db, func(dbctx repository.DBContext) (int64, error) {
 		// is user exists?
@@ -102,6 +106,10 @@ func (u *Users) AddUser(ctx context.Context, user *model.NewUser) (int64, error)
 }
 
 func (u *Users) ChangePassword(ctx context.Context, user *model.UserPassword) error {
+	if err := user.Validate(); err != nil {
+		return aerr.Wrapf(err, "validate user/password for save failed")
+	}
+
 	//nolint: wrapcheck
 	return u.db.InTransaction(ctx, func(dbctx repository.DBContext) error {
 		// is user exists?
@@ -145,6 +153,10 @@ func (u *Users) GetUsers(ctx context.Context, activeOnly bool) ([]model.User, er
 }
 
 func (u *Users) LockAccount(ctx context.Context, la model.LockAccount) error {
+	if err := la.Validate(); err != nil {
+		return aerr.Wrapf(err, "validate account to lock failed")
+	}
+
 	//nolint:wrapcheck
 	return u.db.InTransaction(ctx, func(dbctx repository.DBContext) error {
 		udb, err := u.usersRepo.GetUser(ctx, dbctx, la.Username)

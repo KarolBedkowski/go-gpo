@@ -44,24 +44,27 @@ type UpdatedDevice struct {
 	Caption    string
 }
 
-func NewUpdatedDevice(username, devicename, devicetype, caption string) (UpdatedDevice, error) {
-	if devicename == "" {
-		return UpdatedDevice{}, aerr.ErrValidation.WithMsg("device name can't be empty")
-	}
-
-	if devicetype == "" {
-		return UpdatedDevice{}, aerr.ErrValidation.WithMsg("device type can't be empty")
-	}
-
-	if !slices.Contains(ValidDevTypes, devicetype) {
-		return UpdatedDevice{},
-			aerr.ErrValidation.WithMsg("invalid device type %q", devicetype)
-	}
-
+func NewUpdatedDevice(username, devicename, devicetype, caption string) UpdatedDevice {
 	return UpdatedDevice{
 		UserName:   username,
 		DeviceName: devicename,
 		DeviceType: devicetype,
 		Caption:    caption,
-	}, nil
+	}
+}
+
+func (u *UpdatedDevice) Validate() error {
+	if u.DeviceName == "" {
+		return aerr.ErrValidation.WithMsg("device name can't be empty")
+	}
+
+	if u.DeviceType == "" {
+		return aerr.ErrValidation.WithMsg("device type can't be empty")
+	}
+
+	if !slices.Contains(ValidDevTypes, u.DeviceType) {
+		return aerr.ErrValidation.WithMsg("invalid device type %q", u.DeviceType)
+	}
+
+	return nil
 }

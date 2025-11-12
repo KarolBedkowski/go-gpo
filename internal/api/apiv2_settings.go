@@ -47,14 +47,7 @@ func (u settingsResource) getSettings(
 	logger *zerolog.Logger,
 ) {
 	user := internal.ContextUser(ctx)
-
-	key, err := newKey(user, r)
-	if err != nil {
-		logger.Debug().Err(err).Str("mod", "api").Msg("bad request parameters")
-		internal.WriteError(w, r, http.StatusBadRequest, "")
-
-		return
-	}
+	key := newKey(user, r)
 
 	res, err := u.settingsSrv.GetSettings(ctx, &key)
 	if err != nil {
@@ -81,14 +74,6 @@ func (u settingsResource) setSettings(
 		Remove []string          `json:"remove"`
 	}
 
-	key, err := newKey(user, r)
-	if err != nil {
-		logger.Debug().Err(err).Str("mod", "api").Msg("bad request parameters")
-		internal.WriteError(w, r, http.StatusBadRequest, "")
-
-		return
-	}
-
 	if err := render.DecodeJSON(r.Body, &req); err != nil {
 		logger.Debug().Err(err).Str("mod", "api").Msg("decode request error")
 		internal.WriteError(w, r, http.StatusBadRequest, "")
@@ -106,6 +91,7 @@ func (u settingsResource) setSettings(
 		settings[k] = ""
 	}
 
+	key := newKey(user, r)
 	if err := u.settingsSrv.SaveSettings(ctx, &key, settings); err != nil {
 		internal.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Str("mod", "api").Msg("save settings error")
@@ -116,8 +102,7 @@ func (u settingsResource) setSettings(
 	w.WriteHeader(http.StatusOK)
 }
 
-func newKey(user string, r *http.Request) (model.SettingsKey, error) {
-	//nolint:wrapcheck
+func newKey(user string, r *http.Request) model.SettingsKey {
 	return model.NewSettingsKey(user,
 		chi.URLParam(r, "scope"),
 		r.URL.Query().Get("device"),

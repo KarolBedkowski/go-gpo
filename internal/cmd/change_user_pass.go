@@ -35,12 +35,8 @@ func (c *ChangeUserPassword) Start(ctx context.Context) error {
 
 	userv := do.MustInvoke[*service.Users](injector)
 
-	up, err := model.NewUserPassword(c.Username, c.Password)
-	if err != nil {
-		return fmt.Errorf("validation error: %w", err)
-	}
-
-	if err = userv.ChangePassword(ctx, &up); err != nil {
+	up := model.NewUserPassword(c.Username, c.Password)
+	if err := userv.ChangePassword(ctx, &up); err != nil {
 		return fmt.Errorf("change user password error: %w", err)
 	}
 
@@ -66,11 +62,7 @@ func (l *LockUserAccount) Start(ctx context.Context) error {
 
 	userv := do.MustInvoke[*service.Users](injector)
 
-	la, err := model.NewLockAccount(l.Username)
-	if err != nil {
-		return fmt.Errorf("validation error: %w", err)
-	}
-
+	la := model.NewLockAccount(l.Username)
 	if err := userv.LockAccount(ctx, la); err != nil {
 		return fmt.Errorf("change user password error: %w", err)
 	}

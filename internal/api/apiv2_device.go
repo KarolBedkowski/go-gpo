@@ -59,13 +59,7 @@ func (d deviceResource) update(ctx context.Context, w http.ResponseWriter, r *ht
 		return
 	}
 
-	updateddev, err := model.NewUpdatedDevice(user, deviceid, udd.Type, udd.Caption)
-	if err != nil {
-		logger.Debug().Err(err).Msgf("validation error")
-		internal.WriteError(w, r, http.StatusBadRequest, aerr.GetUserMessageOr(err, "bad request data"))
-
-		return
-	}
+	updateddev := model.NewUpdatedDevice(user, deviceid, udd.Type, udd.Caption)
 
 	if err := d.deviceSrv.UpdateDevice(ctx, &updateddev); err != nil {
 		internal.CheckAndWriteError(w, r, err)

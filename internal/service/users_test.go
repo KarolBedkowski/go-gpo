@@ -25,8 +25,7 @@ func TestUsers(t *testing.T) {
 	_, err := usersSrv.LoginUser(ctx, "test", "test123")
 	assert.ErrSpec(t, err, ErrUnknownUser)
 
-	newuser, _ := model.NewNewUser("test", "test123", "test@example.com", "test user 1")
-
+	newuser := model.NewNewUser("test", "test123", "test@example.com", "test user 1")
 	uid, err := usersSrv.AddUser(ctx, &newuser)
 	assert.NoErr(t, err)
 	assert.True(t, uid > 0)
@@ -54,7 +53,7 @@ func TestUsers(t *testing.T) {
 	assert.NoErr(t, err)
 
 	// try double user
-	newuser2, _ := model.NewNewUser("test", "test123", "test2@example.com", "test user 2")
+	newuser2 := model.NewNewUser("test", "test123", "test2@example.com", "test user 2")
 	_, err = usersSrv.AddUser(ctx, &newuser2)
 	assert.ErrSpec(t, err, ErrUserExists)
 

@@ -24,10 +24,9 @@ func TestDevice(t *testing.T) {
 	_ = prepareTestUser(ctx, t, i, "test")
 
 	// add device
-	udev, err := model.NewUpdatedDevice("test", "dev1", "mobile", "device caption")
-	assert.NoErr(t, err)
+	udev := model.NewUpdatedDevice("test", "dev1", "mobile", "device caption")
 
-	err = deviceSrv.UpdateDevice(ctx, &udev)
+	err := deviceSrv.UpdateDevice(ctx, &udev)
 	assert.NoErr(t, err)
 
 	devices, err := deviceSrv.ListDevices(ctx, "test")
@@ -35,8 +34,7 @@ func TestDevice(t *testing.T) {
 	assert.Equal(t, len(devices), 1)
 
 	// add another
-	udev2, err := model.NewUpdatedDevice("test", "dev2", "desktop", "device 2 caption")
-	assert.NoErr(t, err)
+	udev2 := model.NewUpdatedDevice("test", "dev2", "desktop", "device 2 caption")
 
 	err = deviceSrv.UpdateDevice(ctx, &udev2)
 	assert.NoErr(t, err)
@@ -54,8 +52,7 @@ func TestDevice(t *testing.T) {
 	assert.Equal(t, devices[1].DevType, udev2.DeviceType)
 
 	// update
-	udev3, err := model.NewUpdatedDevice("test", "dev1", "other", "device 1 new caption")
-	assert.NoErr(t, err)
+	udev3 := model.NewUpdatedDevice("test", "dev1", "other", "device 1 new caption")
 
 	err = deviceSrv.UpdateDevice(ctx, &udev3)
 	assert.NoErr(t, err)

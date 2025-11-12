@@ -23,11 +23,9 @@ func TestSettingsAccount(t *testing.T) {
 	_ = prepareTestUser(ctx, t, i, "user1")
 	_ = prepareTestUser(ctx, t, i, "user2")
 
-	u1skey, err := model.NewSettingsKey("user1", "account", "", "", "")
-	assert.NoErr(t, err)
+	u1skey := model.NewSettingsKey("user1", "account", "", "", "")
 	u1set1 := map[string]string{"key1": "val1", "key2": "val2"}
-
-	err = settSrv.SaveSettings(ctx, &u1skey, u1set1)
+	err := settSrv.SaveSettings(ctx, &u1skey, u1set1)
 	assert.NoErr(t, err)
 
 	rset, err := settSrv.GetSettings(ctx, &u1skey)
@@ -47,7 +45,7 @@ func TestSettingsAccount(t *testing.T) {
 	assert.Equal(t, rset["key3"], "val3")
 
 	// add settings for other user
-	u2skey, err := model.NewSettingsKey("user2", "account", "", "", "")
+	u2skey := model.NewSettingsKey("user2", "account", "", "", "")
 	set2 := map[string]string{"key1": "u2val1", "key3": "u2val3"}
 	err = settSrv.SaveSettings(ctx, &u2skey, set2)
 	assert.NoErr(t, err)
@@ -86,17 +84,13 @@ func TestSettingsDevice(t *testing.T) {
 	prepareTestDevice(ctx, t, i, "user1", "dev1")
 	prepareTestDevice(ctx, t, i, "user1", "dev2")
 
-	d1skey, err := model.NewSettingsKey("user1", "device", "dev1", "", "")
-	assert.NoErr(t, err)
+	d1skey := model.NewSettingsKey("user1", "device", "dev1", "", "")
 	d1set1 := map[string]string{"key1": "val1", "key2": "val2"}
-
-	err = settSrv.SaveSettings(ctx, &d1skey, d1set1)
+	err := settSrv.SaveSettings(ctx, &d1skey, d1set1)
 	assert.NoErr(t, err)
 
-	d2skey, err := model.NewSettingsKey("user1", "device", "dev2", "", "")
-	assert.NoErr(t, err)
+	d2skey := model.NewSettingsKey("user1", "device", "dev2", "", "")
 	d2set1 := map[string]string{"key1": "val1-d2", "key3": "val3"}
-
 	err = settSrv.SaveSettings(ctx, &d2skey, d2set1)
 	assert.NoErr(t, err)
 
@@ -139,17 +133,12 @@ func TestSettingsPdocast(t *testing.T) {
 		"http://example.com/p3",
 	)
 
-	d1skey, err := model.NewSettingsKey("user1", "podcast", "dev1", "http://example.com/p1", "")
-	assert.NoErr(t, err)
+	d1skey := model.NewSettingsKey("user1", "podcast", "dev1", "http://example.com/p1", "")
 	d1set1 := map[string]string{"key1": "val1", "key2": "val2"}
+	err := settSrv.SaveSettings(ctx, &d1skey, d1set1)
 
-	err = settSrv.SaveSettings(ctx, &d1skey, d1set1)
-	assert.NoErr(t, err)
-
-	d2skey, err := model.NewSettingsKey("user1", "podcast", "dev2", "http://example.com/p2", "")
-	assert.NoErr(t, err)
+	d2skey := model.NewSettingsKey("user1", "podcast", "dev2", "http://example.com/p2", "")
 	d2set1 := map[string]string{"key1": "val1-d2", "key3": "val3"}
-
 	err = settSrv.SaveSettings(ctx, &d2skey, d2set1)
 	assert.NoErr(t, err)
 
@@ -191,15 +180,12 @@ func TestSettingsepisode(t *testing.T) {
 		"user1", "dev1", "http://example.com/p2", "http://example.com/p2/e1", "http://example.com/p2/e2",
 	)
 
-	d1skey, err := model.NewSettingsKey("user1", "episode", "dev1", "http://example.com/p1", "http://example.com/p1/e1")
-	assert.NoErr(t, err)
+	d1skey := model.NewSettingsKey("user1", "episode", "dev1", "http://example.com/p1", "http://example.com/p1/e1")
 	d1set1 := map[string]string{"key1": "val1", "key2": "val2"}
-
-	err = settSrv.SaveSettings(ctx, &d1skey, d1set1)
+	err := settSrv.SaveSettings(ctx, &d1skey, d1set1)
 	assert.NoErr(t, err)
 
-	d2skey, err := model.NewSettingsKey("user1", "podcast", "dev2", "http://example.com/p2", "http://example.com/p2/e2")
-	assert.NoErr(t, err)
+	d2skey := model.NewSettingsKey("user1", "podcast", "dev2", "http://example.com/p2", "http://example.com/p2/e2")
 	d2set1 := map[string]string{"key1": "val1-d2", "key3": "val3"}
 
 	err = settSrv.SaveSettings(ctx, &d2skey, d2set1)

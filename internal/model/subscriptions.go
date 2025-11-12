@@ -78,13 +78,24 @@ func NewEpisodeFromDBModel(episodedb *repository.EpisodeDB) Episode {
 		Position:  nil,
 		Total:     nil,
 	}
-	if episodedb.Action == "play" {
+	if episodedb.Action == "play" { //nolint:goconst
 		episode.Started = episodedb.Started
 		episode.Position = episodedb.Position
 		episode.Total = episodedb.Total
 	}
 
 	return episode
+}
+
+func (e *Episode) Validate() error {
+	if e.Action != "play" {
+		if e.Started != nil || e.Position != nil || e.Total != nil {
+			return aerr.ErrValidation.
+				WithUserMsg("for action other than 'play' - started, position and total should be not set")
+		}
+	}
+
+	return nil
 }
 
 func (e *Episode) ToDBModel() repository.EpisodeDB {
