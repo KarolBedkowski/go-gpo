@@ -230,6 +230,144 @@ func TestEpisodesServiceUpdates(t *testing.T) {
 	assert.Equal(t, *updates[1].Episode, episodeActions[2])
 }
 
+func TestEpisodesServiceLastEpisodes(t *testing.T) {
+	ctx := context.Background()
+	i := prepareTests(ctx, t)
+	ctx = log.Logger.WithContext(ctx)
+	episodesSrv := do.MustInvoke[*Episodes](i)
+	_ = prepareTestUser(ctx, t, i, "user1")
+	_ = prepareTestUser(ctx, t, i, "user2")
+	prepareTestDevice(ctx, t, i, "user1", "dev1")
+	prepareTestDevice(ctx, t, i, "user1", "dev2")
+	prepareTestSub(
+		ctx,
+		t,
+		i,
+		"user1",
+		"dev1",
+		"http://example.com/p1",
+		"http://example.com/p2",
+		"http://example.com/p3",
+	)
+
+	episodeActions := prepareEpisodes()
+	err := episodesSrv.SaveEpisodesActions(ctx, "user1", episodeActions...)
+	assert.NoErr(t, err)
+
+	actions, err := episodesSrv.GetLastActions(ctx, "user1",
+		time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), 2)
+	assert.NoErr(t, err)
+	assert.Equal(t, len(actions), 2)
+	assert.Equal(t, actions[0].Episode, episodeActions[2].Episode)
+	assert.Equal(t, actions[0].Podcast, episodeActions[2].Podcast)
+	assert.Equal(t, actions[0].Action, episodeActions[2].Action)
+	assert.Equal(t, actions[1].Episode, episodeActions[3].Episode)
+	assert.Equal(t, actions[1].Podcast, episodeActions[3].Podcast)
+	assert.Equal(t, actions[1].Action, episodeActions[3].Action)
+
+	actions, err = episodesSrv.GetLastActions(ctx, "user1",
+		time.Date(2025, 1, 3, 0, 0, 0, 0, time.UTC), 0)
+	assert.NoErr(t, err)
+	assert.Equal(t, len(actions), 3)
+	assert.Equal(t, actions[0].Episode, episodeActions[1].Episode)
+	assert.Equal(t, actions[0].Podcast, episodeActions[1].Podcast)
+	assert.Equal(t, actions[0].Action, episodeActions[1].Action)
+	assert.Equal(t, actions[1].Episode, episodeActions[2].Episode)
+	assert.Equal(t, actions[1].Podcast, episodeActions[2].Podcast)
+	assert.Equal(t, actions[1].Action, episodeActions[2].Action)
+	assert.Equal(t, actions[2].Episode, episodeActions[3].Episode)
+	assert.Equal(t, actions[2].Podcast, episodeActions[3].Podcast)
+	assert.Equal(t, actions[2].Action, episodeActions[3].Action)
+
+	actions, err = episodesSrv.GetLastActions(ctx, "user1",
+		time.Date(2025, 1, 4, 0, 0, 0, 0, time.UTC), 1)
+	assert.NoErr(t, err)
+	assert.Equal(t, len(actions), 1)
+	assert.Equal(t, actions[0].Episode, episodeActions[3].Episode)
+	assert.Equal(t, actions[0].Podcast, episodeActions[3].Podcast)
+	assert.Equal(t, actions[0].Action, episodeActions[3].Action)
+}
+
+func TestEpisodesServiceFavorites(t *testing.T) {
+	ctx := context.Background()
+	i := prepareTests(ctx, t)
+	ctx = log.Logger.WithContext(ctx)
+	episodesSrv := do.MustInvoke[*Episodes](i)
+	settSrv := do.MustInvoke[*Settings](i)
+	_ = prepareTestUser(ctx, t, i, "user1")
+	_ = prepareTestUser(ctx, t, i, "user2")
+	prepareTestDevice(ctx, t, i, "user1", "dev1")
+	prepareTestDevice(ctx, t, i, "user1", "dev2")
+	prepareTestSub(
+		ctx,
+		t,
+		i,
+		"user1",
+		"dev1",
+		"http://example.com/p1",
+		"http://example.com/p2",
+		"http://example.com/p3",
+	)
+
+	episodeActions := prepareEpisodes()
+	err := episodesSrv.SaveEpisodesActions(ctx, "user1", episodeActions...)
+	assert.NoErr(t, err)
+
+	setkey, err := model.NewSettingsKey("user1", "episode", "dev1",
+		episodeActions[1].Episode, episodeActions[1].Podcast)
+	assert.NoErr(t, err)
+	err = settSrv.SaveSettings(ctx, &setkey, map[string]string{"is_favorite": "true"})
+	assert.NoErr(t, err)
+
+	setkey, err = model.NewSettingsKey("user1", "episode", "dev1",
+		episodeActions[3].Episode, episodeActions[3].Podcast)
+	assert.NoErr(t, err)
+	err = settSrv.SaveSettings(ctx, &setkey, map[string]string{"is_favorite": "true"})
+	assert.NoErr(t, err)
+
+	favs, err := episodesSrv.GetFavorites(ctx, "user1")
+	assert.NoErr(t, err)
+	assert.Equal(t, len(favs), 2)
+	assert.Equal(t, favs[0].URL, episodeActions[1].Episode)
+	assert.Equal(t, favs[1].URL, episodeActions[3].Episode)
+}
+
+func TestEpisodesServiceNewDevPodcast(t *testing.T) {
+	ctx := context.Background()
+	i := prepareTests(ctx, t)
+	ctx = log.Logger.WithContext(ctx)
+	episodesSrv := do.MustInvoke[*Episodes](i)
+	_ = prepareTestUser(ctx, t, i, "user1")
+	_ = prepareTestUser(ctx, t, i, "user2")
+	prepareTestDevice(ctx, t, i, "user1", "dev1")
+	prepareTestDevice(ctx, t, i, "user1", "dev2")
+	prepareTestSub(
+		ctx,
+		t,
+		i,
+		"user1",
+		"dev1",
+		"http://example.com/p1",
+	)
+
+	action := model.Episode{
+		Podcast:   "http://example.com/p2",
+		Episode:   "http://example.com/p2/ep1",
+		Device:    "dev3", // new device
+		Action:    "delete",
+		Timestamp: time.Date(2025, 1, 5, 3, 4, 5, 0, time.UTC),
+	}
+
+	err := episodesSrv.SaveEpisodesActions(ctx, "user1", action)
+	assert.NoErr(t, err)
+
+	episodes, err := episodesSrv.GetPodcastEpisodes(ctx, "user1", "", "dev1")
+	assert.NoErr(t, err)
+	assert.Equal(t, len(episodes), 1)
+	assert.Equal(t, episodes[0].Device, "dev3")
+	assert.Equal(t, episodes[0].Podcast, "http://example.com/p2")
+}
+
 func prepareEpisodes() []model.Episode {
 	started, position, total := 10, 20, 300
 

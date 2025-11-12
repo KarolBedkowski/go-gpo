@@ -38,7 +38,8 @@ func NewEpisodesServiceI(i do.Injector) (*Episodes, error) {
 	}, nil
 }
 
-// GetPodcastEpisodes return list of episodes for `username`, `podcast` and `devicename`. Return last action.
+// GetPodcastEpisodes return list of episodes for `username`, `podcast` and `devicename` (create by other devices).
+// Return last action.
 func (e *Episodes) GetPodcastEpisodes(ctx context.Context, username, podcast, devicename string,
 ) ([]model.Episode, error) {
 	//nolint:wrapcheck
