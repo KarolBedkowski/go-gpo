@@ -66,7 +66,7 @@ func NewSubscribedURLS(urls []string) SubscribedURLs {
 	sanitized := make([]string, 0, len(urls))
 
 	for _, u := range urls {
-		if s := sanitizeURL(u); s != "" {
+		if s := SanitizeURL(u); s != "" {
 			sanitized = append(sanitized, s)
 		}
 	}
@@ -83,7 +83,7 @@ func SanitizeURLs(urls []string) ([]string, [][]string) {
 	changes := make([][]string, 0)
 
 	for _, u := range urls {
-		su := sanitizeURL(u)
+		su := SanitizeURL(u)
 
 		if su == "" {
 			continue
@@ -99,7 +99,7 @@ func SanitizeURLs(urls []string) ([]string, [][]string) {
 	return res, changes
 }
 
-func sanitizeURL(u string) string {
+func SanitizeURL(u string) string {
 	su := strings.TrimSpace(u)
 
 	url, err := url.Parse(su)

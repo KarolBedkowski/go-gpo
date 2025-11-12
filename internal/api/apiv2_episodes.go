@@ -182,7 +182,7 @@ func newEpisodesFromModel(e *model.Episode) episode {
 func (e *episode) sanitize() [][]string {
 	var changes [][]string
 
-	spodcast := SanitizeURL(e.Podcast)
+	spodcast := model.SanitizeURL(e.Podcast)
 	if spodcast != e.Podcast {
 		e.Podcast = spodcast
 		if spodcast != "" {
@@ -190,7 +190,7 @@ func (e *episode) sanitize() [][]string {
 		}
 	}
 
-	sepisode := SanitizeURL(e.Episode)
+	sepisode := model.SanitizeURL(e.Episode)
 	if sepisode != e.Episode {
 		e.Episode = sepisode
 		if spodcast != "" {

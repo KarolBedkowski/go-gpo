@@ -1,11 +1,12 @@
-package api
+package model
 
 //
-// validators_test.go
+// subscriptions_test.go
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
 //
 // Distributed under terms of the GPLv3 license.
 //
+
 import (
 	"fmt"
 	"testing"
