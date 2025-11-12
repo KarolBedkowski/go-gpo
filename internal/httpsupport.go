@@ -2,11 +2,8 @@ package internal
 
 import (
 	"context"
-	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
-	"time"
 
 	"gitea.com/go-chi/session"
 	"github.com/go-chi/render"
@@ -22,22 +19,6 @@ import (
 //
 // Distributed under terms of the GPLv3 license.
 //
-
-// GetSinceParameter from request url query.
-func GetSinceParameter(r *http.Request) (time.Time, error) {
-	since := time.Time{}
-
-	if s := r.URL.Query().Get("since"); s != "" {
-		se, err := strconv.ParseInt(s, 10, 64)
-		if err != nil {
-			return since, fmt.Errorf("parse since %q error: %w", s, err)
-		}
-
-		since = time.Unix(se, 0)
-	}
-
-	return since, nil
-}
 
 func SessionUser(store session.Store) string {
 	log.Debug().Str("session_id", store.ID()).Msg("session id")

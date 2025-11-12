@@ -116,7 +116,7 @@ func (er episodesResource) getEpisodeActions(
 	device := r.URL.Query().Get("device")
 	aggregated := r.URL.Query().Get("aggregated") == "true"
 
-	since, err := internal.GetSinceParameter(r)
+	since, err := getSinceParameter(r)
 	if err != nil {
 		logger.Debug().Err(err).Msgf("parse since parameter to time error")
 		internal.WriteError(w, r, http.StatusBadRequest, "")
