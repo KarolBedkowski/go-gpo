@@ -100,3 +100,24 @@ func podcastsToUrls(podcasts []model.Podcast) []string {
 
 	return res
 }
+
+func prepareTestEpisode(ctx context.Context, t *testing.T, i do.Injector,
+	username, devicename string, podcast string, episode ...string,
+) {
+	t.Helper()
+
+	episodesSrv := do.MustInvoke[*Episodes](i)
+
+	for _, ep := range episode {
+		action := model.Episode{
+			Podcast:   podcast,
+			Episode:   ep,
+			Device:    devicename,
+			Action:    "download",
+			Timestamp: time.Date(2025, 1, 5, 3, 4, 5, 0, time.UTC),
+		}
+
+		err := episodesSrv.SaveEpisodesActions(ctx, username, action)
+		assert.NoErr(t, err)
+	}
+}
