@@ -10,6 +10,7 @@ package web
 import (
 	"context"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -52,6 +53,8 @@ func (i indexPage) indexPage(ctx context.Context, writer http.ResponseWriter, r 
 
 		return
 	}
+
+	slices.Reverse(lastactions)
 
 	data := struct {
 		LastActions []model.Episode

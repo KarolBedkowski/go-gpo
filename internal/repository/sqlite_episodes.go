@@ -78,7 +78,7 @@ func (s SqliteRepository) ListEpisodeActions(
 		args = append(args, *podcastid) //nolint:wsl_v5
 	}
 
-	query += " ORDER BY e.updated_at"
+	query += " ORDER BY e.updated_at DESC"
 
 	if lastelements > 0 {
 		query += " LIMIT " + strconv.Itoa(lastelements)
@@ -102,6 +102,9 @@ func (s SqliteRepository) ListEpisodeActions(
 
 		logger.Debug().Msgf("get episodes - aggregate %d episodes", len(res))
 	}
+
+	// sorting by ts asc
+	slices.Reverse(res)
 
 	return res, nil
 }
@@ -206,18 +209,13 @@ func aggregateEpisodes(episodes []EpisodeDB) []EpisodeDB {
 	res := make([]EpisodeDB, 0, len(episodes))
 	seen := make(map[string]struct{})
 
-	// episodes are sorted by ts asc, so get last first
-	slices.Reverse(episodes)
-
+	// episodes are sorted by ts desc, so get last first
 	for _, e := range episodes {
 		if _, ok := seen[e.URL]; !ok {
 			res = append(res, e)
 			seen[e.URL] = struct{}{}
 		}
 	}
-
-	// back to sorting by ts asc
-	slices.Reverse(res)
 
 	return res
 }

@@ -111,6 +111,7 @@ func (e *Episodes) SaveEpisodesActions(ctx context.Context, username string, act
 
 // GetEpisodesActions return list of episode actions for username and optional podcast and devicename.
 // If devicename is not empty - get actions from other devices.
+// Used by /api/2/episodes.
 func (e *Episodes) GetEpisodesActions(ctx context.Context, username, podcast, devicename string,
 	since time.Time, aggregated bool,
 ) ([]model.Episode, error) {
@@ -132,6 +133,7 @@ func (e *Episodes) GetEpisodesActions(ctx context.Context, username, podcast, de
 
 // GetEpisodesUpdates return list of EpisodeUpdate for `username` and optionally `devicename` and `since`.
 // if `includeActions` add to each episode last action.
+// Used by /api/2/updates.
 func (e *Episodes) GetEpisodesUpdates(ctx context.Context, username, devicename string, since time.Time,
 	includeActions bool,
 ) ([]model.EpisodeUpdate, error) {
