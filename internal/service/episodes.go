@@ -40,7 +40,7 @@ func NewEpisodesServiceI(i do.Injector) (*Episodes, error) {
 
 // GetPodcastEpisodes return list of episodes for `username`, `podcast` and `devicename` (create by other devices).
 // Return last action.
-func (e *Episodes) GetPodcastEpisodes(ctx context.Context, username, podcast, devicename string,
+func (e *Episodes) GetPodcastEpisodes(ctx context.Context, username, devicename, podcast string,
 ) ([]model.Episode, error) {
 	//nolint:wrapcheck
 	return db.InConnectionR(ctx, e.db, func(conn repository.DBContext) ([]model.Episode, error) {

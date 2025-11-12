@@ -73,7 +73,7 @@ func TestEpisodesServiceSave(t *testing.T) {
 	assert.Equal(t, episodes[2].Total, nil)
 
 	// only one podcast, device should be ignored
-	episodes, err = episodesSrv.GetPodcastEpisodes(ctx, "user1", "http://example.com/p1", "dev2")
+	episodes, err = episodesSrv.GetPodcastEpisodes(ctx, "user1", "dev2", "http://example.com/p1")
 	assert.NoErr(t, err)
 	assert.Equal(t, len(episodes), 2)
 	assert.Equal(t, episodes[0].Podcast, "http://example.com/p1")
@@ -314,13 +314,13 @@ func TestEpisodesServiceFavorites(t *testing.T) {
 	assert.NoErr(t, err)
 
 	setkey, err := model.NewSettingsKey("user1", "episode", "dev1",
-		episodeActions[1].Episode, episodeActions[1].Podcast)
+		episodeActions[1].Podcast, episodeActions[1].Episode)
 	assert.NoErr(t, err)
 	err = settSrv.SaveSettings(ctx, &setkey, map[string]string{"is_favorite": "true"})
 	assert.NoErr(t, err)
 
 	setkey, err = model.NewSettingsKey("user1", "episode", "dev1",
-		episodeActions[3].Episode, episodeActions[3].Podcast)
+		episodeActions[3].Podcast, episodeActions[3].Episode)
 	assert.NoErr(t, err)
 	err = settSrv.SaveSettings(ctx, &setkey, map[string]string{"is_favorite": "true"})
 	assert.NoErr(t, err)
@@ -361,7 +361,7 @@ func TestEpisodesServiceNewDevPodcast(t *testing.T) {
 	err := episodesSrv.SaveEpisodesActions(ctx, "user1", action)
 	assert.NoErr(t, err)
 
-	episodes, err := episodesSrv.GetPodcastEpisodes(ctx, "user1", "", "dev1")
+	episodes, err := episodesSrv.GetPodcastEpisodes(ctx, "user1", "dev1", "")
 	assert.NoErr(t, err)
 	assert.Equal(t, len(episodes), 1)
 	assert.Equal(t, episodes[0].Device, "dev3")

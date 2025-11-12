@@ -50,7 +50,7 @@ func (e episodePages) list(ctx context.Context, w http.ResponseWriter, r *http.R
 		return
 	}
 
-	episodes, err := e.episodeSrv.GetPodcastEpisodes(ctx, user, podcast, "")
+	episodes, err := e.episodeSrv.GetPodcastEpisodes(ctx, user, "", podcast)
 	if err != nil {
 		internal.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Str("mod", "web").Msg("get podcast episodes error")
