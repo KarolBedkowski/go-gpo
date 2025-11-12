@@ -195,7 +195,7 @@ func (e *Episodes) GetFavorites(ctx context.Context, username string) ([]model.F
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		res := make([]model.Favorite, 0, len(episodes))
+		res := make([]model.Favorite, len(episodes))
 		for i, e := range episodes {
 			res[i] = model.NewFavoriteFromDBModel(&e)
 		}
