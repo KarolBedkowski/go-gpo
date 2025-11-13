@@ -58,11 +58,7 @@ func (u favoritesResource) getFafovites(
 		return
 	}
 
-	resfavs := make([]favorite, len(favorites))
-	for i, f := range favorites {
-		resfavs[i] = newFavoriteFromModel(&f)
-	}
-
+	resfavs := model.Map(favorites, newFavoriteFromModel)
 	render.JSON(w, r, resfavs)
 }
 

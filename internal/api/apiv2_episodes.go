@@ -132,16 +132,12 @@ func (er episodesResource) getEpisodeActions(
 		return
 	}
 
-	actions := make([]episode, len(res))
-	for i, r := range res {
-		actions[i] = newEpisodesFromModel(&r)
-	}
-
 	resp := struct {
 		Actions   []episode `json:"actions"`
 		Timestamp int64     `json:"timestamp"`
 	}{
-		actions, time.Now().Unix(),
+		Actions:   model.Map(res, newEpisodesFromModel),
+		Timestamp: time.Now().Unix(),
 	}
 
 	render.JSON(w, r, &resp)

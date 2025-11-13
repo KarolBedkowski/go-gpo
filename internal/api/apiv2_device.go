@@ -83,10 +83,7 @@ func (d deviceResource) list(ctx context.Context, w http.ResponseWriter, r *http
 		return
 	}
 
-	resdevices := make([]device, len(devices))
-	for i, d := range devices {
-		resdevices[i] = newDeviceFromModel(&d)
-	}
+	resdevices := model.Map(devices, newDeviceFromModel)
 
 	render.Status(r, http.StatusOK)
 	render.JSON(w, r, resdevices)

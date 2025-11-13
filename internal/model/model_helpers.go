@@ -16,3 +16,13 @@ func nvl(value ...string) string {
 
 	return ""
 }
+
+func Map[T, R any](collection []T, iteratee func(item *T) R) []R {
+	result := make([]R, len(collection))
+
+	for i := range collection {
+		result[i] = iteratee(&collection[i])
+	}
+
+	return result
+}

@@ -49,6 +49,7 @@ func (u updatesResource) getUpdates(
 ) {
 	user := internal.ContextUser(ctx)
 	deviceid := internal.ContextDevice(ctx)
+	includeActions := r.URL.Query().Get("include_actions") == "true"
 
 	since, err := getSinceParameter(r)
 	if err != nil {
@@ -57,8 +58,6 @@ func (u updatesResource) getUpdates(
 
 		return
 	}
-
-	includeActions := r.URL.Query().Get("include_actions") == "true"
 
 	added, removed, err := u.subsSrv.GetSubscriptionChanges(ctx, user, deviceid, since)
 	if err != nil {
@@ -76,25 +75,15 @@ func (u updatesResource) getUpdates(
 		return
 	}
 
-	podcasts := make([]podcast, len(added))
-	for i, a := range added {
-		podcasts[i] = newPodcastFromModel(&a)
-	}
-
-	eupdates := make([]episodeUpdate, len(updates))
-	for i, u := range updates {
-		eupdates[i] = newEpisodeUpdateFromModel(&u)
-	}
-
 	result := struct {
 		Add        []podcast       `json:"add"`
 		Remove     []string        `json:"remove"`
 		Updates    []episodeUpdate `json:"updates"`
 		Timestamps int64           `json:"timestamp"`
 	}{
-		Add:        podcasts,
+		Add:        model.Map(added, newPodcastFromModel),
 		Remove:     removed,
-		Updates:    eupdates,
+		Updates:    model.Map(updates, newEpisodeUpdateFromModel),
 		Timestamps: time.Now().Unix(),
 	}
 
