@@ -15,9 +15,9 @@ require (
 	github.com/rs/zerolog v1.34.0
 	github.com/samber/do/http/chi/v2 v2.0.0-20251108205504-7f395f28bfb8
 	github.com/samber/do/v2 v2.0.0
-	github.com/urfave/cli/v3 v3.5.0
-	golang.org/x/crypto v0.43.0
-	golang.org/x/term v0.36.0
+	github.com/urfave/cli/v3 v3.6.0
+	golang.org/x/crypto v0.44.0
+	golang.org/x/term v0.37.0
 )
 
 require (
