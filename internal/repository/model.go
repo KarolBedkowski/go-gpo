@@ -68,7 +68,29 @@ type PodcastDB struct {
 	UpdatedAt  time.Time `db:"updated_at"`
 }
 
-func (p PodcastDB) MarshalZerologObject(event *zerolog.Event) {
+func (p *PodcastDB) SetSubscribed(timestamp time.Time) bool {
+	if p.Subscribed {
+		return false
+	}
+
+	p.Subscribed = true
+	p.UpdatedAt = timestamp
+
+	return true
+}
+
+func (p *PodcastDB) SetUnsubscribed(timestamp time.Time) bool {
+	if !p.Subscribed {
+		return false
+	}
+
+	p.Subscribed = false
+	p.UpdatedAt = timestamp
+
+	return true
+}
+
+func (p *PodcastDB) MarshalZerologObject(event *zerolog.Event) {
 	event.Int64("id", p.ID).
 		Int64("user_id", p.UserID).
 		Str("title", p.Title).

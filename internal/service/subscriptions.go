@@ -37,11 +37,12 @@ func NewSubscriptionsSrv(i do.Injector) (*SubscriptionsSrv, error) {
 }
 
 // GetUserSubscriptions is simple api.
-func (s *SubscriptionsSrv) GetUserSubscriptions(
-	ctx context.Context,
-	username string,
-	since time.Time,
+func (s *SubscriptionsSrv) GetUserSubscriptions(ctx context.Context, username string, since time.Time,
 ) ([]string, error) {
+	if username == "" {
+		return nil, ErrEmptyUsername
+	}
+
 	//nolint:wrapcheck
 	return db.InConnectionR(ctx, s.db, func(dbctx repository.DBContext) ([]string, error) {
 		user, err := s.usersRepo.GetUser(ctx, dbctx, username)
@@ -63,6 +64,10 @@ func (s *SubscriptionsSrv) GetUserSubscriptions(
 // GetDeviceSubscriptions is simple api.
 func (s *SubscriptionsSrv) GetDeviceSubscriptions(ctx context.Context, username, devicename string, since time.Time,
 ) ([]string, error) {
+	if username == "" {
+		return nil, ErrEmptyUsername
+	}
+
 	//nolint:wrapcheck
 	return db.InConnectionR(ctx, s.db, func(dbctx repository.DBContext) ([]string, error) {
 		user, err := s.usersRepo.GetUser(ctx, dbctx, username)
@@ -89,10 +94,12 @@ func (s *SubscriptionsSrv) GetDeviceSubscriptions(ctx context.Context, username,
 }
 
 func (s *SubscriptionsSrv) GetDeviceSubscriptionChanges(
-	ctx context.Context,
-	username, devicename string,
-	since time.Time,
+	ctx context.Context, username, devicename string, since time.Time,
 ) ([]string, []string, error) {
+	if username == "" {
+		return nil, nil, ErrEmptyUsername
+	}
+
 	podcasts, err := s.getPodcasts(ctx, username, devicename, since)
 	if err != nil {
 		return nil, nil, err
@@ -114,6 +121,10 @@ func (s *SubscriptionsSrv) GetDeviceSubscriptionChanges(
 func (s *SubscriptionsSrv) UpdateDeviceSubscriptions(ctx context.Context, //nolint:cyclop
 	username, devicename string, currentSubs model.SubscribedURLs, timestamp time.Time,
 ) error {
+	if username == "" {
+		return ErrEmptyUsername
+	}
+
 	//nolint:wrapcheck
 	return s.db.InTransaction(ctx, func(dbctx repository.DBContext) error {
 		user, err := s.getUser(ctx, dbctx, username)
@@ -141,8 +152,7 @@ func (s *SubscriptionsSrv) UpdateDeviceSubscriptions(ctx context.Context, //noli
 		// remove subscriptions found in db but not in currentSubs
 		for _, sub := range subscribed {
 			if sub.Subscribed && !slices.Contains(currentSubs, sub.URL) {
-				sub.Subscribed = false
-				sub.UpdatedAt = timestamp
+				sub.SetUnsubscribed(timestamp)
 				changes = append(changes, sub)
 			}
 		}
@@ -150,22 +160,13 @@ func (s *SubscriptionsSrv) UpdateDeviceSubscriptions(ctx context.Context, //noli
 		// add or set subscribed flag for podcast in currentSubs; update updated_at
 		for _, sub := range currentSubs {
 			podcast, ok := subscribed.FindPodcastByURL(sub)
-			switch {
-			case ok && podcast.Subscribed:
-				// ignore already subscribed podcasts
-				continue
-			case !ok:
-				// not exists
-				podcast = repository.PodcastDB{
-					UserID: user.ID, URL: sub, Subscribed: true, UpdatedAt: timestamp, CreatedAt: timestamp,
-				}
-			default:
-				// not subscribed
-				podcast.Subscribed = true
-				podcast.UpdatedAt = timestamp
+			if !ok {
+				podcast = repository.PodcastDB{UserID: user.ID, URL: sub, CreatedAt: timestamp}
 			}
 
-			changes = append(changes, podcast)
+			if podcast.SetSubscribed(timestamp) {
+				changes = append(changes, podcast)
+			}
 		}
 
 		for _, p := range changes {
@@ -180,17 +181,22 @@ func (s *SubscriptionsSrv) UpdateDeviceSubscriptions(ctx context.Context, //noli
 
 func (s *SubscriptionsSrv) UpdateDeviceSubscriptionChanges( //nolint:cyclop
 	ctx context.Context,
-	username, devicename string,
-	changes *model.SubscriptionChanges,
-	timestamp time.Time,
+	username, devicename string, changes *model.SubscriptionChanges, timestamp time.Time,
 ) error {
+	if username == "" {
+		return ErrEmptyUsername
+	}
+
+	if changes == nil {
+		panic("changes is nil")
+	}
+
 	//nolint:wrapcheck
 	return s.db.InTransaction(ctx, func(dbctx repository.DBContext) error {
 		user, err := s.getUser(ctx, dbctx, username)
 		if err != nil {
 			return err
 		}
-
 		// check service
 		if _, err = s.getUserDevice(ctx, dbctx, user.ID, devicename); err != nil {
 			return err
@@ -205,30 +211,22 @@ func (s *SubscriptionsSrv) UpdateDeviceSubscriptionChanges( //nolint:cyclop
 
 		// removed
 		for _, sub := range changes.Remove {
-			if podcast, ok := subscribed.FindPodcastByURL(sub); ok && podcast.Subscribed {
-				podcast.Subscribed = false
-				podcast.UpdatedAt = timestamp
-				podchanges = append(podchanges, podcast)
+			if podcast, ok := subscribed.FindPodcastByURL(sub); ok {
+				if podcast.SetUnsubscribed(timestamp) {
+					podchanges = append(podchanges, podcast)
+				}
 			}
 		}
 
 		for _, sub := range changes.Add {
 			podcast, ok := subscribed.FindPodcastByURL(sub)
-			switch {
-			case ok && podcast.Subscribed:
-				// skip already subscribed
-				continue
-			case !ok:
-				// new
-				podcast = repository.PodcastDB{
-					UserID: user.ID, URL: sub, Subscribed: true, UpdatedAt: timestamp, CreatedAt: timestamp,
-				}
-			default:
-				podcast.Subscribed = true
-				podcast.UpdatedAt = timestamp
+			if !ok { // new
+				podcast = repository.PodcastDB{UserID: user.ID, URL: sub, CreatedAt: timestamp}
 			}
 
-			podchanges = append(podchanges, podcast)
+			if podcast.SetSubscribed(timestamp) {
+				podchanges = append(podchanges, podcast)
+			}
 		}
 
 		for _, p := range podchanges {
@@ -244,6 +242,10 @@ func (s *SubscriptionsSrv) UpdateDeviceSubscriptionChanges( //nolint:cyclop
 func (s *SubscriptionsSrv) GetSubscriptionChanges(ctx context.Context, username, devicename string, since time.Time) (
 	[]model.Podcast, []string, error,
 ) {
+	if username == "" {
+		return nil, nil, ErrEmptyUsername
+	}
+
 	podcasts, err := s.getPodcasts(ctx, username, devicename, since)
 	if err != nil {
 		return nil, nil, err

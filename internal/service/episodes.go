@@ -42,15 +42,15 @@ func NewEpisodesSrv(i do.Injector) (*EpisodesSrv, error) {
 // Return last action.
 func (e *EpisodesSrv) GetPodcastEpisodes(ctx context.Context, username, devicename, podcast string,
 ) ([]model.Episode, error) {
+	if username == "" {
+		return nil, ErrEmptyUsername
+	}
+
 	//nolint:wrapcheck
 	return db.InConnectionR(ctx, e.db, func(conn repository.DBContext) ([]model.Episode, error) {
 		actions, err := e.getEpisodesActionsInternal(ctx, conn, username, podcast, devicename, time.Time{}, true, 0)
 		if err != nil {
 			return nil, err
-		}
-
-		if len(actions) == 0 {
-			return []model.Episode{}, nil
 		}
 
 		episodes := make([]model.Episode, len(actions))
@@ -65,6 +65,10 @@ func (e *EpisodesSrv) GetPodcastEpisodes(ctx context.Context, username, devicena
 // SaveEpisodesActions save new actions.
 // Podcasts and devices are cached and - if not exists for requested action - created.
 func (e *EpisodesSrv) SaveEpisodesActions(ctx context.Context, username string, action ...model.Episode) error {
+	if username == "" {
+		return ErrEmptyUsername
+	}
+
 	//nolint:wrapcheck
 	return e.db.InTransaction(ctx, func(dbctx repository.DBContext) error {
 		user, err := e.usersRepo.GetUser(ctx, dbctx, username)
@@ -116,6 +120,10 @@ func (e *EpisodesSrv) SaveEpisodesActions(ctx context.Context, username string, 
 func (e *EpisodesSrv) GetEpisodesActions(ctx context.Context, username, podcast, devicename string,
 	since time.Time, aggregated bool,
 ) ([]model.Episode, error) {
+	if username == "" {
+		return nil, ErrEmptyUsername
+	}
+
 	//nolint:wrapcheck
 	return db.InConnectionR(ctx, e.db, func(conn repository.DBContext) ([]model.Episode, error) {
 		actions, err := e.getEpisodesActionsInternal(ctx, conn, username, podcast, devicename, since, aggregated, 0)
@@ -141,6 +149,10 @@ func (e *EpisodesSrv) GetEpisodesUpdates(ctx context.Context, username, devicena
 	log.Ctx(ctx).Debug().Str("username", username).Str("devicename", devicename).
 		Msgf("get episodes updates since %s includeActions %v", since, includeActions)
 
+	if username == "" {
+		return nil, ErrEmptyUsername
+	}
+
 	//nolint:wrapcheck
 	return db.InConnectionR(ctx, e.db, func(conn repository.DBContext) ([]model.EpisodeUpdate, error) {
 		episodes, err := e.getEpisodesActionsInternal(ctx, conn, username, "", devicename, since, true, 0)
@@ -165,6 +177,10 @@ func (e *EpisodesSrv) GetEpisodesUpdates(ctx context.Context, username, devicena
 // GetLastActions return last `limit` actions for `username`.
 func (e *EpisodesSrv) GetLastActions(ctx context.Context, username string, since time.Time, limit int,
 ) ([]model.Episode, error) {
+	if username == "" {
+		return nil, ErrEmptyUsername
+	}
+
 	//nolint:wrapcheck
 	return db.InConnectionR(ctx, e.db, func(dbctx repository.DBContext) ([]model.Episode, error) {
 		episodes, err := e.getEpisodesActionsInternal(ctx, dbctx, username, "", "", since, false, limit)
@@ -182,6 +198,10 @@ func (e *EpisodesSrv) GetLastActions(ctx context.Context, username string, since
 }
 
 func (e *EpisodesSrv) GetFavorites(ctx context.Context, username string) ([]model.Favorite, error) {
+	if username == "" {
+		return nil, ErrEmptyUsername
+	}
+
 	//nolint: wrapcheck
 	return db.InConnectionR(ctx, e.db, func(dbctx repository.DBContext) ([]model.Favorite, error) {
 		user, err := e.usersRepo.GetUser(ctx, dbctx, username)

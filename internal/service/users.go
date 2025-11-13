@@ -20,12 +20,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var (
-	ErrUnauthorized      = aerr.New("unauthorized").WithUserMsg("authorization failed")
-	ErrUserAccountLocked = aerr.New("locked account").WithUserMsg("account is locked")
-	ErrUserExists        = aerr.New("username exists").WithUserMsg("user name already exists")
-)
-
 type UsersSrv struct {
 	db         *db.Database
 	usersRepo  repository.UsersRepository
@@ -40,6 +34,14 @@ func NewUsersSrv(i do.Injector) (*UsersSrv, error) {
 }
 
 func (u *UsersSrv) LoginUser(ctx context.Context, username, password string) (model.User, error) {
+	if username == "" {
+		return model.User{}, ErrEmptyUsername
+	}
+
+	if password == "" {
+		return model.User{}, aerr.ErrValidation.WithMsg("password can't be empty")
+	}
+
 	//nolint:wrapcheck
 	return db.InConnectionR(ctx, u.db, func(conn repository.DBContext) (model.User, error) {
 		user, err := u.usersRepo.GetUser(ctx, conn, username)
@@ -62,6 +64,10 @@ func (u *UsersSrv) LoginUser(ctx context.Context, username, password string) (mo
 }
 
 func (u *UsersSrv) AddUser(ctx context.Context, user *model.NewUser) (int64, error) {
+	if user == nil {
+		panic("user is nil")
+	}
+
 	if err := user.Validate(); err != nil {
 		return 0, aerr.Wrapf(err, "validate user to add failed")
 	}
@@ -105,22 +111,26 @@ func (u *UsersSrv) AddUser(ctx context.Context, user *model.NewUser) (int64, err
 	})
 }
 
-func (u *UsersSrv) ChangePassword(ctx context.Context, user *model.UserPassword) error {
-	if err := user.Validate(); err != nil {
+func (u *UsersSrv) ChangePassword(ctx context.Context, userpass *model.UserPassword) error {
+	if userpass == nil {
+		panic("userpass is nil")
+	}
+
+	if err := userpass.Validate(); err != nil {
 		return aerr.Wrapf(err, "validate user/password for save failed")
 	}
 
 	//nolint: wrapcheck
 	return u.db.InTransaction(ctx, func(dbctx repository.DBContext) error {
 		// is user exists?
-		udb, err := u.usersRepo.GetUser(ctx, dbctx, user.Username)
+		udb, err := u.usersRepo.GetUser(ctx, dbctx, userpass.Username)
 		if errors.Is(err, repository.ErrNoData) {
 			return ErrUnknownUser
 		} else if err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		udb.Password, err = u.passHasher.HashPassword(user.Password)
+		udb.Password, err = u.passHasher.HashPassword(userpass.Password)
 		if err != nil {
 			return aerr.Wrapf(err, "hash password failed")
 		}

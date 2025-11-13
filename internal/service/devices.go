@@ -34,6 +34,10 @@ func NewDevicesSrv(i do.Injector) (*DevicesSrv, error) {
 
 // UpdateDevice update or create device.
 func (d *DevicesSrv) UpdateDevice(ctx context.Context, updateddev *model.UpdatedDevice) error {
+	if updateddev == nil {
+		panic("updateddev is nil")
+	}
+
 	if err := updateddev.Validate(); err != nil {
 		return aerr.Wrapf(err, "validate dev to update failed")
 	}
@@ -69,6 +73,10 @@ func (d *DevicesSrv) UpdateDevice(ctx context.Context, updateddev *model.Updated
 
 // ListDevices return list of user's devices.
 func (d *DevicesSrv) ListDevices(ctx context.Context, username string) ([]model.Device, error) {
+	if username == "" {
+		return nil, ErrEmptyUsername
+	}
+
 	//nolint:wrapcheck
 	return db.InConnectionR(ctx, d.db, func(conn repository.DBContext) ([]model.Device, error) {
 		user, err := d.usersRepo.GetUser(ctx, conn, username)
@@ -85,8 +93,9 @@ func (d *DevicesSrv) ListDevices(ctx context.Context, username string) ([]model.
 
 		res := make([]model.Device, len(devices))
 		for i, d := range devices {
-			res[i] = model.NewDeviceFromDeviceDB(d)
-			res[i].User = username
+			dev := model.NewDeviceFromDeviceDB(d)
+			dev.User = username
+			res[i] = dev
 		}
 
 		return res, nil
