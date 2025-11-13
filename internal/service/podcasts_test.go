@@ -12,6 +12,7 @@ import (
 
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/assert"
+	"gitlab.com/kabes/go-gpo/internal/model"
 )
 
 func TestPodcastsServiceUserPodcasts(t *testing.T) {
@@ -29,7 +30,7 @@ func TestPodcastsServiceUserPodcasts(t *testing.T) {
 	podcasts, err := podcastsSrv.GetUserPodcasts(ctx, "user1")
 	assert.NoErr(t, err)
 	assert.Equal(t, len(podcasts), 3)
-	assert.Equal(t, podcastsToUrls(podcasts), subscribed)
+	assert.EqualSorted(t, model.PodcastsToUrls(podcasts), subscribed)
 
 	podcasts, err = podcastsSrv.GetUserPodcasts(ctx, "user2")
 	assert.NoErr(t, err)

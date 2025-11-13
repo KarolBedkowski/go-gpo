@@ -7,8 +7,10 @@ package assert
 
 import (
 	"bytes"
+	"cmp"
 	"errors"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -163,4 +165,23 @@ func isNil(v any) bool {
 	default:
 		return false
 	}
+}
+
+// EqualSorted asserts that got sorted slice is equal to want sorted slice.
+func EqualSorted[S ~[]E, E cmp.Ordered](tb testing.TB, got, want S) bool {
+	tb.Helper()
+
+	got = slices.Clone(got)
+	slices.Sort(got)
+
+	want = slices.Clone(want)
+	slices.Sort(want)
+
+	if !slices.Equal(got, want) {
+		tb.Errorf("got: %#v; want: %#v", got, want)
+
+		return false
+	}
+
+	return true
 }

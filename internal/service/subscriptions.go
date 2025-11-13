@@ -240,32 +240,35 @@ func (s *SubscriptionsSrv) UpdateDeviceSubscriptionChanges( //nolint:cyclop
 }
 
 func (s *SubscriptionsSrv) GetSubscriptionChanges(ctx context.Context, username, devicename string, since time.Time) (
-	[]model.Podcast, []string, error,
+	model.SubscriptionState, error,
 ) {
 	if username == "" {
-		return nil, nil, ErrEmptyUsername
+		return model.SubscriptionState{}, ErrEmptyUsername
 	}
 
 	podcasts, err := s.getPodcasts(ctx, username, devicename, since)
 	if err != nil {
-		return nil, nil, err
+		return model.SubscriptionState{}, err
 	}
 
-	added := make([]model.Podcast, 0)
-	removed := make([]string, 0)
+	state := model.SubscriptionState{
+		Added:   make([]model.Podcast, 0, len(podcasts)),
+		Removed: make([]model.Podcast, 0),
+	}
 
 	for _, p := range podcasts {
+		podcast := model.Podcast{
+			Title: p.Title,
+			URL:   p.URL,
+		}
 		if p.Subscribed {
-			added = append(added, model.Podcast{
-				Title: p.Title,
-				URL:   p.URL,
-			})
+			state.Added = append(state.Added, podcast)
 		} else {
-			removed = append(removed, p.URL)
+			state.Removed = append(state.Removed, podcast)
 		}
 	}
 
-	return added, removed, nil
+	return state, nil
 }
 
 // ------------------------------------------------------

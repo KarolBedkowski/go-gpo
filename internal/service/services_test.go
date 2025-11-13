@@ -10,7 +10,6 @@ import (
 	"context"
 	stdlog "log"
 	"os"
-	"slices"
 	"testing"
 	"time"
 
@@ -84,17 +83,6 @@ func prepareTestSub(ctx context.Context, t *testing.T, i do.Injector,
 		username, devicename, model.NewSubscribedURLS(subs),
 		time.Date(2025, 1, 2, 10, 0, 0, 0, time.UTC))
 	assert.NoErr(t, err)
-}
-
-func podcastsToUrls(podcasts []model.Podcast) []string {
-	res := make([]string, len(podcasts))
-	for i, p := range podcasts {
-		res[i] = p.URL
-	}
-
-	slices.Sort(res)
-
-	return res
 }
 
 func prepareTestEpisode(ctx context.Context, t *testing.T, i do.Injector,

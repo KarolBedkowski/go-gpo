@@ -76,6 +76,21 @@ func NewSubscribedURLS(urls []string) SubscribedURLs {
 
 // ------------------------------------------------------
 
+type SubscriptionState struct {
+	Added   []Podcast
+	Removed []Podcast
+}
+
+func (s *SubscriptionState) AddedURLs() []string {
+	return PodcastsToUrls(s.Added)
+}
+
+func (s *SubscriptionState) RemovedURLs() []string {
+	return PodcastsToUrls(s.Removed)
+}
+
+// ------------------------------------------------------
+
 // SanitizeURLs remove non-http* urls; correct others. Return list of "safe" urls and list of changes
 // in url [[old url, corrected url]].
 func SanitizeURLs(urls []string) ([]string, [][]string) {

@@ -28,3 +28,12 @@ type PodcastWithLastEpisode struct {
 
 	LastEpisode *Episode
 }
+
+func PodcastsToUrls(podcasts []Podcast) []string {
+	urls := make([]string, len(podcasts))
+	for i, p := range podcasts {
+		urls[i] = p.URL
+	}
+
+	return urls
+}

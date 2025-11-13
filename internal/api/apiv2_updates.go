@@ -59,7 +59,7 @@ func (u updatesResource) getUpdates(
 		return
 	}
 
-	added, removed, err := u.subsSrv.GetSubscriptionChanges(ctx, user, deviceid, since)
+	state, err := u.subsSrv.GetSubscriptionChanges(ctx, user, deviceid, since)
 	if err != nil {
 		internal.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Str("mod", "api").Msg("get subscription changes error")
@@ -81,8 +81,8 @@ func (u updatesResource) getUpdates(
 		Updates    []episodeUpdate `json:"updates"`
 		Timestamps int64           `json:"timestamp"`
 	}{
-		Add:        model.Map(added, newPodcastFromModel),
-		Remove:     removed,
+		Add:        model.Map(state.Added, newPodcastFromModel),
+		Remove:     state.RemovedURLs(),
 		Updates:    model.Map(updates, newEpisodeUpdateFromModel),
 		Timestamps: time.Now().Unix(),
 	}
