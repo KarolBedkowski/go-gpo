@@ -60,7 +60,7 @@ func (s *SubscriptionsSrv) GetSubscriptions(ctx context.Context, username, devic
 	return s.getSubsctiptions(ctx, username, devicename, since)
 }
 
-func (s *SubscriptionsSrv) ReplaceDeviceSubscriptions(ctx context.Context, //nolint:cyclop
+func (s *SubscriptionsSrv) ReplaceSubscriptions(ctx context.Context, //nolint:cyclop
 	username, devicename string, currentSubs model.SubscribedURLs, timestamp time.Time,
 ) error {
 	if username == "" {

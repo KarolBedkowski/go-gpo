@@ -174,7 +174,7 @@ func (s *simpleResource) uploadSubscriptions(
 	}
 
 	subscribed := model.NewSubscribedURLS(subs)
-	if err := s.subServ.ReplaceDeviceSubscriptions(ctx, user, deviceid, subscribed, time.Now()); err != nil {
+	if err := s.subServ.ReplaceSubscriptions(ctx, user, deviceid, subscribed, time.Now()); err != nil {
 		internal.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Str("mod", "api").Msg("update subscriptions error")
 	} else {
