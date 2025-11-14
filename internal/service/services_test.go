@@ -79,7 +79,7 @@ func prepareTestSub(ctx context.Context, t *testing.T, i do.Injector,
 	t.Helper()
 
 	subsSrv := do.MustInvoke[*SubscriptionsSrv](i)
-	err := subsSrv.UpdateDeviceSubscriptions(ctx,
+	err := subsSrv.ReplaceDeviceSubscriptions(ctx,
 		username, devicename, model.NewSubscribedURLS(subs),
 		time.Date(2025, 1, 2, 10, 0, 0, 0, time.UTC))
 	assert.NoErr(t, err)

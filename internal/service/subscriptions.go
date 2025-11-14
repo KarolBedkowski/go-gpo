@@ -118,7 +118,7 @@ func (s *SubscriptionsSrv) GetDeviceSubscriptionChanges(
 	return added, removed, nil
 }
 
-func (s *SubscriptionsSrv) UpdateDeviceSubscriptions(ctx context.Context, //nolint:cyclop
+func (s *SubscriptionsSrv) ReplaceDeviceSubscriptions(ctx context.Context, //nolint:cyclop
 	username, devicename string, currentSubs model.SubscribedURLs, timestamp time.Time,
 ) error {
 	if username == "" {
