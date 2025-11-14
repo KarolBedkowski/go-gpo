@@ -39,11 +39,11 @@ func TestEpisodesServiceSave(t *testing.T) {
 	)
 
 	episodeActions := prepareEpisodes()
-	err := episodesSrv.SaveEpisodesActions(ctx, "user1", episodeActions...)
+	err := episodesSrv.AddActiong(ctx, "user1", episodeActions...)
 	assert.NoErr(t, err)
 
 	// get last action for each episodes
-	episodes, err := episodesSrv.GetPodcastEpisodes(ctx, "user1", "", "")
+	episodes, err := episodesSrv.GetEpisodes(ctx, "user1", "", "")
 	assert.NoErr(t, err)
 	assert.Equal(t, len(episodes), 3)
 	// list is sorted by updated_at
@@ -73,7 +73,7 @@ func TestEpisodesServiceSave(t *testing.T) {
 	assert.Equal(t, episodes[2].Total, nil)
 
 	// only one podcast, device should be ignored
-	episodes, err = episodesSrv.GetPodcastEpisodes(ctx, "user1", "dev2", "http://example.com/p1")
+	episodes, err = episodesSrv.GetEpisodes(ctx, "user1", "dev2", "http://example.com/p1")
 	assert.NoErr(t, err)
 	assert.Equal(t, len(episodes), 2)
 	assert.Equal(t, episodes[0].Podcast, "http://example.com/p1")
@@ -115,11 +115,11 @@ func TestEpisodesServiceActions(t *testing.T) {
 	)
 
 	episodeActions := prepareEpisodes()
-	err := episodesSrv.SaveEpisodesActions(ctx, "user1", episodeActions...)
+	err := episodesSrv.AddActiong(ctx, "user1", episodeActions...)
 	assert.NoErr(t, err)
 
 	// get all
-	episodes, err := episodesSrv.GetEpisodesActions(ctx, "user1", "", "", time.Time{}, false)
+	episodes, err := episodesSrv.GetActions(ctx, "user1", "", "", time.Time{}, false)
 	assert.NoErr(t, err)
 	assert.Equal(t, len(episodes), 4)
 	assert.Equal(t, episodes[0], episodeActions[0])
@@ -128,7 +128,7 @@ func TestEpisodesServiceActions(t *testing.T) {
 	assert.Equal(t, episodes[3], episodeActions[3])
 
 	// get since 2025-01-04
-	episodes, err = episodesSrv.GetEpisodesActions(ctx, "user1", "", "",
+	episodes, err = episodesSrv.GetActions(ctx, "user1", "", "",
 		time.Date(2025, 1, 4, 0, 0, 0, 0, time.UTC), false,
 	)
 	assert.NoErr(t, err)
@@ -137,7 +137,7 @@ func TestEpisodesServiceActions(t *testing.T) {
 	assert.Equal(t, episodes[1], episodeActions[3])
 
 	// get all aggregated (last action)
-	episodes, err = episodesSrv.GetEpisodesActions(ctx, "user1", "", "", time.Time{}, true)
+	episodes, err = episodesSrv.GetActions(ctx, "user1", "", "", time.Time{}, true)
 	assert.NoErr(t, err)
 	assert.Equal(t, len(episodes), 3)
 	assert.Equal(t, episodes[0], episodeActions[1])
@@ -145,7 +145,7 @@ func TestEpisodesServiceActions(t *testing.T) {
 	assert.Equal(t, episodes[2], episodeActions[3])
 
 	// get one podcase aggregated; device should be ignored
-	episodes, err = episodesSrv.GetEpisodesActions(ctx, "user1", "http://example.com/p1", "dev2", time.Time{}, false)
+	episodes, err = episodesSrv.GetActions(ctx, "user1", "http://example.com/p1", "dev2", time.Time{}, false)
 	assert.NoErr(t, err)
 	assert.Equal(t, len(episodes), 3)
 	assert.Equal(t, episodes[0], episodeActions[0])
@@ -153,7 +153,7 @@ func TestEpisodesServiceActions(t *testing.T) {
 	assert.Equal(t, episodes[2], episodeActions[2])
 
 	// get one podcase aggregated; device should be ignored; aggregated
-	episodes, err = episodesSrv.GetEpisodesActions(ctx, "user1", "http://example.com/p1", "dev2", time.Time{}, true)
+	episodes, err = episodesSrv.GetActions(ctx, "user1", "http://example.com/p1", "dev2", time.Time{}, true)
 	assert.NoErr(t, err)
 	assert.Equal(t, len(episodes), 2)
 	assert.Equal(t, episodes[0], episodeActions[1])
@@ -181,11 +181,11 @@ func TestEpisodesServiceUpdates(t *testing.T) {
 	)
 
 	episodeActions := prepareEpisodes()
-	err := episodesSrv.SaveEpisodesActions(ctx, "user1", episodeActions...)
+	err := episodesSrv.AddActiong(ctx, "user1", episodeActions...)
 	assert.NoErr(t, err)
 
 	// without device, no include actions (last action only)
-	updates, err := episodesSrv.GetEpisodesUpdates(ctx, "user1", "", time.Time{}, false)
+	updates, err := episodesSrv.GetUpdates(ctx, "user1", "", time.Time{}, false)
 	assert.NoErr(t, err)
 	assert.Equal(t, len(updates), 3)
 	assert.Equal(t, updates[0].URL, episodeActions[1].Episode)
@@ -202,7 +202,7 @@ func TestEpisodesServiceUpdates(t *testing.T) {
 	assert.Equal(t, updates[2].Episode, nil)
 
 	// without device, include action
-	updates, err = episodesSrv.GetEpisodesUpdates(ctx, "user1", "",
+	updates, err = episodesSrv.GetUpdates(ctx, "user1", "",
 		time.Date(2025, 1, 4, 0, 0, 0, 0, time.UTC), true)
 	assert.NoErr(t, err)
 	assert.Equal(t, len(updates), 2)
@@ -216,7 +216,7 @@ func TestEpisodesServiceUpdates(t *testing.T) {
 	assert.Equal(t, *updates[1].Episode, episodeActions[3])
 
 	// with device (should return entries other that with dev1), include action
-	updates, err = episodesSrv.GetEpisodesUpdates(ctx, "user1", "dev2",
+	updates, err = episodesSrv.GetUpdates(ctx, "user1", "dev2",
 		time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), true)
 	assert.NoErr(t, err)
 	assert.Equal(t, len(updates), 2)
@@ -251,7 +251,7 @@ func TestEpisodesServiceLastEpisodes(t *testing.T) {
 	)
 
 	episodeActions := prepareEpisodes()
-	err := episodesSrv.SaveEpisodesActions(ctx, "user1", episodeActions...)
+	err := episodesSrv.AddActiong(ctx, "user1", episodeActions...)
 	assert.NoErr(t, err)
 
 	actions, err := episodesSrv.GetLastActions(ctx, "user1",
@@ -310,7 +310,7 @@ func TestEpisodesServiceFavorites(t *testing.T) {
 	)
 
 	episodeActions := prepareEpisodes()
-	err := episodesSrv.SaveEpisodesActions(ctx, "user1", episodeActions...)
+	err := episodesSrv.AddActiong(ctx, "user1", episodeActions...)
 	assert.NoErr(t, err)
 
 	setkey := model.NewSettingsKey("user1", "episode", "dev1",
@@ -356,10 +356,10 @@ func TestEpisodesServiceNewDevPodcast(t *testing.T) {
 		Timestamp: time.Date(2025, 1, 5, 3, 4, 5, 0, time.UTC),
 	}
 
-	err := episodesSrv.SaveEpisodesActions(ctx, "user1", action)
+	err := episodesSrv.AddActiong(ctx, "user1", action)
 	assert.NoErr(t, err)
 
-	episodes, err := episodesSrv.GetPodcastEpisodes(ctx, "user1", "dev1", "")
+	episodes, err := episodesSrv.GetEpisodes(ctx, "user1", "dev1", "")
 	assert.NoErr(t, err)
 	assert.Equal(t, len(episodes), 1)
 	assert.Equal(t, episodes[0].Device, "dev3")

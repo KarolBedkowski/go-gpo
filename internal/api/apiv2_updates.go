@@ -67,7 +67,7 @@ func (u updatesResource) getUpdates(
 		return
 	}
 
-	updates, err := u.episodesSrv.GetEpisodesUpdates(ctx, user, "", since, includeActions)
+	updates, err := u.episodesSrv.GetUpdates(ctx, user, "", since, includeActions)
 	if err != nil {
 		internal.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Str("mod", "api").Msg("get episodes updates error")

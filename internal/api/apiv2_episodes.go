@@ -87,7 +87,7 @@ func (er episodesResource) uploadEpisodeActions(
 		actions = append(actions, reqEpisode.toModel())
 	}
 
-	if err = er.episodesSrv.SaveEpisodesActions(ctx, user, actions...); err != nil {
+	if err = er.episodesSrv.AddActiong(ctx, user, actions...); err != nil {
 		internal.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).
 			Err(err).Str("mod", "api").Msg("save episodes error")
@@ -124,7 +124,7 @@ func (er episodesResource) getEpisodeActions(
 		return
 	}
 
-	res, err := er.episodesSrv.GetEpisodesActions(ctx, user, podcast, device, since, aggregated)
+	res, err := er.episodesSrv.GetActions(ctx, user, podcast, device, since, aggregated)
 	if err != nil {
 		internal.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Str("mod", "api").Msg("get episodes actions error")

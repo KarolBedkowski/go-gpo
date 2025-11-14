@@ -38,9 +38,9 @@ func NewEpisodesSrv(i do.Injector) (*EpisodesSrv, error) {
 	}, nil
 }
 
-// GetPodcastEpisodes return list of episodes for `username`, `podcast` and `devicename` (create by other devices).
+// GetEpisodes return list of episodes for `username`, `podcast` and `devicename` (create by other devices).
 // Return last action.
-func (e *EpisodesSrv) GetPodcastEpisodes(ctx context.Context, username, devicename, podcast string,
+func (e *EpisodesSrv) GetEpisodes(ctx context.Context, username, devicename, podcast string,
 ) ([]model.Episode, error) {
 	if username == "" {
 		return nil, ErrEmptyUsername
@@ -48,7 +48,7 @@ func (e *EpisodesSrv) GetPodcastEpisodes(ctx context.Context, username, devicena
 
 	//nolint:wrapcheck
 	return db.InConnectionR(ctx, e.db, func(conn repository.DBContext) ([]model.Episode, error) {
-		actions, err := e.getEpisodesActionsInternal(ctx, conn, username, podcast, devicename, time.Time{}, true, 0)
+		actions, err := e.getEpisodesActionsInternal(ctx, conn, username, devicename, podcast, time.Time{}, true, 0)
 		if err != nil {
 			return nil, err
 		}
@@ -62,9 +62,9 @@ func (e *EpisodesSrv) GetPodcastEpisodes(ctx context.Context, username, devicena
 	})
 }
 
-// SaveEpisodesActions save new actions.
+// AddActiong save new actions.
 // Podcasts and devices are cached and - if not exists for requested action - created.
-func (e *EpisodesSrv) SaveEpisodesActions(ctx context.Context, username string, action ...model.Episode) error {
+func (e *EpisodesSrv) AddActiong(ctx context.Context, username string, action ...model.Episode) error {
 	if username == "" {
 		return ErrEmptyUsername
 	}
@@ -114,10 +114,10 @@ func (e *EpisodesSrv) SaveEpisodesActions(ctx context.Context, username string, 
 	})
 }
 
-// GetEpisodesActions return list of episode actions for username and optional podcast and devicename.
+// GetActions return list of episode actions for username and optional podcast and devicename.
 // If devicename is not empty - get actions from other devices.
 // Used by /api/2/episodes.
-func (e *EpisodesSrv) GetEpisodesActions(ctx context.Context, username, podcast, devicename string,
+func (e *EpisodesSrv) GetActions(ctx context.Context, username, podcast, devicename string,
 	since time.Time, aggregated bool,
 ) ([]model.Episode, error) {
 	if username == "" {
@@ -126,7 +126,7 @@ func (e *EpisodesSrv) GetEpisodesActions(ctx context.Context, username, podcast,
 
 	//nolint:wrapcheck
 	return db.InConnectionR(ctx, e.db, func(conn repository.DBContext) ([]model.Episode, error) {
-		actions, err := e.getEpisodesActionsInternal(ctx, conn, username, podcast, devicename, since, aggregated, 0)
+		actions, err := e.getEpisodesActionsInternal(ctx, conn, username, devicename, podcast, since, aggregated, 0)
 		if err != nil {
 			return nil, err
 		}
@@ -140,10 +140,10 @@ func (e *EpisodesSrv) GetEpisodesActions(ctx context.Context, username, podcast,
 	})
 }
 
-// GetEpisodesUpdates return list of EpisodeUpdate for `username` and optionally `devicename` and `since`.
+// GetUpdates return list of EpisodeUpdate for `username` and optionally `devicename` and `since`.
 // if `includeActions` add to each episode last action.
 // Used by /api/2/updates.
-func (e *EpisodesSrv) GetEpisodesUpdates(ctx context.Context, username, devicename string, since time.Time,
+func (e *EpisodesSrv) GetUpdates(ctx context.Context, username, devicename string, since time.Time,
 	includeActions bool,
 ) ([]model.EpisodeUpdate, error) {
 	log.Ctx(ctx).Debug().Str("username", username).Str("devicename", devicename).
@@ -155,7 +155,7 @@ func (e *EpisodesSrv) GetEpisodesUpdates(ctx context.Context, username, devicena
 
 	//nolint:wrapcheck
 	return db.InConnectionR(ctx, e.db, func(conn repository.DBContext) ([]model.EpisodeUpdate, error) {
-		episodes, err := e.getEpisodesActionsInternal(ctx, conn, username, "", devicename, since, true, 0)
+		episodes, err := e.getEpisodesActionsInternal(ctx, conn, username, devicename, "", since, true, 0)
 		if err != nil {
 			return nil, err
 		}
@@ -225,10 +225,12 @@ func (e *EpisodesSrv) GetFavorites(ctx context.Context, username string) ([]mode
 	})
 }
 
+// ------------------------------------------------------
+
 func (e *EpisodesSrv) getEpisodesActionsInternal(
 	ctx context.Context,
 	dbctx repository.DBContext,
-	username, podcast, devicename string,
+	username, devicename, podcast string,
 	since time.Time,
 	aggregated bool,
 	limit int,

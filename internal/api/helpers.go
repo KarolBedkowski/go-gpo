@@ -12,13 +12,13 @@ import (
 )
 
 // ensureList create empty list if `inp` is null or return `inp` otherwise.
-func ensureList[T any](inp []T) []T {
-	if inp == nil {
-		return make([]T, 0)
-	}
+// func ensureList[T any](inp []T) []T {
+// 	if inp == nil {
+// 		return make([]T, 0)
+// 	}
 
-	return inp
-}
+// 	return inp
+// }
 
 // getSinceParameter from request url query.
 func getSinceParameter(r *http.Request) (time.Time, error) {
