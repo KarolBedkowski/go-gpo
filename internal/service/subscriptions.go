@@ -43,22 +43,7 @@ func (s *SubscriptionsSrv) GetUserSubscriptions(ctx context.Context, username st
 		return nil, ErrEmptyUsername
 	}
 
-	//nolint:wrapcheck
-	return db.InConnectionR(ctx, s.db, func(dbctx repository.DBContext) ([]string, error) {
-		user, err := s.usersRepo.GetUser(ctx, dbctx, username)
-		if errors.Is(err, repository.ErrNoData) {
-			return nil, ErrUnknownUser
-		} else if err != nil {
-			return nil, aerr.ApplyFor(ErrRepositoryError, err)
-		}
-
-		subs, err := s.podcastsRepo.ListSubscribedPodcasts(ctx, dbctx, user.ID, since)
-		if err != nil {
-			return nil, aerr.ApplyFor(ErrRepositoryError, err)
-		}
-
-		return subs.ToURLs(), nil
-	})
+	return s.getSubsctiptions(ctx, username, "", since)
 }
 
 // GetDeviceSubscriptions is simple api.
@@ -68,29 +53,11 @@ func (s *SubscriptionsSrv) GetDeviceSubscriptions(ctx context.Context, username,
 		return nil, ErrEmptyUsername
 	}
 
-	//nolint:wrapcheck
-	return db.InConnectionR(ctx, s.db, func(dbctx repository.DBContext) ([]string, error) {
-		user, err := s.usersRepo.GetUser(ctx, dbctx, username)
-		if errors.Is(err, repository.ErrNoData) {
-			return nil, ErrUnknownUser
-		} else if err != nil {
-			return nil, aerr.ApplyFor(ErrRepositoryError, err)
-		}
+	if devicename == "" {
+		return nil, aerr.ErrValidation.WithMsg("device can't be empty")
+	}
 
-		_, err = s.devicesRepo.GetDevice(ctx, dbctx, user.ID, devicename)
-		if errors.Is(err, repository.ErrNoData) {
-			return nil, ErrUnknownDevice
-		} else if err != nil {
-			return nil, aerr.ApplyFor(ErrRepositoryError, err)
-		}
-
-		podcasts, err := s.podcastsRepo.ListSubscribedPodcasts(ctx, dbctx, user.ID, since)
-		if err != nil {
-			return nil, aerr.ApplyFor(ErrRepositoryError, err)
-		}
-
-		return podcasts.ToURLs(), nil
-	})
+	return s.getSubsctiptions(ctx, username, devicename, since)
 }
 
 func (s *SubscriptionsSrv) GetDeviceSubscriptionChanges(
@@ -272,6 +239,36 @@ func (s *SubscriptionsSrv) GetSubscriptionChanges(ctx context.Context, username,
 }
 
 // ------------------------------------------------------
+
+func (s *SubscriptionsSrv) getSubsctiptions(ctx context.Context, username, devicename string, since time.Time,
+) ([]string, error) {
+	//nolint:wrapcheck
+	return db.InConnectionR(ctx, s.db, func(dbctx repository.DBContext) ([]string, error) {
+		user, err := s.usersRepo.GetUser(ctx, dbctx, username)
+		if errors.Is(err, repository.ErrNoData) {
+			return nil, ErrUnknownUser
+		} else if err != nil {
+			return nil, aerr.ApplyFor(ErrRepositoryError, err)
+		}
+
+		if devicename != "" {
+			// validate is device exists when device name is given.
+			_, err = s.devicesRepo.GetDevice(ctx, dbctx, user.ID, devicename)
+			if errors.Is(err, repository.ErrNoData) {
+				return nil, ErrUnknownDevice
+			} else if err != nil {
+				return nil, aerr.ApplyFor(ErrRepositoryError, err)
+			}
+		}
+
+		podcasts, err := s.podcastsRepo.ListSubscribedPodcasts(ctx, dbctx, user.ID, since)
+		if err != nil {
+			return nil, aerr.ApplyFor(ErrRepositoryError, err)
+		}
+
+		return podcasts.ToURLs(), nil
+	})
+}
 
 func (s *SubscriptionsSrv) getUser(ctx context.Context,
 	db repository.DBContext,
