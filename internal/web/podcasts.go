@@ -42,7 +42,7 @@ func (p podcastPages) Routes() *chi.Mux {
 func (p podcastPages) list(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
 	user := internal.ContextUser(ctx)
 
-	podcasts, err := p.podcastsSrv.GetUserPodcastsExt(ctx, user)
+	podcasts, err := p.podcastsSrv.GetPodcastsWithLastEpisode(ctx, user)
 	if err != nil {
 		internal.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Str("mod", "web").Msg("get user podcasts error")

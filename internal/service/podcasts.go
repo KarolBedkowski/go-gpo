@@ -35,7 +35,7 @@ func NewPodcastsSrv(i do.Injector) (*PodcastsSrv, error) {
 	}, nil
 }
 
-func (p *PodcastsSrv) GetUserPodcasts(ctx context.Context, username string) ([]model.Podcast, error) {
+func (p *PodcastsSrv) GetPodcasts(ctx context.Context, username string) ([]model.Podcast, error) {
 	if username == "" {
 		return nil, ErrEmptyUsername
 	}
@@ -67,7 +67,8 @@ func (p *PodcastsSrv) GetUserPodcasts(ctx context.Context, username string) ([]m
 	})
 }
 
-func (p *PodcastsSrv) GetUserPodcastsExt(ctx context.Context, username string) ([]model.PodcastWithLastEpisode, error) {
+func (p *PodcastsSrv) GetPodcastsWithLastEpisode(ctx context.Context, username string,
+) ([]model.PodcastWithLastEpisode, error) {
 	if username == "" {
 		return nil, ErrEmptyUsername
 	}
