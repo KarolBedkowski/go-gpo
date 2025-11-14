@@ -186,7 +186,7 @@ func TestSubsServiceUpdateDevSubsChanges(t *testing.T) {
 	)
 	assert.NoErr(t, changes.Validate())
 
-	err = subsSrv.UpdateDeviceSubscriptionChanges(ctx, "user1", "dev1", &changes,
+	err = subsSrv.ApplySubscriptionChanges(ctx, "user1", "dev1", &changes,
 		time.Date(2025, 1, 2, 12, 0, 0, 0, time.UTC))
 	assert.NoErr(t, err)
 

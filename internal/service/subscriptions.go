@@ -121,7 +121,7 @@ func (s *SubscriptionsSrv) ReplaceSubscriptions(ctx context.Context, //nolint:cy
 	})
 }
 
-func (s *SubscriptionsSrv) UpdateDeviceSubscriptionChanges( //nolint:cyclop
+func (s *SubscriptionsSrv) ApplySubscriptionChanges( //nolint:cyclop
 	ctx context.Context,
 	username, devicename string, changes *model.SubscriptionChanges, timestamp time.Time,
 ) error {

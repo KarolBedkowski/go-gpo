@@ -150,7 +150,7 @@ func (sr subscriptionsResource) uploadSubscriptionChanges(
 		return
 	}
 
-	err := sr.subsSrv.UpdateDeviceSubscriptionChanges(ctx, user, deviceid, &subChanges, time.Now())
+	err := sr.subsSrv.ApplySubscriptionChanges(ctx, user, deviceid, &subChanges, time.Now())
 	if err != nil {
 		internal.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).
