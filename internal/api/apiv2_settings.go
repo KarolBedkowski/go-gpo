@@ -47,12 +47,12 @@ func (u settingsResource) getSettings(
 	logger *zerolog.Logger,
 ) {
 	user := internal.ContextUser(ctx)
-	key := newKey(user, r)
+	key := newKeyFromRequest(user, r)
 
 	res, err := u.settingsSrv.GetSettings(ctx, &key)
 	if err != nil {
 		internal.CheckAndWriteError(w, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Str("mod", "api").Msg("get settings error")
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get settings error")
 
 		return
 	}
@@ -69,32 +69,32 @@ func (u settingsResource) setSettings(
 ) {
 	user := internal.ContextUser(ctx)
 
-	var req struct {
+	var reqData struct {
 		Set    map[string]string `json:"set"`
 		Remove []string          `json:"remove"`
 	}
 
-	if err := render.DecodeJSON(r.Body, &req); err != nil {
-		logger.Debug().Err(err).Str("mod", "api").Msg("decode request error")
+	if err := render.DecodeJSON(r.Body, &reqData); err != nil {
+		logger.Debug().Err(err).Msg("decode request error")
 		internal.WriteError(w, r, http.StatusBadRequest, "")
 
 		return
 	}
 
 	// combine set and remove - add empty value for deleted string.
-	settings := req.Set
+	settings := reqData.Set
 	if settings == nil {
 		settings = make(map[string]string)
 	}
 
-	for _, k := range req.Remove {
+	for _, k := range reqData.Remove {
 		settings[k] = ""
 	}
 
-	key := newKey(user, r)
+	key := newKeyFromRequest(user, r)
 	if err := u.settingsSrv.SaveSettings(ctx, &key, settings); err != nil {
 		internal.CheckAndWriteError(w, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Str("mod", "api").Msg("save settings error")
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("save settings error")
 
 		return
 	}
@@ -102,7 +102,7 @@ func (u settingsResource) setSettings(
 	w.WriteHeader(http.StatusOK)
 }
 
-func newKey(user string, r *http.Request) model.SettingsKey {
+func newKeyFromRequest(user string, r *http.Request) model.SettingsKey {
 	return model.NewSettingsKey(user,
 		chi.URLParam(r, "scope"),
 		r.URL.Query().Get("device"),

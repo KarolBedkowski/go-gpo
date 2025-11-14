@@ -53,7 +53,7 @@ func (u favoritesResource) getFafovites(
 	favorites, err := u.episodesSrv.GetFavorites(ctx, user)
 	if err != nil {
 		internal.CheckAndWriteError(w, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Str("mod", "api").Msg("get episodes updates error")
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get episodes updates error")
 
 		return
 	}

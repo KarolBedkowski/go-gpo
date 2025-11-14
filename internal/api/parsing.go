@@ -11,9 +11,12 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"slices"
 	"strconv"
+	"strings"
 	"time"
 
+	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/opml"
 )
 
@@ -95,4 +98,13 @@ func parseOPML(r io.Reader) ([]string, error) {
 	subs := o.ExtractsURLs()
 
 	return subs, nil
+}
+
+func parseTextSubs(r io.Reader) ([]string, error) {
+	body, err := io.ReadAll(r)
+	if err != nil {
+		return nil, aerr.Wrapf(err, "read request body failed")
+	}
+
+	return slices.Collect(strings.Lines(string(body))), nil
 }

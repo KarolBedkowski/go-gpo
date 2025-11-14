@@ -50,22 +50,19 @@ func (er episodesResource) uploadEpisodeActions(
 	r *http.Request,
 	logger *zerolog.Logger,
 ) {
-	user := internal.ContextUser(ctx)
+	var reqData []episode
 
-	var request []episode
-
-	err := render.DecodeJSON(r.Body, &request)
-	if err != nil {
+	if err := render.DecodeJSON(r.Body, &reqData); err != nil {
 		logger.Debug().Err(err).Msgf("parse json error")
-		http.Error(w, "invalid request data", http.StatusBadRequest)
+		http.Error(w, "invalid reqData data", http.StatusBadRequest)
 
 		return
 	}
 
-	actions := make([]model.Episode, 0, len(request))
+	actions := make([]model.Episode, 0, len(reqData))
 	changedurls := make([][]string, 0)
 
-	for _, reqEpisode := range request {
+	for _, reqEpisode := range reqData {
 		if curls := reqEpisode.sanitize(); len(curls) > 0 {
 			changedurls = append(changedurls, curls...)
 		}
@@ -79,7 +76,7 @@ func (er episodesResource) uploadEpisodeActions(
 
 		if err := reqEpisode.validate(); err != nil {
 			logger.Debug().Err(err).Interface("req", reqEpisode).Msgf("validate error")
-			http.Error(w, "validate request data failed", http.StatusBadRequest)
+			http.Error(w, "validate reqData data failed", http.StatusBadRequest)
 
 			return
 		}
@@ -87,10 +84,12 @@ func (er episodesResource) uploadEpisodeActions(
 		actions = append(actions, reqEpisode.toModel())
 	}
 
-	if err = er.episodesSrv.AddActiong(ctx, user, actions...); err != nil {
+	user := internal.ContextUser(ctx)
+
+	if err := er.episodesSrv.AddActiong(ctx, user, actions...); err != nil {
 		internal.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).
-			Err(err).Str("mod", "api").Msg("save episodes error")
+			Err(err).Msg("save episodes error")
 
 		return
 	}
@@ -127,7 +126,7 @@ func (er episodesResource) getEpisodeActions(
 	res, err := er.episodesSrv.GetActions(ctx, user, podcast, device, since, aggregated)
 	if err != nil {
 		internal.CheckAndWriteError(w, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Str("mod", "api").Msg("get episodes actions error")
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get episodes actions error")
 
 		return
 	}

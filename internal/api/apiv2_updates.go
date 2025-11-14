@@ -62,7 +62,7 @@ func (u updatesResource) getUpdates(
 	state, err := u.subsSrv.GetSubscriptionChanges(ctx, user, deviceid, since)
 	if err != nil {
 		internal.CheckAndWriteError(w, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Str("mod", "api").Msg("get subscription changes error")
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get subscription changes error")
 
 		return
 	}
@@ -70,7 +70,7 @@ func (u updatesResource) getUpdates(
 	updates, err := u.episodesSrv.GetUpdates(ctx, user, "", since, includeActions)
 	if err != nil {
 		internal.CheckAndWriteError(w, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Str("mod", "api").Msg("get episodes updates error")
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get episodes updates error")
 
 		return
 	}
@@ -89,6 +89,8 @@ func (u updatesResource) getUpdates(
 
 	render.JSON(w, r, &result)
 }
+
+//------------------------------------------------------------------------------
 
 type episodeUpdate struct {
 	Title        string    `json:"title"`
@@ -121,6 +123,8 @@ func newEpisodeUpdateFromModel(eup *model.EpisodeUpdate) episodeUpdate {
 
 	return episodeupdate
 }
+
+//------------------------------------------------------------------------------
 
 type podcast struct {
 	Title       string `json:"title"`

@@ -34,36 +34,45 @@ func (d deviceResource) Routes() *chi.Mux {
 	r := chi.NewRouter()
 
 	r.With(checkUserMiddleware).
-		Get(`/{user:[\w+.-]+}.json`, internal.Wrap(d.list))
+		Get(`/{user:[\w+.-]+}.json`, internal.Wrap(d.listDevices))
 	r.With(checkUserMiddleware, checkDeviceMiddleware).
-		Post(`/{user:[\w+.-]+}/{deviceid:[\w.-]+}.json`, internal.Wrap(d.update))
+		Post(`/{user:[\w+.-]+}/{deviceid:[\w.-]+}.json`, internal.Wrap(d.updateDevice))
 
 	return r
 }
 
-// update device data.
-func (d deviceResource) update(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
+// updateDevice device data.
+func (d deviceResource) updateDevice(
+	ctx context.Context,
+	w http.ResponseWriter,
+	r *http.Request,
+	logger *zerolog.Logger,
+) {
 	user := internal.ContextUser(ctx)
 	deviceid := internal.ContextDevice(ctx)
 
-	// update device data
-	udd := struct {
+	// updateDevice device data
+	var reqData struct {
 		Caption string `json:"caption"`
 		Type    string `json:"type"`
-	}{}
+	}
 
-	if err := render.DecodeJSON(r.Body, &udd); err != nil {
+	if err := render.DecodeJSON(r.Body, &reqData); err != nil {
 		logger.Debug().Err(err).Str("mod", "api").Msg("error decoding json payload")
 		internal.WriteError(w, r, http.StatusBadRequest, "bad request data")
 
 		return
 	}
 
-	updateddev := model.NewUpdatedDevice(user, deviceid, udd.Type, udd.Caption)
-
+	updateddev := model.UpdatedDevice{
+		UserName:   user,
+		DeviceName: deviceid,
+		DeviceType: reqData.Type,
+		Caption:    reqData.Caption,
+	}
 	if err := d.deviceSrv.UpdateDevice(ctx, &updateddev); err != nil {
 		internal.CheckAndWriteError(w, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Str("mod", "api").Msg("update device error")
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Str("mod", "api").Msg("updateDevice device error")
 
 		return
 	}
@@ -71,8 +80,13 @@ func (d deviceResource) update(ctx context.Context, w http.ResponseWriter, r *ht
 	w.WriteHeader(http.StatusOK)
 }
 
-// list devices.
-func (d deviceResource) list(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
+// listDevices devices.
+func (d deviceResource) listDevices(
+	ctx context.Context,
+	w http.ResponseWriter,
+	r *http.Request,
+	logger *zerolog.Logger,
+) {
 	user := internal.ContextUser(ctx)
 
 	devices, err := d.deviceSrv.ListDevices(ctx, user)

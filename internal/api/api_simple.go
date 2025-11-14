@@ -8,9 +8,7 @@ package api
 import (
 	"context"
 	"fmt"
-	"io"
 	"net/http"
-	"slices"
 	"strings"
 	"time"
 
@@ -39,16 +37,16 @@ func (s *simpleResource) Routes() *chi.Mux {
 	r := chi.NewRouter()
 
 	r.With(checkUserMiddleware).
-		Get(`/{user:[\w+.-]+}.{format}`, internal.Wrap(s.downloadAllSubscriptions))
+		Get(`/{user:[\w+.-]+}.{format}`, internal.Wrap(s.downloadUserSubscriptions))
 	r.With(checkUserMiddleware, checkDeviceMiddleware).
-		Get(`/{user:[\w+.-]+}/{deviceid:[\w.-]+}.{format}`, internal.Wrap(s.downloadSubscriptions))
+		Get(`/{user:[\w+.-]+}/{deviceid:[\w.-]+}.{format}`, internal.Wrap(s.downloadDevSubscriptions))
 	r.With(checkUserMiddleware, checkDeviceMiddleware).
 		Put(`/{user:[\w+.-]+}/{deviceid:[\w.-]+}.{format}`, internal.Wrap(s.uploadSubscriptions))
 
 	return r
 }
 
-func (s *simpleResource) downloadAllSubscriptions(
+func (s *simpleResource) downloadUserSubscriptions(
 	ctx context.Context,
 	w http.ResponseWriter,
 	r *http.Request,
@@ -59,7 +57,7 @@ func (s *simpleResource) downloadAllSubscriptions(
 	subs, err := s.subServ.GetUserSubscriptions(ctx, user, time.Time{})
 	if err != nil {
 		internal.CheckAndWriteError(w, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Str("mod", "api").Msg("get user subscriptions error")
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get user subscriptions error")
 
 		return
 	}
@@ -71,7 +69,7 @@ func (s *simpleResource) downloadAllSubscriptions(
 
 		result, err := o.XML()
 		if err != nil {
-			logger.Warn().Err(err).Str("mod", "api").Msg("get opml xml error")
+			logger.Warn().Err(err).Msg("get opml xml error")
 			internal.WriteError(w, r, http.StatusBadRequest, "invalid opml content")
 
 			return
@@ -91,7 +89,7 @@ func (s *simpleResource) downloadAllSubscriptions(
 	}
 }
 
-func (s *simpleResource) downloadSubscriptions(
+func (s *simpleResource) downloadDevSubscriptions(
 	ctx context.Context,
 	w http.ResponseWriter,
 	r *http.Request,
@@ -103,7 +101,7 @@ func (s *simpleResource) downloadSubscriptions(
 	subs, err := s.subServ.GetSubscriptions(ctx, user, deviceid, time.Time{})
 	if err != nil {
 		internal.CheckAndWriteError(w, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Str("mod", "api").Msg("get device subscriptions error")
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get device subscriptions error")
 
 		return
 	}
@@ -112,7 +110,7 @@ func (s *simpleResource) downloadSubscriptions(
 	case "opml":
 		result, err := formatOMPL(subs)
 		if err != nil {
-			logger.Warn().Err(err).Str("mod", "api").Msg("build opml error")
+			logger.Warn().Err(err).Msg("build opml error")
 			internal.WriteError(w, r, http.StatusInternalServerError, "")
 
 			return
@@ -153,12 +151,7 @@ func (s *simpleResource) uploadSubscriptions(
 	case "json":
 		err = render.DecodeJSON(r.Body, &subs)
 	case "txt":
-		var body []byte
-
-		body, err = io.ReadAll(r.Body)
-		if err == nil {
-			subs = slices.Collect(strings.Lines(string(body)))
-		}
+		subs, err = parseTextSubs(r.Body)
 	default:
 		logger.Debug().Msgf("unknown format %q", format)
 		internal.WriteError(w, r, http.StatusNotFound, "")
@@ -176,7 +169,7 @@ func (s *simpleResource) uploadSubscriptions(
 	subscribed := model.NewSubscribedURLS(subs)
 	if err := s.subServ.ReplaceSubscriptions(ctx, user, deviceid, subscribed, time.Now()); err != nil {
 		internal.CheckAndWriteError(w, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Str("mod", "api").Msg("update subscriptions error")
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("update subscriptions error")
 	} else {
 		w.WriteHeader(http.StatusOK)
 	}

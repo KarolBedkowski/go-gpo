@@ -70,10 +70,7 @@ func (sr subscriptionsResource) devSubscriptions(
 	state, err := sr.subsSrv.GetSubscriptionChanges(ctx, user, deviceid, sinceTS)
 	if err != nil {
 		internal.CheckAndWriteError(w, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).
-			Err(err).
-			Str("mod", "api").
-			Msg("get device subscriptions changes error")
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get device subscriptions changes error")
 
 		return
 	}
@@ -104,7 +101,7 @@ func (sr subscriptionsResource) userSubscriptions(
 	subs, err := sr.subsSrv.GetUserSubscriptions(ctx, user, time.Time{})
 	if err != nil {
 		internal.CheckAndWriteError(w, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Str("mod", "api").Msg("get user subscriptions error")
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get user subscriptions error")
 
 		return
 	}
@@ -114,7 +111,7 @@ func (sr subscriptionsResource) userSubscriptions(
 
 	result, err := o.XML()
 	if err != nil {
-		logger.Warn().Err(err).Str("mod", "api").Msg("get opml xml error")
+		logger.Warn().Err(err).Msg("get opml xml error")
 		internal.WriteError(w, r, http.StatusInternalServerError, "")
 
 		return
@@ -144,19 +141,15 @@ func (sr subscriptionsResource) uploadSubscriptionChanges(
 	subChanges := model.NewSubscriptionChanges(changes.Add, changes.Remove)
 
 	if err := subChanges.Validate(); err != nil {
-		logger.Debug().Err(err).Str("mod", "api").Msg("validate request error")
+		logger.Debug().Err(err).Msg("validate request error")
 		internal.WriteError(w, r, http.StatusBadRequest, "")
 
 		return
 	}
 
-	err := sr.subsSrv.ApplySubscriptionChanges(ctx, user, deviceid, &subChanges, time.Now())
-	if err != nil {
+	if err := sr.subsSrv.ApplySubscriptionChanges(ctx, user, deviceid, &subChanges, time.Now()); err != nil {
 		internal.CheckAndWriteError(w, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).
-			Err(err).
-			Str("mod", "api").
-			Msg("update device subscription changes error")
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("update device subscription changes error")
 
 		return
 	}

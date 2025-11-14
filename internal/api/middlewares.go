@@ -31,6 +31,7 @@ func checkUserMiddleware(next http.Handler) http.Handler {
 		}
 
 		sess := session.GetSession(req)
+		// when auth is enabled authenticator always set session user or block request to get here.
 		if suser := internal.SessionUser(sess); suser != "" {
 			// auth enabled
 			if suser != user {
