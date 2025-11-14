@@ -12,6 +12,7 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"io/fs"
 	"net/url"
 	"time"
 
@@ -89,18 +90,53 @@ func (r *Database) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (r *Database) Migrate(ctx context.Context, driver string) error {
-	goose.SetBaseFS(embedMigrations)
-
-	if err := goose.SetDialect(driver); err != nil {
-		panic(err)
+func (r *Database) Migrate(ctx context.Context, driver string) error { //nolint:cyclop
+	if driver != "sqlite3" {
+		panic("only sqlite3")
 	}
 
-	if err := goose.UpContext(ctx, r.db.DB, "migrations"); err != nil {
-		return aerr.ApplyFor(aerr.ErrDatabase, err, "", "migrate database up failed")
+	logger := log.Ctx(ctx)
+
+	migdir, err := fs.Sub(embedMigrations, "migrations")
+	if err != nil {
+		panic(fmt.Errorf("prepare migration fs failed: %w", err))
 	}
 
-	_, err := r.db.ExecContext(ctx, "PRAGMA optimize")
+	provider, err := goose.NewProvider(goose.DialectSQLite3, r.db.DB, migdir)
+	if err != nil {
+		panic(fmt.Errorf("create goose provider failed: %w", err))
+	}
+
+	defer provider.Close()
+
+	ver, err := provider.GetDBVersion(ctx)
+	if err != nil {
+		return aerr.ApplyFor(aerr.ErrDatabase, err, "", "failed to check current database version")
+	}
+
+	logger.Info().Msgf("current database version: %d", ver)
+
+	for {
+		res, err := provider.UpByOne(ctx)
+		if res != nil {
+			logger.Debug().Msgf("migration: %s", res)
+		}
+
+		if errors.Is(err, goose.ErrNoNextVersion) {
+			break
+		} else if err != nil {
+			return aerr.ApplyFor(aerr.ErrDatabase, err, "", "migrate database up failed")
+		}
+	}
+
+	ver, err = provider.GetDBVersion(ctx)
+	if err != nil {
+		return aerr.ApplyFor(aerr.ErrDatabase, err, "", "failed to check current database version")
+	}
+
+	logger.Info().Msgf("migrated database version: %d", ver)
+
+	_, err = r.db.ExecContext(ctx, "PRAGMA optimize")
 	if err != nil {
 		return aerr.ApplyFor(aerr.ErrDatabase, err, "execute optimize script failed")
 	}
