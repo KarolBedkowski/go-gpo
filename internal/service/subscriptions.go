@@ -46,8 +46,8 @@ func (s *SubscriptionsSrv) GetUserSubscriptions(ctx context.Context, username st
 	return s.getSubsctiptions(ctx, username, "", since)
 }
 
-// GetDeviceSubscriptions is simple api.
-func (s *SubscriptionsSrv) GetDeviceSubscriptions(ctx context.Context, username, devicename string, since time.Time,
+// GetSubscriptions is simple api.
+func (s *SubscriptionsSrv) GetSubscriptions(ctx context.Context, username, devicename string, since time.Time,
 ) ([]string, error) {
 	if username == "" {
 		return nil, ErrEmptyUsername
@@ -58,31 +58,6 @@ func (s *SubscriptionsSrv) GetDeviceSubscriptions(ctx context.Context, username,
 	}
 
 	return s.getSubsctiptions(ctx, username, devicename, since)
-}
-
-func (s *SubscriptionsSrv) GetDeviceSubscriptionChanges(
-	ctx context.Context, username, devicename string, since time.Time,
-) ([]string, []string, error) {
-	if username == "" {
-		return nil, nil, ErrEmptyUsername
-	}
-
-	podcasts, err := s.getPodcasts(ctx, username, devicename, since)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	var added, removed []string
-
-	for _, p := range podcasts {
-		if p.Subscribed {
-			added = append(added, p.URL)
-		} else {
-			removed = append(removed, p.URL)
-		}
-	}
-
-	return added, removed, nil
 }
 
 func (s *SubscriptionsSrv) ReplaceDeviceSubscriptions(ctx context.Context, //nolint:cyclop

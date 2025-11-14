@@ -100,7 +100,7 @@ func (s *simpleResource) downloadSubscriptions(
 	user := internal.ContextUser(ctx)
 	deviceid := internal.ContextDevice(ctx)
 
-	subs, err := s.subServ.GetDeviceSubscriptions(ctx, user, deviceid, time.Time{})
+	subs, err := s.subServ.GetSubscriptions(ctx, user, deviceid, time.Time{})
 	if err != nil {
 		internal.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Str("mod", "api").Msg("get device subscriptions error")

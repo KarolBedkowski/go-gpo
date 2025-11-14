@@ -92,11 +92,11 @@ func TestSubsServiceDevice(t *testing.T) {
 	assert.Equal(t, subs, newSubscribed2)
 
 	// all devices should have the same subscriptions list
-	subs, err = subsSrv.GetDeviceSubscriptions(ctx, "user1", "dev1", time.Time{})
+	subs, err = subsSrv.GetSubscriptions(ctx, "user1", "dev1", time.Time{})
 	assert.NoErr(t, err)
 	assert.Equal(t, subs, newSubscribed2)
 
-	subs, err = subsSrv.GetDeviceSubscriptions(ctx, "user1", "dev2", time.Time{})
+	subs, err = subsSrv.GetSubscriptions(ctx, "user1", "dev2", time.Time{})
 	assert.NoErr(t, err)
 	assert.Equal(t, subs, newSubscribed2)
 }
@@ -195,14 +195,12 @@ func TestSubsServiceUpdateDevSubsChanges(t *testing.T) {
 		time.Date(2025, 1, 2, 11, 0, 0, 0, time.UTC))
 	assert.NoErr(t, err)
 	assert.EqualSorted(t, state.RemovedURLs(), []string{"http://example.com/p1"})
-	assert.Equal(t, len(state.Added), 2)
 	assert.EqualSorted(t, state.AddedURLs(), []string{"http://example.com/p4", "http://example.com/p5"})
 
 	// check for other device; should be the same
-	addedurl, removed, err := subsSrv.GetDeviceSubscriptionChanges(ctx, "user1", "dev2",
+	state, err = subsSrv.GetSubscriptionChanges(ctx, "user1", "dev2",
 		time.Date(2025, 1, 2, 11, 0, 0, 0, time.UTC))
 	assert.NoErr(t, err)
-	assert.EqualSorted(t, removed, []string{"http://example.com/p1"})
-	assert.Equal(t, len(addedurl), 2)
-	assert.EqualSorted(t, addedurl, []string{"http://example.com/p4", "http://example.com/p5"})
+	assert.EqualSorted(t, state.RemovedURLs(), []string{"http://example.com/p1"})
+	assert.EqualSorted(t, state.AddedURLs(), []string{"http://example.com/p4", "http://example.com/p5"})
 }

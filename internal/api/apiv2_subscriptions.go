@@ -67,7 +67,7 @@ func (sr subscriptionsResource) devSubscriptions(
 		sinceTS = time.Unix(ts, 0)
 	}
 
-	added, removed, err := sr.subsSrv.GetDeviceSubscriptionChanges(ctx, user, deviceid, sinceTS)
+	state, err := sr.subsSrv.GetSubscriptionChanges(ctx, user, deviceid, sinceTS)
 	if err != nil {
 		internal.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).
@@ -83,8 +83,8 @@ func (sr subscriptionsResource) devSubscriptions(
 		Remove    []string `json:"remove"`
 		Timestamp int64    `json:"timestamp"`
 	}{
-		Add:       ensureList(added),
-		Remove:    ensureList(removed),
+		Add:       state.AddedURLs(),
+		Remove:    state.RemovedURLs(),
 		Timestamp: time.Now().Unix(),
 	}
 
