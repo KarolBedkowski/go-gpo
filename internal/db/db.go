@@ -46,7 +46,7 @@ func (r *Database) Connect(ctx context.Context, driver, connstr string) error {
 		return err
 	}
 
-	logger := log.Ctx(ctx).With().Str("mod", "db").Logger()
+	logger := log.Ctx(ctx).With().Logger()
 	logger.Info().Msgf("connecting to %q %q", driver, connstr)
 
 	r.db, err = sqlx.Open(driver, connstr)
@@ -75,6 +75,7 @@ func (r *Database) RegisterMetrics() {
 	prometheus.DefaultRegisterer.MustRegister(collectors.NewDBStatsCollector(r.db.DB, "main"))
 }
 
+// Shutdown close database. Called by samber/do.
 func (r *Database) Shutdown(ctx context.Context) error {
 	if r.db == nil {
 		return nil
@@ -85,7 +86,7 @@ func (r *Database) Shutdown(ctx context.Context) error {
 	}
 
 	logger := log.Ctx(ctx)
-	logger.Debug().Str("mod", "db").Msg("db closed")
+	logger.Debug().Msg("db closed")
 
 	return nil
 }
@@ -165,37 +166,6 @@ func (r *Database) CloseConnection(ctx context.Context, conn *sqlx.Conn) {
 	if err := conn.Close(); err != nil {
 		log.Logger.Error().Err(err).Msg("close connection failed")
 	}
-}
-
-func (r *Database) InTransaction(ctx context.Context, fun func(repository.DBContext) error) error {
-	conn, err := r.GetConnection(ctx)
-	if err != nil {
-		return err
-	}
-
-	defer r.CloseConnection(ctx, conn)
-
-	tx, err := conn.BeginTxx(ctx, nil)
-	if err != nil {
-		return aerr.ApplyFor(aerr.ErrDatabase, err, "begin tx failed")
-	}
-
-	err = fun(tx)
-	if err != nil {
-		if err := tx.Rollback(); err != nil {
-			merr := errors.Join(err, fmt.Errorf("commit error: %w", err))
-
-			return aerr.ApplyFor(aerr.ErrDatabase, merr, "execute func in trans and rollback error")
-		}
-
-		return err
-	}
-
-	if err := tx.Commit(); err != nil {
-		return aerr.ApplyFor(aerr.ErrDatabase, err, "commit tx failed")
-	}
-
-	return nil
 }
 
 func (r *Database) Maintenance(ctx context.Context) error {
@@ -330,6 +300,37 @@ func InConnectionR[T any](ctx context.Context, r *Database,
 	}
 
 	return res, nil
+}
+
+func InTransaction(ctx context.Context, r *Database, fun func(repository.DBContext) error) error {
+	conn, err := r.GetConnection(ctx)
+	if err != nil {
+		return err
+	}
+
+	defer r.CloseConnection(ctx, conn)
+
+	tx, err := conn.BeginTxx(ctx, nil)
+	if err != nil {
+		return aerr.ApplyFor(aerr.ErrDatabase, err, "begin tx failed")
+	}
+
+	err = fun(tx)
+	if err != nil {
+		if err := tx.Rollback(); err != nil {
+			merr := errors.Join(err, fmt.Errorf("commit error: %w", err))
+
+			return aerr.ApplyFor(aerr.ErrDatabase, merr, "execute func in trans and rollback error")
+		}
+
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return aerr.ApplyFor(aerr.ErrDatabase, err, "commit tx failed")
+	}
+
+	return nil
 }
 
 // InTransactionR run `fun` in db transactions; return `fun` result and error.

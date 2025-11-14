@@ -43,7 +43,7 @@ func (d *DevicesSrv) UpdateDevice(ctx context.Context, updateddev *model.Updated
 	}
 
 	//nolint:wrapcheck
-	return d.db.InTransaction(ctx, func(tx repository.DBContext) error {
+	return db.InTransaction(ctx, d.db, func(tx repository.DBContext) error {
 		user, err := d.usersRepo.GetUser(ctx, tx, updateddev.UserName)
 		if errors.Is(err, repository.ErrNoData) {
 			return ErrUnknownUser

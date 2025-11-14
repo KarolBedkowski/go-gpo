@@ -68,7 +68,7 @@ func (s *SubscriptionsSrv) ReplaceSubscriptions(ctx context.Context, //nolint:cy
 	}
 
 	//nolint:wrapcheck
-	return s.db.InTransaction(ctx, func(dbctx repository.DBContext) error {
+	return db.InTransaction(ctx, s.db, func(dbctx repository.DBContext) error {
 		user, err := s.getUser(ctx, dbctx, username)
 		if err != nil {
 			return err
@@ -134,7 +134,7 @@ func (s *SubscriptionsSrv) ApplySubscriptionChanges( //nolint:cyclop
 	}
 
 	//nolint:wrapcheck
-	return s.db.InTransaction(ctx, func(dbctx repository.DBContext) error {
+	return db.InTransaction(ctx, s.db, func(dbctx repository.DBContext) error {
 		user, err := s.getUser(ctx, dbctx, username)
 		if err != nil {
 			return err

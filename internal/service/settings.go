@@ -79,7 +79,7 @@ func (s SettingsSrv) SaveSettings(ctx context.Context, key *model.SettingsKey, s
 	}
 
 	//nolint:wrapcheck
-	return s.db.InTransaction(ctx, func(dbctx repository.DBContext) error {
+	return db.InTransaction(ctx, s.db, func(dbctx repository.DBContext) error {
 		setkey, err := s.newSettingKeys(ctx, dbctx, key)
 		if err != nil {
 			return err

@@ -121,7 +121,7 @@ func (u *UsersSrv) ChangePassword(ctx context.Context, userpass *model.UserPassw
 	}
 
 	//nolint: wrapcheck
-	return u.db.InTransaction(ctx, func(dbctx repository.DBContext) error {
+	return db.InTransaction(ctx, u.db, func(dbctx repository.DBContext) error {
 		// is user exists?
 		udb, err := u.usersRepo.GetUser(ctx, dbctx, userpass.Username)
 		if errors.Is(err, repository.ErrNoData) {
@@ -168,7 +168,7 @@ func (u *UsersSrv) LockAccount(ctx context.Context, la model.LockAccount) error 
 	}
 
 	//nolint:wrapcheck
-	return u.db.InTransaction(ctx, func(dbctx repository.DBContext) error {
+	return db.InTransaction(ctx, u.db, func(dbctx repository.DBContext) error {
 		udb, err := u.usersRepo.GetUser(ctx, dbctx, la.Username)
 		if errors.Is(err, repository.ErrNoData) {
 			return ErrUnknownUser

@@ -87,7 +87,7 @@ func (s *SessionStore) Release() error {
 
 	ctx := context.Background()
 
-	err = s.db.InTransaction(ctx, func(tx repository.DBContext) error {
+	err = db.InTransaction(ctx, s.db, func(tx repository.DBContext) error {
 		return s.repo.SaveSession(ctx, tx, s.sid, data)
 	})
 	if err != nil {
@@ -171,7 +171,7 @@ func (p *SessionProvider) Exist(sid string) (bool, error) {
 func (p *SessionProvider) Destroy(sid string) error {
 	ctx := context.Background()
 
-	err := p.db.InTransaction(ctx, func(tx repository.DBContext) error {
+	err := db.InTransaction(ctx, p.db, func(tx repository.DBContext) error {
 		return p.repo.DeleteSession(ctx, tx, sid)
 	})
 	if err != nil {
@@ -226,7 +226,7 @@ func (p *SessionProvider) GC() {
 
 	ctx := context.Background()
 
-	err := p.db.InTransaction(ctx, func(dbctx repository.DBContext) error {
+	err := db.InTransaction(ctx, p.db, func(dbctx repository.DBContext) error {
 		return p.repo.CleanSessions(ctx, dbctx, time.Duration(p.maxlifetime)*time.Second, 2*time.Hour) //nolint:mnd
 	})
 	if err != nil {

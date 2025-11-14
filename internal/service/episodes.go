@@ -70,7 +70,7 @@ func (e *EpisodesSrv) AddActiong(ctx context.Context, username string, action ..
 	}
 
 	//nolint:wrapcheck
-	return e.db.InTransaction(ctx, func(dbctx repository.DBContext) error {
+	return db.InTransaction(ctx, e.db, func(dbctx repository.DBContext) error {
 		user, err := e.usersRepo.GetUser(ctx, dbctx, username)
 		if errors.Is(err, repository.ErrNoData) {
 			return ErrUnknownUser
