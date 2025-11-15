@@ -24,7 +24,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
-func prepareTests(ctx context.Context, t *testing.T) *do.RootScope {
+func prepareTests(t *testing.T) (context.Context, *do.RootScope) {
 	t.Helper()
 
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
@@ -32,6 +32,7 @@ func prepareTests(ctx context.Context, t *testing.T) *do.RootScope {
 	stdlog.SetFlags(0)
 	stdlog.SetOutput(log.Logger)
 
+	ctx := log.Logger.WithContext(context.Background())
 	i := do.New(Package, db.Package, repository.Package)
 
 	db := do.MustInvoke[*db.Database](i)
@@ -43,7 +44,7 @@ func prepareTests(ctx context.Context, t *testing.T) *do.RootScope {
 		t.Fatalf("prepare db error: %#+v", err)
 	}
 
-	return i
+	return ctx, i
 }
 
 func prepareTestUser(ctx context.Context, t *testing.T, i do.Injector, name string) int64 {

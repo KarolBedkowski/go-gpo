@@ -8,11 +8,9 @@ package service
 //
 
 import (
-	"context"
 	"testing"
 	"time"
 
-	"github.com/rs/zerolog/log"
 	"github.com/samber/do/v2"
 
 	"gitlab.com/kabes/go-gpo/internal/assert"
@@ -20,12 +18,10 @@ import (
 )
 
 func TestSubsServiceUser(t *testing.T) {
-	ctx := context.Background()
-	i := prepareTests(ctx, t)
+	ctx, i := prepareTests(t)
 	subsSrv := do.MustInvoke[*SubscriptionsSrv](i)
 	_ = prepareTestUser(ctx, t, i, "user1")
 	prepareTestDevice(ctx, t, i, "user1", "dev1")
-	_ = subsSrv
 
 	newSubscribed := []string{
 		"http://example.com/p1",
@@ -56,8 +52,7 @@ func TestSubsServiceUser(t *testing.T) {
 }
 
 func TestSubsServiceDevice(t *testing.T) {
-	ctx := context.Background()
-	i := prepareTests(ctx, t)
+	ctx, i := prepareTests(t)
 	subsSrv := do.MustInvoke[*SubscriptionsSrv](i)
 	deviceSrv := do.MustInvoke[*DevicesSrv](i)
 	_ = prepareTestUser(ctx, t, i, "user1")
@@ -102,9 +97,7 @@ func TestSubsServiceDevice(t *testing.T) {
 }
 
 func TestSubsServiceChanges(t *testing.T) {
-	ctx := context.Background()
-	i := prepareTests(ctx, t)
-	ctx = log.Logger.WithContext(ctx)
+	ctx, i := prepareTests(t)
 	subsSrv := do.MustInvoke[*SubscriptionsSrv](i)
 	_ = prepareTestUser(ctx, t, i, "user1")
 	prepareTestDevice(ctx, t, i, "user1", "dev1")
@@ -159,9 +152,7 @@ func TestSubsServiceChanges(t *testing.T) {
 }
 
 func TestSubsServiceUpdateDevSubsChanges(t *testing.T) {
-	ctx := context.Background()
-	i := prepareTests(ctx, t)
-	ctx = log.Logger.WithContext(ctx)
+	ctx, i := prepareTests(t)
 	subsSrv := do.MustInvoke[*SubscriptionsSrv](i)
 	_ = prepareTestUser(ctx, t, i, "user1")
 	prepareTestDevice(ctx, t, i, "user1", "dev1")

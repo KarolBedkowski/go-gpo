@@ -7,7 +7,6 @@ package service
 // Distributed under terms of the GPLv3 license.
 //
 import (
-	"context"
 	"testing"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -18,8 +17,7 @@ import (
 )
 
 func TestDevice(t *testing.T) {
-	ctx := context.Background()
-	i := prepareTests(ctx, t)
+	ctx, i := prepareTests(t)
 	deviceSrv := do.MustInvoke[*DevicesSrv](i)
 	_ = prepareTestUser(ctx, t, i, "test")
 

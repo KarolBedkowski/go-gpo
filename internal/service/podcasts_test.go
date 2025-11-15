@@ -7,7 +7,6 @@ package service
 // Distributed under terms of the GPLv3 license.
 //
 import (
-	"context"
 	"testing"
 
 	"github.com/samber/do/v2"
@@ -16,8 +15,7 @@ import (
 )
 
 func TestPodcastsServiceUserPodcasts(t *testing.T) {
-	ctx := context.Background()
-	i := prepareTests(ctx, t)
+	ctx, i := prepareTests(t)
 	podcastsSrv := do.MustInvoke[*PodcastsSrv](i)
 	_ = prepareTestUser(ctx, t, i, "user1")
 	_ = prepareTestUser(ctx, t, i, "user2")
@@ -41,8 +39,7 @@ func TestPodcastsServiceUserPodcasts(t *testing.T) {
 }
 
 func TestPodcastsServiceUserPodcastsExt(t *testing.T) {
-	ctx := context.Background()
-	i := prepareTests(ctx, t)
+	ctx, i := prepareTests(t)
 	podcastsSrv := do.MustInvoke[*PodcastsSrv](i)
 	_ = prepareTestUser(ctx, t, i, "user1")
 	_ = prepareTestUser(ctx, t, i, "user2")

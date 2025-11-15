@@ -8,20 +8,16 @@ package service
 //
 
 import (
-	"context"
 	"testing"
 	"time"
 
-	"github.com/rs/zerolog/log"
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/assert"
 	"gitlab.com/kabes/go-gpo/internal/model"
 )
 
 func TestEpisodesServiceSave(t *testing.T) {
-	ctx := context.Background()
-	i := prepareTests(ctx, t)
-	ctx = log.Logger.WithContext(ctx)
+	ctx, i := prepareTests(t)
 	episodesSrv := do.MustInvoke[*EpisodesSrv](i)
 	_ = prepareTestUser(ctx, t, i, "user1")
 	_ = prepareTestUser(ctx, t, i, "user2")
@@ -95,9 +91,7 @@ func TestEpisodesServiceSave(t *testing.T) {
 }
 
 func TestEpisodesServiceActions(t *testing.T) {
-	ctx := context.Background()
-	i := prepareTests(ctx, t)
-	ctx = log.Logger.WithContext(ctx)
+	ctx, i := prepareTests(t)
 	episodesSrv := do.MustInvoke[*EpisodesSrv](i)
 	_ = prepareTestUser(ctx, t, i, "user1")
 	_ = prepareTestUser(ctx, t, i, "user2")
@@ -161,9 +155,7 @@ func TestEpisodesServiceActions(t *testing.T) {
 }
 
 func TestEpisodesServiceUpdates(t *testing.T) {
-	ctx := context.Background()
-	i := prepareTests(ctx, t)
-	ctx = log.Logger.WithContext(ctx)
+	ctx, i := prepareTests(t)
 	episodesSrv := do.MustInvoke[*EpisodesSrv](i)
 	_ = prepareTestUser(ctx, t, i, "user1")
 	_ = prepareTestUser(ctx, t, i, "user2")
@@ -231,9 +223,7 @@ func TestEpisodesServiceUpdates(t *testing.T) {
 }
 
 func TestEpisodesServiceLastEpisodes(t *testing.T) {
-	ctx := context.Background()
-	i := prepareTests(ctx, t)
-	ctx = log.Logger.WithContext(ctx)
+	ctx, i := prepareTests(t)
 	episodesSrv := do.MustInvoke[*EpisodesSrv](i)
 	_ = prepareTestUser(ctx, t, i, "user1")
 	_ = prepareTestUser(ctx, t, i, "user2")
@@ -289,9 +279,7 @@ func TestEpisodesServiceLastEpisodes(t *testing.T) {
 }
 
 func TestEpisodesServiceFavorites(t *testing.T) {
-	ctx := context.Background()
-	i := prepareTests(ctx, t)
-	ctx = log.Logger.WithContext(ctx)
+	ctx, i := prepareTests(t)
 	episodesSrv := do.MustInvoke[*EpisodesSrv](i)
 	settSrv := do.MustInvoke[*SettingsSrv](i)
 	_ = prepareTestUser(ctx, t, i, "user1")
@@ -331,9 +319,7 @@ func TestEpisodesServiceFavorites(t *testing.T) {
 }
 
 func TestEpisodesServiceNewDevPodcast(t *testing.T) {
-	ctx := context.Background()
-	i := prepareTests(ctx, t)
-	ctx = log.Logger.WithContext(ctx)
+	ctx, i := prepareTests(t)
 	episodesSrv := do.MustInvoke[*EpisodesSrv](i)
 	_ = prepareTestUser(ctx, t, i, "user1")
 	_ = prepareTestUser(ctx, t, i, "user2")
