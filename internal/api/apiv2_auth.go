@@ -59,6 +59,7 @@ func (ar authResource) logout(ctx context.Context, w http.ResponseWriter, r *htt
 		return
 	}
 
+	sess.Flush()
 	_ = sess.Destroy(w, r)
 
 	w.WriteHeader(http.StatusOK)

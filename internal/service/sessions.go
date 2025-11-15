@@ -75,14 +75,17 @@ func (s *SessionStore) ID() string {
 func (s *SessionStore) Release() error {
 	log.Logger.Debug().Str("mod", "session_store").Msgf("session release: %+v", s.data)
 
-	// Skip encoding if the data is empty
-	if len(s.data) == 0 {
-		return nil
-	}
+	var (
+		data []byte
+		err  error
+	)
 
-	data, err := session.EncodeGob(s.data)
-	if err != nil {
-		return fmt.Errorf("session encode error: %w", err)
+	// Skip encoding if the data is empty
+	if len(s.data) > 0 {
+		data, err = session.EncodeGob(s.data)
+		if err != nil {
+			return fmt.Errorf("session encode error: %w", err)
+		}
 	}
 
 	ctx := context.Background()
