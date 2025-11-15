@@ -33,6 +33,7 @@ type DevicesRepository interface {
 	GetDevice(ctx context.Context, db DBContext, userid int64, devicename string) (DeviceDB, error)
 	SaveDevice(ctx context.Context, db DBContext, device *DeviceDB) (int64, error)
 	ListDevices(ctx context.Context, db DBContext, userid int64) (DevicesDB, error)
+	DeleteDevice(ctx context.Context, db DBContext, deviceid int64) error
 }
 
 type UsersRepository interface {

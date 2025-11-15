@@ -78,7 +78,7 @@ func main() {
 				Name:      "database",
 				Value:     "database.sqlite",
 				Usage:     "Database file",
-				Aliases:   []string{"d"},
+				Aliases:   []string{"D"},
 				Sources:   cli.EnvVars("GOGPO_DB"),
 				Validator: dbConnstrValidator,
 				Config:    cli.StringConfig{TrimSpace: true},
@@ -104,6 +104,7 @@ func main() {
 			listCmd(),
 			databaseSubCmd(),
 			usersSubCmd(),
+			devicesSubCmd(),
 		},
 	}
 
@@ -114,7 +115,9 @@ func main() {
 			fmt.Printf("Error: %s\n", err.Error())
 		}
 
-		// TODO: verbose log
+		if cmd.String("log.level") == "debug" {
+			fmt.Printf("Error: %#+v\n", err)
+		}
 	}
 }
 
@@ -352,4 +355,89 @@ func dbConnstrValidator(connstr string) error {
 	}
 
 	return nil
+}
+
+func devicesSubCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "device",
+		Usage: "manage devices",
+		Commands: []*cli.Command{
+			updateDeviceCmd(),
+			deleteDeviceCmd(),
+			listDeviceCmd(),
+		},
+	}
+}
+
+func updateDeviceCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "update",
+		Usage: "add or update device",
+		Flags: []cli.Flag{
+			&cli.StringFlag{Name: "username", Required: true, Aliases: []string{"u"}},
+			&cli.StringFlag{Name: "device", Required: true, Aliases: []string{"d"}},
+			&cli.StringFlag{
+				Name: "type", Required: false, Aliases: []string{"t"}, Value: "mobile",
+				Usage: "device type (desktop, laptop, mobile, server, other)",
+			},
+			&cli.StringFlag{Name: "caption", Required: false, Aliases: []string{"c"}},
+		},
+		Action: func(ctx context.Context, c *cli.Command) error {
+			initializeLogger(c.String("log.level"), c.String("log.format"))
+
+			s := cmd.UpdateDevice{
+				Database:      c.String("database"),
+				Username:      c.String("username"),
+				DeviceName:    c.String("device"),
+				DeviceType:    c.String("type"),
+				DeviceCaption: c.String("caption"),
+			}
+
+			return s.Start(log.Logger.WithContext(ctx))
+		},
+	}
+}
+
+func deleteDeviceCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "delete",
+		Usage: "delete device",
+		Flags: []cli.Flag{
+			&cli.StringFlag{Name: "username", Required: true, Aliases: []string{"u"}},
+			&cli.StringFlag{Name: "device", Required: true, Aliases: []string{"d"}},
+		},
+		Action: func(ctx context.Context, c *cli.Command) error {
+			initializeLogger(c.String("log.level"), c.String("log.format"))
+
+			s := cmd.DeleteDevice{
+				Database:   c.String("database"),
+				Username:   c.String("username"),
+				DeviceName: c.String("device"),
+			}
+
+			return s.Start(log.Logger.WithContext(ctx))
+		},
+	}
+}
+
+func listDeviceCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "list",
+		Usage: "list devices",
+		Flags: []cli.Flag{
+			&cli.StringFlag{Name: "username", Required: true, Aliases: []string{"u"}},
+		},
+		Action: func(ctx context.Context, c *cli.Command) error {
+			initializeLogger(c.String("log.level"), c.String("log.format"))
+
+			s := cmd.List{
+				Database: c.String("database"),
+				Username: c.String("username"),
+				DeviceID: c.String("device"),
+				Object:   "devices",
+			}
+
+			return s.Start(log.Logger.WithContext(ctx))
+		},
+	}
 }

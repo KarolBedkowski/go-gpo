@@ -64,7 +64,8 @@ func (s SqliteRepository) ListEpisodeActions(
 
 	query := "SELECT e.id, e.podcast_id, e.url, e.title, e.action, e.started, e.position, e.total, e.guid, " +
 		" e.created_at, e.updated_at, p.url as podcast_url, p.title as podcast_title, d.name as device_name " +
-		"FROM episodes e JOIN podcasts p on p.id = e.podcast_id JOIN devices d on d.id=e.device_id " +
+		"FROM episodes e JOIN podcasts p on p.id = e.podcast_id " +
+		"LEFT JOIN devices d on d.id=e.device_id " +
 		"WHERE p.user_id=? AND e.updated_at > ?"
 	args := []any{userid, since}
 

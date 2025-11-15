@@ -54,7 +54,7 @@ func (d *DevicesSrv) UpdateDevice(ctx context.Context, updateddev *model.Updated
 		device, err := d.devicesRepo.GetDevice(ctx, tx, user.ID, updateddev.DeviceName)
 		if errors.Is(err, repository.ErrNoData) {
 			// new device
-			device = repository.DeviceDB{UserID: user.ID, Name: updateddev.DeviceName, DevType: "other"}
+			device = repository.DeviceDB{UserID: user.ID, Name: updateddev.DeviceName}
 		} else if err != nil {
 			return aerr.Wrapf(err, "get device from repo failed")
 		}
@@ -99,5 +99,38 @@ func (d *DevicesSrv) ListDevices(ctx context.Context, username string) ([]model.
 		}
 
 		return res, nil
+	})
+}
+
+func (d *DevicesSrv) DeleteDevice(ctx context.Context, username, devicename string) error {
+	if username == "" {
+		return ErrEmptyUsername
+	}
+
+	if devicename == "" {
+		return aerr.ErrValidation.WithMsg("device can't be empty")
+	}
+
+	//nolint:wrapcheck
+	return db.InTransaction(ctx, d.db, func(tx repository.DBContext) error {
+		user, err := d.usersRepo.GetUser(ctx, tx, username)
+		if errors.Is(err, repository.ErrNoData) {
+			return ErrUnknownUser
+		} else if err != nil {
+			return aerr.ApplyFor(ErrRepositoryError, err)
+		}
+
+		device, err := d.devicesRepo.GetDevice(ctx, tx, user.ID, devicename)
+		if errors.Is(err, repository.ErrNoData) {
+			return ErrUnknownDevice
+		} else if err != nil {
+			return aerr.Wrapf(err, "get device from repo failed")
+		}
+
+		if err = d.devicesRepo.DeleteDevice(ctx, tx, device.ID); err != nil {
+			return aerr.Wrapf(err, "save device failed")
+		}
+
+		return nil
 	})
 }

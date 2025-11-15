@@ -115,3 +115,20 @@ func (s SqliteRepository) ListDevices(ctx context.Context, dbctx DBContext, user
 
 	return res, nil
 }
+
+func (s SqliteRepository) DeleteDevice(ctx context.Context, dbctx DBContext, deviceid int64) error {
+	logger := log.Ctx(ctx).With().Logger()
+	logger.Debug().Int64("device_id", deviceid).Msg("delete device")
+
+	_, err := dbctx.ExecContext(ctx, "UPDATE episodes SET device_id=NULL WHERE device_id=?", deviceid)
+	if err != nil {
+		return aerr.Wrapf(err, "delete device failed")
+	}
+
+	_, err = dbctx.ExecContext(ctx, "DELETE FROM devices where id=?", deviceid)
+	if err != nil {
+		return aerr.Wrapf(err, "delete device failed")
+	}
+
+	return nil
+}
