@@ -77,16 +77,18 @@ func (r *Database) RegisterMetrics(queryTime bool) {
 	// gather stats from database
 	prometheus.DefaultRegisterer.MustRegister(collectors.NewDBStatsCollector(r.db.DB, "main"))
 
-	r.queryDuration = prometheus.NewHistogramVec(
-		prometheus.HistogramOpts{
-			Name:    "database_query_duration_seconds",
-			Help:    "Tracks the latencies for database queries.",
-			Buckets: []float64{0.1, 0.5, 1, 2, 5, 10},
-		},
-		[]string{"caller"},
-	)
+	if queryTime {
+		r.queryDuration = prometheus.NewHistogramVec(
+			prometheus.HistogramOpts{
+				Name:    "database_query_duration_seconds",
+				Help:    "Tracks the latencies for database queries.",
+				Buckets: []float64{0.1, 0.5, 1, 2, 5, 10},
+			},
+			[]string{"caller"},
+		)
 
-	prometheus.DefaultRegisterer.MustRegister(r.queryDuration)
+		prometheus.DefaultRegisterer.MustRegister(r.queryDuration)
+	}
 }
 
 // Shutdown close database. Called by samber/do.
