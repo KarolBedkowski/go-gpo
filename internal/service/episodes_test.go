@@ -35,7 +35,7 @@ func TestEpisodesServiceSave(t *testing.T) {
 	)
 
 	episodeActions := prepareEpisodes()
-	err := episodesSrv.AddActiong(ctx, "user1", episodeActions...)
+	err := episodesSrv.AddAction(ctx, "user1", episodeActions...)
 	assert.NoErr(t, err)
 
 	// get last action for each episodes
@@ -109,7 +109,7 @@ func TestEpisodesServiceActions(t *testing.T) {
 	)
 
 	episodeActions := prepareEpisodes()
-	err := episodesSrv.AddActiong(ctx, "user1", episodeActions...)
+	err := episodesSrv.AddAction(ctx, "user1", episodeActions...)
 	assert.NoErr(t, err)
 
 	// get all
@@ -173,7 +173,7 @@ func TestEpisodesServiceUpdates(t *testing.T) {
 	)
 
 	episodeActions := prepareEpisodes()
-	err := episodesSrv.AddActiong(ctx, "user1", episodeActions...)
+	err := episodesSrv.AddAction(ctx, "user1", episodeActions...)
 	assert.NoErr(t, err)
 
 	// without device, no include actions (last action only)
@@ -241,7 +241,7 @@ func TestEpisodesServiceLastEpisodes(t *testing.T) {
 	)
 
 	episodeActions := prepareEpisodes()
-	err := episodesSrv.AddActiong(ctx, "user1", episodeActions...)
+	err := episodesSrv.AddAction(ctx, "user1", episodeActions...)
 	assert.NoErr(t, err)
 
 	actions, err := episodesSrv.GetLastActions(ctx, "user1",
@@ -298,7 +298,7 @@ func TestEpisodesServiceFavorites(t *testing.T) {
 	)
 
 	episodeActions := prepareEpisodes()
-	err := episodesSrv.AddActiong(ctx, "user1", episodeActions...)
+	err := episodesSrv.AddAction(ctx, "user1", episodeActions...)
 	assert.NoErr(t, err)
 
 	setkey := model.NewSettingsKey("user1", "episode", "dev1",
@@ -342,7 +342,7 @@ func TestEpisodesServiceNewDevPodcast(t *testing.T) {
 		Timestamp: time.Date(2025, 1, 5, 3, 4, 5, 0, time.UTC),
 	}
 
-	err := episodesSrv.AddActiong(ctx, "user1", action)
+	err := episodesSrv.AddAction(ctx, "user1", action)
 	assert.NoErr(t, err)
 
 	episodes, err := episodesSrv.GetEpisodes(ctx, "user1", "dev1", "")

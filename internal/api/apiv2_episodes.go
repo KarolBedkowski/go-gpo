@@ -86,7 +86,7 @@ func (er episodesResource) uploadEpisodeActions(
 
 	user := internal.ContextUser(ctx)
 
-	if err := er.episodesSrv.AddActiong(ctx, user, actions...); err != nil {
+	if err := er.episodesSrv.AddAction(ctx, user, actions...); err != nil {
 		internal.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).
 			Err(err).Msg("save episodes error")

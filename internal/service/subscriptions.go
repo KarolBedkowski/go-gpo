@@ -60,6 +60,7 @@ func (s *SubscriptionsSrv) GetSubscriptions(ctx context.Context, username, devic
 	return s.getSubsctiptions(ctx, username, devicename, since)
 }
 
+// ReplaceSubscriptions replace all subscriptions for given user. Create device when no exists.
 func (s *SubscriptionsSrv) ReplaceSubscriptions(ctx context.Context, //nolint:cyclop
 	username, devicename string, currentSubs model.SubscribedURLs, timestamp time.Time,
 ) error {

@@ -102,7 +102,7 @@ func prepareTestEpisode(ctx context.Context, t *testing.T, i do.Injector,
 			Timestamp: time.Date(2025, 1, 5, 3, 4, 5, 0, time.UTC),
 		}
 
-		err := episodesSrv.AddActiong(ctx, username, action)
+		err := episodesSrv.AddAction(ctx, username, action)
 		assert.NoErr(t, err)
 	}
 }

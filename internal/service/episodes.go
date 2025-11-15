@@ -62,9 +62,9 @@ func (e *EpisodesSrv) GetEpisodes(ctx context.Context, username, devicename, pod
 	})
 }
 
-// AddActiong save new actions.
+// AddAction save new actions.
 // Podcasts and devices are cached and - if not exists for requested action - created.
-func (e *EpisodesSrv) AddActiong(ctx context.Context, username string, action ...model.Episode) error {
+func (e *EpisodesSrv) AddAction(ctx context.Context, username string, action ...model.Episode) error {
 	if username == "" {
 		return ErrEmptyUsername
 	}
