@@ -47,7 +47,7 @@ func (s SqliteRepository) SaveUser(ctx context.Context, dbctx DBContext, user *U
 		res, err := dbctx.ExecContext(ctx,
 			"INSERT INTO users (username, password, email, name, created_at, updated_at) "+
 				"VALUES(?, ?, ?, ?, ?, ?)",
-			user.Username, user.Password, user.Email, user.Name, time.Now(), time.Now())
+			user.Username, user.Password, user.Email, user.Name, time.Now().UTC(), time.Now().UTC())
 		if err != nil {
 			return 0, aerr.Wrapf(err, "insert user failed").WithTag(aerr.InternalError)
 		}
@@ -65,7 +65,7 @@ func (s SqliteRepository) SaveUser(ctx context.Context, dbctx DBContext, user *U
 
 	_, err := dbctx.ExecContext(ctx,
 		"UPDATE users SET password=?, email=?, name=?, updated_at=? WHERE id=?",
-		user.Password, user.Email, user.Name, time.Now(), user.ID)
+		user.Password, user.Email, user.Name, time.Now().UTC(), user.ID)
 	if err != nil {
 		return 0, aerr.Wrapf(err, "update user failed").WithTag(aerr.InternalError)
 	}

@@ -85,7 +85,7 @@ func (u updatesResource) getUpdates(
 		Add:        model.Map(state.Added, newPodcastFromModel),
 		Remove:     state.RemovedURLs(),
 		Updates:    model.Map(updates, newEpisodeUpdateFromModel),
-		Timestamps: time.Now().Unix(),
+		Timestamps: time.Now().UTC().Unix(),
 	}
 
 	render.JSON(w, r, &result)

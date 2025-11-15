@@ -29,7 +29,7 @@ func TestSubsServiceUser(t *testing.T) {
 		"http://example.com/p3",
 	}
 
-	err := subsSrv.ReplaceSubscriptions(ctx, "user1", "dev1", model.NewSubscribedURLS(newSubscribed), time.Now())
+	err := subsSrv.ReplaceSubscriptions(ctx, "user1", "dev1", model.NewSubscribedURLS(newSubscribed), time.Now().UTC())
 	assert.NoErr(t, err)
 
 	// getsubs
@@ -43,7 +43,7 @@ func TestSubsServiceUser(t *testing.T) {
 		"http://example.com/p5",
 	}
 
-	err = subsSrv.ReplaceSubscriptions(ctx, "user1", "dev1", model.NewSubscribedURLS(newSubscribed2), time.Now())
+	err = subsSrv.ReplaceSubscriptions(ctx, "user1", "dev1", model.NewSubscribedURLS(newSubscribed2), time.Now().UTC())
 	assert.NoErr(t, err)
 
 	// getsubs
@@ -64,7 +64,7 @@ func TestSubsServiceDevice(t *testing.T) {
 		"http://example.com/p3",
 	}
 
-	err := subsSrv.ReplaceSubscriptions(ctx, "user1", "dev1", model.NewSubscribedURLS(newSubscribed), time.Now())
+	err := subsSrv.ReplaceSubscriptions(ctx, "user1", "dev1", model.NewSubscribedURLS(newSubscribed), time.Now().UTC())
 	assert.NoErr(t, err)
 
 	// replace with other device
@@ -75,7 +75,7 @@ func TestSubsServiceDevice(t *testing.T) {
 	}
 
 	// new device - should be created
-	err = subsSrv.ReplaceSubscriptions(ctx, "user1", "dev2", model.NewSubscribedURLS(newSubscribed2), time.Now())
+	err = subsSrv.ReplaceSubscriptions(ctx, "user1", "dev2", model.NewSubscribedURLS(newSubscribed2), time.Now().UTC())
 	assert.NoErr(t, err)
 
 	devices, err := deviceSrv.ListDevices(ctx, "user1")

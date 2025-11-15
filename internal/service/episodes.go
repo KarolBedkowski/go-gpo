@@ -112,7 +112,7 @@ func (e *EpisodesSrv) AddAction(ctx context.Context, username string, action ...
 		}
 
 		for _, deviceid := range devicescache.GetUsedValues() {
-			if err := e.devicesRepo.MarkSeen(ctx, dbctx, time.Now(), *deviceid); err != nil {
+			if err := e.devicesRepo.MarkSeen(ctx, dbctx, time.Now().UTC(), *deviceid); err != nil {
 				return aerr.ApplyFor(ErrRepositoryError, err)
 			}
 		}
@@ -345,7 +345,7 @@ func (e *EpisodesSrv) getDeviceID(
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
-	if err := e.devicesRepo.MarkSeen(ctx, dbctx, time.Now(), device.ID); err != nil {
+	if err := e.devicesRepo.MarkSeen(ctx, dbctx, time.Now().UTC(), device.ID); err != nil {
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 

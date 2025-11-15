@@ -39,7 +39,7 @@ func (s SqliteRepository) SaveSession(ctx context.Context, dbctx DBContext, sid 
 
 	_, err := dbctx.ExecContext(ctx,
 		"UPDATE sessions SET data=?, created_at=? WHERE key=?",
-		data, time.Now(), sid)
+		data, time.Now().UTC(), sid)
 	if err != nil {
 		return aerr.Wrapf(err, "update session failed").WithMeta("sid", sid)
 	}
@@ -69,7 +69,7 @@ func (s SqliteRepository) RegenerateSession(ctx context.Context, dbctx DBContext
 	// session not exists - insert
 	_, err = dbctx.ExecContext(ctx,
 		"INSERT INTO sessions(key, data, created_at) VALUES(?, '', ?)",
-		newsid, time.Now())
+		newsid, time.Now().UTC())
 	if err != nil {
 		return aerr.Wrapf(err, "insert new session failed").WithMeta("sid", newsid)
 	}
@@ -100,7 +100,7 @@ func (s SqliteRepository) CleanSessions(
 
 	_, err := dbctx.ExecContext(ctx,
 		"DELETE FROM sessions WHERE created_at < ?",
-		time.Now().Add(-maxLifeTime))
+		time.Now().UTC().Add(-maxLifeTime))
 	if err != nil {
 		log.Logger.Error().Err(err).Msg("error delete old sessions")
 	}
@@ -108,7 +108,7 @@ func (s SqliteRepository) CleanSessions(
 	// remove empty session older than 2 hour
 	_, err = dbctx.ExecContext(ctx,
 		"DELETE FROM sessions WHERE created_at < ? AND data is null",
-		time.Now().Add(maxLifeTimeForEmpty))
+		time.Now().UTC().Add(maxLifeTimeForEmpty))
 	if err != nil {
 		log.Logger.Error().Err(err).Msg("error delete old sessions")
 	}
@@ -122,7 +122,7 @@ func (s SqliteRepository) ReadOrCreate(ctx context.Context, dbctx DBContext, sid
 
 	var (
 		data      []byte
-		createdat = time.Now()
+		createdat = time.Now().UTC()
 	)
 
 	err := dbctx.QueryRowxContext(ctx, "SELECT data, created_at FROM sessions WHERE key=?", sid).

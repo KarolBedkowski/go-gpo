@@ -92,7 +92,7 @@ func (u *UsersSrv) AddUser(ctx context.Context, user *model.NewUser) (int64, err
 			return 0, aerr.Wrapf(err, "hash password failed")
 		}
 
-		now := time.Now()
+		now := time.Now().UTC()
 		udb := repository.UserDB{
 			Username:  user.Username,
 			Password:  hashedPass,
@@ -135,7 +135,7 @@ func (u *UsersSrv) ChangePassword(ctx context.Context, userpass *model.UserPassw
 			return aerr.Wrapf(err, "hash password failed")
 		}
 
-		udb.UpdatedAt = time.Now()
+		udb.UpdatedAt = time.Now().UTC()
 
 		if _, err = u.usersRepo.SaveUser(ctx, dbctx, &udb); err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
@@ -177,7 +177,7 @@ func (u *UsersSrv) LockAccount(ctx context.Context, la model.LockAccount) error 
 		}
 
 		udb.Password = model.UserLockedPassword
-		udb.UpdatedAt = time.Now()
+		udb.UpdatedAt = time.Now().UTC()
 
 		if _, err = u.usersRepo.SaveUser(ctx, dbctx, &udb); err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)

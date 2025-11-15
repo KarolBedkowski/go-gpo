@@ -99,7 +99,7 @@ func (er episodesResource) uploadEpisodeActions(
 		Timestamp   int64      `json:"timestamp"`
 		UpdatedURLs [][]string `json:"update_urls"`
 	}{
-		time.Now().Unix(), changedurls,
+		time.Now().UTC().Unix(), changedurls,
 	}
 
 	render.JSON(w, r, &res)
@@ -137,7 +137,7 @@ func (er episodesResource) getEpisodeActions(
 		Timestamp int64     `json:"timestamp"`
 	}{
 		Actions:   model.Map(res, newEpisodesFromModel),
-		Timestamp: time.Now().Unix(),
+		Timestamp: time.Now().UTC().Unix(),
 	}
 
 	render.JSON(w, r, &resp)

@@ -249,7 +249,7 @@ func (p *SessionProvider) readOrCreate(
 
 	var sessiondata map[any]any
 
-	if len(data) == 0 || createdat.Add(time.Duration(p.maxlifetime)*time.Second).Before(time.Now()) {
+	if len(data) == 0 || createdat.Add(time.Duration(p.maxlifetime)*time.Second).Before(time.Now().UTC()) {
 		sessiondata = make(map[any]any)
 	} else {
 		sessiondata, err = session.DecodeGob(data)

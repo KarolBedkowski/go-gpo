@@ -139,7 +139,7 @@ func newSimpleLogMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		start := time.Now()
+		start := time.Now().UTC()
 		ctx := request.Context()
 		requestID, _ := hlog.IDFromCtx(ctx)
 		llog := log.With().Logger().With().Str("req_id", requestID.String()).Logger()
@@ -186,7 +186,7 @@ func newFullLogMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		start := time.Now()
+		start := time.Now().UTC()
 		ctx := request.Context()
 		requestID, _ := hlog.IDFromCtx(ctx)
 		llog := log.With().Logger().With().Str("req_id", requestID.String()).Logger()

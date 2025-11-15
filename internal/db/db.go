@@ -82,7 +82,7 @@ func (r *Database) RegisterMetrics(queryTime bool) {
 			prometheus.HistogramOpts{
 				Name:    "database_query_duration_seconds",
 				Help:    "Tracks the latencies for database queries.",
-				Buckets: []float64{0.1, 0.5, 1, 2, 5, 10},
+				Buckets: []float64{0.1, 0.2, 0.5, 1, 2, 5},
 			},
 			[]string{"caller"},
 		)
@@ -225,7 +225,7 @@ func (r *Database) StartBackgroundMaintenance(ctx context.Context) error {
 	logger.Info().Msg("start background maintenance task")
 
 	for {
-		now := time.Now()
+		now := time.Now().UTC()
 		nextRun := time.Date(now.Year(), now.Month(), now.Day(), startHour, 0, 0, 0, time.UTC)
 
 		if nextRun.Before(now) {

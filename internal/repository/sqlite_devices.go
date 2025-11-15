@@ -57,7 +57,7 @@ func (s SqliteRepository) SaveDevice(ctx context.Context, dbctx DBContext, devic
 	if device.ID == 0 {
 		logger.Debug().Object("device", device).Msg("insert device")
 
-		now := time.Now()
+		now := time.Now().UTC()
 
 		res, err := dbctx.ExecContext(ctx,
 			"INSERT INTO devices (user_id, name, dev_type, caption, updated_at, created_at, last_seen_at) "+
@@ -81,7 +81,7 @@ func (s SqliteRepository) SaveDevice(ctx context.Context, dbctx DBContext, devic
 
 	_, err := dbctx.ExecContext(ctx,
 		"UPDATE devices SET dev_type=?, caption=?, updated_at=? WHERE id=?",
-		device.DevType, device.Caption, time.Now(), device.ID)
+		device.DevType, device.Caption, time.Now().UTC(), device.ID)
 	if err != nil {
 		return device.ID, aerr.Wrapf(err, "update device failed").WithMeta("device_id", device.ID)
 	}

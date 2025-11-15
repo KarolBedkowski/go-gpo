@@ -273,7 +273,7 @@ func (s *SubscriptionsSrv) getUserDevice(
 		return device, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
-	if err := s.devicesRepo.MarkSeen(ctx, dbctx, time.Now(), device.ID); err != nil {
+	if err := s.devicesRepo.MarkSeen(ctx, dbctx, time.Now().UTC(), device.ID); err != nil {
 		return device, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
@@ -323,7 +323,7 @@ func (s *SubscriptionsSrv) getPodcasts(
 			return nil, aerr.ApplyFor(ErrRepositoryError, err, "list podcasts failed")
 		}
 
-		if err := s.devicesRepo.MarkSeen(ctx, dbctx, time.Now(), device.ID); err != nil {
+		if err := s.devicesRepo.MarkSeen(ctx, dbctx, time.Now().UTC(), device.ID); err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 

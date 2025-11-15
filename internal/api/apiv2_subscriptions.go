@@ -82,7 +82,7 @@ func (sr subscriptionsResource) devSubscriptions(
 	}{
 		Add:       state.AddedURLs(),
 		Remove:    state.RemovedURLs(),
-		Timestamp: time.Now().Unix(),
+		Timestamp: time.Now().UTC().Unix(),
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -147,7 +147,7 @@ func (sr subscriptionsResource) uploadSubscriptionChanges(
 		return
 	}
 
-	if err := sr.subsSrv.ApplySubscriptionChanges(ctx, user, deviceid, &subChanges, time.Now()); err != nil {
+	if err := sr.subsSrv.ApplySubscriptionChanges(ctx, user, deviceid, &subChanges, time.Now().UTC()); err != nil {
 		internal.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("update device subscription changes error")
 
@@ -158,7 +158,7 @@ func (sr subscriptionsResource) uploadSubscriptionChanges(
 		Timestamp   int64      `json:"timestamp"`
 		UpdatedURLs [][]string `json:"update_urls"`
 	}{
-		Timestamp:   time.Now().Unix(),
+		Timestamp:   time.Now().UTC().Unix(),
 		UpdatedURLs: subChanges.ChangedURLs,
 	}
 
