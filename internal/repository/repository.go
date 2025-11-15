@@ -40,6 +40,7 @@ type UsersRepository interface {
 	GetUser(ctx context.Context, db DBContext, username string) (UserDB, error)
 	SaveUser(ctx context.Context, db DBContext, user *UserDB) (int64, error)
 	ListUsers(ctx context.Context, db DBContext, activeOnly bool) ([]UserDB, error)
+	DeleteUser(ctx context.Context, db DBContext, userid int64) error
 }
 
 type EpisodesRepository interface {

@@ -49,6 +49,7 @@ func (a *AddUser) Start(ctx context.Context) error {
 }
 
 // ---------------------------------------------------------------------
+
 type ListUsers struct {
 	Database   string
 	ActiveOnly bool
@@ -81,6 +82,31 @@ func (l *ListUsers) Start(ctx context.Context) error {
 		}
 
 		fmt.Printf("%-30s | %-30s | %-30s | %s \n", u.Username, u.Name, u.Email, status)
+	}
+
+	return nil
+}
+
+// ---------------------------------------------------------------------
+
+type DeleteUser struct {
+	Database string
+	Username string
+}
+
+func (d *DeleteUser) Start(ctx context.Context) error {
+	injector := createInjector(ctx)
+
+	db := do.MustInvoke[*db.Database](injector)
+	if err := db.Connect(ctx, "sqlite3", d.Database); err != nil {
+		return fmt.Errorf("connect to database error: %w", err)
+	}
+
+	usersrv := do.MustInvoke[*service.UsersSrv](injector)
+
+	err := usersrv.DeleteUser(ctx, d.Username)
+	if err != nil {
+		return fmt.Errorf("delete user error: %w", err)
 	}
 
 	return nil

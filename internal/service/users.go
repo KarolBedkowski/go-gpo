@@ -187,6 +187,28 @@ func (u *UsersSrv) LockAccount(ctx context.Context, la model.LockAccount) error 
 	})
 }
 
+func (u *UsersSrv) DeleteUser(ctx context.Context, username string) error {
+	if username == "" {
+		return ErrEmptyUsername
+	}
+
+	//nolint:wrapcheck
+	return db.InTransaction(ctx, u.db, func(dbctx repository.DBContext) error {
+		user, err := u.usersRepo.GetUser(ctx, dbctx, username)
+		if errors.Is(err, repository.ErrNoData) {
+			return ErrUnknownUser
+		} else if err != nil {
+			return aerr.ApplyFor(ErrRepositoryError, err)
+		}
+
+		if err = u.usersRepo.DeleteUser(ctx, dbctx, user.ID); err != nil {
+			return aerr.ApplyFor(ErrRepositoryError, err)
+		}
+
+		return nil
+	})
+}
+
 //-------------------------------------------------------------
 
 type PasswordHasher interface {

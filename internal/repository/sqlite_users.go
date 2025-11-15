@@ -94,3 +94,34 @@ func (s SqliteRepository) ListUsers(ctx context.Context, dbctx DBContext, active
 
 	return users, nil
 }
+
+// DeleteUser and all related objects.
+func (s SqliteRepository) DeleteUser(ctx context.Context, dbctx DBContext, userid int64) error {
+	logger := log.Ctx(ctx).With().Logger()
+	logger.Debug().Int64("user_id", userid).Msg("delete user")
+
+	_, err := dbctx.ExecContext(ctx,
+		"DELETE FROM episodes WHERE podcast_id IN (SELECT id FROM podcasts WHERE user_id=?)",
+		userid)
+	if err != nil {
+		return aerr.Wrapf(err, "delete episodes failed").WithTag(aerr.InternalError).WithMeta("user_id", userid)
+	}
+
+	if _, err := dbctx.ExecContext(ctx, "DELETE FROM settings WHERE user_id=?", userid); err != nil {
+		return aerr.Wrapf(err, "delete settings failed").WithTag(aerr.InternalError).WithMeta("user_id", userid)
+	}
+
+	if _, err := dbctx.ExecContext(ctx, "DELETE FROM podcasts WHERE user_id=?", userid); err != nil {
+		return aerr.Wrapf(err, "delete podcasts failed").WithTag(aerr.InternalError).WithMeta("user_id", userid)
+	}
+
+	if _, err := dbctx.ExecContext(ctx, "DELETE FROM devices WHERE user_id=?", userid); err != nil {
+		return aerr.Wrapf(err, "delete devices failed").WithTag(aerr.InternalError).WithMeta("user_id", userid)
+	}
+
+	if _, err := dbctx.ExecContext(ctx, "DELETE FROM users WHERE id=?", userid); err != nil {
+		return aerr.Wrapf(err, "delete user failed").WithTag(aerr.InternalError).WithMeta("user_id", userid)
+	}
+
+	return nil
+}

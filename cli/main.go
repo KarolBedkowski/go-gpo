@@ -169,6 +169,7 @@ func usersSubCmd() *cli.Command {
 		Usage: "manage users",
 		Commands: []*cli.Command{
 			addUserCmd(),
+			deleteUsersCmd(),
 			listUsersCmd(),
 			lockUserCmd(),
 			changeUserPasswordCmd(),
@@ -193,6 +194,25 @@ func addUserCmd() *cli.Command {
 				Name:     c.String("name"),
 				Password: c.String("password"),
 				Email:    c.String("email"),
+				Username: c.String("username"),
+			}
+
+			return s.Start(log.Logger.WithContext(ctx))
+		},
+	}
+}
+
+func deleteUsersCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "delete",
+		Usage: "delete user account",
+		Flags: []cli.Flag{
+			&cli.StringFlag{Name: "username", Required: true, Aliases: []string{"u"}},
+		},
+		Action: func(ctx context.Context, c *cli.Command) error {
+			initializeLogger(c.String("log.level"), c.String("log.format"))
+			s := cmd.DeleteUser{
+				Database: c.String("database"),
 				Username: c.String("username"),
 			}
 
