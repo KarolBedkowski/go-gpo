@@ -47,3 +47,41 @@ func (a *AddUser) Start(ctx context.Context) error {
 
 	return nil
 }
+
+// ---------------------------------------------------------------------
+type ListUsers struct {
+	Database   string
+	ActiveOnly bool
+}
+
+func (l *ListUsers) Start(ctx context.Context) error {
+	injector := createInjector(ctx)
+
+	db := do.MustInvoke[*db.Database](injector)
+	if err := db.Connect(ctx, "sqlite3", l.Database); err != nil {
+		return fmt.Errorf("connect to database error: %w", err)
+	}
+
+	usersrv := do.MustInvoke[*service.UsersSrv](injector)
+
+	users, err := usersrv.GetUsers(ctx, l.ActiveOnly)
+	if err != nil {
+		return fmt.Errorf("get users error: %w", err)
+	}
+
+	fmt.Printf("%-30s | %-30s | %-30s | %s \n", "User name", "Name", "Email", "Status")
+	fmt.Println(
+		"---------------------------------------------------------------------------------------------------------",
+	)
+
+	for _, u := range users {
+		status := ""
+		if u.Locked {
+			status = "LOCKED"
+		}
+
+		fmt.Printf("%-30s | %-30s | %-30s | %s \n", u.Username, u.Name, u.Email, status)
+	}
+
+	return nil
+}
