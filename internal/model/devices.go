@@ -23,6 +23,7 @@ type Device struct {
 	Caption       string
 	Subscriptions int
 	UpdatedAt     time.Time
+	LastSeenAt    time.Time
 }
 
 func NewDeviceFromDeviceDB(d *repository.DeviceDB) Device {
@@ -32,6 +33,7 @@ func NewDeviceFromDeviceDB(d *repository.DeviceDB) Device {
 		Caption:       d.Caption,
 		Subscriptions: d.Subscriptions,
 		UpdatedAt:     d.UpdatedAt,
+		LastSeenAt:    d.LastSeenAt,
 	}
 }
 

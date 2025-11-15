@@ -64,7 +64,7 @@ func (e *EpisodesSrv) GetEpisodes(ctx context.Context, username, devicename, pod
 
 // AddAction save new actions.
 // Podcasts and devices are cached and - if not exists for requested action - created.
-func (e *EpisodesSrv) AddAction(ctx context.Context, username string, action ...model.Episode) error {
+func (e *EpisodesSrv) AddAction(ctx context.Context, username string, action ...model.Episode) error { //nolint:cyclop
 	if username == "" {
 		return ErrEmptyUsername
 	}
@@ -109,6 +109,12 @@ func (e *EpisodesSrv) AddAction(ctx context.Context, username string, action ...
 
 		if err = e.episodesRepo.SaveEpisode(ctx, dbctx, user.ID, episodes...); err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
+		}
+
+		for _, deviceid := range devicescache.GetUsedValues() {
+			if err := e.devicesRepo.MarkSeen(ctx, dbctx, time.Now(), *deviceid); err != nil {
+				return aerr.ApplyFor(ErrRepositoryError, err)
+			}
 		}
 
 		return nil
@@ -246,30 +252,14 @@ func (e *EpisodesSrv) getEpisodesActionsInternal(
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
-	var deviceid *int64
-
-	if devicename != "" {
-		device, err := e.devicesRepo.GetDevice(ctx, dbctx, user.ID, devicename)
-		if errors.Is(err, repository.ErrNoData) {
-			return nil, ErrUnknownDevice
-		} else if err != nil {
-			return nil, aerr.ApplyFor(ErrRepositoryError, err)
-		}
-
-		deviceid = &device.ID
+	deviceid, err := e.getDeviceID(ctx, dbctx, user.ID, devicename)
+	if err != nil {
+		return nil, err
 	}
 
-	var podcastid *int64
-
-	if podcast != "" {
-		p, err := e.podcastsRepo.GetPodcast(ctx, dbctx, user.ID, podcast)
-		if errors.Is(err, repository.ErrNoData) {
-			return nil, ErrUnknownPodcast
-		} else if err != nil {
-			return nil, aerr.ApplyFor(ErrRepositoryError, err)
-		}
-
-		podcastid = &p.ID
+	podcastid, err := e.getPodcastID(ctx, dbctx, user.ID, podcast)
+	if err != nil {
+		return nil, err
 	}
 
 	episodes, err := e.episodesRepo.ListEpisodeActions(ctx, dbctx, user.ID, deviceid, podcastid, since, aggregated,
@@ -336,4 +326,48 @@ func (e *EpisodesSrv) createDevicesCache(ctx context.Context, dbctx repository.D
 	}
 
 	return devicescache, nil
+}
+
+func (e *EpisodesSrv) getDeviceID(
+	ctx context.Context,
+	dbctx repository.DBContext,
+	userid int64,
+	devicename string,
+) (*int64, error) {
+	if devicename == "" {
+		return nil, nil //nolint:nilnil
+	}
+
+	device, err := e.devicesRepo.GetDevice(ctx, dbctx, userid, devicename)
+	if errors.Is(err, repository.ErrNoData) {
+		return nil, ErrUnknownDevice
+	} else if err != nil {
+		return nil, aerr.ApplyFor(ErrRepositoryError, err)
+	}
+
+	if err := e.devicesRepo.MarkSeen(ctx, dbctx, time.Now(), device.ID); err != nil {
+		return nil, aerr.ApplyFor(ErrRepositoryError, err)
+	}
+
+	return &device.ID, nil
+}
+
+func (e *EpisodesSrv) getPodcastID(
+	ctx context.Context,
+	dbctx repository.DBContext,
+	userid int64,
+	podcast string,
+) (*int64, error) {
+	if podcast == "" {
+		return nil, nil //nolint:nilnil
+	}
+
+	p, err := e.podcastsRepo.GetPodcast(ctx, dbctx, userid, podcast)
+	if errors.Is(err, repository.ErrNoData) {
+		return nil, ErrUnknownPodcast
+	} else if err != nil {
+		return nil, aerr.ApplyFor(ErrRepositoryError, err)
+	}
+
+	return &p.ID, nil
 }

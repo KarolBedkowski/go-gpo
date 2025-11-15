@@ -141,7 +141,8 @@ func (s *SubscriptionsSrv) ApplySubscriptionChanges( //nolint:cyclop
 			return err
 		}
 		// check service
-		if _, err = s.getUserDevice(ctx, dbctx, user.ID, devicename); err != nil {
+		_, err = s.getUserDevice(ctx, dbctx, user.ID, devicename)
+		if err != nil {
 			return err
 		}
 
@@ -228,12 +229,10 @@ func (s *SubscriptionsSrv) getSubsctiptions(ctx context.Context, username, devic
 		}
 
 		if devicename != "" {
-			// validate is device exists when device name is given.
-			_, err = s.devicesRepo.GetDevice(ctx, dbctx, user.ID, devicename)
-			if errors.Is(err, repository.ErrNoData) {
-				return nil, ErrUnknownDevice
-			} else if err != nil {
-				return nil, aerr.ApplyFor(ErrRepositoryError, err)
+			// validate is device exists when device name is given and mark is seen.
+			_, err := s.getUserDevice(ctx, dbctx, user.ID, devicename)
+			if err != nil {
+				return nil, err
 			}
 		}
 
@@ -260,16 +259,21 @@ func (s *SubscriptionsSrv) getUser(ctx context.Context,
 	return user, nil
 }
 
+// getUserDevice return device from database and mark last_seen.
 func (s *SubscriptionsSrv) getUserDevice(
 	ctx context.Context,
-	db repository.DBContext,
-	username int64,
+	dbctx repository.DBContext,
+	userid int64,
 	devicename string,
 ) (repository.DeviceDB, error) {
-	device, err := s.devicesRepo.GetDevice(ctx, db, username, devicename)
+	device, err := s.devicesRepo.GetDevice(ctx, dbctx, userid, devicename)
 	if errors.Is(err, repository.ErrNoData) {
 		return device, ErrUnknownDevice
 	} else if err != nil {
+		return device, aerr.ApplyFor(ErrRepositoryError, err)
+	}
+
+	if err := s.devicesRepo.MarkSeen(ctx, dbctx, time.Now(), device.ID); err != nil {
 		return device, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
@@ -304,23 +308,23 @@ func (s *SubscriptionsSrv) getPodcasts(
 ) {
 	//nolint:wrapcheck
 	return db.InConnectionR(ctx, s.db, func(dbctx repository.DBContext) ([]repository.PodcastDB, error) {
-		user, err := s.usersRepo.GetUser(ctx, dbctx, username)
-		if errors.Is(err, repository.ErrNoData) {
-			return nil, ErrUnknownUser
-		} else if err != nil {
-			return nil, aerr.ApplyFor(ErrRepositoryError, err, "get user failed")
+		user, err := s.getUser(ctx, dbctx, username)
+		if err != nil {
+			return nil, err
 		}
 
-		_, err = s.devicesRepo.GetDevice(ctx, dbctx, user.ID, devicename)
-		if errors.Is(err, repository.ErrNoData) {
-			return nil, ErrUnknownDevice
-		} else if err != nil {
-			return nil, aerr.ApplyFor(ErrRepositoryError, err, "get device failed")
+		device, err := s.getUserDevice(ctx, dbctx, user.ID, devicename)
+		if err != nil {
+			return nil, err
 		}
 
 		podcasts, err := s.podcastsRepo.ListPodcasts(ctx, dbctx, user.ID, since)
 		if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err, "list podcasts failed")
+		}
+
+		if err := s.devicesRepo.MarkSeen(ctx, dbctx, time.Now(), device.ID); err != nil {
+			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
 		return podcasts, nil

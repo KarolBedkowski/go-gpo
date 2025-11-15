@@ -34,6 +34,7 @@ type DevicesRepository interface {
 	SaveDevice(ctx context.Context, db DBContext, device *DeviceDB) (int64, error)
 	ListDevices(ctx context.Context, db DBContext, userid int64) (DevicesDB, error)
 	DeleteDevice(ctx context.Context, db DBContext, deviceid int64) error
+	MarkSeen(ctx context.Context, dbctx DBContext, ts time.Time, deviceid ...int64) error
 }
 
 type UsersRepository interface {

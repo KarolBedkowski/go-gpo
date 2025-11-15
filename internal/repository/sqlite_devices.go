@@ -57,9 +57,12 @@ func (s SqliteRepository) SaveDevice(ctx context.Context, dbctx DBContext, devic
 	if device.ID == 0 {
 		logger.Debug().Object("device", device).Msg("insert device")
 
+		now := time.Now()
+
 		res, err := dbctx.ExecContext(ctx,
-			"INSERT INTO devices (user_id, name, dev_type, caption, updated_at, created_at) VALUES(?, ?, ?, ?, ?, ?)",
-			device.UserID, device.Name, device.DevType, device.Caption, time.Now(), time.Now())
+			"INSERT INTO devices (user_id, name, dev_type, caption, updated_at, created_at, last_seen_at) "+
+				"VALUES(?, ?, ?, ?, ?, ?, ?)",
+			device.UserID, device.Name, device.DevType, device.Caption, now, now, now)
 		if err != nil {
 			return 0, aerr.Wrapf(err, "insert device failed")
 		}
@@ -105,7 +108,7 @@ func (s SqliteRepository) ListDevices(ctx context.Context, dbctx DBContext, user
 	res := []*DeviceDB{}
 
 	err = dbctx.SelectContext(ctx, &res,
-		"SELECT id, user_id, name, dev_type, caption, ? as subscriptions, created_at, updated_at "+
+		"SELECT id, user_id, name, dev_type, caption, ? as subscriptions, created_at, updated_at, last_seen_at "+
 			"FROM devices WHERE user_id=? "+
 			"ORDER BY name",
 		subscriptions, userid)
@@ -128,6 +131,20 @@ func (s SqliteRepository) DeleteDevice(ctx context.Context, dbctx DBContext, dev
 	_, err = dbctx.ExecContext(ctx, "DELETE FROM devices where id=?", deviceid)
 	if err != nil {
 		return aerr.Wrapf(err, "delete device failed")
+	}
+
+	return nil
+}
+
+func (s SqliteRepository) MarkSeen(ctx context.Context, dbctx DBContext, ts time.Time, deviceid ...int64) error {
+	logger := log.Ctx(ctx).With().Logger()
+	logger.Debug().Ints64("device_id", deviceid).Msgf("mark device seen at: %s", ts)
+
+	for _, did := range deviceid {
+		_, err := dbctx.ExecContext(ctx, "UPDATE devices SET last_seen_at=? WHERE id=?", ts, did)
+		if err != nil {
+			return aerr.Wrapf(err, "update device failed")
+		}
 	}
 
 	return nil
