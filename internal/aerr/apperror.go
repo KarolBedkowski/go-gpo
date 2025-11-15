@@ -364,45 +364,44 @@ type zerologErrorMarshaller struct {
 
 func (m zerologErrorMarshaller) MarshalZerologObject(event *zerolog.Event) { //nolint:cyclop
 	var (
-		stack, errs   []string
-		usermsg, tags uniqueList
-		meta          map[string]any
+		stack, errs []string
+		meta        map[string]any
 	)
 
+	usermsg := make(uniqueList, 0)
+	tags := make(uniqueList, 0)
+
 	for err := m.err; err != nil; err = errors.Unwrap(err) {
-		apperr, ok := err.(AppError) //nolint:errorlint
-		if !ok {
-			errs = append(errs, err.Error())
-
-			continue
-		}
-
-		if apperr.userMsg != "" {
-			usermsg.append(apperr.userMsg)
-		}
-
-		if apperr.stack != nil {
-			stack = apperr.stack
-		}
-
-		if apperr.msg != "" {
-			errs = append(errs, apperr.msg)
-		}
-
-		if apperr.tags != nil {
-			tags.append(apperr.tags...)
-		}
-
-		if apperr.meta != nil {
-			if meta == nil {
-				meta = make(map[string]any)
+		if apperr, ok := err.(AppError); ok { //nolint:errorlint,nestif
+			if apperr.userMsg != "" {
+				usermsg.append(apperr.userMsg)
 			}
 
-			maps.Copy(meta, apperr.meta)
+			if apperr.stack != nil {
+				stack = apperr.stack
+			}
+
+			if apperr.msg != "" {
+				errs = append(errs, apperr.msg)
+			}
+
+			if apperr.tags != nil {
+				tags.append(apperr.tags...)
+			}
+
+			if apperr.meta != nil {
+				if meta == nil {
+					meta = make(map[string]any)
+				}
+
+				maps.Copy(meta, apperr.meta)
+			}
+		} else {
+			errs = append(errs, err.Error())
 		}
 	}
 
-	if usermsg != nil {
+	if len(usermsg) > 0 {
 		slices.Reverse(usermsg)
 		event.Strs("user_msg", usermsg)
 	}
@@ -416,7 +415,7 @@ func (m zerologErrorMarshaller) MarshalZerologObject(event *zerolog.Event) { //n
 		event.Strs("errors", errs)
 	}
 
-	if tags != nil {
+	if len(tags) > 0 {
 		event.Strs("tags", tags)
 	}
 
