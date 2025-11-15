@@ -267,7 +267,7 @@ func (r *Database) onClose(ctx context.Context, db sqlx.ExecerContext) error {
 	return nil
 }
 
-func (r *Database) observeQeuryDuration(start time.Time) {
+func (r *Database) observeQueryDuration(start time.Time) {
 	if r.queryDuration == nil {
 		return
 	}
@@ -318,7 +318,7 @@ func InConnectionR[T any](ctx context.Context, r *Database,
 	fun func(repository.DBContext) (T, error),
 ) (T, error) {
 	start := time.Now()
-	defer r.observeQeuryDuration(start)
+	defer r.observeQueryDuration(start)
 
 	conn, err := r.GetConnection(ctx)
 	if err != nil {
@@ -337,7 +337,7 @@ func InConnectionR[T any](ctx context.Context, r *Database,
 
 func InTransaction(ctx context.Context, r *Database, fun func(repository.DBContext) error) error {
 	start := time.Now()
-	defer r.observeQeuryDuration(start)
+	defer r.observeQueryDuration(start)
 
 	conn, err := r.GetConnection(ctx)
 	if err != nil {
@@ -374,7 +374,7 @@ func InTransactionR[T any](ctx context.Context, r *Database,
 	fun func(repository.DBContext) (T, error),
 ) (T, error) {
 	start := time.Now()
-	defer r.observeQeuryDuration(start)
+	defer r.observeQueryDuration(start)
 
 	conn, err := r.GetConnection(ctx)
 	if err != nil {
