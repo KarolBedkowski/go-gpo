@@ -3,6 +3,7 @@ package aerr
 import (
 	"errors"
 	"fmt"
+	"io"
 	"maps"
 	"runtime"
 	"slices"
@@ -152,6 +153,22 @@ func (a AppError) String() string {
 	return a.err.Error()
 }
 
+func (a AppError) Format(s fmt.State, verb rune) {
+	switch verb {
+	case 'v':
+		if s.Flag('+') {
+			msg := CollectErrors(a)
+			fmt.Fprintf(s, "%+v\n", msg)
+
+			return
+		}
+
+		fallthrough
+	case 's', 'q':
+		io.WriteString(s, a.Error())
+	}
+}
+
 // Clone AppError, do not fill stack.
 func (a AppError) clone() AppError {
 	return AppError{
@@ -297,6 +314,29 @@ func Flatten(err error) []AppError {
 		if ae, ok := err.(AppError); ok { //nolint:errorlint
 			errs = append(errs, ae)
 		}
+	}
+
+	slices.Reverse(errs)
+
+	return errs
+}
+
+func CollectErrors(err error) []string {
+	errs := []string{}
+
+	for ; err != nil; err = errors.Unwrap(err) {
+		apperr, ok := err.(AppError) //nolint:errorlint
+		if !ok {
+			errs = append(errs, err.Error())
+
+			continue
+		}
+
+		errmsg := apperr.Error()
+		errmsg += " [" + apperr.stack[0] + "]"
+		errmsg += fmt.Sprintf("%v/%v", apperr.tags, apperr.meta)
+
+		errs = append(errs, errmsg)
 	}
 
 	slices.Reverse(errs)
