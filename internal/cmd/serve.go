@@ -42,7 +42,7 @@ func (s *Server) Start(ctx context.Context) error {
 	}
 
 	logger := log.Ctx(ctx)
-	logger.Log().Msgf("Starting server on %q...", s.Listen)
+	logger.Log().Msgf("Starting go-gpo (%s)...", config.VersionString)
 
 	s.startSystemdWatchdog(logger)
 
@@ -67,6 +67,8 @@ func (s *Server) Start(ctx context.Context) error {
 
 	srv := do.MustInvoke[server.Server](injector)
 	group.Add(func() error {
+		logger.Log().Msgf("Listen on %s...", s.Listen)
+
 		if err := srv.Start(ctx); err != nil {
 			return fmt.Errorf("start server error: %w", err)
 		}

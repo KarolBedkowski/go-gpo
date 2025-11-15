@@ -14,17 +14,17 @@ USER=`whoami`
 # BRANCH=`git branch | grep '^\*' | cut -d ' ' -f 2`
 BRANCH=`git rev-parse --abbrev-ref HEAD`
 LDFLAGS="\
-	-X main.Version=$(VERSION) \
-	-X main.Revision='$(REVISION) \
-	-X main.BuildDate=$(DATE) \
-	-X main.BuildUser=$(USER) \
-	-X main.Branch=$(BRANCH)"
+	-X gitlab.com/kabes/go-gpo/internal/config.Version=$(VERSION) \
+	-X gitlab.com/kabes/go-gpo/internal/config.Revision='$(REVISION) \
+	-X gitlab.com/kabes/go-gpo/internal/config.BuildDate=$(DATE) \
+	-X gitlab.com/kabes/go-gpo/internal/config.BuildUser=$(USER) \
+	-X gitlab.com/kabes/go-gpo/internal/config.Branch=$(BRANCH)"
 LDFLAGSR="-w -s\
-	-X main.Version=$(VERSION) \
-	-X main.Revision='$(REVISION) \
-	-X main.BuildDate=$(DATE) \
-	-X main.BuildUser=$(USER) \
-	-X main.Branch=$(BRANCH)"
+	-X gitlab.com/kabes/go-gpo/internal/config.Version=$(VERSION) \
+	-X gitlab.com/kabes/go-gpo/internal/config.Revision='$(REVISION) \
+	-X gitlab.com/kabes/go-gpo/internal/config.BuildDate=$(DATE) \
+	-X gitlab.com/kabes/go-gpo/internal/config.BuildUser=$(USER) \
+	-X gitlab.com/kabes/go-gpo/internal/config.Branch=$(BRANCH)"
 
 .PHONY: build
 build:
@@ -66,10 +66,10 @@ test:
 lint: 
 	golangci-lint run
 	# go install fillmore-labs.com/errortype@latest
-	errortype ./... || true
-	# go install go.uber.org/nilaway/cmd/nilaway@latest
-	nilaway ./... || true
+	errortype ./... 
 	typos
+	# go install go.uber.org/nilaway/cmd/nilaway@latest
+	nilaway ./... 
 
 .PHONY: format
 format:

@@ -14,7 +14,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"runtime/debug"
 	"strings"
 	"syscall"
 
@@ -29,40 +28,6 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-var (
-	Version   = "dev"
-	Revision  = ""
-	BuildDate = ""
-	BuildUser = ""
-	Branch    = ""
-)
-
-func buildVersionString() string {
-	if Version == "dev" {
-		if info, ok := debug.ReadBuildInfo(); ok {
-			var dirty string
-
-			for _, kv := range info.Settings {
-				switch kv.Key {
-				case "vcs.revision":
-					Revision = kv.Value
-				case "vcs.time":
-					BuildDate = kv.Value
-				case "vcs.modified":
-					dirty = kv.Value
-				}
-			}
-
-			return fmt.Sprintf("Rev: %s at %s %s", Revision, BuildDate, dirty)
-		}
-	} else {
-		return fmt.Sprintf("Version: %s, Rev: %s, Build: %s by %s from %s",
-			Version, Revision, BuildDate, BuildUser, Branch)
-	}
-
-	return Version
-}
-
 func main() {
 	cli.VersionFlag = &cli.BoolFlag{
 		Name:    "print-version",
@@ -72,7 +37,7 @@ func main() {
 
 	cmd := &cli.Command{
 		Name:    "go-gpo",
-		Version: buildVersionString(),
+		Version: config.VersionString,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:      "database",
