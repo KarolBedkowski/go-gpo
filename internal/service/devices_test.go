@@ -67,3 +67,23 @@ func TestDevice(t *testing.T) {
 	assert.Equal(t, devices[1].Caption, udev2.Caption)
 	assert.Equal(t, devices[1].DevType, udev2.DeviceType)
 }
+
+func TestDeleteDevice(t *testing.T) {
+	ctx, i := prepareTests(t)
+	_ = prepareTestUser(ctx, t, i, "user1")
+	_ = prepareTestUser(ctx, t, i, "user2")
+	prepareTestDevice(ctx, t, i, "user1", "dev1")
+	prepareTestDevice(ctx, t, i, "user1", "dev2")
+	prepareTestSub(
+		ctx, t, i, "user1", "dev1", "http://example.com/p1", "http://example.com/p2",
+	)
+
+	deviceSrv := do.MustInvoke[*DevicesSrv](i)
+	err := deviceSrv.DeleteDevice(ctx, "user1", "dev1")
+	assert.NoErr(t, err)
+
+	devices, err := deviceSrv.ListDevices(ctx, "user1")
+	assert.NoErr(t, err)
+	assert.Equal(t, len(devices), 1)
+	assert.Equal(t, devices[0].Name, "dev2")
+}
