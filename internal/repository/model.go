@@ -165,9 +165,9 @@ type EpisodeDB struct {
 	UpdatedAt time.Time `db:"updated_at"`
 	GUID      *string   `db:"guid"`
 
-	PodcastURL   string `db:"podcast_url"`
-	PodcastTitle string `db:"podcast_title"`
-	Device       string `db:"device_name"`
+	PodcastURL   string  `db:"podcast_url"`
+	PodcastTitle string  `db:"podcast_title"`
+	Device       *string `db:"device_name"`
 }
 
 func (e EpisodeDB) MarshalZerologObject(event *zerolog.Event) {
@@ -186,7 +186,7 @@ func (e EpisodeDB) MarshalZerologObject(event *zerolog.Event) {
 		Dict("podcast", zerolog.Dict().
 			Str("podcast_url", e.PodcastURL).
 			Str("podcast_title", e.PodcastTitle)).
-		Str("device", e.Device)
+		Any("device", e.Device)
 }
 
 type UserDB struct {

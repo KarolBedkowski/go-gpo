@@ -7,7 +7,8 @@ package model
 // Distributed under terms of the GPLv3 license.
 //
 
-func nvl(value ...string) string {
+// Coalesce return first not empty string from arguments.
+func Coalesce(value ...string) string {
 	for _, v := range value {
 		if v != "" {
 			return v
@@ -15,6 +16,22 @@ func nvl(value ...string) string {
 	}
 
 	return ""
+}
+
+func NVL[T any](value *T, def T) T {
+	if value == nil {
+		return def
+	}
+
+	return *value
+}
+
+func NilIf(value, def string) *string {
+	if value == def {
+		return nil
+	}
+
+	return &value
 }
 
 func Map[T, R any](collection []T, iteratee func(item *T) R) []R {

@@ -33,7 +33,7 @@ type Episode struct {
 func NewEpisodeFromDBModel(episodedb *repository.EpisodeDB) Episode {
 	episode := Episode{
 		Podcast:   episodedb.PodcastURL,
-		Device:    episodedb.Device,
+		Device:    NVL(episodedb.Device, ""),
 		Episode:   episodedb.URL,
 		Action:    episodedb.Action,
 		Timestamp: episodedb.UpdatedAt,
@@ -69,7 +69,7 @@ func (e *Episode) Validate() error {
 func (e *Episode) ToDBModel() repository.EpisodeDB {
 	return repository.EpisodeDB{ //nolint:exhaustruct
 		URL:        e.Episode,
-		Device:     e.Device,
+		Device:     NilIf(e.Device, ""),
 		Action:     e.Action,
 		UpdatedAt:  e.Timestamp,
 		CreatedAt:  e.Timestamp,
@@ -107,9 +107,9 @@ type Favorite struct {
 
 func NewFavoriteFromDBModel(episodedb *repository.EpisodeDB) Favorite {
 	return Favorite{
-		Title:        nvl(episodedb.Title, episodedb.URL),
+		Title:        Coalesce(episodedb.Title, episodedb.URL),
 		URL:          episodedb.URL,
-		PodcastTitle: nvl(episodedb.PodcastTitle, episodedb.PodcastURL),
+		PodcastTitle: Coalesce(episodedb.PodcastTitle, episodedb.PodcastURL),
 		PodcastURL:   episodedb.PodcastURL,
 		Website:      "",
 		MygpoLink:    "",
@@ -165,9 +165,9 @@ func NewEpisodeUpdateWithEpisodeFromDBModel(episodedb *repository.EpisodeDB) Epi
 
 	if episodedb.Action != "new" {
 		episodeUpdate.Episode = &Episode{
-			Podcast:   nvl(episodedb.PodcastTitle, episodedb.PodcastURL),
-			Episode:   nvl(episodedb.Title, episodedb.URL),
-			Device:    episodedb.Device,
+			Podcast:   Coalesce(episodedb.PodcastTitle, episodedb.PodcastURL),
+			Episode:   Coalesce(episodedb.Title, episodedb.URL),
+			Device:    NVL(episodedb.Device, ""),
 			Action:    episodedb.Action,
 			Timestamp: episodedb.UpdatedAt,
 			GUID:      episodedb.GUID,
