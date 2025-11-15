@@ -42,25 +42,25 @@ func (u *UsersSrv) LoginUser(ctx context.Context, username, password string) (mo
 		return model.User{}, aerr.ErrValidation.WithMsg("password can't be empty")
 	}
 
-	//nolint:wrapcheck
-	return db.InConnectionR(ctx, u.db, func(conn repository.DBContext) (model.User, error) {
-		user, err := u.usersRepo.GetUser(ctx, conn, username)
-		if errors.Is(err, repository.ErrNoData) {
-			return model.User{}, ErrUnknownUser
-		} else if err != nil {
-			return model.User{}, aerr.ApplyFor(ErrRepositoryError, err)
-		}
-
-		if user.Password == model.UserLockedPassword {
-			return model.User{}, ErrUserAccountLocked
-		}
-
-		if !u.passHasher.CheckPassword(password, user.Password) {
-			return model.User{}, ErrUnauthorized
-		}
-
-		return model.NewUserFromUserDB(&user), nil
+	user, err := db.InConnectionR(ctx, u.db, func(conn repository.DBContext) (repository.UserDB, error) {
+		return u.usersRepo.GetUser(ctx, conn, username)
 	})
+
+	if errors.Is(err, repository.ErrNoData) {
+		return model.User{}, ErrUnknownUser
+	} else if err != nil {
+		return model.User{}, aerr.ApplyFor(ErrRepositoryError, err)
+	}
+
+	if user.Password == model.UserLockedPassword {
+		return model.User{}, ErrUserAccountLocked
+	}
+
+	if !u.passHasher.CheckPassword(password, user.Password) {
+		return model.User{}, ErrUnauthorized
+	}
+
+	return model.NewUserFromUserDB(&user), nil
 }
 
 func (u *UsersSrv) AddUser(ctx context.Context, user *model.NewUser) (int64, error) {
