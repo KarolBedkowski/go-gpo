@@ -120,7 +120,7 @@ func (s *Server) Start(ctx context.Context) error {
 }
 
 func (s *Server) Stop(_ error) {
-	logger := log.Logger.With().Str("mod", "server").Logger()
+	logger := log.Logger.With().Logger()
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
@@ -133,7 +133,7 @@ func (s *Server) Stop(_ error) {
 }
 
 func logRoutes(ctx context.Context, r chi.Routes) {
-	logger := log.Ctx(ctx).With().Str("mod", "server").Logger()
+	logger := log.Ctx(ctx).With().Logger()
 
 	walkFunc := func(method, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
 		_ = handler

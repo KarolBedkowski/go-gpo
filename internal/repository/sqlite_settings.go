@@ -19,7 +19,7 @@ import (
 func (s SqliteRepository) ListSettings(ctx context.Context, dbctx DBContext,
 	userid int64, podcastid, episodeid, deviceid *int64, scope string,
 ) ([]SettingsDB, error) {
-	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_settings").Logger()
+	logger := log.Ctx(ctx).With().Logger()
 	logger.Debug().Int64("user_id", userid).Str("settings_scope", scope).
 		Any("podcast_id", podcastid).Any("episode_id", episodeid).Any("device_id", deviceid).
 		Msg("get settings")
@@ -41,7 +41,7 @@ func (s SqliteRepository) ListSettings(ctx context.Context, dbctx DBContext,
 func (s SqliteRepository) GetSettings(ctx context.Context, dbctx DBContext,
 	userid int64, podcastid, episodeid, deviceid *int64, scope, key string,
 ) (SettingsDB, error) {
-	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_settings").Logger()
+	logger := log.Ctx(ctx).With().Logger()
 	logger.Debug().Int64("user_id", userid).Str("settings_scope", scope).Str("key", key).
 		Any("podcast_id", podcastid).Any("episode_id", episodeid).Any("device_id", deviceid).
 		Msg("get settings")
@@ -85,7 +85,7 @@ func (s SqliteRepository) GetSettings(ctx context.Context, dbctx DBContext,
 
 // SaveSettings insert or update setting.
 func (s SqliteRepository) SaveSettings(ctx context.Context, dbctx DBContext, sett *SettingsDB) error {
-	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_settings").Logger()
+	logger := log.Ctx(ctx).With().Logger()
 	logger.Debug().Object("settings", sett).Msg("save settings")
 
 	_, err := dbctx.ExecContext(

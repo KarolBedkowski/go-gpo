@@ -25,7 +25,7 @@ func (s SqliteRepository) GetEpisode(
 	userid, podcastid int64,
 	episode string,
 ) (EpisodeDB, error) {
-	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_episodes").Logger()
+	logger := log.Ctx(ctx).With().Logger()
 	logger.Debug().Int64("user_id", userid).Int64("podcast_id", podcastid).Str("episode", episode).
 		Msgf("get episode")
 
@@ -58,7 +58,7 @@ func (s SqliteRepository) ListEpisodeActions(
 	aggregated bool,
 	lastelements int,
 ) ([]EpisodeDB, error) {
-	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_episodes").Logger()
+	logger := log.Ctx(ctx).With().Logger()
 	logger.Debug().Int64("user_id", userid).Any("podcast_id", podcastid).Any("device_id", deviceid).
 		Msgf("get episodes since=%s aggregated=%v", since, aggregated)
 
@@ -111,7 +111,7 @@ func (s SqliteRepository) ListEpisodeActions(
 }
 
 func (s SqliteRepository) ListFavorites(ctx context.Context, dbctx DBContext, userid int64) ([]EpisodeDB, error) {
-	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_episodes").Logger()
+	logger := log.Ctx(ctx).With().Logger()
 	logger.Debug().Int64("user_id", userid).Msg("get favorites")
 
 	query := "SELECT e.id, e.podcast_id, e.url, e.title, e.guid, " +
@@ -133,7 +133,7 @@ func (s SqliteRepository) ListFavorites(ctx context.Context, dbctx DBContext, us
 func (s SqliteRepository) GetLastEpisodeAction(ctx context.Context, dbctx DBContext,
 	userid, podcastid int64, excludeDelete bool,
 ) (EpisodeDB, error) {
-	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_episodes").Logger()
+	logger := log.Ctx(ctx).With().Logger()
 	logger.Debug().Int64("user_id", userid).Int64("podcast_id", podcastid).
 		Msgf("get last episode action excludeDelete=%v", excludeDelete)
 
@@ -163,7 +163,7 @@ func (s SqliteRepository) GetLastEpisodeAction(ctx context.Context, dbctx DBCont
 }
 
 func (s SqliteRepository) SaveEpisode(ctx context.Context, dbctx DBContext, userid int64, episode ...EpisodeDB) error {
-	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_episodes").Logger()
+	logger := log.Ctx(ctx).With().Logger()
 	logger.Debug().Int64("user_id", userid).Msgf("save episode")
 
 	for _, eps := range episode {
@@ -178,7 +178,7 @@ func (s SqliteRepository) SaveEpisode(ctx context.Context, dbctx DBContext, user
 }
 
 func (s SqliteRepository) saveEpisode(ctx context.Context, dbctx DBContext, episode EpisodeDB) error {
-	logger := log.Ctx(ctx).With().Str("mod", "sqlite_repo_episodes").Logger()
+	logger := log.Ctx(ctx).With().Logger()
 	logger.Debug().Object("episode", episode).Msg("save episode")
 
 	_, err := dbctx.ExecContext(

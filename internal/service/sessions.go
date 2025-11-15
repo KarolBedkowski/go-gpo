@@ -73,7 +73,7 @@ func (s *SessionStore) ID() string {
 // save postgres session values to database.
 // must call this method to save values to database.
 func (s *SessionStore) Release() error {
-	log.Logger.Debug().Str("mod", "session_store").Msgf("session release: %+v", s.data)
+	log.Logger.Debug().Msgf("session release: %+v", s.data)
 
 	var (
 		data []byte
@@ -125,7 +125,7 @@ func NewSessionProvider(db *db.Database, repo repository.SessionRepository, maxl
 		db,
 		repo,
 		maxlifetime,
-		log.Logger.With().Str("mod", "session_provider").Logger(),
+		log.Logger.With().Logger(),
 	}
 }
 

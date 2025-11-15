@@ -37,7 +37,7 @@ func AuthenticatedOnly(next http.Handler) http.Handler {
 		sess := session.GetSession(r)
 		user := internal.SessionUser(sess)
 
-		logger.Debug().Str("mod", "server").Str("session_user", user).Msg("authenticated only check")
+		logger.Debug().Str("session_user", user).Msg("authenticated only check")
 
 		if user != "" {
 			ctx := internal.ContextWithUser(r.Context(), user)
@@ -71,7 +71,7 @@ func (a authenticator) handle(next http.Handler) http.Handler {
 		username, password, ok := r.BasicAuth()
 		if ok && password != "" && username != "" {
 			ctx := r.Context()
-			logger := hlog.FromRequest(r).With().Str("mod", "server").Logger()
+			logger := hlog.FromRequest(r).With().Logger()
 			sess := session.GetSession(r)
 
 			_, err := a.usersSrv.LoginUser(ctx, username, password)
@@ -272,7 +272,7 @@ func newRecoverMiddleware(next http.Handler) http.Handler {
 				return
 			}
 
-			logger := log.Ctx(ctx).With().Str("mod", "server").Str("stack", string(debug.Stack())).Logger()
+			logger := log.Ctx(ctx).With().Str("stack", string(debug.Stack())).Logger()
 
 			switch t := rec.(type) {
 			case error:

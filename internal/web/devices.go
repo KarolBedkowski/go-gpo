@@ -45,7 +45,7 @@ func (d devicePages) list(ctx context.Context, w http.ResponseWriter, r *http.Re
 	devices, err := d.deviceSrv.ListDevices(ctx, user)
 	if err != nil {
 		internal.CheckAndWriteError(w, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Str("mod", "web").Msg("list devices error")
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("list devices error")
 
 		return
 	}
@@ -57,7 +57,7 @@ func (d devicePages) list(ctx context.Context, w http.ResponseWriter, r *http.Re
 	}
 
 	if err := d.template.executeTemplate(w, "devices.tmpl", &data); err != nil {
-		logger.Error().Err(err).Str("mod", "web").Msg("execute template error")
+		logger.Error().Err(err).Msg("execute template error")
 		internal.WriteError(w, r, http.StatusInternalServerError, "")
 	}
 }

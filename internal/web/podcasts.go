@@ -45,7 +45,7 @@ func (p podcastPages) list(ctx context.Context, w http.ResponseWriter, r *http.R
 	podcasts, err := p.podcastsSrv.GetPodcastsWithLastEpisode(ctx, user)
 	if err != nil {
 		internal.CheckAndWriteError(w, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Str("mod", "web").Msg("get user podcasts error")
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get user podcasts error")
 
 		return
 	}
@@ -57,7 +57,7 @@ func (p podcastPages) list(ctx context.Context, w http.ResponseWriter, r *http.R
 	}
 
 	if err := p.template.executeTemplate(w, "podcasts.tmpl", &data); err != nil {
-		logger.Error().Err(err).Str("mod", "web").Msg("execute template error")
+		logger.Error().Err(err).Msg("execute template error")
 		internal.WriteError(w, r, http.StatusInternalServerError, "")
 	}
 }

@@ -49,7 +49,7 @@ func (i indexPage) indexPage(ctx context.Context, writer http.ResponseWriter, r 
 	lastactions, err := i.episodeSrv.GetLastActions(ctx, user, time.Time{}, maxLastAction)
 	if err != nil {
 		internal.CheckAndWriteError(writer, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Str("mod", "web").Msg("get last actions error")
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get last actions error")
 
 		return
 	}
@@ -61,7 +61,7 @@ func (i indexPage) indexPage(ctx context.Context, writer http.ResponseWriter, r 
 	}{lastactions}
 
 	if err := i.template.executeTemplate(writer, "index.tmpl", data); err != nil {
-		logger.Error().Err(err).Str("mod", "web").Msg("execute template error")
+		logger.Error().Err(err).Msg("execute template error")
 		internal.WriteError(writer, r, http.StatusInternalServerError, "")
 	}
 }

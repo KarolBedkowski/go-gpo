@@ -60,7 +60,7 @@ type templates map[string]*template.Template
 
 // newTemplate loads templates.
 func newTemplates(webroot string) templates {
-	logger := log.Logger.With().Str("mod", "web").Logger()
+	logger := log.Logger.With().Logger()
 	funcs := template.FuncMap{"webroot": func() string { return webroot }}
 	base := template.Must(template.New("").Funcs(funcs).ParseFS(templatesFS, "templates/_base*"))
 

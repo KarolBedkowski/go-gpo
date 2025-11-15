@@ -53,7 +53,7 @@ func (u userPages) changePassword(
 
 	if r.Method == http.MethodPost {
 		if err := r.ParseForm(); err != nil {
-			logger.Info().Err(err).Str("mod", "web").Msg("parse form error")
+			logger.Info().Err(err).Msg("parse form error")
 			internal.WriteError(w, r, http.StatusBadRequest, "")
 
 			return
@@ -63,7 +63,7 @@ func (u userPages) changePassword(
 	}
 
 	if err := u.template.executeTemplate(w, "users_change_password.tmpl", &data); err != nil {
-		logger.Error().Err(err).Str("mod", "web").Msg("execute template error")
+		logger.Error().Err(err).Msg("execute template error")
 		internal.WriteError(w, r, http.StatusInternalServerError, "")
 	}
 }
@@ -78,14 +78,14 @@ func (u userPages) doChangePassword(ctx context.Context, r *http.Request, logger
 
 	_, err := u.usersSrv.LoginUser(ctx, username, cpass)
 	if err != nil {
-		logger.Info().Err(err).Str("mod", "web").Msg("check current user password for password change failed")
+		logger.Info().Err(err).Msg("check current user password for password change failed")
 
 		return "Error: invalid current password"
 	}
 
 	up := model.NewUserPassword(username, npass)
 	if err := u.usersSrv.ChangePassword(ctx, &up); err != nil {
-		logger.Info().Err(err).Str("mod", "web").Str("user_name", username).Msg("change user password failed")
+		logger.Info().Err(err).Str("user_name", username).Msg("change user password failed")
 
 		return "Error: change password failed"
 	}

@@ -44,7 +44,7 @@ func (e episodePages) list(ctx context.Context, w http.ResponseWriter, r *http.R
 
 	podcast := r.URL.Query().Get("podcast")
 	if podcast == "" {
-		logger.Debug().Str("mod", "web").Msgf("empty podcast")
+		logger.Debug().Msgf("empty podcast")
 		w.WriteHeader(http.StatusBadRequest)
 
 		return
@@ -53,7 +53,7 @@ func (e episodePages) list(ctx context.Context, w http.ResponseWriter, r *http.R
 	episodes, err := e.episodeSrv.GetEpisodes(ctx, user, "", podcast)
 	if err != nil {
 		internal.CheckAndWriteError(w, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Str("mod", "web").Msg("get podcast episodes error")
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get podcast episodes error")
 
 		return
 	}
@@ -65,7 +65,7 @@ func (e episodePages) list(ctx context.Context, w http.ResponseWriter, r *http.R
 	}
 
 	if err := e.template.executeTemplate(w, "episodes.tmpl", &data); err != nil {
-		logger.Error().Err(err).Str("mod", "web").Msg("execute template error")
+		logger.Error().Err(err).Msg("execute template error")
 		internal.WriteError(w, r, http.StatusInternalServerError, "")
 	}
 }
