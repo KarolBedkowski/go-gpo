@@ -25,6 +25,8 @@ const (
 	DebugGo = DebugFlag("go")
 	// DebugRouter show defined routes.
 	DebugRouter = DebugFlag("router")
+	// DebugDBQueryMetrics enable metrics for query metrics.
+	DebugDBQueryMetrics = DebugFlag("querymetrics")
 
 	// DebugAll enable all debug flags.
 	DebugAll = DebugFlag("all")

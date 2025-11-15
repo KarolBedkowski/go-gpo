@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io/fs"
 	"net/url"
+	"runtime"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -31,6 +32,8 @@ var embedMigrations embed.FS
 
 type Database struct {
 	db *sqlx.DB
+
+	queryDuration *prometheus.HistogramVec
 }
 
 func NewDatabaseI(_ do.Injector) (*Database, error) {
@@ -70,9 +73,20 @@ func (r *Database) Connect(ctx context.Context, driver, connstr string) error {
 	return nil
 }
 
-func (r *Database) RegisterMetrics() {
+func (r *Database) RegisterMetrics(queryTime bool) {
 	// gather stats from database
 	prometheus.DefaultRegisterer.MustRegister(collectors.NewDBStatsCollector(r.db.DB, "main"))
+
+	r.queryDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "database_query_duration_seconds",
+			Help:    "Tracks the latencies for database queries.",
+			Buckets: []float64{0.1, 0.5, 1, 2, 5, 10},
+		},
+		[]string{"caller"},
+	)
+
+	prometheus.DefaultRegisterer.MustRegister(r.queryDuration)
 }
 
 // Shutdown close database. Called by samber/do.
@@ -251,6 +265,22 @@ func (r *Database) onClose(ctx context.Context, db sqlx.ExecerContext) error {
 	return nil
 }
 
+func (r *Database) observeQeuryDuration(start time.Time) {
+	if r.queryDuration == nil {
+		return
+	}
+
+	caller := "?"
+
+	if _, file, line, ok := runtime.Caller(2); ok { //nolint:mnd
+		caller = fmt.Sprintf("%s:%d", file, line)
+	}
+
+	r.queryDuration.WithLabelValues(caller).Observe(time.Since(start).Seconds())
+}
+
+//------------------------------------------------------------------------------
+
 func prepareSqliteConnstr(connstr string) (string, error) {
 	if connstr == "" {
 		return "", aerr.ErrInvalidConf.WithUserMsg("invalid (empty) database connection string")
@@ -285,6 +315,9 @@ func prepareSqliteConnstr(connstr string) (string, error) {
 func InConnectionR[T any](ctx context.Context, r *Database,
 	fun func(repository.DBContext) (T, error),
 ) (T, error) {
+	start := time.Now()
+	defer r.observeQeuryDuration(start)
+
 	conn, err := r.GetConnection(ctx)
 	if err != nil {
 		return *new(T), err
@@ -301,6 +334,9 @@ func InConnectionR[T any](ctx context.Context, r *Database,
 }
 
 func InTransaction(ctx context.Context, r *Database, fun func(repository.DBContext) error) error {
+	start := time.Now()
+	defer r.observeQeuryDuration(start)
+
 	conn, err := r.GetConnection(ctx)
 	if err != nil {
 		return err
@@ -335,6 +371,9 @@ func InTransaction(ctx context.Context, r *Database, fun func(repository.DBConte
 func InTransactionR[T any](ctx context.Context, r *Database,
 	fun func(repository.DBContext) (T, error),
 ) (T, error) {
+	start := time.Now()
+	defer r.observeQeuryDuration(start)
+
 	conn, err := r.GetConnection(ctx)
 	if err != nil {
 		return *new(T), err
@@ -386,3 +425,5 @@ var maintScripts = []string{
 	"ANALYZE;",
 	"PRAGMA optimize;",
 }
+
+//------------------------------------------------------------------------------

@@ -60,7 +60,7 @@ func (s *Server) Start(ctx context.Context) error {
 		return fmt.Errorf("connect to database error: %w", err)
 	}
 
-	database.RegisterMetrics()
+	database.RegisterMetrics(s.DebugFlags.HasFlag(config.DebugDBQueryMetrics))
 
 	var group run.Group
 	group.Add(run.ContextHandler(ctx))
