@@ -78,3 +78,41 @@ func TestUsers(t *testing.T) {
 	assert.Equal(t, len(users), 1)
 	assert.Equal(t, users[0].Username, "test")
 }
+
+func TestDeleteUser(t *testing.T) {
+	ctx, i := prepareTests(t)
+	usersSrv := do.MustInvoke[*UsersSrv](i)
+	_ = prepareTestUser(ctx, t, i, "user1")
+	_ = prepareTestUser(ctx, t, i, "user2")
+	prepareTestDevice(ctx, t, i, "user1", "dev1")
+	prepareTestDevice(ctx, t, i, "user1", "dev2")
+	prepareTestSub(
+		ctx, t, i, "user1", "dev1", "http://example.com/p1", "http://example.com/p2",
+	)
+	prepareTestEpisode(ctx, t, i,
+		"user1", "dev1", "http://example.com/p1", "http://example.com/p1/e1", "http://example.com/p1/e2",
+	)
+	prepareTestEpisode(ctx, t, i,
+		"user1", "dev1", "http://example.com/p2", "http://example.com/p2/e1", "http://example.com/p2/e2",
+	)
+
+	err := usersSrv.DeleteUser(ctx, "user3")
+	assert.ErrSpec(t, err, ErrUnknownUser)
+
+	err = usersSrv.DeleteUser(ctx, "user2")
+	assert.NoErr(t, err)
+
+	// get active users
+	users, err := usersSrv.GetUsers(ctx, true)
+	assert.NoErr(t, err)
+	assert.Equal(t, len(users), 1)
+	assert.Equal(t, users[0].Username, "user1")
+
+	err = usersSrv.DeleteUser(ctx, "user1")
+	assert.NoErr(t, err)
+
+	// get active users
+	users, err = usersSrv.GetUsers(ctx, true)
+	assert.NoErr(t, err)
+	assert.Equal(t, len(users), 0)
+}
