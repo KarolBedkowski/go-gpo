@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/rs/zerolog/hlog"
 	"github.com/rs/zerolog/log"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
 //
@@ -62,10 +64,14 @@ func WriteError(w http.ResponseWriter, r *http.Request, code int, msg string) {
 }
 
 // CheckAndWriteError decode and write error to ResponseWriter.
+// TODO: separate api/web
 func CheckAndWriteError(w http.ResponseWriter, r *http.Request, err error) {
 	msg := aerr.GetUserMessage(err)
 
 	switch {
+	case errors.Is(err, service.ErrUnknownDevice):
+		WriteError(w, r, http.StatusNotFound, msg)
+
 	case aerr.HasTag(err, aerr.InternalError):
 		// write message if is defined in error
 		WriteError(w, r, http.StatusInternalServerError, msg)
