@@ -272,12 +272,19 @@ func (r *Database) observeQueryDuration(start time.Time) {
 		return
 	}
 
-	caller := "?"
+	const skipFrames = 3
 
-	if _, file, line, ok := runtime.Caller(2); ok { //nolint:mnd
-		caller = fmt.Sprintf("%s:%d", file, line)
+	rpc := make([]uintptr, 1)
+	if n := runtime.Callers(skipFrames, rpc); n < 1 {
+		return
 	}
 
+	frame, _ := runtime.CallersFrames(rpc).Next()
+	if frame.PC == 0 {
+		return
+	}
+
+	caller := frame.Function
 	r.queryDuration.WithLabelValues(caller).Observe(time.Since(start).Seconds())
 }
 
