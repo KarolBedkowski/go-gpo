@@ -18,6 +18,7 @@ func Coalesce(value ...string) string {
 	return ""
 }
 
+// NVL return *value if value != nil or T otherwise.
 func NVL[T any](value *T, def T) T {
 	if value == nil {
 		return def
@@ -26,6 +27,7 @@ func NVL[T any](value *T, def T) T {
 	return *value
 }
 
+// NilIf return nil when value is equal to def or pointer to value otherwise.
 func NilIf(value, def string) *string {
 	if value == def {
 		return nil

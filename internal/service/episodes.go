@@ -116,11 +116,14 @@ func (e *EpisodesSrv) AddAction(ctx context.Context, username string, action ...
 }
 
 // GetActions return list of episode actions for username and optional podcast and devicename.
-// If devicename is not empty - get actions from other devices.
+// If devicename is not empty - get actions from other devices (TODO: check)
 // Used by /api/2/episodes.
 func (e *EpisodesSrv) GetActions(ctx context.Context, username, podcast, devicename string,
 	since time.Time, aggregated bool,
 ) ([]model.Episode, error) {
+	log.Ctx(ctx).Debug().Str("username", username).Str("devicename", devicename).
+		Msgf("get actions since=%s aggregated=%v", since, aggregated)
+
 	if username == "" {
 		return nil, ErrEmptyUsername
 	}
