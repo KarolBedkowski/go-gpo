@@ -9,6 +9,7 @@ package api
 import (
 	"context"
 	"net/http"
+	"slices"
 	"time"
 
 	"gitlab.com/kabes/go-gpo/internal"
@@ -204,6 +205,10 @@ func (e *episode) validate() error {
 
 	if e.Episode == "" {
 		return aerr.NewSimple("empty `episode`").WithTag(aerr.DataError)
+	}
+
+	if !slices.Contains(model.ValidActions, e.Action) {
+		return aerr.NewSimple("invalid `action`").WithTag(aerr.DataError)
 	}
 
 	var err error
