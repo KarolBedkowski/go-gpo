@@ -151,6 +151,8 @@ func newSimpleLogMiddleware(next http.Handler) http.Handler {
 			Str("method", request.Method).
 			Msg("webhandler: request start")
 
+		llog.Debug().Interface("req-headers", request.Header).Msg("webhandler: request data")
+
 		lrw := &logResponseWriter{ResponseWriter: writer, status: 0, size: 0}
 
 		defer func() {
@@ -158,6 +160,8 @@ func newSimpleLogMiddleware(next http.Handler) http.Handler {
 			if lrw.status >= 400 && lrw.status != 404 {
 				loglevel = zerolog.WarnLevel
 			}
+
+			llog.Debug().Interface("resp-headers", lrw.Header()).Msg("webhandler: response data")
 
 			llog.WithLevel(loglevel).
 				Str("uri", request.RequestURI).
