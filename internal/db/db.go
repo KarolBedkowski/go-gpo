@@ -108,8 +108,6 @@ func (r *Database) Migrate(ctx context.Context, driver string) error { //nolint:
 		panic(fmt.Errorf("create goose provider failed: %w", err))
 	}
 
-	defer provider.Close()
-
 	ver, err := provider.GetDBVersion(ctx)
 	if err != nil {
 		return aerr.ApplyFor(aerr.ErrDatabase, err, "", "failed to check current database version")
