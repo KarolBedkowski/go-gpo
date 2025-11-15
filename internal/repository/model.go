@@ -154,7 +154,7 @@ func (s PodcastsDB) ToIDsMap() map[string]int64 {
 type EpisodeDB struct {
 	ID        int64     `db:"id"`
 	PodcastID int64     `db:"podcast_id"`
-	DeviceID  int64     `db:"device_id"`
+	DeviceID  *int64    `db:"device_id"`
 	Title     string    `db:"title"`
 	URL       string    `db:"url"`
 	Action    string    `db:"action"`
@@ -173,7 +173,7 @@ type EpisodeDB struct {
 func (e EpisodeDB) MarshalZerologObject(event *zerolog.Event) {
 	event.Int64("id", e.ID).
 		Int64("podcast_id", e.PodcastID).
-		Int64("device_id", e.DeviceID).
+		Any("device_id", e.DeviceID).
 		Str("title", e.Title).
 		Str("url", e.URL).
 		Str("action", e.Action).

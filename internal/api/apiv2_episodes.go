@@ -145,9 +145,10 @@ func (er episodesResource) getEpisodeActions(
 // -----------------------------
 
 type episode struct {
-	Podcast   string  `json:"podcast"`
-	Episode   string  `json:"episode"`
-	Device    string  `json:"device"`
+	Podcast string `json:"podcast"`
+	Episode string `json:"episode"`
+	// Device is optional
+	Device    string  `json:"device,omitempty"`
 	Action    string  `json:"action"`
 	Timestamp any     `json:"timestamp"`
 	Started   *int    `json:"started,omitempty"`

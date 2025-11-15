@@ -98,6 +98,7 @@ func (e *EpisodesSrv) AddAction(ctx context.Context, username string, action ...
 				return err
 			}
 
+			// devicecache handle nil for empty Device
 			episode.DeviceID, err = devicescache.GetOrCreate(act.Device)
 			if err != nil {
 				return err
@@ -303,22 +304,31 @@ func (e *EpisodesSrv) createPodcastsCache(ctx context.Context, dbctx repository.
 
 func (e *EpisodesSrv) createDevicesCache(ctx context.Context, dbctx repository.DBContext,
 	userid int64,
-) (DynamicCache[string, int64], error) {
+) (DynamicCache[string, *int64], error) {
 	devices, err := e.devicesRepo.ListDevices(ctx, dbctx, userid)
 	if err != nil {
-		return DynamicCache[string, int64]{}, aerr.Wrapf(err, "load devices into cache failed")
+		return DynamicCache[string, *int64]{}, aerr.Wrapf(err, "load devices into cache failed")
 	}
 
-	devicescache := DynamicCache[string, int64]{
-		items: devices.ToIDsMap(),
-		creator: func(key string) (int64, error) {
+	items := make(map[string]*int64, len(devices))
+	for _, d := range devices {
+		items[d.Name] = &d.ID
+	}
+
+	devicescache := DynamicCache[string, *int64]{
+		items: items,
+		creator: func(key string) (*int64, error) {
+			if key == "" {
+				return nil, nil //nolint:nilnil
+			}
+
 			did, err := e.devicesRepo.SaveDevice(ctx, dbctx,
 				&repository.DeviceDB{UserID: userid, Name: key, DevType: "other"})
 			if err != nil {
-				return 0, aerr.Wrapf(err, "create new device failed")
+				return nil, aerr.Wrapf(err, "create new device failed")
 			}
 
-			return did, nil
+			return &did, nil
 		},
 	}
 

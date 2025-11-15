@@ -64,7 +64,7 @@ func WriteError(w http.ResponseWriter, r *http.Request, code int, msg string) {
 }
 
 // CheckAndWriteError decode and write error to ResponseWriter.
-// TODO: separate api/web
+// TODO: separate api/web.
 func CheckAndWriteError(w http.ResponseWriter, r *http.Request, err error) {
 	msg := aerr.GetUserMessage(err)
 
