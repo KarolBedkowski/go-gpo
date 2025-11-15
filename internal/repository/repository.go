@@ -77,7 +77,7 @@ type SessionRepository interface {
 	RegenerateSession(ctx context.Context, db DBContext, oldsid, newsid string) error
 	CountSessions(ctx context.Context, db DBContext) (int, error)
 	CleanSessions(ctx context.Context, db DBContext, maxLifeTime, maxLifeTimeForEmpty time.Duration) error
-	ReadOrCreate(ctx context.Context, db DBContext, sid string) (data []byte, createAt time.Time, err error)
+	ReadOrCreate(ctx context.Context, db DBContext, sid string) (session SessionDB, err error)
 	SessionExists(ctx context.Context, db DBContext, sid string) (bool, error)
 }
 

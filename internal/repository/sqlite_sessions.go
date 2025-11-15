@@ -116,28 +116,27 @@ func (s SqliteRepository) CleanSessions(
 	return nil
 }
 
-func (s SqliteRepository) ReadOrCreate(ctx context.Context, dbctx DBContext, sid string) ([]byte, time.Time, error) {
+func (s SqliteRepository) ReadOrCreate(ctx context.Context, dbctx DBContext, sid string) (SessionDB, error) {
 	logger := log.Ctx(ctx).With().Logger()
 	logger.Debug().Str("sid", sid).Msg("read or create session")
 
-	var (
-		data      []byte
-		createdat = time.Now().UTC()
-	)
+	session := SessionDB{
+		SID:       sid,
+		CreatedAt: time.Now().UTC(),
+	}
+	err := dbctx.GetContext(ctx, &session, "SELECT key, data, created_at FROM sessions WHERE key=?", sid)
 
-	err := dbctx.QueryRowxContext(ctx, "SELECT data, created_at FROM sessions WHERE key=?", sid).
-		Scan(&data, &createdat)
 	if errors.Is(err, sql.ErrNoRows) {
 		// create empty session
-		_, err := dbctx.ExecContext(ctx, "INSERT INTO sessions(key, created_at) VALUES(?, ?)", sid, createdat)
+		_, err := dbctx.ExecContext(ctx, "INSERT INTO sessions(key, created_at) VALUES(?, ?)", sid, session.CreatedAt)
 		if err != nil {
-			return nil, time.Time{}, aerr.Wrapf(err, "insert session failed").WithMeta("sid", sid)
+			return session, aerr.Wrapf(err, "insert session failed").WithMeta("sid", sid)
 		}
 	} else if err != nil {
-		return nil, time.Time{}, aerr.Wrapf(err, "select session failed").WithMeta("sid", sid)
+		return session, aerr.Wrapf(err, "select session failed").WithMeta("sid", sid)
 	}
 
-	return data, createdat, nil
+	return session, nil
 }
 
 func (s SqliteRepository) SessionExists(ctx context.Context, dbctx DBContext, sid string) (bool, error) {

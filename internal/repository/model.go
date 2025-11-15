@@ -234,3 +234,9 @@ func (s SettingsDB) MarshalZerologObject(event *zerolog.Event) {
 		Str("key", s.Key).
 		Str("value", s.Value)
 }
+
+type SessionDB struct {
+	SID       string    `db:"key"`
+	Data      []byte    `db:"data"`
+	CreatedAt time.Time `db:"created_at"`
+}

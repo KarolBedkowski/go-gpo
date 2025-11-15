@@ -141,11 +141,21 @@ func (p *SessionProvider) Init(gclifetime int64, config string) error {
 func (p *SessionProvider) Read(sid string) (session.RawStore, error) { //nolint:ireturn
 	ctx := context.Background()
 
-	store, err := db.InTransactionR(ctx, p.db, func(dbctx repository.DBContext) (session.RawStore, error) {
-		return p.readOrCreate(ctx, dbctx, sid)
+	storedSession, err := db.InTransactionR(ctx, p.db, func(dbctx repository.DBContext) (repository.SessionDB, error) {
+		stored, err := p.repo.ReadOrCreate(ctx, dbctx, sid)
+		if err != nil {
+			return stored, fmt.Errorf("read or create session %q from db error: %w", sid, err)
+		}
+
+		return stored, nil
 	})
 	if err != nil {
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)
+	}
+
+	store, err := p.decodeSession(ctx, storedSession)
+	if err != nil {
+		return nil, err
 	}
 
 	return store, nil
@@ -190,18 +200,28 @@ func (p *SessionProvider) Regenerate(oldsid, sid string) (session.RawStore, erro
 
 	ctx := context.Background()
 
-	data, err := db.InTransactionR(ctx, p.db, func(dbctx repository.DBContext) (session.RawStore, error) {
+	storedSession, err := db.InTransactionR(ctx, p.db, func(dbctx repository.DBContext) (repository.SessionDB, error) {
 		if err := p.repo.RegenerateSession(ctx, dbctx, oldsid, sid); err != nil {
-			return nil, fmt.Errorf("regenerate session error: %w", err)
+			return repository.SessionDB{}, fmt.Errorf("regenerate session error: %w", err)
 		}
 
-		return p.readOrCreate(ctx, dbctx, sid)
+		stored, err := p.repo.ReadOrCreate(ctx, dbctx, sid)
+		if err != nil {
+			return stored, fmt.Errorf("read or create session %q from db error: %w", sid, err)
+		}
+
+		return stored, nil
 	})
 	if err != nil {
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
-	return data, nil
+	store, err := p.decodeSession(ctx, storedSession)
+	if err != nil {
+		return nil, err
+	}
+
+	return store, nil
 }
 
 // Count counts and returns number of sessions.
@@ -237,22 +257,21 @@ func (p *SessionProvider) GC() {
 	}
 }
 
-func (p *SessionProvider) readOrCreate(
+func (p *SessionProvider) decodeSession(
 	ctx context.Context,
-	db repository.DBContext,
-	sid string,
-) (*SessionStore, error) {
-	data, createdat, err := p.repo.ReadOrCreate(ctx, db, sid)
-	if err != nil {
-		return nil, fmt.Errorf("read or create session %q from db error: %w", sid, err)
-	}
+	dbsession repository.SessionDB,
+) (session.RawStore, error) {
+	_ = ctx
 
 	var sessiondata map[any]any
 
-	if len(data) == 0 || createdat.Add(time.Duration(p.maxlifetime)*time.Second).Before(time.Now().UTC()) {
+	if len(dbsession.Data) == 0 ||
+		dbsession.CreatedAt.Add(time.Duration(p.maxlifetime)*time.Second).Before(time.Now().UTC()) {
 		sessiondata = make(map[any]any)
 	} else {
-		sessiondata, err = session.DecodeGob(data)
+		var err error
+
+		sessiondata, err = session.DecodeGob(dbsession.Data)
 		if err != nil {
 			return nil, fmt.Errorf("decode session error: %w", err)
 		}
@@ -261,7 +280,7 @@ func (p *SessionProvider) readOrCreate(
 	return &SessionStore{
 		db:   p.db,
 		repo: p.repo,
-		sid:  sid,
+		sid:  dbsession.SID,
 		data: sessiondata,
 	}, nil
 }
