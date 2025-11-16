@@ -16,6 +16,7 @@ import (
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/db"
+	"gitlab.com/kabes/go-gpo/internal/queries"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
@@ -55,7 +56,7 @@ func (l *List) Start(ctx context.Context) error {
 }
 
 func (l *List) listDevices(ctx context.Context, devsrv *service.DevicesSrv) error {
-	devices, err := devsrv.ListDevices(ctx, l.UserName)
+	devices, err := devsrv.ListDevices(ctx, &queries.QueryDevices{UserName: l.UserName})
 	if err != nil {
 		return fmt.Errorf("get device list error: %w", err)
 	}

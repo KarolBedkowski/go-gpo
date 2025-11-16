@@ -17,6 +17,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/model"
+	"gitlab.com/kabes/go-gpo/internal/queries"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
@@ -42,7 +43,7 @@ func (d devicePages) Routes() *chi.Mux {
 func (d devicePages) list(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
 	user := internal.ContextUser(ctx)
 
-	devices, err := d.deviceSrv.ListDevices(ctx, user)
+	devices, err := d.deviceSrv.ListDevices(ctx, &queries.QueryDevices{UserName: user})
 	if err != nil {
 		internal.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("list devices error")

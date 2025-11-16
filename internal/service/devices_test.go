@@ -14,6 +14,7 @@ import (
 
 	"gitlab.com/kabes/go-gpo/internal/assert"
 	"gitlab.com/kabes/go-gpo/internal/command"
+	"gitlab.com/kabes/go-gpo/internal/queries"
 )
 
 func TestDevice(t *testing.T) {
@@ -31,7 +32,7 @@ func TestDevice(t *testing.T) {
 	err := deviceSrv.UpdateDevice(ctx, &cmd1)
 	assert.NoErr(t, err)
 
-	devices, err := deviceSrv.ListDevices(ctx, "test")
+	devices, err := deviceSrv.ListDevices(ctx, &queries.QueryDevices{UserName: "test"})
 	assert.NoErr(t, err)
 	assert.Equal(t, len(devices), 1)
 
@@ -45,7 +46,7 @@ func TestDevice(t *testing.T) {
 	err = deviceSrv.UpdateDevice(ctx, &cmd2)
 	assert.NoErr(t, err)
 
-	devices, err = deviceSrv.ListDevices(ctx, "test")
+	devices, err = deviceSrv.ListDevices(ctx, &queries.QueryDevices{UserName: "test"})
 	assert.NoErr(t, err)
 	assert.Equal(t, len(devices), 2)
 	assert.Equal(t, devices[0].Name, cmd1.DeviceName)
@@ -68,7 +69,7 @@ func TestDevice(t *testing.T) {
 	err = deviceSrv.UpdateDevice(ctx, &cmd3)
 	assert.NoErr(t, err)
 
-	devices, err = deviceSrv.ListDevices(ctx, "test")
+	devices, err = deviceSrv.ListDevices(ctx, &queries.QueryDevices{UserName: "test"})
 	assert.NoErr(t, err)
 	assert.Equal(t, len(devices), 2)
 	assert.Equal(t, devices[0].Name, cmd3.DeviceName)
@@ -95,7 +96,7 @@ func TestDeleteDevice(t *testing.T) {
 	err := deviceSrv.DeleteDevice(ctx, "user1", "dev1")
 	assert.NoErr(t, err)
 
-	devices, err := deviceSrv.ListDevices(ctx, "user1")
+	devices, err := deviceSrv.ListDevices(ctx, &queries.QueryDevices{UserName: "user1"})
 	assert.NoErr(t, err)
 	assert.Equal(t, len(devices), 1)
 	assert.Equal(t, devices[0].Name, "dev2")

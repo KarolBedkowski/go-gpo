@@ -15,6 +15,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/model"
+	"gitlab.com/kabes/go-gpo/internal/queries"
 	"gitlab.com/kabes/go-gpo/internal/service"
 
 	"github.com/go-chi/chi/v5"
@@ -90,7 +91,7 @@ func (d deviceResource) listDevices(
 ) {
 	user := internal.ContextUser(ctx)
 
-	devices, err := d.deviceSrv.ListDevices(ctx, user)
+	devices, err := d.deviceSrv.ListDevices(ctx, &queries.QueryDevices{UserName: user})
 	if err != nil {
 		internal.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get devices error")

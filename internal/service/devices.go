@@ -16,6 +16,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
+	"gitlab.com/kabes/go-gpo/internal/queries"
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
@@ -69,13 +70,13 @@ func (d *DevicesSrv) UpdateDevice(ctx context.Context, cmd *command.UpdateDevice
 }
 
 // ListDevices return list of user's devices.
-func (d *DevicesSrv) ListDevices(ctx context.Context, username string) ([]model.Device, error) {
-	if username == "" {
-		return nil, ErrEmptyUsername
+func (d *DevicesSrv) ListDevices(ctx context.Context, query *queries.QueryDevices) ([]model.Device, error) {
+	if err := query.Validate(); err != nil {
+		return nil, err
 	}
 
 	devices, err := db.InConnectionR(ctx, d.db, func(conn repository.DBContext) (repository.DevicesDB, error) {
-		user, err := d.usersRepo.GetUser(ctx, conn, username)
+		user, err := d.usersRepo.GetUser(ctx, conn, query.UserName)
 		if errors.Is(err, repository.ErrNoData) {
 			return nil, ErrUnknownUser
 		} else if err != nil {
@@ -96,7 +97,7 @@ func (d *DevicesSrv) ListDevices(ctx context.Context, username string) ([]model.
 	res := make([]model.Device, len(devices))
 	for i, d := range devices {
 		dev := model.NewDeviceFromDeviceDB(d)
-		dev.User = username
+		dev.User = query.UserName
 		res[i] = dev
 	}
 
