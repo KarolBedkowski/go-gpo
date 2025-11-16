@@ -69,17 +69,16 @@ func (u *UsersSrv) AddUser(ctx context.Context, cmd *command.NewUserCmd) (comman
 		panic("cmd is nil")
 	}
 
-	res := command.NewUserCmdResult{Success: false}
+	res := command.NewUserCmdResult{}
 
-	user := model.NewNewUser(cmd.Username, cmd.Password, cmd.Email, cmd.Name)
-	if err := user.Validate(); err != nil {
+	if err := cmd.Validate(); err != nil {
 		return res, aerr.Wrapf(err, "validate user to add failed")
 	}
 
 	//nolint:wrapcheck
 	return db.InTransactionR(ctx, u.db, func(dbctx repository.DBContext) (command.NewUserCmdResult, error) {
 		// is user exists?
-		_, err := u.usersRepo.GetUser(ctx, dbctx, user.Username)
+		_, err := u.usersRepo.GetUser(ctx, dbctx, cmd.Username)
 		switch {
 		case errors.Is(err, repository.ErrNoData):
 			// ok; user not exists
@@ -91,17 +90,17 @@ func (u *UsersSrv) AddUser(ctx context.Context, cmd *command.NewUserCmd) (comman
 			return res, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		hashedPass, err := u.passHasher.HashPassword(user.Password)
+		hashedPass, err := u.passHasher.HashPassword(cmd.Password)
 		if err != nil {
 			return res, aerr.Wrapf(err, "hash password failed")
 		}
 
 		now := time.Now().UTC()
 		udb := repository.UserDB{
-			Username:  user.Username,
+			Username:  cmd.Username,
 			Password:  hashedPass,
-			Email:     user.Email,
-			Name:      user.Name,
+			Email:     cmd.Email,
+			Name:      cmd.Name,
 			CreatedAt: now,
 			UpdatedAt: now,
 		}
@@ -111,7 +110,6 @@ func (u *UsersSrv) AddUser(ctx context.Context, cmd *command.NewUserCmd) (comman
 			return res, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		res.Success = true
 		res.UserID = uid
 
 		return res, nil
@@ -123,15 +121,14 @@ func (u *UsersSrv) ChangePassword(ctx context.Context, cmd *command.ChangeUserPa
 		panic("cmd is nil")
 	}
 
-	userpass := model.NewUserPassword(cmd.Username, cmd.Password, cmd.CurrentPassword, cmd.CheckCurrentPass)
-	if err := userpass.Validate(); err != nil {
+	if err := cmd.Validate(); err != nil {
 		return aerr.Wrapf(err, "validate user/password for save failed")
 	}
 
 	//nolint: wrapcheck
 	return db.InTransaction(ctx, u.db, func(dbctx repository.DBContext) error {
 		// is user exists?
-		user, err := u.usersRepo.GetUser(ctx, dbctx, userpass.Username)
+		user, err := u.usersRepo.GetUser(ctx, dbctx, cmd.Username)
 
 		if errors.Is(err, repository.ErrNoData) {
 			return ErrUnknownUser
@@ -139,11 +136,11 @@ func (u *UsersSrv) ChangePassword(ctx context.Context, cmd *command.ChangeUserPa
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		if userpass.CheckCurrentPass && !u.passHasher.CheckPassword(userpass.CurrentPassword, user.Password) {
+		if cmd.CheckCurrentPass && !u.passHasher.CheckPassword(cmd.CurrentPassword, user.Password) {
 			return command.ErrChangePasswordOldNotMatch
 		}
 
-		user.Password, err = u.passHasher.HashPassword(userpass.Password)
+		user.Password, err = u.passHasher.HashPassword(cmd.Password)
 		if err != nil {
 			return aerr.Wrapf(err, "hash password failed")
 		}
@@ -169,14 +166,14 @@ func (u *UsersSrv) GetUsers(ctx context.Context, activeOnly bool) ([]model.User,
 	return model.Map(users, model.NewUserFromUserDB), nil
 }
 
-func (u *UsersSrv) LockAccount(ctx context.Context, la model.LockAccount) error {
-	if err := la.Validate(); err != nil {
+func (u *UsersSrv) LockAccount(ctx context.Context, cmd command.LockAccountCmd) error {
+	if err := cmd.Validate(); err != nil {
 		return aerr.Wrapf(err, "validate account to lock failed")
 	}
 
 	//nolint:wrapcheck
 	return db.InTransaction(ctx, u.db, func(dbctx repository.DBContext) error {
-		udb, err := u.usersRepo.GetUser(ctx, dbctx, la.Username)
+		udb, err := u.usersRepo.GetUser(ctx, dbctx, cmd.Username)
 		if errors.Is(err, repository.ErrNoData) {
 			return ErrUnknownUser
 		} else if err != nil {
@@ -194,14 +191,14 @@ func (u *UsersSrv) LockAccount(ctx context.Context, la model.LockAccount) error 
 	})
 }
 
-func (u *UsersSrv) DeleteUser(ctx context.Context, username string) error {
-	if username == "" {
-		return ErrEmptyUsername
+func (u *UsersSrv) DeleteUser(ctx context.Context, cmd *command.DeleteUserCmd) error {
+	if err := cmd.Validate(); err != nil {
+		return err
 	}
 
 	//nolint:wrapcheck
 	return db.InTransaction(ctx, u.db, func(dbctx repository.DBContext) error {
-		user, err := u.usersRepo.GetUser(ctx, dbctx, username)
+		user, err := u.usersRepo.GetUser(ctx, dbctx, cmd.Username)
 		if errors.Is(err, repository.ErrNoData) {
 			return ErrUnknownUser
 		} else if err != nil {

@@ -14,7 +14,7 @@ import (
 	"github.com/samber/do/v2"
 
 	"gitlab.com/kabes/go-gpo/internal/assert"
-	"gitlab.com/kabes/go-gpo/internal/model"
+	"gitlab.com/kabes/go-gpo/internal/command"
 )
 
 func TestSubsServiceUser(t *testing.T) {
@@ -29,7 +29,13 @@ func TestSubsServiceUser(t *testing.T) {
 		"http://example.com/p3",
 	}
 
-	err := subsSrv.ReplaceSubscriptions(ctx, "user1", "dev1", model.NewSubscribedURLS(newSubscribed), time.Now().UTC())
+	cmd := command.ReplaceSubscriptionsCmd{
+		Username:      "user1",
+		Devicename:    "dev1",
+		Subscriptions: newSubscribed,
+		Timestamp:     time.Now().UTC(),
+	}
+	err := subsSrv.ReplaceSubscriptions(ctx, &cmd)
 	assert.NoErr(t, err)
 
 	// getsubs
@@ -43,7 +49,13 @@ func TestSubsServiceUser(t *testing.T) {
 		"http://example.com/p5",
 	}
 
-	err = subsSrv.ReplaceSubscriptions(ctx, "user1", "dev1", model.NewSubscribedURLS(newSubscribed2), time.Now().UTC())
+	cmd2 := command.ReplaceSubscriptionsCmd{
+		Username:      "user1",
+		Devicename:    "dev1",
+		Subscriptions: newSubscribed2,
+		Timestamp:     time.Now().UTC(),
+	}
+	err = subsSrv.ReplaceSubscriptions(ctx, &cmd2)
 	assert.NoErr(t, err)
 
 	// getsubs
@@ -64,7 +76,13 @@ func TestSubsServiceDevice(t *testing.T) {
 		"http://example.com/p3",
 	}
 
-	err := subsSrv.ReplaceSubscriptions(ctx, "user1", "dev1", model.NewSubscribedURLS(newSubscribed), time.Now().UTC())
+	cmd := command.ReplaceSubscriptionsCmd{
+		Username:      "user1",
+		Devicename:    "dev1",
+		Subscriptions: newSubscribed,
+		Timestamp:     time.Now().UTC(),
+	}
+	err := subsSrv.ReplaceSubscriptions(ctx, &cmd)
 	assert.NoErr(t, err)
 
 	// replace with other device
@@ -75,7 +93,13 @@ func TestSubsServiceDevice(t *testing.T) {
 	}
 
 	// new device - should be created
-	err = subsSrv.ReplaceSubscriptions(ctx, "user1", "dev2", model.NewSubscribedURLS(newSubscribed2), time.Now().UTC())
+	cmd2 := command.ReplaceSubscriptionsCmd{
+		Username:      "user1",
+		Devicename:    "dev2",
+		Subscriptions: newSubscribed2,
+		Timestamp:     time.Now().UTC(),
+	}
+	err = subsSrv.ReplaceSubscriptions(ctx, &cmd2)
 	assert.NoErr(t, err)
 
 	devices, err := deviceSrv.ListDevices(ctx, "user1")
@@ -108,8 +132,13 @@ func TestSubsServiceChanges(t *testing.T) {
 		"http://example.com/p3",
 	}
 
-	err := subsSrv.ReplaceSubscriptions(ctx, "user1", "dev1", model.NewSubscribedURLS(newSubscribed),
-		time.Date(2025, 1, 2, 10, 0, 0, 0, time.UTC))
+	cmd := command.ReplaceSubscriptionsCmd{
+		Username:      "user1",
+		Devicename:    "dev1",
+		Subscriptions: newSubscribed,
+		Timestamp:     time.Date(2025, 1, 2, 10, 0, 0, 0, time.UTC),
+	}
+	err := subsSrv.ReplaceSubscriptions(ctx, &cmd)
 	assert.NoErr(t, err)
 
 	state, err := subsSrv.GetSubscriptionChanges(ctx, "user1", "dev1", time.Time{})
@@ -132,8 +161,13 @@ func TestSubsServiceChanges(t *testing.T) {
 	}
 
 	// new device - should be created
-	err = subsSrv.ReplaceSubscriptions(ctx, "user1", "dev2", model.NewSubscribedURLS(newSubscribed2),
-		time.Date(2025, 1, 2, 12, 0, 0, 0, time.UTC))
+	cmd2 := command.ReplaceSubscriptionsCmd{
+		Username:      "user1",
+		Devicename:    "dev2",
+		Subscriptions: newSubscribed2,
+		Timestamp:     time.Date(2025, 1, 2, 12, 0, 0, 0, time.UTC),
+	}
+	err = subsSrv.ReplaceSubscriptions(ctx, &cmd2)
 	assert.NoErr(t, err)
 
 	// new
@@ -165,20 +199,25 @@ func TestSubsServiceUpdateDevSubsChanges(t *testing.T) {
 		"http://example.com/p3",
 	}
 
-	err := subsSrv.ReplaceSubscriptions(ctx, "user1", "dev1", model.NewSubscribedURLS(newSubscribed),
-		time.Date(2025, 1, 2, 10, 0, 0, 0, time.UTC))
+	cmd := command.ReplaceSubscriptionsCmd{
+		Username:      "user1",
+		Devicename:    "dev1",
+		Subscriptions: newSubscribed,
+		Timestamp:     time.Date(2025, 1, 2, 10, 0, 0, 0, time.UTC),
+	}
+	err := subsSrv.ReplaceSubscriptions(ctx, &cmd)
 	assert.NoErr(t, err)
 
-	changes := model.NewSubscriptionChanges(
-		// add
-		[]string{"http://example.com/p4", "http://example.com/p5"},
-		// remove
-		[]string{"http://example.com/p1"},
-	)
+	changes := command.ChangeSubscriptionsCmd{
+		Username:   "user1",
+		Devicename: "dev1",
+		Add:        []string{"http://example.com/p4", "http://example.com/p5"},
+		Remove:     []string{"http://example.com/p1"},
+		Timestamp:  time.Date(2025, 1, 2, 12, 0, 0, 0, time.UTC),
+	}
 	assert.NoErr(t, changes.Validate())
 
-	err = subsSrv.ApplySubscriptionChanges(ctx, "user1", "dev1", &changes,
-		time.Date(2025, 1, 2, 12, 0, 0, 0, time.UTC))
+	_, err = subsSrv.ChangeSubscriptions(ctx, &changes)
 	assert.NoErr(t, err)
 
 	// new

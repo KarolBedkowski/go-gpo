@@ -12,8 +12,8 @@ import (
 	"fmt"
 
 	"github.com/samber/do/v2"
+	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/db"
-	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
@@ -37,13 +37,13 @@ func (u *UpdateDevice) Start(ctx context.Context) error {
 
 	devsrv := do.MustInvoke[*service.DevicesSrv](injector)
 
-	updateddev := model.UpdatedDevice{
+	cmd := command.UpdateDeviceCmd{
 		UserName:   u.Username,
 		DeviceName: u.DeviceName,
 		DeviceType: u.DeviceType,
 		Caption:    u.DeviceCaption,
 	}
-	if err := devsrv.UpdateDevice(ctx, &updateddev); err != nil {
+	if err := devsrv.UpdateDevice(ctx, &cmd); err != nil {
 		return fmt.Errorf("update device error: %w", err)
 	}
 

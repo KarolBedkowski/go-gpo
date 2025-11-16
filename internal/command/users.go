@@ -4,7 +4,11 @@
 // Distributed under terms of the GPLv3 license.
 package command
 
-import "errors"
+import (
+	"errors"
+
+	"gitlab.com/kabes/go-gpo/internal/aerr"
+)
 
 //---------------------------------------------------------------------
 
@@ -16,9 +20,20 @@ type NewUserCmd struct {
 	Name     string
 }
 
+func (n *NewUserCmd) Validate() error {
+	if n.Username == "" {
+		return aerr.ErrValidation.WithUserMsg("username can't be empty")
+	}
+
+	if n.Password == "" {
+		return aerr.ErrValidation.WithUserMsg("password can't be empty")
+	}
+
+	return nil
+}
+
 type NewUserCmdResult struct {
-	Success bool
-	UserID  int64
+	UserID int64
 }
 
 //---------------------------------------------------------------------
@@ -33,8 +48,20 @@ type ChangeUserPasswordCmd struct {
 	CheckCurrentPass bool
 }
 
-type ChangeUserPasswordCmdResult struct {
-	Success bool
+func (c *ChangeUserPasswordCmd) Validate() error {
+	if c.Username == "" {
+		return aerr.ErrValidation.WithUserMsg("username can't be empty")
+	}
+
+	if c.Password == "" {
+		return aerr.ErrValidation.WithUserMsg("password can't be empty")
+	}
+
+	if c.CheckCurrentPass && c.CurrentPassword == "" {
+		return aerr.ErrValidation.WithUserMsg("current password can't be empty")
+	}
+
+	return nil
 }
 
 //---------------------------------------------------------------------
@@ -44,6 +71,25 @@ type LockAccountCmd struct {
 	Username string
 }
 
-type LockAccountCmdResult struct {
-	Success bool
+func (l *LockAccountCmd) Validate() error {
+	if l.Username == "" {
+		return aerr.ErrValidation.WithUserMsg("username can't be empty")
+	}
+
+	return nil
+}
+
+//---------------------------------------------------------------------
+
+// DeleteUserCmd delete user and all related data.
+type DeleteUserCmd struct {
+	Username string
+}
+
+func (d *DeleteUserCmd) Validate() error {
+	if d.Username == "" {
+		return aerr.ErrValidation.WithUserMsg("username can't be empty")
+	}
+
+	return nil
 }

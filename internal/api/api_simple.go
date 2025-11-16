@@ -18,7 +18,7 @@ import (
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
-	"gitlab.com/kabes/go-gpo/internal/model"
+	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/opml"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
@@ -166,8 +166,13 @@ func (s *simpleResource) uploadSubscriptions(
 		return
 	}
 
-	subscribed := model.NewSubscribedURLS(subs)
-	if err := s.subServ.ReplaceSubscriptions(ctx, user, deviceid, subscribed, time.Now().UTC()); err != nil {
+	cmd := command.ReplaceSubscriptionsCmd{
+		Username:      user,
+		Devicename:    deviceid,
+		Subscriptions: subs,
+		Timestamp:     time.Now().UTC(),
+	}
+	if err := s.subServ.ReplaceSubscriptions(ctx, &cmd); err != nil {
 		internal.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("update subscriptions error")
 	} else {

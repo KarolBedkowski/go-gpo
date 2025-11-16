@@ -51,7 +51,12 @@ func prepareTests(t *testing.T) (context.Context, *do.RootScope) {
 func prepareTestUser(ctx context.Context, t *testing.T, i do.Injector, name string) int64 {
 	t.Helper()
 
-	newuser := command.NewUserCmd{Username: name, Password: name + "123", Email: name + "@example.com", Name: "test user " + name}
+	newuser := command.NewUserCmd{
+		Username: name,
+		Password: name + "123",
+		Email:    name + "@example.com",
+		Name:     "test user " + name,
+	}
 	usersSrv := do.MustInvoke[*UsersSrv](i)
 	res, err := usersSrv.AddUser(ctx, &newuser)
 	if err != nil {
@@ -66,10 +71,14 @@ func prepareTestDevice(ctx context.Context, t *testing.T, i do.Injector,
 ) {
 	t.Helper()
 
-	udev := model.NewUpdatedDevice(username, devicename, "other", "device "+devicename+" caption")
-
 	deviceSrv := do.MustInvoke[*DevicesSrv](i)
-	err := deviceSrv.UpdateDevice(ctx, &udev)
+	cmd := command.UpdateDeviceCmd{
+		UserName:   username,
+		DeviceName: devicename,
+		DeviceType: "other",
+		Caption:    "device " + devicename + " caption",
+	}
+	err := deviceSrv.UpdateDevice(ctx, &cmd)
 	if err != nil {
 		t.Fatalf("create test device failed: %#+v", err)
 	}
@@ -81,9 +90,13 @@ func prepareTestSub(ctx context.Context, t *testing.T, i do.Injector,
 	t.Helper()
 
 	subsSrv := do.MustInvoke[*SubscriptionsSrv](i)
-	err := subsSrv.ReplaceSubscriptions(ctx,
-		username, devicename, model.NewSubscribedURLS(subs),
-		time.Date(2025, 1, 2, 10, 0, 0, 0, time.UTC))
+	cmd := command.ReplaceSubscriptionsCmd{
+		Username:      username,
+		Devicename:    devicename,
+		Subscriptions: subs,
+		Timestamp:     time.Date(2025, 1, 2, 10, 0, 0, 0, time.UTC),
+	}
+	err := subsSrv.ReplaceSubscriptions(ctx, &cmd)
 	assert.NoErr(t, err)
 }
 

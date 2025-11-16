@@ -47,7 +47,7 @@ func (a *AddUser) Start(ctx context.Context) error {
 	switch {
 	case err != nil:
 		return fmt.Errorf("add user error: %w", err)
-	case res.Success:
+	case res.UserID > 0:
 		fmt.Printf("User %q created; id: %d\n", a.Username, res.UserID)
 	default:
 		fmt.Printf("Create user failed\n")
@@ -112,7 +112,7 @@ func (d *DeleteUser) Start(ctx context.Context) error {
 
 	usersrv := do.MustInvoke[*service.UsersSrv](injector)
 
-	err := usersrv.DeleteUser(ctx, d.Username)
+	err := usersrv.DeleteUser(ctx, &command.DeleteUserCmd{Username: d.Username})
 	if err != nil {
 		return fmt.Errorf("delete user error: %w", err)
 	}

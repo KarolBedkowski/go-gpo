@@ -15,6 +15,7 @@ import (
 
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/repository"
@@ -61,24 +62,25 @@ func (s *SubscriptionsSrv) GetSubscriptions(ctx context.Context, username, devic
 }
 
 // ReplaceSubscriptions replace all subscriptions for given user. Create device when no exists.
-func (s *SubscriptionsSrv) ReplaceSubscriptions(ctx context.Context, //nolint:cyclop
-	username, devicename string, currentSubs model.SubscribedURLs, timestamp time.Time,
-) error {
-	if username == "" {
-		return ErrEmptyUsername
+func (s *SubscriptionsSrv) ReplaceSubscriptions(
+	ctx context.Context,
+	cmd *command.ReplaceSubscriptionsCmd,
+) error { //nolint:cyclop
+	if err := cmd.Validate(); err != nil {
+		return err
 	}
 
 	//nolint:wrapcheck
 	return db.InTransaction(ctx, s.db, func(dbctx repository.DBContext) error {
-		user, err := s.getUser(ctx, dbctx, username)
+		user, err := s.getUser(ctx, dbctx, cmd.Username)
 		if err != nil {
 			return err
 		}
 
 		// check dev
-		_, err = s.getUserDevice(ctx, dbctx, user.ID, devicename)
+		_, err = s.getUserDevice(ctx, dbctx, user.ID, cmd.Devicename)
 		if errors.Is(err, ErrUnknownDevice) {
-			_, err = s.createUserDevice(ctx, dbctx, user.ID, devicename)
+			_, err = s.createUserDevice(ctx, dbctx, user.ID, cmd.Devicename)
 		}
 
 		if err != nil {
@@ -91,23 +93,23 @@ func (s *SubscriptionsSrv) ReplaceSubscriptions(ctx context.Context, //nolint:cy
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		changes := make([]repository.PodcastDB, 0, len(currentSubs))
+		changes := make([]repository.PodcastDB, 0, len(cmd.Subscriptions))
 		// remove subscriptions found in db but not in currentSubs
 		for _, sub := range subscribed {
-			if sub.Subscribed && !slices.Contains(currentSubs, sub.URL) {
-				sub.SetUnsubscribed(timestamp)
+			if sub.Subscribed && !slices.Contains(cmd.Subscriptions, sub.URL) {
+				sub.SetUnsubscribed(cmd.Timestamp)
 				changes = append(changes, sub)
 			}
 		}
 
 		// add or set subscribed flag for podcast in currentSubs; update updated_at
-		for _, sub := range currentSubs {
+		for _, sub := range cmd.Subscriptions {
 			podcast, ok := subscribed.FindPodcastByURL(sub)
 			if !ok {
-				podcast = repository.PodcastDB{UserID: user.ID, URL: sub, CreatedAt: timestamp}
+				podcast = repository.PodcastDB{UserID: user.ID, URL: sub, CreatedAt: cmd.Timestamp}
 			}
 
-			if podcast.SetSubscribed(timestamp) {
+			if podcast.SetSubscribed(cmd.Timestamp) {
 				changes = append(changes, podcast)
 			}
 		}
@@ -122,26 +124,24 @@ func (s *SubscriptionsSrv) ReplaceSubscriptions(ctx context.Context, //nolint:cy
 	})
 }
 
-func (s *SubscriptionsSrv) ApplySubscriptionChanges( //nolint:cyclop
-	ctx context.Context,
-	username, devicename string, changes *model.SubscriptionChanges, timestamp time.Time,
-) error {
-	if username == "" {
-		return ErrEmptyUsername
+func (s *SubscriptionsSrv) ChangeSubscriptions( //nolint:cyclop
+	ctx context.Context, cmd *command.ChangeSubscriptionsCmd,
+) (command.ChangeSubscriptionsCmdResult, error) {
+	res := command.ChangeSubscriptionsCmdResult{
+		ChangedURLs: cmd.Sanitize(),
 	}
 
-	if changes == nil {
-		panic("changes is nil")
+	if err := cmd.Validate(); err != nil {
+		return res, err
 	}
 
-	//nolint:wrapcheck
-	return db.InTransaction(ctx, s.db, func(dbctx repository.DBContext) error {
-		user, err := s.getUser(ctx, dbctx, username)
+	err := db.InTransaction(ctx, s.db, func(dbctx repository.DBContext) error {
+		user, err := s.getUser(ctx, dbctx, cmd.Username)
 		if err != nil {
 			return err
 		}
 		// check service
-		_, err = s.getUserDevice(ctx, dbctx, user.ID, devicename)
+		_, err = s.getUserDevice(ctx, dbctx, user.ID, cmd.Devicename)
 		if err != nil {
 			return err
 		}
@@ -151,24 +151,24 @@ func (s *SubscriptionsSrv) ApplySubscriptionChanges( //nolint:cyclop
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		podchanges := make([]repository.PodcastDB, 0, len(changes.Add)+len(changes.Remove))
+		podchanges := make([]repository.PodcastDB, 0, len(cmd.Add)+len(cmd.Remove))
 
 		// removed
-		for _, sub := range changes.Remove {
+		for _, sub := range cmd.Remove {
 			if podcast, ok := subscribed.FindPodcastByURL(sub); ok {
-				if podcast.SetUnsubscribed(timestamp) {
+				if podcast.SetUnsubscribed(cmd.Timestamp) {
 					podchanges = append(podchanges, podcast)
 				}
 			}
 		}
 
-		for _, sub := range changes.Add {
+		for _, sub := range cmd.Add {
 			podcast, ok := subscribed.FindPodcastByURL(sub)
 			if !ok { // new
-				podcast = repository.PodcastDB{UserID: user.ID, URL: sub, CreatedAt: timestamp}
+				podcast = repository.PodcastDB{UserID: user.ID, URL: sub, CreatedAt: cmd.Timestamp}
 			}
 
-			if podcast.SetSubscribed(timestamp) {
+			if podcast.SetSubscribed(cmd.Timestamp) {
 				podchanges = append(podchanges, podcast)
 			}
 		}
@@ -181,6 +181,8 @@ func (s *SubscriptionsSrv) ApplySubscriptionChanges( //nolint:cyclop
 
 		return nil
 	})
+
+	return res, err
 }
 
 func (s *SubscriptionsSrv) GetSubscriptionChanges(ctx context.Context, username, devicename string, since time.Time) (

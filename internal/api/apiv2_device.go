@@ -13,6 +13,7 @@ import (
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/service"
 
@@ -64,13 +65,13 @@ func (d deviceResource) updateDevice(
 		return
 	}
 
-	updateddev := model.UpdatedDevice{
+	cmd := command.UpdateDeviceCmd{
 		UserName:   user,
 		DeviceName: deviceid,
 		DeviceType: reqData.Type,
 		Caption:    reqData.Caption,
 	}
-	if err := d.deviceSrv.UpdateDevice(ctx, &updateddev); err != nil {
+	if err := d.deviceSrv.UpdateDevice(ctx, &cmd); err != nil {
 		internal.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("updateDevice device error")
 

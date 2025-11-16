@@ -15,7 +15,7 @@ import (
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
-	"gitlab.com/kabes/go-gpo/internal/model"
+	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/opml"
 	"gitlab.com/kabes/go-gpo/internal/service"
 
@@ -138,16 +138,16 @@ func (sr subscriptionsResource) uploadSubscriptionChanges(
 		return
 	}
 
-	subChanges := model.NewSubscriptionChanges(changes.Add, changes.Remove)
-
-	if err := subChanges.Validate(); err != nil {
-		logger.Debug().Err(err).Msg("validate request error")
-		internal.WriteError(w, r, http.StatusBadRequest, "")
-
-		return
+	cmd := command.ChangeSubscriptionsCmd{
+		Username:   user,
+		Devicename: deviceid,
+		Add:        changes.Add,
+		Remove:     changes.Remove,
+		Timestamp:  time.Now().UTC(),
 	}
 
-	if err := sr.subsSrv.ApplySubscriptionChanges(ctx, user, deviceid, &subChanges, time.Now().UTC()); err != nil {
+	res, err := sr.subsSrv.ChangeSubscriptions(ctx, &cmd)
+	if err != nil {
 		internal.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("update device subscription changes error")
 
@@ -159,7 +159,7 @@ func (sr subscriptionsResource) uploadSubscriptionChanges(
 		UpdatedURLs [][]string `json:"update_urls"`
 	}{
 		Timestamp:   time.Now().UTC().Unix(),
-		UpdatedURLs: subChanges.ChangedURLs,
+		UpdatedURLs: res.ChangedURLs,
 	}
 
 	render.JSON(w, r, &resp)

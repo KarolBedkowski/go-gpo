@@ -13,6 +13,7 @@ import (
 
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/repository"
@@ -33,34 +34,30 @@ func NewDevicesSrv(i do.Injector) (*DevicesSrv, error) {
 }
 
 // UpdateDevice update or create device.
-func (d *DevicesSrv) UpdateDevice(ctx context.Context, updateddev *model.UpdatedDevice) error {
-	if updateddev == nil {
-		panic("updateddev is nil")
-	}
-
-	if err := updateddev.Validate(); err != nil {
+func (d *DevicesSrv) UpdateDevice(ctx context.Context, cmd *command.UpdateDeviceCmd) error {
+	if err := cmd.Validate(); err != nil {
 		return aerr.Wrapf(err, "validate dev to update failed")
 	}
 
 	//nolint:wrapcheck
 	return db.InTransaction(ctx, d.db, func(tx repository.DBContext) error {
-		user, err := d.usersRepo.GetUser(ctx, tx, updateddev.UserName)
+		user, err := d.usersRepo.GetUser(ctx, tx, cmd.UserName)
 		if errors.Is(err, repository.ErrNoData) {
 			return ErrUnknownUser
 		} else if err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		device, err := d.devicesRepo.GetDevice(ctx, tx, user.ID, updateddev.DeviceName)
+		device, err := d.devicesRepo.GetDevice(ctx, tx, user.ID, cmd.DeviceName)
 		if errors.Is(err, repository.ErrNoData) {
 			// new device
-			device = repository.DeviceDB{UserID: user.ID, Name: updateddev.DeviceName}
+			device = repository.DeviceDB{UserID: user.ID, Name: cmd.DeviceName}
 		} else if err != nil {
 			return aerr.Wrapf(err, "get device from repo failed")
 		}
 
-		device.Caption = updateddev.Caption
-		device.DevType = updateddev.DeviceType
+		device.Caption = cmd.Caption
+		device.DevType = cmd.DeviceType
 
 		_, err = d.devicesRepo.SaveDevice(ctx, tx, &device)
 		if err != nil {

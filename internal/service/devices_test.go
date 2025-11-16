@@ -13,7 +13,7 @@ import (
 	"github.com/samber/do/v2"
 
 	"gitlab.com/kabes/go-gpo/internal/assert"
-	"gitlab.com/kabes/go-gpo/internal/model"
+	"gitlab.com/kabes/go-gpo/internal/command"
 )
 
 func TestDevice(t *testing.T) {
@@ -22,9 +22,13 @@ func TestDevice(t *testing.T) {
 	_ = prepareTestUser(ctx, t, i, "test")
 
 	// add device
-	udev := model.NewUpdatedDevice("test", "dev1", "mobile", "device caption")
-
-	err := deviceSrv.UpdateDevice(ctx, &udev)
+	cmd1 := command.UpdateDeviceCmd{
+		UserName:   "test",
+		DeviceName: "dev1",
+		DeviceType: "mobile",
+		Caption:    "device caption",
+	}
+	err := deviceSrv.UpdateDevice(ctx, &cmd1)
 	assert.NoErr(t, err)
 
 	devices, err := deviceSrv.ListDevices(ctx, "test")
@@ -32,40 +36,49 @@ func TestDevice(t *testing.T) {
 	assert.Equal(t, len(devices), 1)
 
 	// add another
-	udev2 := model.NewUpdatedDevice("test", "dev2", "desktop", "device 2 caption")
-
-	err = deviceSrv.UpdateDevice(ctx, &udev2)
+	cmd2 := command.UpdateDeviceCmd{
+		UserName:   "test",
+		DeviceName: "dev2",
+		DeviceType: "desktop",
+		Caption:    "device 2 caption",
+	}
+	err = deviceSrv.UpdateDevice(ctx, &cmd2)
 	assert.NoErr(t, err)
 
 	devices, err = deviceSrv.ListDevices(ctx, "test")
 	assert.NoErr(t, err)
 	assert.Equal(t, len(devices), 2)
-	assert.Equal(t, devices[0].Name, udev.DeviceName)
+	assert.Equal(t, devices[0].Name, cmd1.DeviceName)
 	assert.Equal(t, devices[0].User, "test")
-	assert.Equal(t, devices[0].Caption, udev.Caption)
-	assert.Equal(t, devices[0].DevType, udev.DeviceType)
-	assert.Equal(t, devices[1].Name, udev2.DeviceName)
+	assert.Equal(t, devices[0].Caption, cmd1.Caption)
+	assert.Equal(t, devices[0].DevType, cmd1.DeviceType)
+	assert.Equal(t, devices[1].Name, cmd2.DeviceName)
 	assert.Equal(t, devices[1].User, "test")
-	assert.Equal(t, devices[1].Caption, udev2.Caption)
-	assert.Equal(t, devices[1].DevType, udev2.DeviceType)
+	assert.Equal(t, devices[1].Caption, cmd2.Caption)
+	assert.Equal(t, devices[1].DevType, cmd2.DeviceType)
 
 	// update
-	udev3 := model.NewUpdatedDevice("test", "dev1", "other", "device 1 new caption")
+	cmd3 := command.UpdateDeviceCmd{
+		UserName:   "test",
+		DeviceName: "dev1",
+		DeviceType: "other",
+		Caption:    "device 1 new caption",
+	}
 
-	err = deviceSrv.UpdateDevice(ctx, &udev3)
+	err = deviceSrv.UpdateDevice(ctx, &cmd3)
 	assert.NoErr(t, err)
 
 	devices, err = deviceSrv.ListDevices(ctx, "test")
 	assert.NoErr(t, err)
 	assert.Equal(t, len(devices), 2)
-	assert.Equal(t, devices[0].Name, udev3.DeviceName)
+	assert.Equal(t, devices[0].Name, cmd3.DeviceName)
 	assert.Equal(t, devices[0].User, "test")
-	assert.Equal(t, devices[0].Caption, udev3.Caption)
-	assert.Equal(t, devices[0].DevType, udev3.DeviceType)
-	assert.Equal(t, devices[1].Name, udev2.DeviceName)
+	assert.Equal(t, devices[0].Caption, cmd3.Caption)
+	assert.Equal(t, devices[0].DevType, cmd3.DeviceType)
+	assert.Equal(t, devices[1].Name, cmd2.DeviceName)
 	assert.Equal(t, devices[1].User, "test")
-	assert.Equal(t, devices[1].Caption, udev2.Caption)
-	assert.Equal(t, devices[1].DevType, udev2.DeviceType)
+	assert.Equal(t, devices[1].Caption, cmd2.Caption)
+	assert.Equal(t, devices[1].DevType, cmd2.DeviceType)
 }
 
 func TestDeleteDevice(t *testing.T) {

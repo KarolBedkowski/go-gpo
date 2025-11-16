@@ -14,7 +14,6 @@ import (
 
 	"gitlab.com/kabes/go-gpo/internal/assert"
 	"gitlab.com/kabes/go-gpo/internal/command"
-	"gitlab.com/kabes/go-gpo/internal/model"
 )
 
 func TestUsers(t *testing.T) {
@@ -27,7 +26,6 @@ func TestUsers(t *testing.T) {
 	newuser := command.NewUserCmd{Username: "test", Password: "test123", Email: "test@example.com", Name: "test user 1"}
 	res, err := usersSrv.AddUser(ctx, &newuser)
 	assert.NoErr(t, err)
-	assert.True(t, res.Success)
 	assert.True(t, res.UserID > 0)
 
 	user, err := usersSrv.LoginUser(ctx, "test", "test123")
@@ -40,13 +38,18 @@ func TestUsers(t *testing.T) {
 	assert.ErrSpec(t, err, ErrUnauthorized)
 
 	// lock account and try login
-	err = usersSrv.LockAccount(ctx, model.LockAccount{Username: "test"})
+	err = usersSrv.LockAccount(ctx, command.LockAccountCmd{Username: "test"})
 	assert.NoErr(t, err)
 	user, err = usersSrv.LoginUser(ctx, "test", "test123")
 	assert.ErrSpec(t, err, ErrUserAccountLocked)
 
 	// change pass and unlock
-	chpasscmd := command.ChangeUserPasswordCmd{Username: "test", Password: "123123", CurrentPassword: "", CheckCurrentPass: false}
+	chpasscmd := command.ChangeUserPasswordCmd{
+		Username:         "test",
+		Password:         "123123",
+		CurrentPassword:  "",
+		CheckCurrentPass: false,
+	}
 	err = usersSrv.ChangePassword(ctx, &chpasscmd)
 	assert.NoErr(t, err)
 
@@ -54,14 +57,18 @@ func TestUsers(t *testing.T) {
 	assert.NoErr(t, err)
 
 	// try double user
-	newuser2 := command.NewUserCmd{Username: "test", Password: "test123", Email: "test2@example.com", Name: "test user 2"}
+	newuser2 := command.NewUserCmd{
+		Username: "test",
+		Password: "test123",
+		Email:    "test2@example.com",
+		Name:     "test user 2",
+	}
 	_, err = usersSrv.AddUser(ctx, &newuser2)
 	assert.ErrSpec(t, err, ErrUserExists)
 
 	newuser2.Username = "test2"
 	res2, err := usersSrv.AddUser(ctx, &newuser2)
 	assert.NoErr(t, err)
-	assert.True(t, res2.Success)
 	assert.True(t, res2.UserID > 0)
 	assert.True(t, res.UserID != res2.UserID)
 
@@ -73,7 +80,7 @@ func TestUsers(t *testing.T) {
 	assert.Equal(t, users[1].Username, "test2")
 
 	// lock test2
-	err = usersSrv.LockAccount(ctx, model.LockAccount{Username: "test2"})
+	err = usersSrv.LockAccount(ctx, command.LockAccountCmd{Username: "test2"})
 	assert.NoErr(t, err)
 
 	// get active users
@@ -100,10 +107,10 @@ func TestDeleteUser(t *testing.T) {
 		"user1", "dev1", "http://example.com/p2", "http://example.com/p2/e1", "http://example.com/p2/e2",
 	)
 
-	err := usersSrv.DeleteUser(ctx, "user3")
+	err := usersSrv.DeleteUser(ctx, &command.DeleteUserCmd{Username: "user3"})
 	assert.ErrSpec(t, err, ErrUnknownUser)
 
-	err = usersSrv.DeleteUser(ctx, "user2")
+	err = usersSrv.DeleteUser(ctx, &command.DeleteUserCmd{Username: "user2"})
 	assert.NoErr(t, err)
 
 	// get active users
@@ -112,7 +119,7 @@ func TestDeleteUser(t *testing.T) {
 	assert.Equal(t, len(users), 1)
 	assert.Equal(t, users[0].Username, "user1")
 
-	err = usersSrv.DeleteUser(ctx, "user1")
+	err = usersSrv.DeleteUser(ctx, &command.DeleteUserCmd{Username: "user1"})
 	assert.NoErr(t, err)
 
 	// get active users

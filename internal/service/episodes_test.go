@@ -13,6 +13,7 @@ import (
 
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/assert"
+	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/model"
 )
 
@@ -305,14 +306,12 @@ func TestEpisodesServiceFavorites(t *testing.T) {
 	err := episodesSrv.AddAction(ctx, "user1", episodeActions...)
 	assert.NoErr(t, err)
 
-	setkey := model.NewSettingsKey("user1", "episode", "dev1",
-		episodeActions[1].Podcast, episodeActions[1].Episode)
-	err = settSrv.SaveSettings(ctx, &setkey, map[string]string{"is_favorite": "true"})
+	cmd := command.NewSetFavoriteEpisodeCmd("user1", episodeActions[1].Podcast, episodeActions[1].Episode)
+	err = settSrv.SaveSettings(ctx, &cmd)
 	assert.NoErr(t, err)
 
-	setkey = model.NewSettingsKey("user1", "episode", "dev1",
-		episodeActions[3].Podcast, episodeActions[3].Episode)
-	err = settSrv.SaveSettings(ctx, &setkey, map[string]string{"is_favorite": "true"})
+	cmd = command.NewSetFavoriteEpisodeCmd("user1", episodeActions[3].Podcast, episodeActions[3].Episode)
+	err = settSrv.SaveSettings(ctx, &cmd)
 	assert.NoErr(t, err)
 
 	favs, err := episodesSrv.GetFavorites(ctx, "user1")

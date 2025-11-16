@@ -10,6 +10,7 @@ import (
 
 	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/service"
 
@@ -47,7 +48,12 @@ func (u settingsResource) getSettings(
 	logger *zerolog.Logger,
 ) {
 	user := internal.ContextUser(ctx)
-	key := newKeyFromRequest(user, r)
+	key := model.NewSettingsKey(user,
+		chi.URLParam(r, "scope"),
+		r.URL.Query().Get("device"),
+		r.URL.Query().Get("podcast"),
+		r.URL.Query().Get("episode"),
+	)
 
 	res, err := u.settingsSrv.GetSettings(ctx, &key)
 	if err != nil {
@@ -81,18 +87,14 @@ func (u settingsResource) setSettings(
 		return
 	}
 
-	// combine set and remove - add empty value for deleted string.
-	settings := reqData.Set
-	if settings == nil {
-		settings = make(map[string]string)
+	cmd := command.ChangeSettingsCmd{
+		Username:   user,
+		Scope:      chi.URLParam(r, "scope"),
+		Devicename: r.URL.Query().Get("device"),
+		Podcast:    r.URL.Query().Get("podcast"),
+		Episode:    r.URL.Query().Get("episode"),
 	}
-
-	for _, k := range reqData.Remove {
-		settings[k] = ""
-	}
-
-	key := newKeyFromRequest(user, r)
-	if err := u.settingsSrv.SaveSettings(ctx, &key, settings); err != nil {
+	if err := u.settingsSrv.SaveSettings(ctx, &cmd); err != nil {
 		internal.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("save settings error")
 
@@ -100,13 +102,4 @@ func (u settingsResource) setSettings(
 	}
 
 	w.WriteHeader(http.StatusOK)
-}
-
-func newKeyFromRequest(user string, r *http.Request) model.SettingsKey {
-	return model.NewSettingsKey(user,
-		chi.URLParam(r, "scope"),
-		r.URL.Query().Get("device"),
-		r.URL.Query().Get("podcast"),
-		r.URL.Query().Get("episode"),
-	)
 }

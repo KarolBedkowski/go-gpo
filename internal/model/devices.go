@@ -5,10 +5,8 @@
 package model
 
 import (
-	"slices"
 	"time"
 
-	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
@@ -38,35 +36,3 @@ func NewDeviceFromDeviceDB(d *repository.DeviceDB) Device {
 }
 
 //------------------------------------------------------------------------------
-
-type UpdatedDevice struct {
-	UserName   string
-	DeviceName string
-	DeviceType string
-	Caption    string
-}
-
-func NewUpdatedDevice(username, devicename, devicetype, caption string) UpdatedDevice {
-	return UpdatedDevice{
-		UserName:   username,
-		DeviceName: devicename,
-		DeviceType: devicetype,
-		Caption:    caption,
-	}
-}
-
-func (u *UpdatedDevice) Validate() error {
-	if u.DeviceName == "" {
-		return aerr.ErrValidation.WithMsg("device name can't be empty")
-	}
-
-	if u.DeviceType == "" {
-		return aerr.ErrValidation.WithMsg("device type can't be empty")
-	}
-
-	if !slices.Contains(ValidDevTypes, u.DeviceType) {
-		return aerr.ErrValidation.WithMsg("invalid device type %q", u.DeviceType)
-	}
-
-	return nil
-}

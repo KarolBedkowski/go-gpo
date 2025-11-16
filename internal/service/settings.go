@@ -14,6 +14,7 @@ import (
 	//	"gitlab.com/kabes/go-gpo/internal/model"
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/repository"
@@ -68,19 +69,17 @@ func (s SettingsSrv) GetSettings(ctx context.Context, key *model.SettingsKey) (m
 }
 
 // SaveSettings for `key` and values in `set`. If value is set to "" for given key - delete it.
-func (s SettingsSrv) SaveSettings(ctx context.Context, key *model.SettingsKey, settings model.Settings) error {
-	if len(settings) == 0 {
-		return nil
+func (s SettingsSrv) SaveSettings(ctx context.Context, cmd *command.ChangeSettingsCmd) error {
+	if err := cmd.Validate(); err != nil {
+		return aerr.Wrapf(err, "validate settings key to save failed")
 	}
 
-	// validate
-	if err := key.Validate(); err != nil {
-		return aerr.Wrapf(err, "validate settings key to save failed").WithMeta("key", key)
-	}
+	key := model.NewSettingsKey(cmd.Username, cmd.Scope, cmd.Devicename, cmd.Podcast, cmd.Episode)
+	settings := cmd.CombinedSetting()
 
 	//nolint:wrapcheck
 	return db.InTransaction(ctx, s.db, func(dbctx repository.DBContext) error {
-		setkey, err := s.newSettingKeys(ctx, dbctx, key)
+		setkey, err := s.newSettingKeys(ctx, dbctx, &key)
 		if err != nil {
 			return err
 		}
@@ -133,7 +132,7 @@ func (s SettingsSrv) newSettingKeys( //nolint:cyclop
 
 	switch key.Scope {
 	case "device":
-		device, err := s.devicesRepo.GetDevice(ctx, dbctx, user.ID, key.Device)
+		device, err := s.devicesRepo.GetDevice(ctx, dbctx, user.ID, key.Devicename)
 		if errors.Is(err, repository.ErrNoData) {
 			return settkey, ErrUnknownDevice
 		} else if err != nil {

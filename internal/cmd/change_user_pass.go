@@ -14,7 +14,6 @@ import (
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/db"
-	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
@@ -68,7 +67,7 @@ func (l *LockUserAccount) Start(ctx context.Context) error {
 
 	usersrv := do.MustInvoke[*service.UsersSrv](injector)
 
-	la := model.NewLockAccount(l.Username)
+	la := command.LockAccountCmd{Username: l.Username}
 	if err := usersrv.LockAccount(ctx, la); err != nil {
 		return fmt.Errorf("change user password error: %w", err)
 	}

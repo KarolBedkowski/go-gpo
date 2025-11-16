@@ -5,9 +5,6 @@
 package model
 
 import (
-	"strings"
-
-	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
@@ -30,91 +27,4 @@ func NewUserFromUserDB(u *repository.UserDB) User {
 		Name:     u.Name,
 		Locked:   u.Password == UserLockedPassword,
 	}
-}
-
-//---------------------------------------------------------------------
-
-// NewUser define new user to add.
-type NewUser struct {
-	Username string
-	Password string
-	Email    string
-	Name     string
-}
-
-func NewNewUser(username, password, email, name string) NewUser {
-	return NewUser{
-		Name:     strings.TrimSpace(name),
-		Password: strings.TrimSpace(password),
-		Email:    strings.TrimSpace(email),
-		Username: strings.TrimSpace(username),
-	}
-}
-
-func (n *NewUser) Validate() error {
-	if n.Username == "" {
-		return aerr.ErrValidation.WithUserMsg("username can't be empty")
-	}
-
-	if n.Password == "" {
-		return aerr.ErrValidation.WithUserMsg("password can't be empty")
-	}
-
-	return nil
-}
-
-//---------------------------------------------------------------------
-
-// NewUser define new user to add.
-type UserPassword struct {
-	Username         string
-	Password         string
-	CurrentPassword  string
-	CheckCurrentPass bool
-}
-
-func NewUserPassword(username, password, currentPassword string, checkCurrentPass bool) UserPassword {
-	return UserPassword{
-		Username:         strings.TrimSpace(username),
-		Password:         strings.TrimSpace(password),
-		CurrentPassword:  strings.TrimSpace(currentPassword),
-		CheckCurrentPass: checkCurrentPass,
-	}
-}
-
-func (u *UserPassword) Validate() error {
-	if u.Username == "" {
-		return aerr.ErrValidation.WithUserMsg("username can't be empty")
-	}
-
-	if u.Password == "" {
-		return aerr.ErrValidation.WithUserMsg("password can't be empty")
-	}
-
-	if u.CheckCurrentPass && u.CurrentPassword == "" {
-		return aerr.ErrValidation.WithUserMsg("current password can't be empty")
-	}
-
-	return nil
-}
-
-//---------------------------------------------------------------------
-
-// LockAccount is user account to lock.
-type LockAccount struct {
-	Username string
-}
-
-func NewLockAccount(username string) LockAccount {
-	return LockAccount{
-		Username: strings.TrimSpace(username),
-	}
-}
-
-func (l *LockAccount) Validate() error {
-	if l.Username == "" {
-		return aerr.ErrValidation.WithUserMsg("username can't be empty")
-	}
-
-	return nil
 }
