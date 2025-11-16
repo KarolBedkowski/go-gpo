@@ -40,8 +40,7 @@ func (p *PodcastsSrv) GetPodcasts(ctx context.Context, username string) ([]model
 		return nil, ErrEmptyUsername
 	}
 
-	//nolint:wrapcheck
-	return db.InConnectionR(ctx, p.db, func(dbctx repository.DBContext) ([]model.Podcast, error) {
+	subs, err := db.InConnectionR(ctx, p.db, func(dbctx repository.DBContext) ([]repository.PodcastDB, error) {
 		user, err := p.usersRepo.GetUser(ctx, dbctx, username)
 		if errors.Is(err, repository.ErrNoData) {
 			return nil, ErrUnknownUser
@@ -54,17 +53,22 @@ func (p *PodcastsSrv) GetPodcasts(ctx context.Context, username string) ([]model
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		podcasts := make([]model.Podcast, 0, len(subs))
-
-		for _, s := range subs {
-			podcasts = append(podcasts, model.Podcast{
-				Title: s.Title,
-				URL:   s.URL,
-			})
-		}
-
-		return podcasts, nil
+		return subs, nil
 	})
+	if err != nil {
+		return nil, err //nolint:wrapcheck
+	}
+
+	podcasts := make([]model.Podcast, 0, len(subs))
+
+	for _, s := range subs {
+		podcasts = append(podcasts, model.Podcast{
+			Title: s.Title,
+			URL:   s.URL,
+		})
+	}
+
+	return podcasts, nil
 }
 
 func (p *PodcastsSrv) GetPodcastsWithLastEpisode(ctx context.Context, username string,

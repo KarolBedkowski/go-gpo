@@ -77,8 +77,7 @@ func (d *DevicesSrv) ListDevices(ctx context.Context, username string) ([]model.
 		return nil, ErrEmptyUsername
 	}
 
-	//nolint:wrapcheck
-	return db.InConnectionR(ctx, d.db, func(conn repository.DBContext) ([]model.Device, error) {
+	devices, err := db.InConnectionR(ctx, d.db, func(conn repository.DBContext) (repository.DevicesDB, error) {
 		user, err := d.usersRepo.GetUser(ctx, conn, username)
 		if errors.Is(err, repository.ErrNoData) {
 			return nil, ErrUnknownUser
@@ -91,15 +90,20 @@ func (d *DevicesSrv) ListDevices(ctx context.Context, username string) ([]model.
 			return nil, aerr.ApplyFor(ErrRepositoryError, err, "get devices from db failed")
 		}
 
-		res := make([]model.Device, len(devices))
-		for i, d := range devices {
-			dev := model.NewDeviceFromDeviceDB(d)
-			dev.User = username
-			res[i] = dev
-		}
-
-		return res, nil
+		return devices, nil
 	})
+	if err != nil {
+		return nil, err //nolint:wrapcheck
+	}
+
+	res := make([]model.Device, len(devices))
+	for i, d := range devices {
+		dev := model.NewDeviceFromDeviceDB(d)
+		dev.User = username
+		res[i] = dev
+	}
+
+	return res, nil
 }
 
 func (d *DevicesSrv) DeleteDevice(ctx context.Context, username, devicename string) error {

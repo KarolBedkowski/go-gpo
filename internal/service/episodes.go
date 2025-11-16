@@ -46,20 +46,14 @@ func (e *EpisodesSrv) GetEpisodes(ctx context.Context, username, devicename, pod
 		return nil, ErrEmptyUsername
 	}
 
-	//nolint:wrapcheck
-	return db.InConnectionR(ctx, e.db, func(conn repository.DBContext) ([]model.Episode, error) {
-		actions, err := e.getEpisodesActions(ctx, conn, username, devicename, podcast, time.Time{}, true, 0)
-		if err != nil {
-			return nil, err
-		}
-
-		episodes := make([]model.Episode, len(actions))
-		for i, episode := range actions {
-			episodes[i] = model.NewEpisodeFromDBModel(&episode)
-		}
-
-		return episodes, nil
+	episodes, err := db.InConnectionR(ctx, e.db, func(conn repository.DBContext) ([]repository.EpisodeDB, error) {
+		return e.getEpisodesActions(ctx, conn, username, devicename, podcast, time.Time{}, true, 0)
 	})
+	if err != nil {
+		return nil, err //nolint:wrapcheck
+	}
+
+	return model.Map(episodes, model.NewEpisodeFromDBModel), nil
 }
 
 // AddAction save new actions.
@@ -134,20 +128,14 @@ func (e *EpisodesSrv) GetActions(ctx context.Context, username, podcast, devicen
 		return nil, ErrEmptyUsername
 	}
 
-	//nolint:wrapcheck
-	return db.InConnectionR(ctx, e.db, func(conn repository.DBContext) ([]model.Episode, error) {
-		actions, err := e.getEpisodesActions(ctx, conn, username, devicename, podcast, since, aggregated, 0)
-		if err != nil {
-			return nil, err
-		}
-
-		res := make([]model.Episode, len(actions))
-		for i, action := range actions {
-			res[i] = model.NewEpisodeFromDBModel(&action)
-		}
-
-		return res, nil
+	actions, err := db.InConnectionR(ctx, e.db, func(conn repository.DBContext) ([]repository.EpisodeDB, error) {
+		return e.getEpisodesActions(ctx, conn, username, devicename, podcast, since, aggregated, 0)
 	})
+	if err != nil {
+		return nil, err //nolint:wrapcheck
+	}
+
+	return model.Map(actions, model.NewEpisodeFromDBModel), nil
 }
 
 // GetUpdates return list of EpisodeUpdate for `username` and optionally `devicename` and `since`.
@@ -164,25 +152,19 @@ func (e *EpisodesSrv) GetUpdates(ctx context.Context, username, devicename strin
 		return nil, ErrEmptyUsername
 	}
 
-	//nolint:wrapcheck
-	return db.InConnectionR(ctx, e.db, func(conn repository.DBContext) ([]model.EpisodeUpdate, error) {
-		episodes, err := e.getEpisodesActions(ctx, conn, username, devicename, "", since, true, 0)
-		if err != nil {
-			return nil, err
-		}
-
-		createFunc := model.NewEpisodeUpdateFromDBModel
-		if includeActions {
-			createFunc = model.NewEpisodeUpdateWithEpisodeFromDBModel
-		}
-
-		res := make([]model.EpisodeUpdate, len(episodes))
-		for i, episodedb := range episodes {
-			res[i] = createFunc(&episodedb)
-		}
-
-		return res, nil
+	episodes, err := db.InConnectionR(ctx, e.db, func(conn repository.DBContext) ([]repository.EpisodeDB, error) {
+		return e.getEpisodesActions(ctx, conn, username, devicename, "", since, true, 0)
 	})
+	if err != nil {
+		return nil, err //nolint:wrapcheck
+	}
+
+	createFunc := model.NewEpisodeUpdateFromDBModel
+	if includeActions {
+		createFunc = model.NewEpisodeUpdateWithEpisodeFromDBModel
+	}
+
+	return model.Map(episodes, createFunc), nil
 }
 
 // GetLastActions return last `limit` actions for `username`.
@@ -199,12 +181,7 @@ func (e *EpisodesSrv) GetLastActions(ctx context.Context, username string, since
 		return nil, err //nolint:wrapcheck
 	}
 
-	res := make([]model.Episode, len(actions))
-	for i, e := range actions {
-		res[i] = model.NewEpisodeFromDBModel(&e)
-	}
-
-	return res, nil
+	return model.Map(actions, model.NewEpisodeFromDBModel), nil
 }
 
 func (e *EpisodesSrv) GetFavorites(ctx context.Context, username string) ([]model.Favorite, error) {
@@ -212,8 +189,7 @@ func (e *EpisodesSrv) GetFavorites(ctx context.Context, username string) ([]mode
 		return nil, ErrEmptyUsername
 	}
 
-	//nolint: wrapcheck
-	return db.InConnectionR(ctx, e.db, func(dbctx repository.DBContext) ([]model.Favorite, error) {
+	episodes, err := db.InConnectionR(ctx, e.db, func(dbctx repository.DBContext) ([]repository.EpisodeDB, error) {
 		user, err := e.usersRepo.GetUser(ctx, dbctx, username)
 		if errors.Is(err, repository.ErrNoData) {
 			return nil, ErrUnknownUser
@@ -226,13 +202,13 @@ func (e *EpisodesSrv) GetFavorites(ctx context.Context, username string) ([]mode
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		res := make([]model.Favorite, len(episodes))
-		for i, e := range episodes {
-			res[i] = model.NewFavoriteFromDBModel(&e)
-		}
-
-		return res, nil
+		return episodes, nil
 	})
+	if err != nil {
+		return nil, err //nolint: wrapcheck
+	}
+
+	return model.Map(episodes, model.NewFavoriteFromDBModel), nil
 }
 
 // ------------------------------------------------------

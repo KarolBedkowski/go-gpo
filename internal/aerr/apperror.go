@@ -129,11 +129,16 @@ func (a AppError) Is(target error) bool {
 }
 
 func (a AppError) Error() string {
-	if a.msg != "" {
+	switch {
+	case a.msg != "" && a.err != nil:
+		return a.msg + "(" + a.err.Error() + ")"
+	case a.msg != "":
 		return a.msg
+	case a.err != nil:
+		return a.err.Error()
+	default:
+		return fmt.Sprintf("%v", a)
 	}
-
-	return a.err.Error()
 }
 
 func (a AppError) Unwrap() error {

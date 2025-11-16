@@ -146,20 +146,14 @@ func (u *UsersSrv) ChangePassword(ctx context.Context, userpass *model.UserPassw
 }
 
 func (u *UsersSrv) GetUsers(ctx context.Context, activeOnly bool) ([]model.User, error) {
-	//nolint:wrapcheck
-	return db.InConnectionR(ctx, u.db, func(dbctx repository.DBContext) ([]model.User, error) {
-		users, err := u.usersRepo.ListUsers(ctx, dbctx, activeOnly)
-		if err != nil {
-			return nil, aerr.ApplyFor(ErrRepositoryError, err)
-		}
-
-		res := make([]model.User, 0, len(users))
-		for _, u := range users {
-			res = append(res, model.NewUserFromUserDB(&u))
-		}
-
-		return res, nil
+	users, err := db.InConnectionR(ctx, u.db, func(dbctx repository.DBContext) ([]repository.UserDB, error) {
+		return u.usersRepo.ListUsers(ctx, dbctx, activeOnly)
 	})
+	if err != nil {
+		return nil, aerr.ApplyFor(ErrRepositoryError, err)
+	}
+
+	return model.Map(users, model.NewUserFromUserDB), nil
 }
 
 func (u *UsersSrv) LockAccount(ctx context.Context, la model.LockAccount) error {
