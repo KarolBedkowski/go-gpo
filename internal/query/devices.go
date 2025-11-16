@@ -1,4 +1,4 @@
-package queries
+package query
 
 //
 // devices.go
@@ -8,11 +8,11 @@ package queries
 //
 import "gitlab.com/kabes/go-gpo/internal/aerr"
 
-type QueryDevices struct {
+type GetDevicesQuery struct {
 	UserName string
 }
 
-func (q *QueryDevices) Validate() error {
+func (q *GetDevicesQuery) Validate() error {
 	if q.UserName == "" {
 		return aerr.ErrValidation.WithMsg("user name can't be empty")
 	}

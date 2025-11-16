@@ -15,7 +15,7 @@ import (
 
 	"gitlab.com/kabes/go-gpo/internal/assert"
 	"gitlab.com/kabes/go-gpo/internal/command"
-	"gitlab.com/kabes/go-gpo/internal/queries"
+	"gitlab.com/kabes/go-gpo/internal/query"
 )
 
 func TestSubsServiceUser(t *testing.T) {
@@ -103,7 +103,7 @@ func TestSubsServiceDevice(t *testing.T) {
 	err = subsSrv.ReplaceSubscriptions(ctx, &cmd2)
 	assert.NoErr(t, err)
 
-	devices, err := deviceSrv.ListDevices(ctx, &queries.QueryDevices{UserName: "user1"})
+	devices, err := deviceSrv.ListDevices(ctx, &query.GetDevicesQuery{UserName: "user1"})
 	assert.NoErr(t, err)
 	assert.Equal(t, len(devices), 2)
 

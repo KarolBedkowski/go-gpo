@@ -81,7 +81,7 @@ func (r *Database) RegisterMetrics(queryTime bool) {
 		r.queryDuration = prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
 				Name:    "database_query_duration_seconds",
-				Help:    "Tracks the latencies for database queries.",
+				Help:    "Tracks the latencies for database query.",
 				Buckets: []float64{0.1, 0.2, 0.5, 1, 2, 5},
 			},
 			[]string{"caller"},

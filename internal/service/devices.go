@@ -16,7 +16,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
-	"gitlab.com/kabes/go-gpo/internal/queries"
+	"gitlab.com/kabes/go-gpo/internal/query"
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
@@ -70,7 +70,7 @@ func (d *DevicesSrv) UpdateDevice(ctx context.Context, cmd *command.UpdateDevice
 }
 
 // ListDevices return list of user's devices.
-func (d *DevicesSrv) ListDevices(ctx context.Context, query *queries.QueryDevices) ([]model.Device, error) {
+func (d *DevicesSrv) ListDevices(ctx context.Context, query *query.GetDevicesQuery) ([]model.Device, error) {
 	if err := query.Validate(); err != nil {
 		return nil, err
 	}
