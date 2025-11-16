@@ -88,7 +88,7 @@ func (s *SessionStore) Release() error {
 		}
 	}
 
-	ctx := context.Background()
+	ctx := log.Logger.WithContext(context.Background())
 
 	err = db.InTransaction(ctx, s.db, func(tx repository.DBContext) error {
 		return s.repo.SaveSession(ctx, tx, s.sid, data)
@@ -116,16 +116,20 @@ func (s *SessionStore) Flush() error {
 type SessionProvider struct {
 	db          *db.Database
 	repo        repository.SessionRepository
-	maxlifetime int64
+	maxlifetime time.Duration
 	logger      zerolog.Logger
 }
 
-func NewSessionProvider(db *db.Database, repo repository.SessionRepository, maxlifetime int64) *SessionProvider {
+func NewSessionProvider(
+	db *db.Database,
+	repo repository.SessionRepository,
+	maxlifetime time.Duration,
+) *SessionProvider {
 	return &SessionProvider{
 		db,
 		repo,
 		maxlifetime,
-		log.Logger.With().Logger(),
+		log.Logger,
 	}
 }
 
@@ -139,7 +143,7 @@ func (p *SessionProvider) Init(gclifetime int64, config string) error {
 
 // Read returns raw session store by session ID.
 func (p *SessionProvider) Read(sid string) (session.RawStore, error) { //nolint:ireturn
-	ctx := context.Background()
+	ctx := p.logger.WithContext(context.Background())
 
 	storedSession, err := db.InTransactionR(ctx, p.db, func(dbctx repository.DBContext) (repository.SessionDB, error) {
 		stored, err := p.repo.ReadOrCreate(ctx, dbctx, sid)
@@ -163,7 +167,7 @@ func (p *SessionProvider) Read(sid string) (session.RawStore, error) { //nolint:
 
 // Exist returns true if session with given ID exists.
 func (p *SessionProvider) Exist(sid string) (bool, error) {
-	ctx := context.Background()
+	ctx := p.logger.WithContext(context.Background())
 
 	conn, err := p.db.GetConnection(ctx)
 	if err != nil {
@@ -182,7 +186,7 @@ func (p *SessionProvider) Exist(sid string) (bool, error) {
 
 // Destroy deletes a session by session ID.
 func (p *SessionProvider) Destroy(sid string) error {
-	ctx := context.Background()
+	ctx := p.logger.WithContext(context.Background())
 
 	err := db.InTransaction(ctx, p.db, func(tx repository.DBContext) error {
 		return p.repo.DeleteSession(ctx, tx, sid)
@@ -198,7 +202,7 @@ func (p *SessionProvider) Destroy(sid string) error {
 func (p *SessionProvider) Regenerate(oldsid, sid string) (session.RawStore, error) { //nolint:ireturn
 	p.logger.Debug().Str("sid", sid).Str("old_sid", oldsid).Msg("regenerate session")
 
-	ctx := context.Background()
+	ctx := p.logger.WithContext(context.Background())
 
 	storedSession, err := db.InTransactionR(ctx, p.db, func(dbctx repository.DBContext) (repository.SessionDB, error) {
 		if err := p.repo.RegenerateSession(ctx, dbctx, oldsid, sid); err != nil {
@@ -226,7 +230,7 @@ func (p *SessionProvider) Regenerate(oldsid, sid string) (session.RawStore, erro
 
 // Count counts and returns number of sessions.
 func (p *SessionProvider) Count() (int, error) {
-	ctx := context.Background()
+	ctx := p.logger.WithContext(context.Background())
 
 	conn, err := p.db.GetConnection(ctx)
 	if err != nil {
@@ -247,10 +251,10 @@ func (p *SessionProvider) Count() (int, error) {
 func (p *SessionProvider) GC() {
 	p.logger.Debug().Msg("gc sessions")
 
-	ctx := context.Background()
+	ctx := p.logger.WithContext(context.Background())
 
 	err := db.InTransaction(ctx, p.db, func(dbctx repository.DBContext) error {
-		return p.repo.CleanSessions(ctx, dbctx, time.Duration(p.maxlifetime)*time.Second, 2*time.Hour) //nolint:mnd
+		return p.repo.CleanSessions(ctx, dbctx, p.maxlifetime, 2*time.Hour) //nolint:mnd
 	})
 	if err != nil {
 		p.logger.Error().Err(err).Msg("gc sessions error")
@@ -265,8 +269,7 @@ func (p *SessionProvider) decodeSession(
 
 	var sessiondata map[any]any
 
-	if len(dbsession.Data) == 0 ||
-		dbsession.CreatedAt.Add(time.Duration(p.maxlifetime)*time.Second).Before(time.Now().UTC()) {
+	if len(dbsession.Data) == 0 || dbsession.CreatedAt.Add(p.maxlifetime).Before(time.Now().UTC()) {
 		sessiondata = make(map[any]any)
 	} else {
 		var err error

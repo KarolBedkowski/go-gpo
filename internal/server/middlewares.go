@@ -312,9 +312,9 @@ func newSessionMiddleware(i do.Injector) (sessionMiddleware, error) {
 		Provider:       "db",
 		ProviderConfig: "./tmp/",
 		CookieName:     "sessionid",
+		SameSite:       http.SameSiteLaxMode,
+		Maxlifetime:    int64(sessionMaxLifetime.Seconds()),
 		// Secure:         true,
-		SameSite:    http.SameSiteLaxMode,
-		Maxlifetime: sessionMaxLifetime,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("start session manager error: %w", err)

@@ -34,7 +34,7 @@ type Configuration struct {
 }
 
 const (
-	sessionMaxLifetime    = 14 * 24 * 60 * 60 // 14d
+	sessionMaxLifetime    = (24 * 60 * 60) * time.Second //nolint:mnd
 	defaultReadTimeout    = 60 * time.Second
 	defaultWriteTimeout   = 60 * time.Second
 	defaultMaxHeaderBytes = 1 << 20

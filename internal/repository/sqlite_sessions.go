@@ -95,23 +95,36 @@ func (s SqliteRepository) CleanSessions(
 	dbctx DBContext,
 	maxLifeTime, maxLifeTimeForEmpty time.Duration,
 ) error {
-	logger := log.Ctx(ctx).With().Logger()
-	logger.Debug().Msg("clean sessions")
+	oldestUsed := time.Now().UTC().Add(-maxLifeTime)
+	oldestEmpty := time.Now().UTC().Add(-maxLifeTimeForEmpty)
 
-	_, err := dbctx.ExecContext(ctx,
-		"DELETE FROM sessions WHERE created_at < ?",
-		time.Now().UTC().Add(-maxLifeTime))
+	logger := log.Ctx(ctx)
+	logger.Debug().Msgf("clean sessions (%s, %s)", oldestUsed, oldestEmpty)
+
+	res, err := dbctx.ExecContext(ctx, "DELETE FROM sessions WHERE created_at < ?", oldestUsed)
 	if err != nil {
-		log.Logger.Error().Err(err).Msg("error delete old sessions")
+		logger.Err(err).Msg("error delete old sessions")
 	}
+
+	affected, err := res.RowsAffected()
+	if err != nil {
+		log.Logger.Error().Err(err).Msg("error delete old sessions - get affected rows")
+	}
+
+	logger.Debug().Msgf("session removed: %d", affected)
 
 	// remove empty session older than 2 hour
-	_, err = dbctx.ExecContext(ctx,
-		"DELETE FROM sessions WHERE created_at < ? AND data is null",
-		time.Now().UTC().Add(maxLifeTimeForEmpty))
+	_, err = dbctx.ExecContext(ctx, "DELETE FROM sessions WHERE created_at < ? AND data is null", oldestEmpty)
 	if err != nil {
-		log.Logger.Error().Err(err).Msg("error delete old sessions")
+		logger.Error().Err(err).Msg("error delete old sessions")
 	}
+
+	affected, err = res.RowsAffected()
+	if err != nil {
+		log.Logger.Error().Err(err).Msg("error delete old empty sessions - get affected rows")
+	}
+
+	logger.Debug().Msgf("empty session removed: %d", affected)
 
 	return nil
 }
