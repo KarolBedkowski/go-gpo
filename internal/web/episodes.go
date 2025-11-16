@@ -17,6 +17,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/model"
+	"gitlab.com/kabes/go-gpo/internal/query"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
@@ -50,7 +51,13 @@ func (e episodePages) list(ctx context.Context, w http.ResponseWriter, r *http.R
 		return
 	}
 
-	episodes, err := e.episodeSrv.GetEpisodes(ctx, user, "", podcast)
+	query := query.GetEpisodesQuery{
+		UserName:   user,
+		Podcast:    podcast,
+		Aggregated: true,
+	}
+
+	episodes, err := e.episodeSrv.GetEpisodes(ctx, &query)
 	if err != nil {
 		internal.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get podcast episodes error")

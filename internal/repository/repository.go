@@ -49,7 +49,7 @@ type EpisodesRepository interface {
 	GetEpisode(ctx context.Context, dbctx DBContext, userid, podcastid int64, episode string) (EpisodeDB, error)
 	ListEpisodeActions(
 		ctx context.Context, db DBContext, userid int64, deviceid, podcastid *int64, since time.Time, aggregated bool,
-		lastelements int,
+		lastelements uint,
 	) ([]EpisodeDB, error)
 	SaveEpisode(ctx context.Context, db DBContext, userid int64, episode ...EpisodeDB) error
 	ListFavorites(ctx context.Context, db DBContext, userid int64) ([]EpisodeDB, error)

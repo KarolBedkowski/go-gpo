@@ -17,6 +17,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
+	"gitlab.com/kabes/go-gpo/internal/query"
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
@@ -40,14 +41,24 @@ func NewEpisodesSrv(i do.Injector) (*EpisodesSrv, error) {
 
 // GetEpisodes return list of episodes for `username`, `podcast` and `devicename` (ignored).
 // Return last action.
-func (e *EpisodesSrv) GetEpisodes(ctx context.Context, username, devicename, podcast string,
-) ([]model.Episode, error) {
-	if username == "" {
-		return nil, ErrEmptyUsername
+func (e *EpisodesSrv) GetEpisodes(ctx context.Context, query *query.GetEpisodesQuery) ([]model.Episode, error) {
+	log.Ctx(ctx).Debug().Object("query", query).Msgf("get episodes")
+
+	if err := query.Validate(); err != nil {
+		return nil, aerr.Wrapf(err, "validate query failed")
 	}
 
 	episodes, err := db.InConnectionR(ctx, e.db, func(conn repository.DBContext) ([]repository.EpisodeDB, error) {
-		return e.getEpisodesActions(ctx, conn, username, devicename, podcast, time.Time{}, true, 0)
+		return e.getEpisodes(
+			ctx,
+			conn,
+			query.UserName,
+			query.DeviceName,
+			query.Podcast,
+			query.Since,
+			query.Aggregated,
+			query.Limit,
+		)
 	})
 	if err != nil {
 		return nil, err //nolint:wrapcheck
@@ -118,49 +129,33 @@ func (e *EpisodesSrv) AddAction(ctx context.Context, username string, action ...
 // GetActions return list of episode actions for username and optional podcast and devicename.
 // Device name is ignored as all devices are synced and should have the same data.
 // Used by /api/2/episodes.
-func (e *EpisodesSrv) GetActions(ctx context.Context, username, podcast, devicename string,
-	since time.Time, aggregated bool,
+// TODO: merge with GetEpisodes.
+func (e *EpisodesSrv) GetActions(ctx context.Context, query *query.GetEpisodesQuery,
 ) ([]model.Episode, error) {
-	log.Ctx(ctx).Debug().Str("username", username).Str("devicename", devicename).
-		Msgf("get actions since=%s aggregated=%v", since, aggregated)
-
-	if username == "" {
-		return nil, ErrEmptyUsername
-	}
-
-	actions, err := db.InConnectionR(ctx, e.db, func(conn repository.DBContext) ([]repository.EpisodeDB, error) {
-		return e.getEpisodesActions(ctx, conn, username, devicename, podcast, since, aggregated, 0)
-	})
-	if err != nil {
-		return nil, err //nolint:wrapcheck
-	}
-
-	return model.Map(actions, model.NewEpisodeFromDBModel), nil
+	return e.GetEpisodes(ctx, query)
 }
 
 // GetUpdates return list of EpisodeUpdate for `username` and optionally `devicename` and `since`.
 // if `includeActions` add to each episode last action.
 // devicename is ignored but checked
 // Used by /api/2/updates.
-func (e *EpisodesSrv) GetUpdates(ctx context.Context, username, devicename string, since time.Time,
-	includeActions bool,
+func (e *EpisodesSrv) GetUpdates(ctx context.Context, query *query.GetEpisodeUpdatesQuery,
 ) ([]model.EpisodeUpdate, error) {
-	log.Ctx(ctx).Debug().Str("username", username).Str("devicename", devicename).
-		Msgf("get episodes updates since %s includeActions %v", since, includeActions)
+	log.Ctx(ctx).Debug().Object("query", query).Msgf("get episodes updates")
 
-	if username == "" {
-		return nil, ErrEmptyUsername
+	if err := query.Validate(); err != nil {
+		return nil, aerr.Wrapf(err, "validate query failed")
 	}
 
 	episodes, err := db.InConnectionR(ctx, e.db, func(conn repository.DBContext) ([]repository.EpisodeDB, error) {
-		return e.getEpisodesActions(ctx, conn, username, devicename, "", since, true, 0)
+		return e.getEpisodes(ctx, conn, query.UserName, query.DeviceName, "", query.Since, true, 0)
 	})
 	if err != nil {
 		return nil, err //nolint:wrapcheck
 	}
 
 	createFunc := model.NewEpisodeUpdateFromDBModel
-	if includeActions {
+	if query.IncludeActions {
 		createFunc = model.NewEpisodeUpdateWithEpisodeFromDBModel
 	}
 
@@ -168,20 +163,12 @@ func (e *EpisodesSrv) GetUpdates(ctx context.Context, username, devicename strin
 }
 
 // GetLastActions return last `limit` actions for `username`.
-func (e *EpisodesSrv) GetLastActions(ctx context.Context, username string, since time.Time, limit int,
+func (e *EpisodesSrv) GetLastActions(ctx context.Context, query *query.GetEpisodesQuery,
 ) ([]model.Episode, error) {
-	if username == "" {
-		return nil, ErrEmptyUsername
-	}
+	query.Podcast = ""
+	query.DeviceName = ""
 
-	actions, err := db.InConnectionR(ctx, e.db, func(dbctx repository.DBContext) ([]repository.EpisodeDB, error) {
-		return e.getEpisodesActions(ctx, dbctx, username, "", "", since, false, limit)
-	})
-	if err != nil {
-		return nil, err //nolint:wrapcheck
-	}
-
-	return model.Map(actions, model.NewEpisodeFromDBModel), nil
+	return e.GetEpisodes(ctx, query)
 }
 
 func (e *EpisodesSrv) GetFavorites(ctx context.Context, username string) ([]model.Favorite, error) {
@@ -213,13 +200,13 @@ func (e *EpisodesSrv) GetFavorites(ctx context.Context, username string) ([]mode
 
 // ------------------------------------------------------
 
-func (e *EpisodesSrv) getEpisodesActions(
+func (e *EpisodesSrv) getEpisodes(
 	ctx context.Context,
 	dbctx repository.DBContext,
 	username, devicename, podcast string,
 	since time.Time,
 	aggregated bool,
-	limit int,
+	limit uint,
 ) ([]repository.EpisodeDB, error) {
 	user, err := e.usersRepo.GetUser(ctx, dbctx, username)
 	if errors.Is(err, repository.ErrNoData) {

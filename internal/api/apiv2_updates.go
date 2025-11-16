@@ -12,6 +12,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/model"
+	"gitlab.com/kabes/go-gpo/internal/query"
 	"gitlab.com/kabes/go-gpo/internal/service"
 
 	"github.com/go-chi/chi/v5"
@@ -67,7 +68,13 @@ func (u updatesResource) getUpdates(
 		return
 	}
 
-	updates, err := u.episodesSrv.GetUpdates(ctx, user, "", since, includeActions)
+	query := query.GetEpisodeUpdatesQuery{
+		UserName:       user,
+		Since:          since,
+		IncludeActions: includeActions,
+	}
+
+	updates, err := u.episodesSrv.GetUpdates(ctx, &query)
 	if err != nil {
 		internal.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get episodes updates error")

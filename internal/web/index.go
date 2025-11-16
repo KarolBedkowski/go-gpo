@@ -11,7 +11,6 @@ import (
 	"context"
 	"net/http"
 	"slices"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
@@ -19,6 +18,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/model"
+	"gitlab.com/kabes/go-gpo/internal/query"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
@@ -46,7 +46,12 @@ const maxLastAction = 25
 func (i indexPage) indexPage(ctx context.Context, writer http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
 	user := internal.ContextUser(ctx)
 
-	lastactions, err := i.episodeSrv.GetLastActions(ctx, user, time.Time{}, maxLastAction)
+	query := query.GetEpisodesQuery{
+		UserName: user,
+		Limit:    maxLastAction,
+	}
+
+	lastactions, err := i.episodeSrv.GetLastActions(ctx, &query)
 	if err != nil {
 		internal.CheckAndWriteError(writer, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get last actions error")

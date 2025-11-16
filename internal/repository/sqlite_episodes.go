@@ -56,7 +56,7 @@ func (s SqliteRepository) ListEpisodeActions(
 	userid int64, deviceid, podcastid *int64,
 	since time.Time,
 	aggregated bool,
-	lastelements int,
+	lastelements uint,
 ) ([]EpisodeDB, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Any("podcast_id", podcastid).Any("device_id", deviceid).
@@ -82,7 +82,7 @@ func (s SqliteRepository) ListEpisodeActions(
 	query += " ORDER BY e.updated_at DESC"
 
 	if lastelements > 0 {
-		query += " LIMIT " + strconv.Itoa(lastelements)
+		query += " LIMIT " + strconv.FormatUint(uint64(lastelements), 10)
 	}
 
 	logger.Debug().Msgf("get episodes - query=%q, args=%v", query, args)

@@ -15,6 +15,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/model"
+	"gitlab.com/kabes/go-gpo/internal/query"
 	"gitlab.com/kabes/go-gpo/internal/service"
 
 	"github.com/go-chi/chi/v5"
@@ -124,7 +125,15 @@ func (er episodesResource) getEpisodeActions(
 		return
 	}
 
-	res, err := er.episodesSrv.GetActions(ctx, user, podcast, device, since, aggregated)
+	query := query.GetEpisodesQuery{
+		UserName:   user,
+		Podcast:    podcast,
+		DeviceName: device,
+		Since:      since,
+		Aggregated: aggregated,
+	}
+
+	res, err := er.episodesSrv.GetActions(ctx, &query)
 	if err != nil {
 		internal.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get episodes actions error")
