@@ -10,25 +10,25 @@ import "gitlab.com/kabes/go-gpo/internal/aerr"
 //
 
 type SettingsKey struct {
-	Username   string
+	UserName   string
 	Scope      string
-	Devicename string
+	DeviceName string
 	Episode    string
 	Podcast    string
 }
 
 func NewSettingsKey(username, scope, device, podcast, episode string) SettingsKey {
 	return SettingsKey{
-		Username:   username,
+		UserName:   username,
 		Scope:      scope,
-		Devicename: device,
+		DeviceName: device,
 		Episode:    episode,
 		Podcast:    podcast,
 	}
 }
 
 func (s *SettingsKey) Validate() error {
-	if s.Username == "" {
+	if s.UserName == "" {
 		return aerr.ErrValidation.WithMsg("username can't be empty")
 	}
 
@@ -36,7 +36,7 @@ func (s *SettingsKey) Validate() error {
 	case "account":
 		// no extra check
 	case "device":
-		if s.Devicename == "" {
+		if s.DeviceName == "" {
 			return aerr.ErrValidation.WithMsg("device can't be empty")
 		}
 	case "episode":

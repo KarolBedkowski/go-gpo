@@ -74,7 +74,7 @@ func (s SettingsSrv) SaveSettings(ctx context.Context, cmd *command.ChangeSettin
 		return aerr.Wrapf(err, "validate settings key to save failed")
 	}
 
-	key := model.NewSettingsKey(cmd.Username, cmd.Scope, cmd.Devicename, cmd.Podcast, cmd.Episode)
+	key := model.NewSettingsKey(cmd.UserName, cmd.Scope, cmd.DeviceName, cmd.Podcast, cmd.Episode)
 	settings := cmd.CombinedSetting()
 
 	//nolint:wrapcheck
@@ -121,7 +121,7 @@ func (s SettingsSrv) newSettingKeys( //nolint:cyclop
 ) (settingsKeys, error) {
 	settkey := settingsKeys{}
 
-	user, err := s.usersRepo.GetUser(ctx, dbctx, key.Username)
+	user, err := s.usersRepo.GetUser(ctx, dbctx, key.UserName)
 	if errors.Is(err, repository.ErrNoData) {
 		return settkey, ErrUnknownUser
 	} else if err != nil {
@@ -132,7 +132,7 @@ func (s SettingsSrv) newSettingKeys( //nolint:cyclop
 
 	switch key.Scope {
 	case "device":
-		device, err := s.devicesRepo.GetDevice(ctx, dbctx, user.ID, key.Devicename)
+		device, err := s.devicesRepo.GetDevice(ctx, dbctx, user.ID, key.DeviceName)
 		if errors.Is(err, repository.ErrNoData) {
 			return settkey, ErrUnknownDevice
 		} else if err != nil {

@@ -192,7 +192,7 @@ func (e EpisodeDB) MarshalZerologObject(event *zerolog.Event) {
 
 type UserDB struct {
 	ID        int64     `db:"id"`
-	Username  string    `db:"username"`
+	UserName  string    `db:"username"`
 	Password  string    `db:"password"`
 	Email     string    `db:"email"`
 	Name      string    `db:"name"`
@@ -207,7 +207,7 @@ func (u UserDB) MarshalZerologObject(event *zerolog.Event) {
 	}
 
 	event.Int64("id", u.ID).
-		Str("user_name", u.Username).
+		Str("user_name", u.UserName).
 		Str("Password", pass).
 		Str("email", u.Email).
 		Str("name", u.Name).

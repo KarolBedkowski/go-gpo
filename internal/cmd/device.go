@@ -21,7 +21,7 @@ import (
 
 type UpdateDevice struct {
 	Database      string
-	Username      string
+	UserName      string
 	DeviceName    string
 	DeviceType    string
 	DeviceCaption string
@@ -38,7 +38,7 @@ func (u *UpdateDevice) Start(ctx context.Context) error {
 	devsrv := do.MustInvoke[*service.DevicesSrv](injector)
 
 	cmd := command.UpdateDeviceCmd{
-		UserName:   u.Username,
+		UserName:   u.UserName,
 		DeviceName: u.DeviceName,
 		DeviceType: u.DeviceType,
 		Caption:    u.DeviceCaption,
@@ -56,7 +56,7 @@ func (u *UpdateDevice) Start(ctx context.Context) error {
 
 type DeleteDevice struct {
 	Database   string
-	Username   string
+	UserName   string
 	DeviceName string
 }
 
@@ -70,7 +70,7 @@ func (d *DeleteDevice) Start(ctx context.Context) error {
 
 	devsrv := do.MustInvoke[*service.DevicesSrv](injector)
 
-	if err := devsrv.DeleteDevice(ctx, d.Username, d.DeviceName); err != nil {
+	if err := devsrv.DeleteDevice(ctx, d.UserName, d.DeviceName); err != nil {
 		return fmt.Errorf("delete device error: %w", err)
 	}
 

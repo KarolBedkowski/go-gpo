@@ -52,7 +52,7 @@ func prepareTestUser(ctx context.Context, t *testing.T, i do.Injector, name stri
 	t.Helper()
 
 	newuser := command.NewUserCmd{
-		Username: name,
+		UserName: name,
 		Password: name + "123",
 		Email:    name + "@example.com",
 		Name:     "test user " + name,
@@ -91,8 +91,8 @@ func prepareTestSub(ctx context.Context, t *testing.T, i do.Injector,
 
 	subsSrv := do.MustInvoke[*SubscriptionsSrv](i)
 	cmd := command.ReplaceSubscriptionsCmd{
-		Username:      username,
-		Devicename:    devicename,
+		UserName:      username,
+		DeviceName:    devicename,
 		Subscriptions: subs,
 		Timestamp:     time.Date(2025, 1, 2, 10, 0, 0, 0, time.UTC),
 	}

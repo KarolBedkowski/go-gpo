@@ -72,15 +72,15 @@ func (s *SubscriptionsSrv) ReplaceSubscriptions(
 
 	//nolint:wrapcheck
 	return db.InTransaction(ctx, s.db, func(dbctx repository.DBContext) error {
-		user, err := s.getUser(ctx, dbctx, cmd.Username)
+		user, err := s.getUser(ctx, dbctx, cmd.UserName)
 		if err != nil {
 			return err
 		}
 
 		// check dev
-		_, err = s.getUserDevice(ctx, dbctx, user.ID, cmd.Devicename)
+		_, err = s.getUserDevice(ctx, dbctx, user.ID, cmd.DeviceName)
 		if errors.Is(err, ErrUnknownDevice) {
-			_, err = s.createUserDevice(ctx, dbctx, user.ID, cmd.Devicename)
+			_, err = s.createUserDevice(ctx, dbctx, user.ID, cmd.DeviceName)
 		}
 
 		if err != nil {
@@ -136,12 +136,12 @@ func (s *SubscriptionsSrv) ChangeSubscriptions( //nolint:cyclop
 	}
 
 	err := db.InTransaction(ctx, s.db, func(dbctx repository.DBContext) error {
-		user, err := s.getUser(ctx, dbctx, cmd.Username)
+		user, err := s.getUser(ctx, dbctx, cmd.UserName)
 		if err != nil {
 			return err
 		}
 		// check service
-		_, err = s.getUserDevice(ctx, dbctx, user.ID, cmd.Devicename)
+		_, err = s.getUserDevice(ctx, dbctx, user.ID, cmd.DeviceName)
 		if err != nil {
 			return err
 		}

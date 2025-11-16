@@ -37,7 +37,7 @@ func (d deviceResource) Routes() *chi.Mux {
 	r.With(checkUserMiddleware).
 		Get(`/{user:[\w+.-]+}.json`, internal.Wrap(d.listDevices))
 	r.With(checkUserMiddleware, checkDeviceMiddleware).
-		Post(`/{user:[\w+.-]+}/{deviceid:[\w.-]+}.json`, internal.Wrap(d.updateDevice))
+		Post(`/{user:[\w+.-]+}/{devicename:[\w.-]+}.json`, internal.Wrap(d.updateDevice))
 
 	return r
 }
@@ -50,7 +50,7 @@ func (d deviceResource) updateDevice(
 	logger *zerolog.Logger,
 ) {
 	user := internal.ContextUser(ctx)
-	deviceid := internal.ContextDevice(ctx)
+	devicename := internal.ContextDevice(ctx)
 
 	// updateDevice device data
 	var reqData struct {
@@ -67,7 +67,7 @@ func (d deviceResource) updateDevice(
 
 	cmd := command.UpdateDeviceCmd{
 		UserName:   user,
-		DeviceName: deviceid,
+		DeviceName: devicename,
 		DeviceType: reqData.Type,
 		Caption:    reqData.Caption,
 	}

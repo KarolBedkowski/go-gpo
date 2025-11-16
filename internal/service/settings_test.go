@@ -23,7 +23,7 @@ func TestSettingsAccount(t *testing.T) {
 	_ = prepareTestUser(ctx, t, i, "user2")
 
 	cmd := command.ChangeSettingsCmd{
-		Username: "user1",
+		UserName: "user1",
 		Scope:    "account",
 		Set:      map[string]string{"key1": "val1", "key2": "val2"},
 	}
@@ -37,7 +37,7 @@ func TestSettingsAccount(t *testing.T) {
 	assert.Equal(t, rset, cmd.Set)
 
 	cmd2 := command.ChangeSettingsCmd{
-		Username: "user1",
+		UserName: "user1",
 		Scope:    "account",
 		Set:      map[string]string{"key1": "val1-new", "key3": "val3"},
 	}
@@ -53,7 +53,7 @@ func TestSettingsAccount(t *testing.T) {
 
 	// add settings for other user
 	cmd3 := command.ChangeSettingsCmd{
-		Username: "user2",
+		UserName: "user2",
 		Scope:    "account",
 		Set:      map[string]string{"key1": "u2val1", "key3": "u2val3"},
 	}
@@ -77,7 +77,7 @@ func TestSettingsAccount(t *testing.T) {
 
 	// delete setting
 	cmd4 := command.ChangeSettingsCmd{
-		Username: "user1",
+		UserName: "user1",
 		Scope:    "account",
 		Set:      map[string]string{"key1": "val2-new"},
 		Remove:   []string{"key3"},
@@ -100,18 +100,18 @@ func TestSettingsDevice(t *testing.T) {
 	prepareTestDevice(ctx, t, i, "user1", "dev2")
 
 	cmd := command.ChangeSettingsCmd{
-		Username:   "user1",
+		UserName:   "user1",
 		Scope:      "device",
-		Devicename: "dev1",
+		DeviceName: "dev1",
 		Set:        map[string]string{"key1": "val1", "key2": "val2"},
 	}
 	err := settSrv.SaveSettings(ctx, &cmd)
 	assert.NoErr(t, err)
 
 	cmd2 := command.ChangeSettingsCmd{
-		Username:   "user1",
+		UserName:   "user1",
 		Scope:      "device",
-		Devicename: "dev2",
+		DeviceName: "dev2",
 		Set:        map[string]string{"key1": "val1-d2", "key3": "val3"},
 	}
 	err = settSrv.SaveSettings(ctx, &cmd2)
@@ -124,9 +124,9 @@ func TestSettingsDevice(t *testing.T) {
 	assert.Equal(t, rset, cmd.Set)
 
 	cmd3 := command.ChangeSettingsCmd{
-		Username:   "user1",
+		UserName:   "user1",
 		Scope:      "device",
-		Devicename: "dev1",
+		DeviceName: "dev1",
 		Set:        map[string]string{"key1": "val1-new", "key3": "val3"},
 	}
 	err = settSrv.SaveSettings(ctx, &cmd3)
@@ -163,7 +163,7 @@ func TestSettingsPdocast(t *testing.T) {
 	)
 
 	cmd := command.ChangeSettingsCmd{
-		Username: "user1",
+		UserName: "user1",
 		Scope:    "podcast",
 		Podcast:  "http://example.com/p1",
 		Set:      map[string]string{"key1": "val1", "key2": "val2"},
@@ -172,7 +172,7 @@ func TestSettingsPdocast(t *testing.T) {
 	assert.NoErr(t, err)
 
 	cmd2 := command.ChangeSettingsCmd{
-		Username: "user1",
+		UserName: "user1",
 		Scope:    "podcast",
 		Podcast:  "http://example.com/p2",
 		Set:      map[string]string{"key1": "val1-d2", "key3": "val3"},
@@ -187,7 +187,7 @@ func TestSettingsPdocast(t *testing.T) {
 	assert.Equal(t, rset, cmd.Set)
 
 	cmd3 := command.ChangeSettingsCmd{
-		Username: "user1",
+		UserName: "user1",
 		Scope:    "podcast",
 		Podcast:  "http://example.com/p1",
 		Set:      map[string]string{"key1": "val1-new", "key3": "val3"},
@@ -225,9 +225,9 @@ func TestSettingsepisode(t *testing.T) {
 	)
 
 	cmd := command.ChangeSettingsCmd{
-		Username:   "user1",
+		UserName:   "user1",
 		Scope:      "episode",
-		Devicename: "dev1", // should be ignored
+		DeviceName: "dev1", // should be ignored
 		Podcast:    "http://example.com/p1",
 		Episode:    "http://example.com/p1/e1",
 		Set:        map[string]string{"key1": "val1", "key2": "val2"},
@@ -236,9 +236,9 @@ func TestSettingsepisode(t *testing.T) {
 	assert.NoErr(t, err)
 
 	cmd2 := command.ChangeSettingsCmd{
-		Username:   "user1",
+		UserName:   "user1",
 		Scope:      "episode",
-		Devicename: "dev2", // should be ignored
+		DeviceName: "dev2", // should be ignored
 		Podcast:    "http://example.com/p2",
 		Episode:    "http://example.com/p2/e2",
 		Set:        map[string]string{"key1": "val1-d2", "key3": "val3"},
@@ -253,7 +253,7 @@ func TestSettingsepisode(t *testing.T) {
 	assert.Equal(t, rset, cmd.Set)
 
 	cmd3 := command.ChangeSettingsCmd{
-		Username: "user1",
+		UserName: "user1",
 		Scope:    "episode",
 		Podcast:  "http://example.com/p1",
 		Episode:  "http://example.com/p1/e1",

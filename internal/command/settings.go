@@ -10,9 +10,9 @@ import "gitlab.com/kabes/go-gpo/internal/aerr"
 //
 
 type ChangeSettingsCmd struct {
-	Username   string
+	UserName   string
 	Scope      string
-	Devicename string
+	DeviceName string
 	Episode    string
 	Podcast    string
 	Set        map[string]string
@@ -22,9 +22,9 @@ type ChangeSettingsCmd struct {
 // NewSetFavoriteEpisodeCmd return ChangeSettingsCmd for set episode as favorite.
 func NewSetFavoriteEpisodeCmd(username, podcast, episode string) ChangeSettingsCmd {
 	return ChangeSettingsCmd{
-		Username:   username,
+		UserName:   username,
 		Scope:      "episode",
-		Devicename: "",
+		DeviceName: "",
 		Episode:    episode,
 		Podcast:    podcast,
 		Set:        map[string]string{"is_favorite": "true"},
@@ -33,7 +33,7 @@ func NewSetFavoriteEpisodeCmd(username, podcast, episode string) ChangeSettingsC
 }
 
 func (c *ChangeSettingsCmd) Validate() error {
-	if c.Username == "" {
+	if c.UserName == "" {
 		return aerr.ErrValidation.WithMsg("username can't be empty")
 	}
 
@@ -41,7 +41,7 @@ func (c *ChangeSettingsCmd) Validate() error {
 	case "account":
 		// no extra check
 	case "device":
-		if c.Devicename == "" {
+		if c.DeviceName == "" {
 			return aerr.ErrValidation.WithMsg("device can't be empty")
 		}
 	case "episode":

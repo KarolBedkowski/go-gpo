@@ -20,10 +20,10 @@ import (
 )
 
 type List struct {
-	Database string
-	Username string
-	DeviceID string
-	Object   string
+	Database   string
+	UserName   string
+	DeviceName string
+	Object     string
 }
 
 const ListSupportedObjects = "devices, subs"
@@ -55,7 +55,7 @@ func (l *List) Start(ctx context.Context) error {
 }
 
 func (l *List) listDevices(ctx context.Context, devsrv *service.DevicesSrv) error {
-	devices, err := devsrv.ListDevices(ctx, l.Username)
+	devices, err := devsrv.ListDevices(ctx, l.UserName)
 	if err != nil {
 		return fmt.Errorf("get device list error: %w", err)
 	}
@@ -71,7 +71,7 @@ func (l *List) listDevices(ctx context.Context, devsrv *service.DevicesSrv) erro
 }
 
 func (l *List) listSubscriptions(ctx context.Context, subssrv *service.SubscriptionsSrv) error {
-	subs, err := subssrv.GetUserSubscriptions(ctx, l.Username, time.Time{})
+	subs, err := subssrv.GetUserSubscriptions(ctx, l.UserName, time.Time{})
 	if err != nil {
 		return fmt.Errorf("get subscriptions list error: %w", err)
 	}
@@ -86,11 +86,11 @@ func (l *List) listSubscriptions(ctx context.Context, subssrv *service.Subscript
 }
 
 func (l *List) validate() error {
-	l.Username = strings.TrimSpace(l.Username)
+	l.UserName = strings.TrimSpace(l.UserName)
 	l.Object = strings.TrimSpace(l.Object)
-	l.DeviceID = strings.TrimSpace(l.DeviceID)
+	l.DeviceName = strings.TrimSpace(l.DeviceName)
 
-	if l.Username == "" {
+	if l.UserName == "" {
 		return aerr.ErrValidation.WithUserMsg("username can't be empty")
 	}
 

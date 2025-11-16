@@ -11,7 +11,7 @@ import (
 const UserLockedPassword = "LOCKED"
 
 type User struct {
-	Username string
+	UserName string
 	Password string
 	Email    string
 	Name     string
@@ -21,7 +21,7 @@ type User struct {
 
 func NewUserFromUserDB(u *repository.UserDB) User {
 	return User{
-		Username: u.Username,
+		UserName: u.UserName,
 		Password: u.Password,
 		Email:    u.Email,
 		Name:     u.Name,

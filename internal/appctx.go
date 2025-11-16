@@ -34,6 +34,6 @@ func ContextDevice(ctx context.Context) string {
 	return ""
 }
 
-func ContextWithDevice(ctx context.Context, deviceid string) context.Context {
-	return context.WithValue(ctx, CtxDeviceKey, deviceid)
+func ContextWithDevice(ctx context.Context, devicename string) context.Context {
+	return context.WithValue(ctx, CtxDeviceKey, devicename)
 }

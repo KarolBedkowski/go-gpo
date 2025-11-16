@@ -22,7 +22,7 @@ import (
 type ChangeUserPassword struct {
 	Database string
 	Password string
-	Username string
+	UserName string
 }
 
 func (c *ChangeUserPassword) Start(ctx context.Context) error {
@@ -36,7 +36,7 @@ func (c *ChangeUserPassword) Start(ctx context.Context) error {
 	usersrv := do.MustInvoke[*service.UsersSrv](injector)
 
 	cmd := command.ChangeUserPasswordCmd{
-		Username:         c.Username,
+		UserName:         c.UserName,
 		Password:         c.Password,
 		CurrentPassword:  "",
 		CheckCurrentPass: false,
@@ -45,7 +45,7 @@ func (c *ChangeUserPassword) Start(ctx context.Context) error {
 		return fmt.Errorf("change user password error: %w", err)
 	}
 
-	fmt.Printf("Changed password for user %q\n", c.Username)
+	fmt.Printf("Changed password for user %q\n", c.UserName)
 
 	return nil
 }
@@ -54,7 +54,7 @@ func (c *ChangeUserPassword) Start(ctx context.Context) error {
 
 type LockUserAccount struct {
 	Database string
-	Username string
+	UserName string
 }
 
 func (l *LockUserAccount) Start(ctx context.Context) error {
@@ -67,12 +67,12 @@ func (l *LockUserAccount) Start(ctx context.Context) error {
 
 	usersrv := do.MustInvoke[*service.UsersSrv](injector)
 
-	la := command.LockAccountCmd{Username: l.Username}
+	la := command.LockAccountCmd{UserName: l.UserName}
 	if err := usersrv.LockAccount(ctx, la); err != nil {
 		return fmt.Errorf("change user password error: %w", err)
 	}
 
-	fmt.Printf("User %q locked\n", l.Username)
+	fmt.Printf("User %q locked\n", l.UserName)
 
 	return nil
 }

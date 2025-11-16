@@ -78,7 +78,7 @@ func (u *UsersSrv) AddUser(ctx context.Context, cmd *command.NewUserCmd) (comman
 	//nolint:wrapcheck
 	return db.InTransactionR(ctx, u.db, func(dbctx repository.DBContext) (command.NewUserCmdResult, error) {
 		// is user exists?
-		_, err := u.usersRepo.GetUser(ctx, dbctx, cmd.Username)
+		_, err := u.usersRepo.GetUser(ctx, dbctx, cmd.UserName)
 		switch {
 		case errors.Is(err, repository.ErrNoData):
 			// ok; user not exists
@@ -97,7 +97,7 @@ func (u *UsersSrv) AddUser(ctx context.Context, cmd *command.NewUserCmd) (comman
 
 		now := time.Now().UTC()
 		udb := repository.UserDB{
-			Username:  cmd.Username,
+			UserName:  cmd.UserName,
 			Password:  hashedPass,
 			Email:     cmd.Email,
 			Name:      cmd.Name,
@@ -128,7 +128,7 @@ func (u *UsersSrv) ChangePassword(ctx context.Context, cmd *command.ChangeUserPa
 	//nolint: wrapcheck
 	return db.InTransaction(ctx, u.db, func(dbctx repository.DBContext) error {
 		// is user exists?
-		user, err := u.usersRepo.GetUser(ctx, dbctx, cmd.Username)
+		user, err := u.usersRepo.GetUser(ctx, dbctx, cmd.UserName)
 
 		if errors.Is(err, repository.ErrNoData) {
 			return ErrUnknownUser
@@ -173,7 +173,7 @@ func (u *UsersSrv) LockAccount(ctx context.Context, cmd command.LockAccountCmd) 
 
 	//nolint:wrapcheck
 	return db.InTransaction(ctx, u.db, func(dbctx repository.DBContext) error {
-		udb, err := u.usersRepo.GetUser(ctx, dbctx, cmd.Username)
+		udb, err := u.usersRepo.GetUser(ctx, dbctx, cmd.UserName)
 		if errors.Is(err, repository.ErrNoData) {
 			return ErrUnknownUser
 		} else if err != nil {
@@ -198,7 +198,7 @@ func (u *UsersSrv) DeleteUser(ctx context.Context, cmd *command.DeleteUserCmd) e
 
 	//nolint:wrapcheck
 	return db.InTransaction(ctx, u.db, func(dbctx repository.DBContext) error {
-		user, err := u.usersRepo.GetUser(ctx, dbctx, cmd.Username)
+		user, err := u.usersRepo.GetUser(ctx, dbctx, cmd.UserName)
 		if errors.Is(err, repository.ErrNoData) {
 			return ErrUnknownUser
 		} else if err != nil {

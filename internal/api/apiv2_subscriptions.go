@@ -39,9 +39,9 @@ func (sr subscriptionsResource) Routes() *chi.Mux {
 	router.With(checkUserMiddleware).
 		Get(`/{user:[\w+.-]+}.opml`, internal.Wrap(sr.userSubscriptions))
 	router.With(checkUserMiddleware, checkDeviceMiddleware).
-		Get(`/{user:[\w+.-]+}/{deviceid:[\w.-]+}.json`, internal.Wrap(sr.devSubscriptions))
+		Get(`/{user:[\w+.-]+}/{devicename:[\w.-]+}.json`, internal.Wrap(sr.devSubscriptions))
 	router.With(checkUserMiddleware, checkDeviceMiddleware).
-		Post(`/{user:[\w+.-]+}/{deviceid:[\w.-]+}.json`, internal.Wrap(sr.uploadSubscriptionChanges))
+		Post(`/{user:[\w+.-]+}/{devicename:[\w.-]+}.json`, internal.Wrap(sr.uploadSubscriptionChanges))
 
 	return router
 }
@@ -53,7 +53,7 @@ func (sr subscriptionsResource) devSubscriptions(
 	logger *zerolog.Logger,
 ) {
 	user := internal.ContextUser(ctx)
-	deviceid := internal.ContextDevice(ctx)
+	devicename := internal.ContextDevice(ctx)
 
 	var sinceTS time.Time
 
@@ -67,7 +67,7 @@ func (sr subscriptionsResource) devSubscriptions(
 		sinceTS = time.Unix(ts, 0)
 	}
 
-	state, err := sr.subsSrv.GetSubscriptionChanges(ctx, user, deviceid, sinceTS)
+	state, err := sr.subsSrv.GetSubscriptionChanges(ctx, user, devicename, sinceTS)
 	if err != nil {
 		internal.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get device subscriptions changes error")
@@ -128,7 +128,7 @@ func (sr subscriptionsResource) uploadSubscriptionChanges(
 	logger *zerolog.Logger,
 ) {
 	user := internal.ContextUser(ctx)
-	deviceid := internal.ContextDevice(ctx)
+	devicename := internal.ContextDevice(ctx)
 
 	changes := subscriptionChangesRequest{}
 	if err := render.DecodeJSON(r.Body, &changes); err != nil {
@@ -139,8 +139,8 @@ func (sr subscriptionsResource) uploadSubscriptionChanges(
 	}
 
 	cmd := command.ChangeSubscriptionsCmd{
-		Username:   user,
-		Devicename: deviceid,
+		UserName:   user,
+		DeviceName: devicename,
 		Add:        changes.Add,
 		Remove:     changes.Remove,
 		Timestamp:  time.Now().UTC(),

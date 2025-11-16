@@ -88,9 +88,9 @@ func (u settingsResource) setSettings(
 	}
 
 	cmd := command.ChangeSettingsCmd{
-		Username:   user,
+		UserName:   user,
 		Scope:      chi.URLParam(r, "scope"),
-		Devicename: r.URL.Query().Get("device"),
+		DeviceName: r.URL.Query().Get("device"),
 		Podcast:    r.URL.Query().Get("podcast"),
 		Episode:    r.URL.Query().Get("episode"),
 	}

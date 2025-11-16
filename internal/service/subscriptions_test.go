@@ -30,8 +30,8 @@ func TestSubsServiceUser(t *testing.T) {
 	}
 
 	cmd := command.ReplaceSubscriptionsCmd{
-		Username:      "user1",
-		Devicename:    "dev1",
+		UserName:      "user1",
+		DeviceName:    "dev1",
 		Subscriptions: newSubscribed,
 		Timestamp:     time.Now().UTC(),
 	}
@@ -50,8 +50,8 @@ func TestSubsServiceUser(t *testing.T) {
 	}
 
 	cmd2 := command.ReplaceSubscriptionsCmd{
-		Username:      "user1",
-		Devicename:    "dev1",
+		UserName:      "user1",
+		DeviceName:    "dev1",
 		Subscriptions: newSubscribed2,
 		Timestamp:     time.Now().UTC(),
 	}
@@ -77,8 +77,8 @@ func TestSubsServiceDevice(t *testing.T) {
 	}
 
 	cmd := command.ReplaceSubscriptionsCmd{
-		Username:      "user1",
-		Devicename:    "dev1",
+		UserName:      "user1",
+		DeviceName:    "dev1",
 		Subscriptions: newSubscribed,
 		Timestamp:     time.Now().UTC(),
 	}
@@ -94,8 +94,8 @@ func TestSubsServiceDevice(t *testing.T) {
 
 	// new device - should be created
 	cmd2 := command.ReplaceSubscriptionsCmd{
-		Username:      "user1",
-		Devicename:    "dev2",
+		UserName:      "user1",
+		DeviceName:    "dev2",
 		Subscriptions: newSubscribed2,
 		Timestamp:     time.Now().UTC(),
 	}
@@ -133,8 +133,8 @@ func TestSubsServiceChanges(t *testing.T) {
 	}
 
 	cmd := command.ReplaceSubscriptionsCmd{
-		Username:      "user1",
-		Devicename:    "dev1",
+		UserName:      "user1",
+		DeviceName:    "dev1",
 		Subscriptions: newSubscribed,
 		Timestamp:     time.Date(2025, 1, 2, 10, 0, 0, 0, time.UTC),
 	}
@@ -162,8 +162,8 @@ func TestSubsServiceChanges(t *testing.T) {
 
 	// new device - should be created
 	cmd2 := command.ReplaceSubscriptionsCmd{
-		Username:      "user1",
-		Devicename:    "dev2",
+		UserName:      "user1",
+		DeviceName:    "dev2",
 		Subscriptions: newSubscribed2,
 		Timestamp:     time.Date(2025, 1, 2, 12, 0, 0, 0, time.UTC),
 	}
@@ -200,8 +200,8 @@ func TestSubsServiceUpdateDevSubsChanges(t *testing.T) {
 	}
 
 	cmd := command.ReplaceSubscriptionsCmd{
-		Username:      "user1",
-		Devicename:    "dev1",
+		UserName:      "user1",
+		DeviceName:    "dev1",
 		Subscriptions: newSubscribed,
 		Timestamp:     time.Date(2025, 1, 2, 10, 0, 0, 0, time.UTC),
 	}
@@ -209,8 +209,8 @@ func TestSubsServiceUpdateDevSubsChanges(t *testing.T) {
 	assert.NoErr(t, err)
 
 	changes := command.ChangeSubscriptionsCmd{
-		Username:   "user1",
-		Devicename: "dev1",
+		UserName:   "user1",
+		DeviceName: "dev1",
 		Add:        []string{"http://example.com/p4", "http://example.com/p5"},
 		Remove:     []string{"http://example.com/p1"},
 		Timestamp:  time.Date(2025, 1, 2, 12, 0, 0, 0, time.UTC),

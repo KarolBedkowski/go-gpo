@@ -55,16 +55,16 @@ func checkUserMiddleware(next http.Handler) http.Handler {
 
 func checkDeviceMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		deviceid := chi.URLParam(req, "deviceid")
-		if deviceid == "" {
-			hlog.FromRequest(req).Debug().Msgf("empty deviceid")
+		devicename := chi.URLParam(req, "devicename")
+		if devicename == "" {
+			hlog.FromRequest(req).Debug().Msgf("empty devicename")
 			w.WriteHeader(http.StatusBadRequest)
 
 			return
 		}
 
-		ctx := internal.ContextWithDevice(req.Context(), deviceid)
-		logger := hlog.FromRequest(req).With().Str("device_id", deviceid).Logger()
+		ctx := internal.ContextWithDevice(req.Context(), devicename)
+		logger := hlog.FromRequest(req).With().Str("device_id", devicename).Logger()
 		ctx = logger.WithContext(ctx)
 
 		next.ServeHTTP(w, req.WithContext(ctx))

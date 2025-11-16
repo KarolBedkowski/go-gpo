@@ -36,7 +36,7 @@ func (u updatesResource) Routes() *chi.Mux {
 	r := chi.NewRouter()
 
 	r.With(checkUserMiddleware, checkDeviceMiddleware).
-		Get(`/{user:[\w+.-]+}/{deviceid:[\w.-]+}.json`, internal.Wrap(u.getUpdates))
+		Get(`/{user:[\w+.-]+}/{devicename:[\w.-]+}.json`, internal.Wrap(u.getUpdates))
 
 	return r
 }
@@ -48,7 +48,7 @@ func (u updatesResource) getUpdates(
 	logger *zerolog.Logger,
 ) {
 	user := internal.ContextUser(ctx)
-	deviceid := internal.ContextDevice(ctx)
+	devicename := internal.ContextDevice(ctx)
 	includeActions := r.URL.Query().Get("include_actions") == "true"
 
 	since, err := getSinceParameter(r)
@@ -59,7 +59,7 @@ func (u updatesResource) getUpdates(
 		return
 	}
 
-	state, err := u.subsSrv.GetSubscriptionChanges(ctx, user, deviceid, since)
+	state, err := u.subsSrv.GetSubscriptionChanges(ctx, user, devicename, since)
 	if err != nil {
 		internal.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get subscription changes error")

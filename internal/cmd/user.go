@@ -24,7 +24,7 @@ type AddUser struct {
 	Name     string
 	Password string
 	Email    string
-	Username string
+	UserName string
 }
 
 func (a *AddUser) Start(ctx context.Context) error {
@@ -37,7 +37,7 @@ func (a *AddUser) Start(ctx context.Context) error {
 
 	usersrv := do.MustInvoke[*service.UsersSrv](injector)
 	cmd := command.NewUserCmd{
-		Username: a.Username,
+		UserName: a.UserName,
 		Password: a.Password,
 		Email:    a.Email,
 		Name:     a.Name,
@@ -48,7 +48,7 @@ func (a *AddUser) Start(ctx context.Context) error {
 	case err != nil:
 		return fmt.Errorf("add user error: %w", err)
 	case res.UserID > 0:
-		fmt.Printf("User %q created; id: %d\n", a.Username, res.UserID)
+		fmt.Printf("User %q created; id: %d\n", a.UserName, res.UserID)
 	default:
 		fmt.Printf("Create user failed\n")
 	}
@@ -89,7 +89,7 @@ func (l *ListUsers) Start(ctx context.Context) error {
 			status = "LOCKED"
 		}
 
-		fmt.Printf("%-30s | %-30s | %-30s | %s \n", u.Username, u.Name, u.Email, status)
+		fmt.Printf("%-30s | %-30s | %-30s | %s \n", u.UserName, u.Name, u.Email, status)
 	}
 
 	return nil
@@ -99,7 +99,7 @@ func (l *ListUsers) Start(ctx context.Context) error {
 
 type DeleteUser struct {
 	Database string
-	Username string
+	UserName string
 }
 
 func (d *DeleteUser) Start(ctx context.Context) error {
@@ -112,7 +112,7 @@ func (d *DeleteUser) Start(ctx context.Context) error {
 
 	usersrv := do.MustInvoke[*service.UsersSrv](injector)
 
-	err := usersrv.DeleteUser(ctx, &command.DeleteUserCmd{Username: d.Username})
+	err := usersrv.DeleteUser(ctx, &command.DeleteUserCmd{UserName: d.UserName})
 	if err != nil {
 		return fmt.Errorf("delete user error: %w", err)
 	}

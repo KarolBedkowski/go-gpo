@@ -14,14 +14,14 @@ import (
 
 // NewUserCmd define new user to add.
 type NewUserCmd struct {
-	Username string
+	UserName string
 	Password string
 	Email    string
 	Name     string
 }
 
 func (n *NewUserCmd) Validate() error {
-	if n.Username == "" {
+	if n.UserName == "" {
 		return aerr.ErrValidation.WithUserMsg("username can't be empty")
 	}
 
@@ -42,14 +42,14 @@ var ErrChangePasswordOldNotMatch = errors.New("invalid current password")
 
 // ChangeUserPasswordCmd define new user to add.
 type ChangeUserPasswordCmd struct {
-	Username         string
+	UserName         string
 	Password         string
 	CurrentPassword  string
 	CheckCurrentPass bool
 }
 
 func (c *ChangeUserPasswordCmd) Validate() error {
-	if c.Username == "" {
+	if c.UserName == "" {
 		return aerr.ErrValidation.WithUserMsg("username can't be empty")
 	}
 
@@ -68,11 +68,11 @@ func (c *ChangeUserPasswordCmd) Validate() error {
 
 // LockAccountCmd is user account to lock.
 type LockAccountCmd struct {
-	Username string
+	UserName string
 }
 
 func (l *LockAccountCmd) Validate() error {
-	if l.Username == "" {
+	if l.UserName == "" {
 		return aerr.ErrValidation.WithUserMsg("username can't be empty")
 	}
 
@@ -83,11 +83,11 @@ func (l *LockAccountCmd) Validate() error {
 
 // DeleteUserCmd delete user and all related data.
 type DeleteUserCmd struct {
-	Username string
+	UserName string
 }
 
 func (d *DeleteUserCmd) Validate() error {
-	if d.Username == "" {
+	if d.UserName == "" {
 		return aerr.ErrValidation.WithUserMsg("username can't be empty")
 	}
 

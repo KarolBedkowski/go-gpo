@@ -159,7 +159,7 @@ func addUserCmd() *cli.Command {
 				Name:     c.String("name"),
 				Password: c.String("password"),
 				Email:    c.String("email"),
-				Username: c.String("username"),
+				UserName: c.String("username"),
 			}
 
 			return s.Start(log.Logger.WithContext(ctx))
@@ -178,7 +178,7 @@ func deleteUsersCmd() *cli.Command {
 			initializeLogger(c.String("log.level"), c.String("log.format"))
 			s := cmd.DeleteUser{
 				Database: c.String("database"),
-				Username: c.String("username"),
+				UserName: c.String("username"),
 			}
 
 			return s.Start(log.Logger.WithContext(ctx))
@@ -235,7 +235,7 @@ func changeUserPasswordCmd() *cli.Command {
 			s := cmd.ChangeUserPassword{
 				Database: clicmd.String("database"),
 				Password: pass,
-				Username: clicmd.String("username"),
+				UserName: clicmd.String("username"),
 			}
 
 			return s.Start(log.Logger.WithContext(ctx))
@@ -254,7 +254,7 @@ func lockUserCmd() *cli.Command {
 			initializeLogger(c.String("log.level"), c.String("log.format"))
 			s := cmd.LockUserAccount{
 				Database: c.String("database"),
-				Username: c.String("username"),
+				UserName: c.String("username"),
 			}
 
 			return s.Start(log.Logger.WithContext(ctx))
@@ -323,10 +323,10 @@ func listCmd() *cli.Command {
 			initializeLogger(c.String("log.level"), c.String("log.format"))
 
 			s := cmd.List{
-				Database: c.String("database"),
-				Username: c.String("username"),
-				DeviceID: c.String("device"),
-				Object:   c.String("object"),
+				Database:   c.String("database"),
+				UserName:   c.String("username"),
+				DeviceName: c.String("device"),
+				Object:     c.String("object"),
 			}
 
 			return s.Start(log.Logger.WithContext(ctx))
@@ -372,7 +372,7 @@ func updateDeviceCmd() *cli.Command {
 
 			s := cmd.UpdateDevice{
 				Database:      c.String("database"),
-				Username:      c.String("username"),
+				UserName:      c.String("username"),
 				DeviceName:    c.String("device"),
 				DeviceType:    c.String("type"),
 				DeviceCaption: c.String("caption"),
@@ -396,7 +396,7 @@ func deleteDeviceCmd() *cli.Command {
 
 			s := cmd.DeleteDevice{
 				Database:   c.String("database"),
-				Username:   c.String("username"),
+				UserName:   c.String("username"),
 				DeviceName: c.String("device"),
 			}
 
@@ -416,10 +416,10 @@ func listDeviceCmd() *cli.Command {
 			initializeLogger(c.String("log.level"), c.String("log.format"))
 
 			s := cmd.List{
-				Database: c.String("database"),
-				Username: c.String("username"),
-				DeviceID: c.String("device"),
-				Object:   "devices",
+				Database:   c.String("database"),
+				UserName:   c.String("username"),
+				DeviceName: c.String("device"),
+				Object:     "devices",
 			}
 
 			return s.Start(log.Logger.WithContext(ctx))

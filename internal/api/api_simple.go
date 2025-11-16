@@ -39,9 +39,9 @@ func (s *simpleResource) Routes() *chi.Mux {
 	r.With(checkUserMiddleware).
 		Get(`/{user:[\w+.-]+}.{format}`, internal.Wrap(s.downloadUserSubscriptions))
 	r.With(checkUserMiddleware, checkDeviceMiddleware).
-		Get(`/{user:[\w+.-]+}/{deviceid:[\w.-]+}.{format}`, internal.Wrap(s.downloadDevSubscriptions))
+		Get(`/{user:[\w+.-]+}/{devicename:[\w.-]+}.{format}`, internal.Wrap(s.downloadDevSubscriptions))
 	r.With(checkUserMiddleware, checkDeviceMiddleware).
-		Put(`/{user:[\w+.-]+}/{deviceid:[\w.-]+}.{format}`, internal.Wrap(s.uploadSubscriptions))
+		Put(`/{user:[\w+.-]+}/{devicename:[\w.-]+}.{format}`, internal.Wrap(s.uploadSubscriptions))
 
 	return r
 }
@@ -96,9 +96,9 @@ func (s *simpleResource) downloadDevSubscriptions(
 	logger *zerolog.Logger,
 ) {
 	user := internal.ContextUser(ctx)
-	deviceid := internal.ContextDevice(ctx)
+	devicename := internal.ContextDevice(ctx)
 
-	subs, err := s.subServ.GetSubscriptions(ctx, user, deviceid, time.Time{})
+	subs, err := s.subServ.GetSubscriptions(ctx, user, devicename, time.Time{})
 	if err != nil {
 		internal.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get device subscriptions error")
@@ -137,7 +137,7 @@ func (s *simpleResource) uploadSubscriptions(
 	logger *zerolog.Logger,
 ) {
 	user := internal.ContextUser(ctx)
-	deviceid := internal.ContextDevice(ctx)
+	devicename := internal.ContextDevice(ctx)
 
 	var (
 		subs []string
@@ -167,8 +167,8 @@ func (s *simpleResource) uploadSubscriptions(
 	}
 
 	cmd := command.ReplaceSubscriptionsCmd{
-		Username:      user,
-		Devicename:    deviceid,
+		UserName:      user,
+		DeviceName:    devicename,
 		Subscriptions: subs,
 		Timestamp:     time.Now().UTC(),
 	}

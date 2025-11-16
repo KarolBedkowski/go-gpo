@@ -18,8 +18,8 @@ import (
 var ErrEmptyUsername = aerr.NewSimple("username can't be empty").WithTag(aerr.ValidationError)
 
 type ChangeSubscriptionsCmd struct {
-	Username   string
-	Devicename string
+	UserName   string
+	DeviceName string
 	Add        []string
 	Remove     []string
 	Timestamp  time.Time
@@ -39,7 +39,7 @@ func (s *ChangeSubscriptionsCmd) Sanitize() [][]string {
 }
 
 func (s *ChangeSubscriptionsCmd) Validate() error {
-	if s.Username == "" {
+	if s.UserName == "" {
 		return ErrEmptyUsername
 	}
 
@@ -59,14 +59,14 @@ type ChangeSubscriptionsCmdResult struct {
 //---------------------------------------------------------------------
 
 type ReplaceSubscriptionsCmd struct {
-	Username      string
-	Devicename    string
+	UserName      string
+	DeviceName    string
 	Subscriptions []string
 	Timestamp     time.Time
 }
 
 func (r *ReplaceSubscriptionsCmd) Validate() error {
-	if r.Username == "" {
+	if r.UserName == "" {
 		return ErrEmptyUsername
 	}
 

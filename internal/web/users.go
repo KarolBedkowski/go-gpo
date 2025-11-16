@@ -77,7 +77,7 @@ func (u userPages) doChangePassword(ctx context.Context, r *http.Request, logger
 
 	username := internal.ContextUser(ctx)
 	up := command.ChangeUserPasswordCmd{
-		Username: username, Password: npass, CurrentPassword: cpass, CheckCurrentPass: true,
+		UserName: username, Password: npass, CurrentPassword: cpass, CheckCurrentPass: true,
 	}
 
 	err := u.usersSrv.ChangePassword(ctx, &up)
