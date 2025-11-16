@@ -207,11 +207,11 @@ func TestEpisodesServiceUpdates(t *testing.T) {
 	assert.Equal(t, updates[1].Status, episodeActions[3].Action)
 	assert.Equal(t, *updates[1].Episode, episodeActions[3])
 
-	// with device (should return entries other that with dev1), include action
+	// with device (should return all actions), include action
 	updates, err = episodesSrv.GetUpdates(ctx, "user1", "dev2",
 		time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), true)
 	assert.NoErr(t, err)
-	assert.Equal(t, len(updates), 2)
+	assert.Equal(t, len(updates), 3)
 	assert.Equal(t, updates[0].URL, episodeActions[1].Episode)
 	assert.Equal(t, updates[0].PodcastURL, episodeActions[1].Podcast)
 	assert.Equal(t, updates[0].Status, episodeActions[1].Action)
@@ -220,6 +220,10 @@ func TestEpisodesServiceUpdates(t *testing.T) {
 	assert.Equal(t, updates[1].PodcastURL, episodeActions[2].Podcast)
 	assert.Equal(t, updates[1].Status, episodeActions[2].Action)
 	assert.Equal(t, *updates[1].Episode, episodeActions[2])
+	assert.Equal(t, updates[2].URL, episodeActions[3].Episode)
+	assert.Equal(t, updates[2].PodcastURL, episodeActions[3].Podcast)
+	assert.Equal(t, updates[2].Status, episodeActions[3].Action)
+	assert.Equal(t, *updates[2].Episode, episodeActions[3])
 }
 
 func TestEpisodesServiceLastEpisodes(t *testing.T) {
