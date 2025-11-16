@@ -12,8 +12,8 @@ import (
 	"fmt"
 
 	"github.com/samber/do/v2"
+	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/db"
-	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
@@ -36,14 +36,22 @@ func (a *AddUser) Start(ctx context.Context) error {
 	}
 
 	usersrv := do.MustInvoke[*service.UsersSrv](injector)
-	newuser := model.NewNewUser(a.Username, a.Password, a.Email, a.Name)
-
-	id, err := usersrv.AddUser(ctx, &newuser)
-	if err != nil {
-		return fmt.Errorf("add user error: %w", err)
+	cmd := command.NewUserCmd{
+		Username: a.Username,
+		Password: a.Password,
+		Email:    a.Email,
+		Name:     a.Name,
 	}
 
-	fmt.Printf("User %q created; id: %d\n", a.Username, id)
+	res, err := usersrv.AddUser(ctx, &cmd)
+	switch {
+	case err != nil:
+		return fmt.Errorf("add user error: %w", err)
+	case res.Success:
+		fmt.Printf("User %q created; id: %d\n", a.Username, res.UserID)
+	default:
+		fmt.Printf("Create user failed\n")
+	}
 
 	return nil
 }

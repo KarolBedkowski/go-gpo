@@ -12,6 +12,7 @@ import (
 	"fmt"
 
 	"github.com/samber/do/v2"
+	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/service"
@@ -35,8 +36,13 @@ func (c *ChangeUserPassword) Start(ctx context.Context) error {
 
 	usersrv := do.MustInvoke[*service.UsersSrv](injector)
 
-	up := model.NewUserPassword(c.Username, c.Password)
-	if err := usersrv.ChangePassword(ctx, &up); err != nil {
+	cmd := command.ChangeUserPasswordCmd{
+		Username:         c.Username,
+		Password:         c.Password,
+		CurrentPassword:  "",
+		CheckCurrentPass: false,
+	}
+	if err := usersrv.ChangePassword(ctx, &cmd); err != nil {
 		return fmt.Errorf("change user password error: %w", err)
 	}
 

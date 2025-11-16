@@ -13,6 +13,7 @@ import (
 	"github.com/samber/do/v2"
 
 	"gitlab.com/kabes/go-gpo/internal/assert"
+	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/model"
 )
 
@@ -23,10 +24,11 @@ func TestUsers(t *testing.T) {
 	_, err := usersSrv.LoginUser(ctx, "test", "test123")
 	assert.ErrSpec(t, err, ErrUnknownUser)
 
-	newuser := model.NewNewUser("test", "test123", "test@example.com", "test user 1")
-	uid, err := usersSrv.AddUser(ctx, &newuser)
+	newuser := command.NewUserCmd{Username: "test", Password: "test123", Email: "test@example.com", Name: "test user 1"}
+	res, err := usersSrv.AddUser(ctx, &newuser)
 	assert.NoErr(t, err)
-	assert.True(t, uid > 0)
+	assert.True(t, res.Success)
+	assert.True(t, res.UserID > 0)
 
 	user, err := usersSrv.LoginUser(ctx, "test", "test123")
 	assert.NoErr(t, err)
@@ -44,22 +46,24 @@ func TestUsers(t *testing.T) {
 	assert.ErrSpec(t, err, ErrUserAccountLocked)
 
 	// change pass and unlock
-	err = usersSrv.ChangePassword(ctx, &model.UserPassword{Username: "test", Password: "123123"})
+	chpasscmd := command.ChangeUserPasswordCmd{Username: "test", Password: "123123", CurrentPassword: "", CheckCurrentPass: false}
+	err = usersSrv.ChangePassword(ctx, &chpasscmd)
 	assert.NoErr(t, err)
 
 	user, err = usersSrv.LoginUser(ctx, "test", "123123")
 	assert.NoErr(t, err)
 
 	// try double user
-	newuser2 := model.NewNewUser("test", "test123", "test2@example.com", "test user 2")
+	newuser2 := command.NewUserCmd{Username: "test", Password: "test123", Email: "test2@example.com", Name: "test user 2"}
 	_, err = usersSrv.AddUser(ctx, &newuser2)
 	assert.ErrSpec(t, err, ErrUserExists)
 
 	newuser2.Username = "test2"
-	uid2, err := usersSrv.AddUser(ctx, &newuser2)
+	res2, err := usersSrv.AddUser(ctx, &newuser2)
 	assert.NoErr(t, err)
-	assert.True(t, uid2 > 0)
-	assert.True(t, uid != uid2)
+	assert.True(t, res2.Success)
+	assert.True(t, res2.UserID > 0)
+	assert.True(t, res.UserID != res2.UserID)
 
 	// get all users
 	users, err := usersSrv.GetUsers(ctx, false)

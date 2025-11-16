@@ -67,14 +67,18 @@ func (n *NewUser) Validate() error {
 
 // NewUser define new user to add.
 type UserPassword struct {
-	Username string
-	Password string
+	Username         string
+	Password         string
+	CurrentPassword  string
+	CheckCurrentPass bool
 }
 
-func NewUserPassword(username, password string) UserPassword {
+func NewUserPassword(username, password, currentPassword string, checkCurrentPass bool) UserPassword {
 	return UserPassword{
-		Username: strings.TrimSpace(username),
-		Password: strings.TrimSpace(password),
+		Username:         strings.TrimSpace(username),
+		Password:         strings.TrimSpace(password),
+		CurrentPassword:  strings.TrimSpace(currentPassword),
+		CheckCurrentPass: checkCurrentPass,
 	}
 }
 
@@ -85,6 +89,10 @@ func (u *UserPassword) Validate() error {
 
 	if u.Password == "" {
 		return aerr.ErrValidation.WithUserMsg("password can't be empty")
+	}
+
+	if u.CheckCurrentPass && u.CurrentPassword == "" {
+		return aerr.ErrValidation.WithUserMsg("current password can't be empty")
 	}
 
 	return nil

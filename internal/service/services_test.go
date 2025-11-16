@@ -19,6 +19,7 @@ import (
 
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/assert"
+	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/repository"
@@ -50,14 +51,14 @@ func prepareTests(t *testing.T) (context.Context, *do.RootScope) {
 func prepareTestUser(ctx context.Context, t *testing.T, i do.Injector, name string) int64 {
 	t.Helper()
 
-	newuser := model.NewNewUser(name, name+"123", name+"@example.com", "test user "+name)
+	newuser := command.NewUserCmd{Username: name, Password: name + "123", Email: name + "@example.com", Name: "test user " + name}
 	usersSrv := do.MustInvoke[*UsersSrv](i)
-	uid, err := usersSrv.AddUser(ctx, &newuser)
+	res, err := usersSrv.AddUser(ctx, &newuser)
 	if err != nil {
 		t.Fatalf("create test user failed: %#+v", err)
 	}
 
-	return uid
+	return res.UserID
 }
 
 func prepareTestDevice(ctx context.Context, t *testing.T, i do.Injector,

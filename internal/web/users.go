@@ -9,13 +9,14 @@ package web
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal"
-	"gitlab.com/kabes/go-gpo/internal/model"
+	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
@@ -75,16 +76,14 @@ func (u userPages) doChangePassword(ctx context.Context, r *http.Request, logger
 	}
 
 	username := internal.ContextUser(ctx)
-
-	_, err := u.usersSrv.LoginUser(ctx, username, cpass)
-	if err != nil {
-		logger.Info().Err(err).Msg("check current user password for password change failed")
-
-		return "Error: invalid current password"
+	up := command.ChangeUserPasswordCmd{
+		Username: username, Password: npass, CurrentPassword: cpass, CheckCurrentPass: true,
 	}
 
-	up := model.NewUserPassword(username, npass)
-	if err := u.usersSrv.ChangePassword(ctx, &up); err != nil {
+	err := u.usersSrv.ChangePassword(ctx, &up)
+	if errors.Is(err, command.ErrChangePasswordOldNotMatch) {
+		return "Error: invalid current password"
+	} else if err != nil {
 		logger.Info().Err(err).Str("user_name", username).Msg("change user password failed")
 
 		return "Error: change password failed"

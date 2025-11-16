@@ -14,6 +14,7 @@ import (
 
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/repository"
@@ -63,17 +64,20 @@ func (u *UsersSrv) LoginUser(ctx context.Context, username, password string) (mo
 	return model.NewUserFromUserDB(&user), nil
 }
 
-func (u *UsersSrv) AddUser(ctx context.Context, user *model.NewUser) (int64, error) {
-	if user == nil {
-		panic("user is nil")
+func (u *UsersSrv) AddUser(ctx context.Context, cmd *command.NewUserCmd) (command.NewUserCmdResult, error) {
+	if cmd == nil {
+		panic("cmd is nil")
 	}
 
+	res := command.NewUserCmdResult{Success: false}
+
+	user := model.NewNewUser(cmd.Username, cmd.Password, cmd.Email, cmd.Name)
 	if err := user.Validate(); err != nil {
-		return 0, aerr.Wrapf(err, "validate user to add failed")
+		return res, aerr.Wrapf(err, "validate user to add failed")
 	}
 
 	//nolint:wrapcheck
-	return db.InTransactionR(ctx, u.db, func(dbctx repository.DBContext) (int64, error) {
+	return db.InTransactionR(ctx, u.db, func(dbctx repository.DBContext) (command.NewUserCmdResult, error) {
 		// is user exists?
 		_, err := u.usersRepo.GetUser(ctx, dbctx, user.Username)
 		switch {
@@ -81,15 +85,15 @@ func (u *UsersSrv) AddUser(ctx context.Context, user *model.NewUser) (int64, err
 			// ok; user not exists
 		case err == nil:
 			// user exists
-			return 0, ErrUserExists
+			return res, ErrUserExists
 		default:
 			// failed to get user
-			return 0, aerr.ApplyFor(ErrRepositoryError, err)
+			return res, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
 		hashedPass, err := u.passHasher.HashPassword(user.Password)
 		if err != nil {
-			return 0, aerr.Wrapf(err, "hash password failed")
+			return res, aerr.Wrapf(err, "hash password failed")
 		}
 
 		now := time.Now().UTC()
@@ -104,18 +108,22 @@ func (u *UsersSrv) AddUser(ctx context.Context, user *model.NewUser) (int64, err
 
 		uid, err := u.usersRepo.SaveUser(ctx, dbctx, &udb)
 		if err != nil {
-			return 0, aerr.ApplyFor(ErrRepositoryError, err)
+			return res, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		return uid, nil
+		res.Success = true
+		res.UserID = uid
+
+		return res, nil
 	})
 }
 
-func (u *UsersSrv) ChangePassword(ctx context.Context, userpass *model.UserPassword) error {
-	if userpass == nil {
-		panic("userpass is nil")
+func (u *UsersSrv) ChangePassword(ctx context.Context, cmd *command.ChangeUserPasswordCmd) error {
+	if cmd == nil {
+		panic("cmd is nil")
 	}
 
+	userpass := model.NewUserPassword(cmd.Username, cmd.Password, cmd.CurrentPassword, cmd.CheckCurrentPass)
 	if err := userpass.Validate(); err != nil {
 		return aerr.Wrapf(err, "validate user/password for save failed")
 	}
@@ -123,21 +131,26 @@ func (u *UsersSrv) ChangePassword(ctx context.Context, userpass *model.UserPassw
 	//nolint: wrapcheck
 	return db.InTransaction(ctx, u.db, func(dbctx repository.DBContext) error {
 		// is user exists?
-		udb, err := u.usersRepo.GetUser(ctx, dbctx, userpass.Username)
+		user, err := u.usersRepo.GetUser(ctx, dbctx, userpass.Username)
+
 		if errors.Is(err, repository.ErrNoData) {
 			return ErrUnknownUser
 		} else if err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		udb.Password, err = u.passHasher.HashPassword(userpass.Password)
+		if userpass.CheckCurrentPass && !u.passHasher.CheckPassword(userpass.CurrentPassword, user.Password) {
+			return command.ErrChangePasswordOldNotMatch
+		}
+
+		user.Password, err = u.passHasher.HashPassword(userpass.Password)
 		if err != nil {
 			return aerr.Wrapf(err, "hash password failed")
 		}
 
-		udb.UpdatedAt = time.Now().UTC()
+		user.UpdatedAt = time.Now().UTC()
 
-		if _, err = u.usersRepo.SaveUser(ctx, dbctx, &udb); err != nil {
+		if _, err = u.usersRepo.SaveUser(ctx, dbctx, &user); err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
