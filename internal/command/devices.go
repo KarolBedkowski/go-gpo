@@ -39,3 +39,22 @@ func (u *UpdateDeviceCmd) Validate() error {
 
 	return nil
 }
+
+// ------------------------------------------------------
+
+type DeleteDeviceCmd struct {
+	UserName   string
+	DeviceName string
+}
+
+func (u *DeleteDeviceCmd) Validate() error {
+	if u.UserName == "" {
+		return aerr.ErrValidation.WithMsg("user name can't be empty")
+	}
+
+	if u.DeviceName == "" {
+		return aerr.ErrValidation.WithMsg("device name can't be empty")
+	}
+
+	return nil
+}

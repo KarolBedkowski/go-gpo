@@ -70,7 +70,8 @@ func (d *DeleteDevice) Start(ctx context.Context) error {
 
 	devsrv := do.MustInvoke[*service.DevicesSrv](injector)
 
-	if err := devsrv.DeleteDevice(ctx, d.UserName, d.DeviceName); err != nil {
+	cmd := command.DeleteDeviceCmd{UserName: d.UserName, DeviceName: d.DeviceName}
+	if err := devsrv.DeleteDevice(ctx, &cmd); err != nil {
 		return fmt.Errorf("delete device error: %w", err)
 	}
 

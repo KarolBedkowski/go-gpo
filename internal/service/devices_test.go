@@ -93,7 +93,7 @@ func TestDeleteDevice(t *testing.T) {
 	)
 
 	deviceSrv := do.MustInvoke[*DevicesSrv](i)
-	err := deviceSrv.DeleteDevice(ctx, "user1", "dev1")
+	err := deviceSrv.DeleteDevice(ctx, &command.DeleteDeviceCmd{UserName: "user1", DeviceName: "dev1"})
 	assert.NoErr(t, err)
 
 	devices, err := deviceSrv.ListDevices(ctx, &queries.QueryDevices{UserName: "user1"})

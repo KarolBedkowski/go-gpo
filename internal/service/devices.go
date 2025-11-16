@@ -104,25 +104,21 @@ func (d *DevicesSrv) ListDevices(ctx context.Context, query *queries.QueryDevice
 	return res, nil
 }
 
-func (d *DevicesSrv) DeleteDevice(ctx context.Context, username, devicename string) error {
-	if username == "" {
-		return ErrEmptyUsername
-	}
-
-	if devicename == "" {
-		return aerr.ErrValidation.WithMsg("device can't be empty")
+func (d *DevicesSrv) DeleteDevice(ctx context.Context, cmd *command.DeleteDeviceCmd) error {
+	if err := cmd.Validate(); err != nil {
+		return err
 	}
 
 	//nolint:wrapcheck
 	return db.InTransaction(ctx, d.db, func(tx repository.DBContext) error {
-		user, err := d.usersRepo.GetUser(ctx, tx, username)
+		user, err := d.usersRepo.GetUser(ctx, tx, cmd.UserName)
 		if errors.Is(err, repository.ErrNoData) {
 			return ErrUnknownUser
 		} else if err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		device, err := d.devicesRepo.GetDevice(ctx, tx, user.ID, devicename)
+		device, err := d.devicesRepo.GetDevice(ctx, tx, user.ID, cmd.DeviceName)
 		if errors.Is(err, repository.ErrNoData) {
 			return ErrUnknownDevice
 		} else if err != nil {
