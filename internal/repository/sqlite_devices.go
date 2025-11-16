@@ -23,7 +23,7 @@ func (s SqliteRepository) GetDevice(
 	userid int64,
 	devicename string,
 ) (DeviceDB, error) {
-	logger := log.Ctx(ctx).With().Logger()
+	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Str("device_name", devicename).Msg("get device")
 
 	device := DeviceDB{}
@@ -52,7 +52,7 @@ func (s SqliteRepository) GetDevice(
 }
 
 func (s SqliteRepository) SaveDevice(ctx context.Context, dbctx DBContext, device *DeviceDB) (int64, error) {
-	logger := log.Ctx(ctx).With().Logger()
+	logger := log.Ctx(ctx)
 
 	if device.ID == 0 {
 		logger.Debug().Object("device", device).Msg("insert device")
@@ -90,7 +90,7 @@ func (s SqliteRepository) SaveDevice(ctx context.Context, dbctx DBContext, devic
 }
 
 func (s SqliteRepository) ListDevices(ctx context.Context, dbctx DBContext, userid int64) (DevicesDB, error) {
-	logger := log.Ctx(ctx).With().Logger()
+	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Msg("list devices - count subscriptions")
 
 	// all device have the same number of subscriptions
@@ -120,7 +120,7 @@ func (s SqliteRepository) ListDevices(ctx context.Context, dbctx DBContext, user
 }
 
 func (s SqliteRepository) DeleteDevice(ctx context.Context, dbctx DBContext, deviceid int64) error {
-	logger := log.Ctx(ctx).With().Logger()
+	logger := log.Ctx(ctx)
 	logger.Debug().Int64("device_id", deviceid).Msg("delete device")
 
 	_, err := dbctx.ExecContext(ctx, "UPDATE episodes SET device_id=NULL WHERE device_id=?", deviceid)
@@ -137,7 +137,7 @@ func (s SqliteRepository) DeleteDevice(ctx context.Context, dbctx DBContext, dev
 }
 
 func (s SqliteRepository) MarkSeen(ctx context.Context, dbctx DBContext, ts time.Time, deviceid ...int64) error {
-	logger := log.Ctx(ctx).With().Logger()
+	logger := log.Ctx(ctx)
 	logger.Debug().Ints64("device_id", deviceid).Msgf("mark device seen at: %s", ts)
 
 	for _, did := range deviceid {

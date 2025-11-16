@@ -71,7 +71,7 @@ func (a authenticator) handle(next http.Handler) http.Handler {
 		username, password, ok := r.BasicAuth()
 		if ok && password != "" && username != "" {
 			ctx := r.Context()
-			logger := hlog.FromRequest(r).With().Logger()
+			logger := hlog.FromRequest(r)
 			sess := session.GetSession(r)
 
 			_, err := a.usersSrv.LoginUser(ctx, username, password)
@@ -142,7 +142,7 @@ func newSimpleLogMiddleware(next http.Handler) http.Handler {
 		start := time.Now().UTC()
 		ctx := request.Context()
 		requestID, _ := hlog.IDFromCtx(ctx)
-		llog := log.With().Logger().With().Str("req_id", requestID.String()).Logger()
+		llog := log.With().Str("req_id", requestID.String()).Logger()
 		request = request.WithContext(llog.WithContext(ctx))
 
 		llog.Info().
@@ -189,7 +189,7 @@ func newFullLogMiddleware(next http.Handler) http.Handler {
 		start := time.Now().UTC()
 		ctx := request.Context()
 		requestID, _ := hlog.IDFromCtx(ctx)
-		llog := log.With().Logger().With().Str("req_id", requestID.String()).Logger()
+		llog := log.With().Str("req_id", requestID.String()).Logger()
 		request = request.WithContext(llog.WithContext(ctx))
 
 		llog.Info().

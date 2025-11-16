@@ -49,7 +49,7 @@ func (r *Database) Connect(ctx context.Context, driver, connstr string) error {
 		return err
 	}
 
-	logger := log.Ctx(ctx).With().Logger()
+	logger := log.Ctx(ctx)
 	logger.Info().Msgf("connecting to %q %q", driver, connstr)
 
 	r.db, err = sqlx.Open(driver, connstr)

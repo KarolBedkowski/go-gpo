@@ -22,7 +22,7 @@ import (
 var ErrDuplicatedSID = errors.New("sid already exists")
 
 func (s SqliteRepository) DeleteSession(ctx context.Context, dbctx DBContext, sid string) error {
-	logger := log.Ctx(ctx).With().Logger()
+	logger := log.Ctx(ctx)
 	logger.Debug().Str("sid", sid).Msg("delete session")
 
 	_, err := dbctx.ExecContext(ctx, "DELETE FROM sessions WHERE key=?", sid)
@@ -34,7 +34,7 @@ func (s SqliteRepository) DeleteSession(ctx context.Context, dbctx DBContext, si
 }
 
 func (s SqliteRepository) SaveSession(ctx context.Context, dbctx DBContext, sid string, data []byte) error {
-	logger := log.Ctx(ctx).With().Logger()
+	logger := log.Ctx(ctx)
 	logger.Debug().Str("sid", sid).Msg("save session")
 
 	_, err := dbctx.ExecContext(ctx,
@@ -48,7 +48,7 @@ func (s SqliteRepository) SaveSession(ctx context.Context, dbctx DBContext, sid 
 }
 
 func (s SqliteRepository) RegenerateSession(ctx context.Context, dbctx DBContext, oldsid, newsid string) error {
-	logger := log.Ctx(ctx).With().Logger()
+	logger := log.Ctx(ctx)
 	logger.Debug().Str("sid", newsid).Str("old_sid", oldsid).Msg("regenerate session")
 
 	res, err := dbctx.ExecContext(ctx, "UPDATE sessions SET key=? WHERE key=?", newsid, oldsid)
@@ -78,7 +78,7 @@ func (s SqliteRepository) RegenerateSession(ctx context.Context, dbctx DBContext
 }
 
 func (s SqliteRepository) CountSessions(ctx context.Context, dbctx DBContext) (int, error) {
-	logger := log.Ctx(ctx).With().Logger()
+	logger := log.Ctx(ctx)
 	logger.Debug().Msg("count sessions")
 
 	var total int
@@ -130,7 +130,7 @@ func (s SqliteRepository) CleanSessions(
 }
 
 func (s SqliteRepository) ReadOrCreate(ctx context.Context, dbctx DBContext, sid string) (SessionDB, error) {
-	logger := log.Ctx(ctx).With().Logger()
+	logger := log.Ctx(ctx)
 	logger.Debug().Str("sid", sid).Msg("read or create session")
 
 	session := SessionDB{
@@ -153,7 +153,7 @@ func (s SqliteRepository) ReadOrCreate(ctx context.Context, dbctx DBContext, sid
 }
 
 func (s SqliteRepository) SessionExists(ctx context.Context, dbctx DBContext, sid string) (bool, error) {
-	logger := log.Ctx(ctx).With().Logger()
+	logger := log.Ctx(ctx)
 	logger.Debug().Msg("count sessions")
 
 	var count int

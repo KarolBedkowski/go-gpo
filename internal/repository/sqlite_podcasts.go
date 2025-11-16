@@ -19,7 +19,7 @@ import (
 
 func (s SqliteRepository) ListSubscribedPodcasts(ctx context.Context, dbctx DBContext, userid int64, since time.Time,
 ) (PodcastsDB, error) {
-	logger := log.Ctx(ctx).With().Logger()
+	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Msgf("get subscribed podcasts since %s", since)
 
 	res := []PodcastDB{}
@@ -39,7 +39,7 @@ func (s SqliteRepository) ListSubscribedPodcasts(ctx context.Context, dbctx DBCo
 
 func (s SqliteRepository) ListPodcasts(ctx context.Context, dbctx DBContext, userid int64, since time.Time,
 ) (PodcastsDB, error) {
-	logger := log.Ctx(ctx).With().Logger()
+	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Msgf("get podcasts since %s", since)
 
 	res := []PodcastDB{}
@@ -61,7 +61,7 @@ func (s SqliteRepository) GetPodcast(
 	userid int64,
 	podcasturl string,
 ) (PodcastDB, error) {
-	logger := log.Ctx(ctx).With().Logger()
+	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Str("podcast_url", podcasturl).Msg("get podcast")
 
 	podcast := PodcastDB{}
@@ -81,7 +81,7 @@ func (s SqliteRepository) GetPodcast(
 }
 
 func (s SqliteRepository) SavePodcast(ctx context.Context, dbctx DBContext, podcast *PodcastDB) (int64, error) {
-	logger := log.Ctx(ctx).With().Logger()
+	logger := log.Ctx(ctx)
 
 	if podcast.ID == 0 {
 		logger.Debug().Object("podcast", podcast).Msg("insert podcast")

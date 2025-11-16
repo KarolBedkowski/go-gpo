@@ -18,7 +18,7 @@ import (
 )
 
 func (s SqliteRepository) GetUser(ctx context.Context, dbctx DBContext, username string) (UserDB, error) {
-	logger := log.Ctx(ctx).With().Logger()
+	logger := log.Ctx(ctx)
 	logger.Debug().Str("user_name", username).Msg("get user")
 
 	user := UserDB{}
@@ -39,7 +39,7 @@ func (s SqliteRepository) GetUser(ctx context.Context, dbctx DBContext, username
 }
 
 func (s SqliteRepository) SaveUser(ctx context.Context, dbctx DBContext, user *UserDB) (int64, error) {
-	logger := log.Ctx(ctx).With().Logger()
+	logger := log.Ctx(ctx)
 
 	if user.ID == 0 {
 		logger.Debug().Object("user", user).Msg("insert user")
@@ -75,7 +75,7 @@ func (s SqliteRepository) SaveUser(ctx context.Context, dbctx DBContext, user *U
 
 // ListUsers get all users from database.
 func (s SqliteRepository) ListUsers(ctx context.Context, dbctx DBContext, activeOnly bool) ([]UserDB, error) {
-	logger := log.Ctx(ctx).With().Logger()
+	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("list users, active_only=%v", activeOnly)
 
 	var users []UserDB
@@ -97,7 +97,7 @@ func (s SqliteRepository) ListUsers(ctx context.Context, dbctx DBContext, active
 
 // DeleteUser and all related objects.
 func (s SqliteRepository) DeleteUser(ctx context.Context, dbctx DBContext, userid int64) error {
-	logger := log.Ctx(ctx).With().Logger()
+	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Msg("delete user")
 
 	_, err := dbctx.ExecContext(ctx,
