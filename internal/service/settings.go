@@ -12,11 +12,13 @@ import (
 	"errors"
 
 	//	"gitlab.com/kabes/go-gpo/internal/model"
+	"github.com/rs/zerolog/log"
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
+	"gitlab.com/kabes/go-gpo/internal/query"
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
@@ -40,21 +42,24 @@ func NewSettingsSrv(i do.Injector) (*SettingsSrv, error) {
 	}, nil
 }
 
-func (s SettingsSrv) GetSettings(ctx context.Context, key *model.SettingsKey) (model.Settings, error) {
+func (s SettingsSrv) GetSettings(ctx context.Context, query *query.SettingsQuery) (model.Settings, error) {
+	log.Ctx(ctx).Debug().Object("query", query).Msg("get settings")
+
 	// validate
-	if err := key.Validate(); err != nil {
-		return nil, aerr.Wrapf(err, "validate settings key to load failed").WithMeta("key", key)
+	if err := query.Validate(); err != nil {
+		return nil, aerr.Wrapf(err, "validate query failed")
 	}
+
+	setkey := newSettingsKeysFromQuery(query)
 
 	//nolint:wrapcheck
 	return db.InConnectionR(ctx, s.db, func(dbctx repository.DBContext) (model.Settings, error) {
-		setkey, err := s.newSettingKeys(ctx, dbctx, key)
-		if err != nil {
+		if err := s.load(ctx, dbctx, &setkey); err != nil {
 			return nil, err
 		}
 
 		sett, err := s.settRepo.ListSettings(ctx, dbctx, setkey.userid, setkey.podcastid, setkey.episodeid,
-			setkey.deviceid, key.Scope)
+			setkey.deviceid, query.Scope)
 		if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err, "failed get list settings")
 		}
@@ -70,17 +75,18 @@ func (s SettingsSrv) GetSettings(ctx context.Context, key *model.SettingsKey) (m
 
 // SaveSettings for `key` and values in `set`. If value is set to "" for given key - delete it.
 func (s SettingsSrv) SaveSettings(ctx context.Context, cmd *command.ChangeSettingsCmd) error {
+	log.Ctx(ctx).Debug().Object("cmd", cmd).Msg("save settings")
+
 	if err := cmd.Validate(); err != nil {
 		return aerr.Wrapf(err, "validate settings key to save failed")
 	}
 
-	key := model.NewSettingsKey(cmd.UserName, cmd.Scope, cmd.DeviceName, cmd.Podcast, cmd.Episode)
+	setkey := newSettingsKeysFromCmd(cmd)
 	settings := cmd.CombinedSetting()
 
 	//nolint:wrapcheck
 	return db.InTransaction(ctx, s.db, func(dbctx repository.DBContext) error {
-		setkey, err := s.newSettingKeys(ctx, dbctx, &key)
-		if err != nil {
+		if err := s.load(ctx, dbctx, &setkey); err != nil {
 			return err
 		}
 
@@ -89,7 +95,7 @@ func (s SettingsSrv) SaveSettings(ctx context.Context, cmd *command.ChangeSettin
 			PodcastID: setkey.podcastid,
 			EpisodeID: setkey.episodeid,
 			DeviceID:  setkey.deviceid,
-			Scope:     key.Scope,
+			Scope:     setkey.scope,
 		}
 
 		for key, value := range settings {
@@ -105,75 +111,99 @@ func (s SettingsSrv) SaveSettings(ctx context.Context, cmd *command.ChangeSettin
 	})
 }
 
+func (s SettingsSrv) load( //nolint:cyclop
+	ctx context.Context,
+	dbctx repository.DBContext,
+	key *settingsKeys,
+) error {
+	user, err := s.usersRepo.GetUser(ctx, dbctx, key.username)
+	if errors.Is(err, repository.ErrNoData) {
+		return ErrUnknownUser
+	} else if err != nil {
+		return aerr.ApplyFor(ErrRepositoryError, err)
+	}
+
+	key.userid = user.ID
+
+	switch key.scope {
+	case "device":
+		device, err := s.devicesRepo.GetDevice(ctx, dbctx, user.ID, key.devicename)
+		if errors.Is(err, repository.ErrNoData) {
+			return ErrUnknownDevice
+		} else if err != nil {
+			return aerr.ApplyFor(ErrRepositoryError, err)
+		}
+
+		key.deviceid = &device.ID
+
+	case "podcast":
+		p, err := s.podcastsRepo.GetPodcast(ctx, dbctx, user.ID, key.podcast)
+		if errors.Is(err, repository.ErrNoData) {
+			return ErrUnknownPodcast
+		} else if err != nil {
+			return aerr.ApplyFor(ErrRepositoryError, err)
+		}
+
+		key.podcastid = &p.ID
+
+	case "episode":
+		p, err := s.podcastsRepo.GetPodcast(ctx, dbctx, user.ID, key.podcast)
+		if errors.Is(err, repository.ErrNoData) {
+			return ErrUnknownEpisode
+		} else if err != nil {
+			return aerr.ApplyFor(ErrRepositoryError, err)
+		}
+
+		key.podcastid = &p.ID
+
+		e, err := s.episodesRepo.GetEpisode(ctx, dbctx, user.ID, p.ID, key.episode)
+		if errors.Is(err, repository.ErrNoData) {
+			return ErrUnknownPodcast
+		} else if err != nil {
+			return aerr.ApplyFor(ErrRepositoryError, err)
+		}
+
+		key.episodeid = &e.ID
+	case "account":
+		// no extra data
+	default:
+		return aerr.NewSimple("unknown scope")
+	}
+
+	return nil
+}
+
 //------------------------------------------------------------------------------
 
 type settingsKeys struct {
+	username   string
+	scope      string
+	devicename string
+	episode    string
+	podcast    string
+
 	userid    int64
 	podcastid *int64
 	deviceid  *int64
 	episodeid *int64
 }
 
-func (s SettingsSrv) newSettingKeys( //nolint:cyclop
-	ctx context.Context,
-	dbctx repository.DBContext,
-	key *model.SettingsKey,
-) (settingsKeys, error) {
-	settkey := settingsKeys{}
-
-	user, err := s.usersRepo.GetUser(ctx, dbctx, key.UserName)
-	if errors.Is(err, repository.ErrNoData) {
-		return settkey, ErrUnknownUser
-	} else if err != nil {
-		return settkey, aerr.ApplyFor(ErrRepositoryError, err)
+func newSettingsKeysFromCmd(c *command.ChangeSettingsCmd) settingsKeys {
+	return settingsKeys{
+		username:   c.UserName,
+		scope:      c.Scope,
+		devicename: c.DeviceName,
+		podcast:    c.Podcast,
+		episode:    c.Episode,
 	}
+}
 
-	settkey.userid = user.ID
-
-	switch key.Scope {
-	case "device":
-		device, err := s.devicesRepo.GetDevice(ctx, dbctx, user.ID, key.DeviceName)
-		if errors.Is(err, repository.ErrNoData) {
-			return settkey, ErrUnknownDevice
-		} else if err != nil {
-			return settkey, aerr.ApplyFor(ErrRepositoryError, err)
-		}
-
-		settkey.deviceid = &device.ID
-
-	case "podcast":
-		p, err := s.podcastsRepo.GetPodcast(ctx, dbctx, user.ID, key.Podcast)
-		if errors.Is(err, repository.ErrNoData) {
-			return settkey, ErrUnknownPodcast
-		} else if err != nil {
-			return settkey, aerr.ApplyFor(ErrRepositoryError, err)
-		}
-
-		settkey.podcastid = &p.ID
-
-	case "episode":
-		p, err := s.podcastsRepo.GetPodcast(ctx, dbctx, user.ID, key.Podcast)
-		if errors.Is(err, repository.ErrNoData) {
-			return settkey, ErrUnknownEpisode
-		} else if err != nil {
-			return settkey, aerr.ApplyFor(ErrRepositoryError, err)
-		}
-
-		settkey.podcastid = &p.ID
-
-		e, err := s.episodesRepo.GetEpisode(ctx, dbctx, user.ID, p.ID, key.Episode)
-		if errors.Is(err, repository.ErrNoData) {
-			return settkey, ErrUnknownPodcast // TODO: fixme
-		} else if err != nil {
-			return settkey, aerr.ApplyFor(ErrRepositoryError, err)
-		}
-
-		settkey.episodeid = &e.ID
-	case "account":
-		// no extra data
-	default:
-		return settkey, aerr.NewSimple("unknown scope")
+func newSettingsKeysFromQuery(q *query.SettingsQuery) settingsKeys {
+	return settingsKeys{
+		username:   q.UserName,
+		scope:      q.Scope,
+		devicename: q.DeviceName,
+		podcast:    q.Podcast,
+		episode:    q.Episode,
 	}
-
-	return settkey, nil
 }

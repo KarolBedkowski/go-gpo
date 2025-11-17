@@ -11,7 +11,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/command"
-	"gitlab.com/kabes/go-gpo/internal/model"
+	"gitlab.com/kabes/go-gpo/internal/query"
 	"gitlab.com/kabes/go-gpo/internal/service"
 
 	"github.com/go-chi/chi/v5"
@@ -48,12 +48,13 @@ func (u settingsResource) getSettings(
 	logger *zerolog.Logger,
 ) {
 	user := internal.ContextUser(ctx)
-	key := model.NewSettingsKey(user,
-		chi.URLParam(r, "scope"),
-		r.URL.Query().Get("device"),
-		r.URL.Query().Get("podcast"),
-		r.URL.Query().Get("episode"),
-	)
+	key := query.SettingsQuery{
+		UserName:   user,
+		Scope:      chi.URLParam(r, "scope"),
+		DeviceName: r.URL.Query().Get("device"),
+		Podcast:    r.URL.Query().Get("podcast"),
+		Episode:    r.URL.Query().Get("episode"),
+	}
 
 	res, err := u.settingsSrv.GetSettings(ctx, &key)
 	if err != nil {

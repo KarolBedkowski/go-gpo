@@ -1,6 +1,9 @@
 package command
 
-import "gitlab.com/kabes/go-gpo/internal/aerr"
+import (
+	"github.com/rs/zerolog"
+	"gitlab.com/kabes/go-gpo/internal/aerr"
+)
 
 //
 // settings.go
@@ -72,4 +75,14 @@ func (c *ChangeSettingsCmd) CombinedSetting() map[string]string {
 	}
 
 	return c.Set
+}
+
+func (c *ChangeSettingsCmd) MarshalZerologObject(event *zerolog.Event) {
+	event.Str("username", c.UserName).
+		Str("scope", c.Scope).
+		Str("device", c.DeviceName).
+		Str("podcast", c.Podcast).
+		Str("episode", c.Episode).
+		Interface("set", c.Set).
+		Strs("remove", c.Remove)
 }

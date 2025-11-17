@@ -13,7 +13,7 @@ import (
 
 	"gitlab.com/kabes/go-gpo/internal/assert"
 	"gitlab.com/kabes/go-gpo/internal/command"
-	"gitlab.com/kabes/go-gpo/internal/model"
+	"gitlab.com/kabes/go-gpo/internal/query"
 )
 
 func TestSettingsAccount(t *testing.T) {
@@ -30,7 +30,7 @@ func TestSettingsAccount(t *testing.T) {
 	err := settSrv.SaveSettings(ctx, &cmd)
 	assert.NoErr(t, err)
 
-	u1skey := model.NewSettingsKey("user1", "account", "", "", "")
+	u1skey := query.SettingsQuery{UserName: "user1", Scope: "account"}
 	rset, err := settSrv.GetSettings(ctx, &u1skey)
 	assert.NoErr(t, err)
 	assert.Equal(t, len(rset), 2)
@@ -61,7 +61,7 @@ func TestSettingsAccount(t *testing.T) {
 	assert.NoErr(t, err)
 
 	// check
-	u2skey := model.NewSettingsKey("user2", "account", "", "", "")
+	u2skey := query.SettingsQuery{UserName: "user2", Scope: "account"}
 	rset, err = settSrv.GetSettings(ctx, &u2skey)
 	assert.NoErr(t, err)
 	assert.Equal(t, len(rset), 2)
@@ -117,7 +117,7 @@ func TestSettingsDevice(t *testing.T) {
 	err = settSrv.SaveSettings(ctx, &cmd2)
 	assert.NoErr(t, err)
 
-	d1skey := model.NewSettingsKey("user1", "device", "dev1", "", "")
+	d1skey := query.SettingsQuery{UserName: "user1", Scope: "device", DeviceName: "dev1", Podcast: "", Episode: ""}
 	rset, err := settSrv.GetSettings(ctx, &d1skey)
 	assert.NoErr(t, err)
 	assert.Equal(t, len(rset), 2)
@@ -139,7 +139,7 @@ func TestSettingsDevice(t *testing.T) {
 	assert.Equal(t, rset["key2"], "val2")
 	assert.Equal(t, rset["key3"], "val3")
 
-	d2skey := model.NewSettingsKey("user1", "device", "dev2", "", "")
+	d2skey := query.SettingsQuery{UserName: "user1", Scope: "device", DeviceName: "dev2", Podcast: "", Episode: ""}
 	rset, err = settSrv.GetSettings(ctx, &d2skey)
 	assert.NoErr(t, err)
 	assert.Equal(t, rset, cmd2.Set)
@@ -180,7 +180,13 @@ func TestSettingsPdocast(t *testing.T) {
 	err = settSrv.SaveSettings(ctx, &cmd2)
 	assert.NoErr(t, err)
 
-	d1skey := model.NewSettingsKey("user1", "podcast", "dev1", "http://example.com/p1", "")
+	d1skey := query.SettingsQuery{
+		UserName:   "user1",
+		Scope:      "podcast",
+		DeviceName: "dev1",
+		Podcast:    "http://example.com/p1",
+		Episode:    "",
+	}
 	rset, err := settSrv.GetSettings(ctx, &d1skey)
 	assert.NoErr(t, err)
 	assert.Equal(t, len(rset), 2)
@@ -202,7 +208,13 @@ func TestSettingsPdocast(t *testing.T) {
 	assert.Equal(t, rset["key2"], "val2")
 	assert.Equal(t, rset["key3"], "val3")
 
-	d2skey := model.NewSettingsKey("user1", "podcast", "dev2", "http://example.com/p2", "")
+	d2skey := query.SettingsQuery{
+		UserName:   "user1",
+		Scope:      "podcast",
+		DeviceName: "dev2",
+		Podcast:    "http://example.com/p2",
+		Episode:    "",
+	}
 	rset, err = settSrv.GetSettings(ctx, &d2skey)
 	assert.NoErr(t, err)
 	assert.Equal(t, rset, cmd2.Set)
@@ -246,7 +258,13 @@ func TestSettingsepisode(t *testing.T) {
 	err = settSrv.SaveSettings(ctx, &cmd2)
 	assert.NoErr(t, err)
 
-	d1skey := model.NewSettingsKey("user1", "episode", "dev1", "http://example.com/p1", "http://example.com/p1/e1")
+	d1skey := query.SettingsQuery{
+		UserName:   "user1",
+		Scope:      "episode",
+		DeviceName: "dev1",
+		Podcast:    "http://example.com/p1",
+		Episode:    "http://example.com/p1/e1",
+	}
 	rset, err := settSrv.GetSettings(ctx, &d1skey)
 	assert.NoErr(t, err)
 	assert.Equal(t, len(rset), 2)
@@ -269,7 +287,13 @@ func TestSettingsepisode(t *testing.T) {
 	assert.Equal(t, rset["key2"], "val2")
 	assert.Equal(t, rset["key3"], "val3")
 
-	d2skey := model.NewSettingsKey("user1", "episode", "dev2", "http://example.com/p2", "http://example.com/p2/e2")
+	d2skey := query.SettingsQuery{
+		UserName:   "user1",
+		Scope:      "episode",
+		DeviceName: "dev2",
+		Podcast:    "http://example.com/p2",
+		Episode:    "http://example.com/p2/e2",
+	}
 	rset, err = settSrv.GetSettings(ctx, &d2skey)
 	assert.NoErr(t, err)
 	assert.Equal(t, rset, cmd2.Set)
