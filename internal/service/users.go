@@ -193,7 +193,7 @@ func (u *UsersSrv) LockAccount(ctx context.Context, cmd command.LockAccountCmd) 
 
 func (u *UsersSrv) DeleteUser(ctx context.Context, cmd *command.DeleteUserCmd) error {
 	if err := cmd.Validate(); err != nil {
-		return err
+		return aerr.Wrapf(err, "validate cmd failed")
 	}
 
 	//nolint:wrapcheck

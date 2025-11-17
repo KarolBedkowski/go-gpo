@@ -62,12 +62,12 @@ func (s *SubscriptionsSrv) GetSubscriptions(ctx context.Context, username, devic
 }
 
 // ReplaceSubscriptions replace all subscriptions for given user. Create device when no exists.
-func (s *SubscriptionsSrv) ReplaceSubscriptions(
+func (s *SubscriptionsSrv) ReplaceSubscriptions( //nolint:cyclop
 	ctx context.Context,
 	cmd *command.ReplaceSubscriptionsCmd,
-) error { //nolint:cyclop
+) error {
 	if err := cmd.Validate(); err != nil {
-		return err
+		return aerr.Wrapf(err, "validate command failed")
 	}
 
 	//nolint:wrapcheck
@@ -132,7 +132,7 @@ func (s *SubscriptionsSrv) ChangeSubscriptions( //nolint:cyclop
 	}
 
 	if err := cmd.Validate(); err != nil {
-		return res, err
+		return res, aerr.Wrapf(err, "validate command failed")
 	}
 
 	err := db.InTransaction(ctx, s.db, func(dbctx repository.DBContext) error {
@@ -182,7 +182,7 @@ func (s *SubscriptionsSrv) ChangeSubscriptions( //nolint:cyclop
 		return nil
 	})
 
-	return res, err
+	return res, err //nolint:wrapcheck
 }
 
 func (s *SubscriptionsSrv) GetSubscriptionChanges(ctx context.Context, username, devicename string, since time.Time) (

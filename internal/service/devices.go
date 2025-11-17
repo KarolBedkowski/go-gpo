@@ -72,7 +72,7 @@ func (d *DevicesSrv) UpdateDevice(ctx context.Context, cmd *command.UpdateDevice
 // ListDevices return list of user's devices.
 func (d *DevicesSrv) ListDevices(ctx context.Context, query *query.GetDevicesQuery) ([]model.Device, error) {
 	if err := query.Validate(); err != nil {
-		return nil, err
+		return nil, aerr.Wrapf(err, "validate query failed")
 	}
 
 	devices, err := db.InConnectionR(ctx, d.db, func(conn repository.DBContext) (repository.DevicesDB, error) {
@@ -106,7 +106,7 @@ func (d *DevicesSrv) ListDevices(ctx context.Context, query *query.GetDevicesQue
 
 func (d *DevicesSrv) DeleteDevice(ctx context.Context, cmd *command.DeleteDeviceCmd) error {
 	if err := cmd.Validate(); err != nil {
-		return err
+		return aerr.Wrapf(err, "validate cmd failed")
 	}
 
 	//nolint:wrapcheck
