@@ -70,7 +70,7 @@ func (s SqliteRepository) ListEpisodeActions(
 	args := []any{userid, since}
 
 	if deviceid != nil {
-		query += " AND e.device_id != ?"
+		query += " AND (e.device_id != ? OR e.device_id is NULL) "
 		args = append(args, *deviceid) //nolint:wsl_v5
 	}
 
