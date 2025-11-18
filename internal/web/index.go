@@ -19,6 +19,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/query"
+	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
@@ -36,7 +37,7 @@ func newIndexPage(i do.Injector) (indexPage, error) {
 
 func (i indexPage) Routes() *chi.Mux {
 	r := chi.NewRouter()
-	r.Get("/", internal.Wrap(i.indexPage))
+	r.Get("/", srvsupport.Wrap(i.indexPage))
 
 	return r
 }
@@ -53,7 +54,7 @@ func (i indexPage) indexPage(ctx context.Context, writer http.ResponseWriter, r 
 
 	lastactions, err := i.episodeSrv.GetLastActions(ctx, &query)
 	if err != nil {
-		internal.CheckAndWriteError(writer, r, err)
+		srvsupport.CheckAndWriteError(writer, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get last actions error")
 
 		return
@@ -67,6 +68,6 @@ func (i indexPage) indexPage(ctx context.Context, writer http.ResponseWriter, r 
 
 	if err := i.template.executeTemplate(writer, "index.tmpl", data); err != nil {
 		logger.Error().Err(err).Msg("execute template error")
-		internal.WriteError(writer, r, http.StatusInternalServerError, "")
+		srvsupport.WriteError(writer, r, http.StatusInternalServerError, "")
 	}
 }

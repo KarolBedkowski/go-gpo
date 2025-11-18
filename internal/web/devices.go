@@ -18,6 +18,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/query"
+	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
@@ -35,7 +36,7 @@ func newDevicePages(i do.Injector) (devicePages, error) {
 
 func (d devicePages) Routes() *chi.Mux {
 	r := chi.NewRouter()
-	r.Get(`/`, internal.Wrap(d.list))
+	r.Get(`/`, srvsupport.Wrap(d.list))
 
 	return r
 }
@@ -45,7 +46,7 @@ func (d devicePages) list(ctx context.Context, w http.ResponseWriter, r *http.Re
 
 	devices, err := d.deviceSrv.ListDevices(ctx, &query.GetDevicesQuery{UserName: user})
 	if err != nil {
-		internal.CheckAndWriteError(w, r, err)
+		srvsupport.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("list devices error")
 
 		return
@@ -59,6 +60,6 @@ func (d devicePages) list(ctx context.Context, w http.ResponseWriter, r *http.Re
 
 	if err := d.template.executeTemplate(w, "devices.tmpl", &data); err != nil {
 		logger.Error().Err(err).Msg("execute template error")
-		internal.WriteError(w, r, http.StatusInternalServerError, "")
+		srvsupport.WriteError(w, r, http.StatusInternalServerError, "")
 	}
 }

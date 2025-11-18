@@ -5,10 +5,16 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
+
+	"github.com/go-chi/render"
+	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
 // ensureList create empty list if `inp` is null or return `inp` otherwise.
@@ -34,4 +40,39 @@ func getSinceParameter(r *http.Request) (time.Time, error) {
 	}
 
 	return since, nil
+}
+
+// checkAndWriteError decode and write error to ResponseWriter.
+func checkAndWriteError(w http.ResponseWriter, r *http.Request, err error) {
+	status := http.StatusInternalServerError
+
+	switch {
+	case errors.Is(err, service.ErrUnknownDevice):
+		status = http.StatusNotFound
+
+	case aerr.HasTag(err, aerr.InternalError):
+		// write message if is defined in error
+		status = http.StatusInternalServerError
+
+	case aerr.HasTag(err, aerr.DataError):
+		status = http.StatusBadRequest
+	}
+
+	writeError(w, r, status)
+}
+
+func writeError(w http.ResponseWriter, r *http.Request, status int) {
+	msg := http.StatusText(status)
+	if strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
+		res := struct {
+			Error string `json:"error"`
+		}{msg}
+
+		render.Status(r, status)
+		render.JSON(w, r, &res)
+
+		return
+	}
+
+	http.Error(w, msg, status)
 }

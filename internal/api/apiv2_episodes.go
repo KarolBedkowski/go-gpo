@@ -16,6 +16,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/query"
+	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
 
 	"github.com/go-chi/chi/v5"
@@ -39,9 +40,9 @@ func (er episodesResource) Routes() *chi.Mux {
 	r := chi.NewRouter()
 
 	r.With(checkUserMiddleware).
-		Post(`/{user:[\w+.-]+}.json`, internal.Wrap(er.uploadEpisodeActions))
+		Post(`/{user:[\w+.-]+}.json`, srvsupport.Wrap(er.uploadEpisodeActions))
 	r.With(checkUserMiddleware).
-		Get(`/{user:[\w+.-]+}.json`, internal.Wrap(er.getEpisodeActions))
+		Get(`/{user:[\w+.-]+}.json`, srvsupport.Wrap(er.getEpisodeActions))
 
 	return r
 }
@@ -89,7 +90,7 @@ func (er episodesResource) uploadEpisodeActions(
 	user := internal.ContextUser(ctx)
 
 	if err := er.episodesSrv.AddAction(ctx, user, actions...); err != nil {
-		internal.CheckAndWriteError(w, r, err)
+		checkAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).
 			Err(err).Msg("save episodes error")
 
@@ -120,7 +121,7 @@ func (er episodesResource) getEpisodeActions(
 	since, err := getSinceParameter(r)
 	if err != nil {
 		logger.Debug().Err(err).Msgf("parse since parameter to time error")
-		internal.WriteError(w, r, http.StatusBadRequest, "")
+		writeError(w, r, http.StatusBadRequest)
 
 		return
 	}
@@ -135,7 +136,7 @@ func (er episodesResource) getEpisodeActions(
 
 	res, err := er.episodesSrv.GetActions(ctx, &query)
 	if err != nil {
-		internal.CheckAndWriteError(w, r, err)
+		checkAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get episodes actions error")
 
 		return

@@ -18,6 +18,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/query"
+	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
@@ -35,7 +36,7 @@ func newEpisodePages(i do.Injector) (episodePages, error) {
 
 func (e episodePages) Routes() *chi.Mux {
 	r := chi.NewRouter()
-	r.Get(`/`, internal.Wrap(e.list))
+	r.Get(`/`, srvsupport.Wrap(e.list))
 
 	return r
 }
@@ -59,7 +60,7 @@ func (e episodePages) list(ctx context.Context, w http.ResponseWriter, r *http.R
 
 	episodes, err := e.episodeSrv.GetEpisodes(ctx, &query)
 	if err != nil {
-		internal.CheckAndWriteError(w, r, err)
+		srvsupport.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get podcast episodes error")
 
 		return
@@ -73,6 +74,6 @@ func (e episodePages) list(ctx context.Context, w http.ResponseWriter, r *http.R
 
 	if err := e.template.executeTemplate(w, "episodes.tmpl", &data); err != nil {
 		logger.Error().Err(err).Msg("execute template error")
-		internal.WriteError(w, r, http.StatusInternalServerError, "")
+		srvsupport.WriteError(w, r, http.StatusInternalServerError, "")
 	}
 }

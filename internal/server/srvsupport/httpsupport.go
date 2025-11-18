@@ -1,4 +1,4 @@
-package internal
+package srvsupport
 
 import (
 	"context"
@@ -33,7 +33,7 @@ func SessionUser(store session.Store) string {
 	return ""
 }
 
-// internal.Wrap add context and logger to handler.
+// srvsupport.Wrap add context and logger to handler.
 func Wrap(handler func(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	logger *zerolog.Logger),
 ) http.HandlerFunc {
@@ -64,7 +64,6 @@ func WriteError(w http.ResponseWriter, r *http.Request, code int, msg string) {
 }
 
 // CheckAndWriteError decode and write error to ResponseWriter.
-// TODO: separate api/web.
 func CheckAndWriteError(w http.ResponseWriter, r *http.Request, err error) {
 	msg := aerr.GetUserMessage(err)
 

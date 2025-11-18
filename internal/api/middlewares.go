@@ -14,6 +14,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog/hlog"
 	"gitlab.com/kabes/go-gpo/internal"
+	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 )
 
 //-------------------------------------------------------------
@@ -32,7 +33,7 @@ func checkUserMiddleware(next http.Handler) http.Handler {
 
 		sess := session.GetSession(req)
 		// when auth is enabled authenticator always set session user or block request to get here.
-		if suser := internal.SessionUser(sess); suser != "" {
+		if suser := srvsupport.SessionUser(sess); suser != "" {
 			// auth enabled
 			if suser != user {
 				logger.Warn().Msgf("user %q not match session user: %q", user, suser)

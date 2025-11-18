@@ -12,6 +12,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/query"
+	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
 
 	"github.com/go-chi/chi/v5"
@@ -34,9 +35,9 @@ func (u settingsResource) Routes() *chi.Mux {
 	r := chi.NewRouter()
 
 	r.With(checkUserMiddleware).
-		Get(`/{user:[\w+.-]+}/{scope:[a-z]+}.json`, internal.Wrap(u.getSettings))
+		Get(`/{user:[\w+.-]+}/{scope:[a-z]+}.json`, srvsupport.Wrap(u.getSettings))
 	r.With(checkUserMiddleware).
-		Post(`/{user:[\w+.-]+}/{scope:[a-z]+}.json`, internal.Wrap(u.setSettings))
+		Post(`/{user:[\w+.-]+}/{scope:[a-z]+}.json`, srvsupport.Wrap(u.setSettings))
 
 	return r
 }
@@ -58,7 +59,7 @@ func (u settingsResource) getSettings(
 
 	res, err := u.settingsSrv.GetSettings(ctx, &key)
 	if err != nil {
-		internal.CheckAndWriteError(w, r, err)
+		checkAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get settings error")
 
 		return
@@ -83,7 +84,7 @@ func (u settingsResource) setSettings(
 
 	if err := render.DecodeJSON(r.Body, &reqData); err != nil {
 		logger.Debug().Err(err).Msg("decode request error")
-		internal.WriteError(w, r, http.StatusBadRequest, "")
+		writeError(w, r, http.StatusBadRequest)
 
 		return
 	}
@@ -96,7 +97,7 @@ func (u settingsResource) setSettings(
 		Episode:    r.URL.Query().Get("episode"),
 	}
 	if err := u.settingsSrv.SaveSettings(ctx, &cmd); err != nil {
-		internal.CheckAndWriteError(w, r, err)
+		checkAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("save settings error")
 
 		return

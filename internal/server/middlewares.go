@@ -28,6 +28,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/config"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/repository"
+	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
@@ -35,7 +36,7 @@ func AuthenticatedOnly(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		logger := hlog.FromRequest(r)
 		sess := session.GetSession(r)
-		user := internal.SessionUser(sess)
+		user := srvsupport.SessionUser(sess)
 
 		logger.Debug().Str("session_user", user).Msg("authenticated only check")
 

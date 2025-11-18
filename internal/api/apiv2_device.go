@@ -16,6 +16,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/query"
+	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
 
 	"github.com/go-chi/chi/v5"
@@ -36,9 +37,9 @@ func (d deviceResource) Routes() *chi.Mux {
 	r := chi.NewRouter()
 
 	r.With(checkUserMiddleware).
-		Get(`/{user:[\w+.-]+}.json`, internal.Wrap(d.listDevices))
+		Get(`/{user:[\w+.-]+}.json`, srvsupport.Wrap(d.listDevices))
 	r.With(checkUserMiddleware, checkDeviceMiddleware).
-		Post(`/{user:[\w+.-]+}/{devicename:[\w.-]+}.json`, internal.Wrap(d.updateDevice))
+		Post(`/{user:[\w+.-]+}/{devicename:[\w.-]+}.json`, srvsupport.Wrap(d.updateDevice))
 
 	return r
 }
@@ -61,7 +62,7 @@ func (d deviceResource) updateDevice(
 
 	if err := render.DecodeJSON(r.Body, &reqData); err != nil {
 		logger.Debug().Err(err).Msg("error decoding json payload")
-		internal.WriteError(w, r, http.StatusBadRequest, "bad request data")
+		writeError(w, r, http.StatusBadRequest)
 
 		return
 	}
@@ -73,7 +74,7 @@ func (d deviceResource) updateDevice(
 		Caption:    reqData.Caption,
 	}
 	if err := d.deviceSrv.UpdateDevice(ctx, &cmd); err != nil {
-		internal.CheckAndWriteError(w, r, err)
+		checkAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("updateDevice device error")
 
 		return
@@ -93,7 +94,7 @@ func (d deviceResource) listDevices(
 
 	devices, err := d.deviceSrv.ListDevices(ctx, &query.GetDevicesQuery{UserName: user})
 	if err != nil {
-		internal.CheckAndWriteError(w, r, err)
+		checkAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get devices error")
 
 		return

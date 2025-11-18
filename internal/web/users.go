@@ -17,6 +17,7 @@ import (
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/command"
+	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
@@ -34,8 +35,8 @@ func newUserPages(i do.Injector) (userPages, error) {
 
 func (u userPages) Routes() *chi.Mux {
 	r := chi.NewRouter()
-	r.Get(`/password`, internal.Wrap(u.changePassword))
-	r.Post(`/password`, internal.Wrap(u.changePassword))
+	r.Get(`/password`, srvsupport.Wrap(u.changePassword))
+	r.Post(`/password`, srvsupport.Wrap(u.changePassword))
 
 	return r
 }
@@ -55,7 +56,7 @@ func (u userPages) changePassword(
 	if r.Method == http.MethodPost {
 		if err := r.ParseForm(); err != nil {
 			logger.Info().Err(err).Msg("parse form error")
-			internal.WriteError(w, r, http.StatusBadRequest, "")
+			srvsupport.WriteError(w, r, http.StatusBadRequest, "")
 
 			return
 		}
@@ -65,7 +66,7 @@ func (u userPages) changePassword(
 
 	if err := u.template.executeTemplate(w, "users_change_password.tmpl", &data); err != nil {
 		logger.Error().Err(err).Msg("execute template error")
-		internal.WriteError(w, r, http.StatusInternalServerError, "")
+		srvsupport.WriteError(w, r, http.StatusInternalServerError, "")
 	}
 }
 

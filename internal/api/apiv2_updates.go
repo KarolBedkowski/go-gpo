@@ -13,6 +13,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/query"
+	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
 
 	"github.com/go-chi/chi/v5"
@@ -37,7 +38,7 @@ func (u updatesResource) Routes() *chi.Mux {
 	r := chi.NewRouter()
 
 	r.With(checkUserMiddleware, checkDeviceMiddleware).
-		Get(`/{user:[\w+.-]+}/{devicename:[\w.-]+}.json`, internal.Wrap(u.getUpdates))
+		Get(`/{user:[\w+.-]+}/{devicename:[\w.-]+}.json`, srvsupport.Wrap(u.getUpdates))
 
 	return r
 }
@@ -55,14 +56,14 @@ func (u updatesResource) getUpdates(
 	since, err := getSinceParameter(r)
 	if err != nil {
 		logger.Debug().Err(err).Msgf("parse since error")
-		internal.WriteError(w, r, http.StatusBadRequest, "")
+		writeError(w, r, http.StatusBadRequest)
 
 		return
 	}
 
 	state, err := u.subsSrv.GetSubscriptionChanges(ctx, user, devicename, since)
 	if err != nil {
-		internal.CheckAndWriteError(w, r, err)
+		checkAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get subscription changes error")
 
 		return
@@ -76,7 +77,7 @@ func (u updatesResource) getUpdates(
 
 	updates, err := u.episodesSrv.GetUpdates(ctx, &query)
 	if err != nil {
-		internal.CheckAndWriteError(w, r, err)
+		checkAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get episodes updates error")
 
 		return

@@ -20,6 +20,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/opml"
+	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
@@ -37,11 +38,11 @@ func (s *simpleResource) Routes() *chi.Mux {
 	r := chi.NewRouter()
 
 	r.With(checkUserMiddleware).
-		Get(`/{user:[\w+.-]+}.{format}`, internal.Wrap(s.downloadUserSubscriptions))
+		Get(`/{user:[\w+.-]+}.{format}`, srvsupport.Wrap(s.downloadUserSubscriptions))
 	r.With(checkUserMiddleware, checkDeviceMiddleware).
-		Get(`/{user:[\w+.-]+}/{devicename:[\w.-]+}.{format}`, internal.Wrap(s.downloadDevSubscriptions))
+		Get(`/{user:[\w+.-]+}/{devicename:[\w.-]+}.{format}`, srvsupport.Wrap(s.downloadDevSubscriptions))
 	r.With(checkUserMiddleware, checkDeviceMiddleware).
-		Put(`/{user:[\w+.-]+}/{devicename:[\w.-]+}.{format}`, internal.Wrap(s.uploadSubscriptions))
+		Put(`/{user:[\w+.-]+}/{devicename:[\w.-]+}.{format}`, srvsupport.Wrap(s.uploadSubscriptions))
 
 	return r
 }
@@ -56,7 +57,7 @@ func (s *simpleResource) downloadUserSubscriptions(
 
 	subs, err := s.subServ.GetUserSubscriptions(ctx, user, time.Time{})
 	if err != nil {
-		internal.CheckAndWriteError(w, r, err)
+		checkAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get user subscriptions error")
 
 		return
@@ -70,7 +71,7 @@ func (s *simpleResource) downloadUserSubscriptions(
 		result, err := o.XML()
 		if err != nil {
 			logger.Warn().Err(err).Msg("get opml xml error")
-			internal.WriteError(w, r, http.StatusBadRequest, "invalid opml content")
+			writeError(w, r, http.StatusBadRequest)
 
 			return
 		}
@@ -85,7 +86,7 @@ func (s *simpleResource) downloadUserSubscriptions(
 		render.PlainText(w, r, strings.Join(subs, "\n"))
 	default:
 		logger.Info().Msgf("unknown format %q", format)
-		internal.WriteError(w, r, http.StatusNotFound, "")
+		writeError(w, r, http.StatusNotFound)
 	}
 }
 
@@ -100,7 +101,7 @@ func (s *simpleResource) downloadDevSubscriptions(
 
 	subs, err := s.subServ.GetSubscriptions(ctx, user, devicename, time.Time{})
 	if err != nil {
-		internal.CheckAndWriteError(w, r, err)
+		checkAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get device subscriptions error")
 
 		return
@@ -111,7 +112,7 @@ func (s *simpleResource) downloadDevSubscriptions(
 		result, err := formatOMPL(subs)
 		if err != nil {
 			logger.Warn().Err(err).Msg("build opml error")
-			internal.WriteError(w, r, http.StatusInternalServerError, "")
+			writeError(w, r, http.StatusInternalServerError)
 
 			return
 		}
@@ -126,7 +127,7 @@ func (s *simpleResource) downloadDevSubscriptions(
 		render.PlainText(w, r, strings.Join(subs, "\n"))
 	default:
 		logger.Info().Msgf("unknown format %q", format)
-		internal.WriteError(w, r, http.StatusNotFound, "")
+		writeError(w, r, http.StatusNotFound)
 	}
 }
 
@@ -154,14 +155,14 @@ func (s *simpleResource) uploadSubscriptions(
 		subs, err = parseTextSubs(r.Body)
 	default:
 		logger.Debug().Msgf("unknown format %q", format)
-		internal.WriteError(w, r, http.StatusNotFound, "")
+		writeError(w, r, http.StatusNotFound)
 
 		return
 	}
 
 	if err != nil {
 		logger.Debug().Err(err).Msgf("parse %q error", format)
-		internal.WriteError(w, r, http.StatusBadRequest, "invalid request data")
+		writeError(w, r, http.StatusBadRequest)
 
 		return
 	}
@@ -173,7 +174,7 @@ func (s *simpleResource) uploadSubscriptions(
 		Timestamp:     time.Now().UTC(),
 	}
 	if err := s.subServ.ReplaceSubscriptions(ctx, &cmd); err != nil {
-		internal.CheckAndWriteError(w, r, err)
+		checkAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("update subscriptions error")
 	} else {
 		w.WriteHeader(http.StatusOK)

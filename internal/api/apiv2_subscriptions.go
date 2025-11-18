@@ -17,6 +17,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/opml"
+	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
 
 	"github.com/go-chi/chi/v5"
@@ -37,11 +38,11 @@ func (sr subscriptionsResource) Routes() *chi.Mux {
 	router := chi.NewRouter()
 
 	router.With(checkUserMiddleware).
-		Get(`/{user:[\w+.-]+}.opml`, internal.Wrap(sr.userSubscriptions))
+		Get(`/{user:[\w+.-]+}.opml`, srvsupport.Wrap(sr.userSubscriptions))
 	router.With(checkUserMiddleware, checkDeviceMiddleware).
-		Get(`/{user:[\w+.-]+}/{devicename:[\w.-]+}.json`, internal.Wrap(sr.devSubscriptions))
+		Get(`/{user:[\w+.-]+}/{devicename:[\w.-]+}.json`, srvsupport.Wrap(sr.devSubscriptions))
 	router.With(checkUserMiddleware, checkDeviceMiddleware).
-		Post(`/{user:[\w+.-]+}/{devicename:[\w.-]+}.json`, internal.Wrap(sr.uploadSubscriptionChanges))
+		Post(`/{user:[\w+.-]+}/{devicename:[\w.-]+}.json`, srvsupport.Wrap(sr.uploadSubscriptionChanges))
 
 	return router
 }
@@ -69,7 +70,7 @@ func (sr subscriptionsResource) devSubscriptions(
 
 	state, err := sr.subsSrv.GetSubscriptionChanges(ctx, user, devicename, sinceTS)
 	if err != nil {
-		internal.CheckAndWriteError(w, r, err)
+		checkAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get device subscriptions changes error")
 
 		return
@@ -100,7 +101,7 @@ func (sr subscriptionsResource) userSubscriptions(
 
 	subs, err := sr.subsSrv.GetUserSubscriptions(ctx, user, time.Time{})
 	if err != nil {
-		internal.CheckAndWriteError(w, r, err)
+		checkAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get user subscriptions error")
 
 		return
@@ -112,7 +113,7 @@ func (sr subscriptionsResource) userSubscriptions(
 	result, err := o.XML()
 	if err != nil {
 		logger.Warn().Err(err).Msg("get opml xml error")
-		internal.WriteError(w, r, http.StatusInternalServerError, "")
+		writeError(w, r, http.StatusInternalServerError)
 
 		return
 	}
@@ -133,7 +134,7 @@ func (sr subscriptionsResource) uploadSubscriptionChanges(
 	changes := subscriptionChangesRequest{}
 	if err := render.DecodeJSON(r.Body, &changes); err != nil {
 		logger.Debug().Err(err).Msgf("parse json error")
-		internal.WriteError(w, r, http.StatusBadRequest, "")
+		writeError(w, r, http.StatusBadRequest)
 
 		return
 	}
@@ -148,7 +149,7 @@ func (sr subscriptionsResource) uploadSubscriptionChanges(
 
 	res, err := sr.subsSrv.ChangeSubscriptions(ctx, &cmd)
 	if err != nil {
-		internal.CheckAndWriteError(w, r, err)
+		checkAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("update device subscription changes error")
 
 		return
