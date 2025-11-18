@@ -21,7 +21,6 @@ import (
 
 func (s SqliteRepository) GetEpisode(
 	ctx context.Context,
-	dbctx DBContext,
 	userid, podcastid int64,
 	episode string,
 ) (EpisodeDB, error) {
@@ -29,14 +28,17 @@ func (s SqliteRepository) GetEpisode(
 	logger.Debug().Int64("user_id", userid).Int64("podcast_id", podcastid).Str("episode", episode).
 		Msgf("get episode")
 
-		// FIXME: or in where
+	// FIXME: or in where
 
 	query := "SELECT e.id, e.podcast_id, e.url, e.title, e.action, e.started, e.position, e.total, " +
 		" e.created_at, e.updated_at, p.url as podcast_url, p.title as podcast_title " +
-		"FROM episodes e JOIN podcasts p on p.id = e.podcast_id " +
+		"FROM episodes e " +
+		"JOIN podcasts p on p.id = e.podcast_id " +
 		"WHERE p.user_id=? AND e.podcast_id = ? and (e.url = ? or e.guid = ?)"
 
 	res := EpisodeDB{}
+
+	dbctx := Ctx(ctx)
 
 	err := dbctx.GetContext(ctx, &res, query, userid, podcastid, episode, episode)
 	if err != nil {
@@ -52,7 +54,6 @@ func (s SqliteRepository) GetEpisode(
 // When aggregate get only last action for each episode.
 func (s SqliteRepository) ListEpisodeActions(
 	ctx context.Context,
-	dbctx DBContext,
 	userid int64, deviceid, podcastid *int64,
 	since time.Time,
 	aggregated bool,
@@ -68,6 +69,7 @@ func (s SqliteRepository) ListEpisodeActions(
 		"LEFT JOIN devices d on d.id=e.device_id " +
 		"WHERE p.user_id=? AND e.updated_at > ?"
 	args := []any{userid, since}
+	dbctx := Ctx(ctx)
 
 	if deviceid != nil {
 		query += " AND (e.device_id != ? OR e.device_id is NULL) "
@@ -110,7 +112,7 @@ func (s SqliteRepository) ListEpisodeActions(
 	return res, nil
 }
 
-func (s SqliteRepository) ListFavorites(ctx context.Context, dbctx DBContext, userid int64) ([]EpisodeDB, error) {
+func (s SqliteRepository) ListFavorites(ctx context.Context, userid int64) ([]EpisodeDB, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Msg("get favorites")
 
@@ -121,6 +123,7 @@ func (s SqliteRepository) ListFavorites(ctx context.Context, dbctx DBContext, us
 		"WHERE p.user_id=? AND s.scope = 'episode' and s.key = 'is_favorite'"
 
 	res := []EpisodeDB{}
+	dbctx := Ctx(ctx)
 
 	err := dbctx.SelectContext(ctx, &res, query, userid)
 	if err != nil {
@@ -130,7 +133,7 @@ func (s SqliteRepository) ListFavorites(ctx context.Context, dbctx DBContext, us
 	return res, nil
 }
 
-func (s SqliteRepository) GetLastEpisodeAction(ctx context.Context, dbctx DBContext,
+func (s SqliteRepository) GetLastEpisodeAction(ctx context.Context,
 	userid, podcastid int64, excludeDelete bool,
 ) (EpisodeDB, error) {
 	logger := log.Ctx(ctx)
@@ -150,6 +153,7 @@ func (s SqliteRepository) GetLastEpisodeAction(ctx context.Context, dbctx DBCont
 
 	query += "ORDER BY e.updated_at DESC LIMIT 1"
 
+	dbctx := Ctx(ctx)
 	res := EpisodeDB{}
 
 	err := dbctx.GetContext(ctx, &res, query, userid, podcastid)
@@ -162,14 +166,14 @@ func (s SqliteRepository) GetLastEpisodeAction(ctx context.Context, dbctx DBCont
 	return res, nil
 }
 
-func (s SqliteRepository) SaveEpisode(ctx context.Context, dbctx DBContext, userid int64, episode ...EpisodeDB) error {
+func (s SqliteRepository) SaveEpisode(ctx context.Context, userid int64, episode ...EpisodeDB) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Msgf("save episode")
 
 	for _, eps := range episode {
 		logger.Debug().Object("episode", eps).Msg("update episode")
 
-		if err := s.saveEpisode(ctx, dbctx, eps); err != nil {
+		if err := s.saveEpisode(ctx, eps); err != nil {
 			return err
 		}
 	}
@@ -177,9 +181,11 @@ func (s SqliteRepository) SaveEpisode(ctx context.Context, dbctx DBContext, user
 	return nil
 }
 
-func (s SqliteRepository) saveEpisode(ctx context.Context, dbctx DBContext, episode EpisodeDB) error {
+func (s SqliteRepository) saveEpisode(ctx context.Context, episode EpisodeDB) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Object("episode", episode).Msg("save episode")
+
+	dbctx := Ctx(ctx)
 
 	_, err := dbctx.ExecContext(
 		ctx,

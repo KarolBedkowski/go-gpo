@@ -71,16 +71,16 @@ func (s *SubscriptionsSrv) ReplaceSubscriptions( //nolint:cyclop
 	}
 
 	//nolint:wrapcheck
-	return db.InTransaction(ctx, s.db, func(dbctx repository.DBContext) error {
-		user, err := s.getUser(ctx, dbctx, cmd.UserName)
+	return db.InTransaction(ctx, s.db, func(ctx context.Context) error {
+		user, err := s.getUser(ctx, cmd.UserName)
 		if err != nil {
 			return err
 		}
 
 		// check dev
-		_, err = s.getUserDevice(ctx, dbctx, user.ID, cmd.DeviceName)
+		_, err = s.getUserDevice(ctx, user.ID, cmd.DeviceName)
 		if errors.Is(err, ErrUnknownDevice) {
-			_, err = s.createUserDevice(ctx, dbctx, user.ID, cmd.DeviceName)
+			_, err = s.createUserDevice(ctx, user.ID, cmd.DeviceName)
 		}
 
 		if err != nil {
@@ -88,7 +88,7 @@ func (s *SubscriptionsSrv) ReplaceSubscriptions( //nolint:cyclop
 		}
 
 		// get all podcasts for user
-		subscribed, err := s.podcastsRepo.ListPodcasts(ctx, dbctx, user.ID, time.Time{})
+		subscribed, err := s.podcastsRepo.ListPodcasts(ctx, user.ID, time.Time{})
 		if err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
@@ -115,7 +115,7 @@ func (s *SubscriptionsSrv) ReplaceSubscriptions( //nolint:cyclop
 		}
 
 		for _, p := range changes {
-			if _, err := s.podcastsRepo.SavePodcast(ctx, dbctx, &p); err != nil {
+			if _, err := s.podcastsRepo.SavePodcast(ctx, &p); err != nil {
 				return aerr.ApplyFor(ErrRepositoryError, err)
 			}
 		}
@@ -135,18 +135,18 @@ func (s *SubscriptionsSrv) ChangeSubscriptions( //nolint:cyclop
 		return res, aerr.Wrapf(err, "validate command failed")
 	}
 
-	err := db.InTransaction(ctx, s.db, func(dbctx repository.DBContext) error {
-		user, err := s.getUser(ctx, dbctx, cmd.UserName)
+	err := db.InTransaction(ctx, s.db, func(ctx context.Context) error {
+		user, err := s.getUser(ctx, cmd.UserName)
 		if err != nil {
 			return err
 		}
 		// check service
-		_, err = s.getUserDevice(ctx, dbctx, user.ID, cmd.DeviceName)
+		_, err = s.getUserDevice(ctx, user.ID, cmd.DeviceName)
 		if err != nil {
 			return err
 		}
 
-		subscribed, err := s.podcastsRepo.ListPodcasts(ctx, dbctx, user.ID, time.Time{})
+		subscribed, err := s.podcastsRepo.ListPodcasts(ctx, user.ID, time.Time{})
 		if err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
@@ -174,7 +174,7 @@ func (s *SubscriptionsSrv) ChangeSubscriptions( //nolint:cyclop
 		}
 
 		for _, p := range podchanges {
-			if _, err := s.podcastsRepo.SavePodcast(ctx, dbctx, &p); err != nil {
+			if _, err := s.podcastsRepo.SavePodcast(ctx, &p); err != nil {
 				return aerr.ApplyFor(ErrRepositoryError, err)
 			}
 		}
@@ -222,8 +222,8 @@ func (s *SubscriptionsSrv) GetSubscriptionChanges(ctx context.Context, username,
 func (s *SubscriptionsSrv) getSubsctiptions(ctx context.Context, username, devicename string, since time.Time,
 ) ([]string, error) {
 	//nolint:wrapcheck
-	return db.InConnectionR(ctx, s.db, func(dbctx repository.DBContext) ([]string, error) {
-		user, err := s.usersRepo.GetUser(ctx, dbctx, username)
+	return db.InConnectionR(ctx, s.db, func(ctx context.Context) ([]string, error) {
+		user, err := s.usersRepo.GetUser(ctx, username)
 		if errors.Is(err, repository.ErrNoData) {
 			return nil, ErrUnknownUser
 		} else if err != nil {
@@ -232,13 +232,13 @@ func (s *SubscriptionsSrv) getSubsctiptions(ctx context.Context, username, devic
 
 		if devicename != "" {
 			// validate is device exists when device name is given and mark is seen.
-			_, err := s.getUserDevice(ctx, dbctx, user.ID, devicename)
+			_, err := s.getUserDevice(ctx, user.ID, devicename)
 			if err != nil {
 				return nil, err
 			}
 		}
 
-		podcasts, err := s.podcastsRepo.ListSubscribedPodcasts(ctx, dbctx, user.ID, since)
+		podcasts, err := s.podcastsRepo.ListSubscribedPodcasts(ctx, user.ID, since)
 		if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
@@ -247,11 +247,8 @@ func (s *SubscriptionsSrv) getSubsctiptions(ctx context.Context, username, devic
 	})
 }
 
-func (s *SubscriptionsSrv) getUser(ctx context.Context,
-	db repository.DBContext,
-	username string,
-) (repository.UserDB, error) {
-	user, err := s.usersRepo.GetUser(ctx, db, username)
+func (s *SubscriptionsSrv) getUser(ctx context.Context, username string) (repository.UserDB, error) {
+	user, err := s.usersRepo.GetUser(ctx, username)
 	if errors.Is(err, repository.ErrNoData) {
 		return user, ErrUnknownUser
 	} else if err != nil {
@@ -264,18 +261,17 @@ func (s *SubscriptionsSrv) getUser(ctx context.Context,
 // getUserDevice return device from database and mark last_seen.
 func (s *SubscriptionsSrv) getUserDevice(
 	ctx context.Context,
-	dbctx repository.DBContext,
 	userid int64,
 	devicename string,
 ) (repository.DeviceDB, error) {
-	device, err := s.devicesRepo.GetDevice(ctx, dbctx, userid, devicename)
+	device, err := s.devicesRepo.GetDevice(ctx, userid, devicename)
 	if errors.Is(err, repository.ErrNoData) {
 		return device, ErrUnknownDevice
 	} else if err != nil {
 		return device, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
-	if err := s.devicesRepo.MarkSeen(ctx, dbctx, time.Now().UTC(), device.ID); err != nil {
+	if err := s.devicesRepo.MarkSeen(ctx, time.Now().UTC(), device.ID); err != nil {
 		return device, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
@@ -284,7 +280,6 @@ func (s *SubscriptionsSrv) getUserDevice(
 
 func (s *SubscriptionsSrv) createUserDevice(
 	ctx context.Context,
-	dbctx repository.DBContext,
 	username int64,
 	devicename string,
 ) (repository.DeviceDB, error) {
@@ -293,12 +288,12 @@ func (s *SubscriptionsSrv) createUserDevice(
 		UserID: username,
 	}
 
-	_, err := s.devicesRepo.SaveDevice(ctx, dbctx, &device)
+	_, err := s.devicesRepo.SaveDevice(ctx, &device)
 	if err != nil {
 		return device, aerr.ApplyFor(ErrRepositoryError, err, "save device failed")
 	}
 
-	return s.getUserDevice(ctx, dbctx, username, devicename)
+	return s.getUserDevice(ctx, username, devicename)
 }
 
 func (s *SubscriptionsSrv) getPodcasts(
@@ -309,23 +304,23 @@ func (s *SubscriptionsSrv) getPodcasts(
 	[]repository.PodcastDB, error,
 ) {
 	//nolint:wrapcheck
-	return db.InConnectionR(ctx, s.db, func(dbctx repository.DBContext) ([]repository.PodcastDB, error) {
-		user, err := s.getUser(ctx, dbctx, username)
+	return db.InConnectionR(ctx, s.db, func(ctx context.Context) ([]repository.PodcastDB, error) {
+		user, err := s.getUser(ctx, username)
 		if err != nil {
 			return nil, err
 		}
 
-		device, err := s.getUserDevice(ctx, dbctx, user.ID, devicename)
+		device, err := s.getUserDevice(ctx, user.ID, devicename)
 		if err != nil {
 			return nil, err
 		}
 
-		podcasts, err := s.podcastsRepo.ListPodcasts(ctx, dbctx, user.ID, since)
+		podcasts, err := s.podcastsRepo.ListPodcasts(ctx, user.ID, since)
 		if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err, "list podcasts failed")
 		}
 
-		if err := s.devicesRepo.MarkSeen(ctx, dbctx, time.Now().UTC(), device.ID); err != nil {
+		if err := s.devicesRepo.MarkSeen(ctx, time.Now().UTC(), device.ID); err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 

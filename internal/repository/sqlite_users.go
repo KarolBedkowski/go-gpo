@@ -17,10 +17,11 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 )
 
-func (s SqliteRepository) GetUser(ctx context.Context, dbctx DBContext, username string) (UserDB, error) {
+func (s SqliteRepository) GetUser(ctx context.Context, username string) (UserDB, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Str("user_name", username).Msg("get user")
 
+	dbctx := Ctx(ctx)
 	user := UserDB{}
 
 	err := dbctx.GetContext(ctx, &user,
@@ -38,8 +39,9 @@ func (s SqliteRepository) GetUser(ctx context.Context, dbctx DBContext, username
 	}
 }
 
-func (s SqliteRepository) SaveUser(ctx context.Context, dbctx DBContext, user *UserDB) (int64, error) {
+func (s SqliteRepository) SaveUser(ctx context.Context, user *UserDB) (int64, error) {
 	logger := log.Ctx(ctx)
+	dbctx := Ctx(ctx)
 
 	if user.ID == 0 {
 		logger.Debug().Object("user", user).Msg("insert user")
@@ -74,7 +76,7 @@ func (s SqliteRepository) SaveUser(ctx context.Context, dbctx DBContext, user *U
 }
 
 // ListUsers get all users from database.
-func (s SqliteRepository) ListUsers(ctx context.Context, dbctx DBContext, activeOnly bool) ([]UserDB, error) {
+func (s SqliteRepository) ListUsers(ctx context.Context, activeOnly bool) ([]UserDB, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("list users, active_only=%v", activeOnly)
 
@@ -87,6 +89,8 @@ func (s SqliteRepository) ListUsers(ctx context.Context, dbctx DBContext, active
 
 	sql += " ORDER BY username"
 
+	dbctx := Ctx(ctx)
+
 	err := dbctx.SelectContext(ctx, &users, sql)
 	if err != nil {
 		return nil, aerr.Wrapf(err, "select users failed").WithTag(aerr.InternalError)
@@ -96,9 +100,11 @@ func (s SqliteRepository) ListUsers(ctx context.Context, dbctx DBContext, active
 }
 
 // DeleteUser and all related objects.
-func (s SqliteRepository) DeleteUser(ctx context.Context, dbctx DBContext, userid int64) error {
+func (s SqliteRepository) DeleteUser(ctx context.Context, userid int64) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Msg("delete user")
+
+	dbctx := Ctx(ctx)
 
 	_, err := dbctx.ExecContext(ctx,
 		"DELETE FROM episodes WHERE podcast_id IN (SELECT id FROM podcasts WHERE user_id=?)",

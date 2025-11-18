@@ -28,7 +28,7 @@ import (
 func prepareTests(t *testing.T) (context.Context, *do.RootScope) {
 	t.Helper()
 
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout}).With().Caller().Stack().Logger()
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	stdlog.SetFlags(0)
 	stdlog.SetOutput(log.Logger)

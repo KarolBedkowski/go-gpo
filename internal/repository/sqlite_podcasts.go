@@ -17,12 +17,13 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 )
 
-func (s SqliteRepository) ListSubscribedPodcasts(ctx context.Context, dbctx DBContext, userid int64, since time.Time,
+func (s SqliteRepository) ListSubscribedPodcasts(ctx context.Context, userid int64, since time.Time,
 ) (PodcastsDB, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Msgf("get subscribed podcasts since %s", since)
 
 	res := []PodcastDB{}
+	dbctx := Ctx(ctx)
 
 	err := dbctx.SelectContext(ctx, &res,
 		"SELECT p.id, p.user_id, p.url, p.title, p.subscribed, p.created_at, p.updated_at "+
@@ -37,12 +38,13 @@ func (s SqliteRepository) ListSubscribedPodcasts(ctx context.Context, dbctx DBCo
 	return res, nil
 }
 
-func (s SqliteRepository) ListPodcasts(ctx context.Context, dbctx DBContext, userid int64, since time.Time,
+func (s SqliteRepository) ListPodcasts(ctx context.Context, userid int64, since time.Time,
 ) (PodcastsDB, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Msgf("get podcasts since %s", since)
 
 	res := []PodcastDB{}
+	dbctx := Ctx(ctx)
 
 	err := dbctx.SelectContext(ctx, &res,
 		"SELECT p.id, p.user_id, p.url, p.title, p.subscribed, p.created_at, p.updated_at "+
@@ -57,13 +59,13 @@ func (s SqliteRepository) ListPodcasts(ctx context.Context, dbctx DBContext, use
 
 func (s SqliteRepository) GetPodcast(
 	ctx context.Context,
-	dbctx DBContext,
 	userid int64,
 	podcasturl string,
 ) (PodcastDB, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Str("podcast_url", podcasturl).Msg("get podcast")
 
+	dbctx := Ctx(ctx)
 	podcast := PodcastDB{}
 
 	err := dbctx.GetContext(ctx, &podcast,
@@ -80,8 +82,9 @@ func (s SqliteRepository) GetPodcast(
 	}
 }
 
-func (s SqliteRepository) SavePodcast(ctx context.Context, dbctx DBContext, podcast *PodcastDB) (int64, error) {
+func (s SqliteRepository) SavePodcast(ctx context.Context, podcast *PodcastDB) (int64, error) {
 	logger := log.Ctx(ctx)
+	dbctx := Ctx(ctx)
 
 	if podcast.ID == 0 {
 		logger.Debug().Object("podcast", podcast).Msg("insert podcast")

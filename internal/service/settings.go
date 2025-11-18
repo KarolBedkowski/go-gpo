@@ -53,12 +53,12 @@ func (s SettingsSrv) GetSettings(ctx context.Context, query *query.SettingsQuery
 	setkey := newSettingsKeysFromQuery(query)
 
 	//nolint:wrapcheck
-	return db.InConnectionR(ctx, s.db, func(dbctx repository.DBContext) (model.Settings, error) {
-		if err := s.load(ctx, dbctx, &setkey); err != nil {
+	return db.InConnectionR(ctx, s.db, func(ctx context.Context) (model.Settings, error) {
+		if err := s.load(ctx, &setkey); err != nil {
 			return nil, err
 		}
 
-		sett, err := s.settRepo.ListSettings(ctx, dbctx, setkey.userid, setkey.podcastid, setkey.episodeid,
+		sett, err := s.settRepo.ListSettings(ctx, setkey.userid, setkey.podcastid, setkey.episodeid,
 			setkey.deviceid, query.Scope)
 		if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err, "failed get list settings")
@@ -85,8 +85,8 @@ func (s SettingsSrv) SaveSettings(ctx context.Context, cmd *command.ChangeSettin
 	settings := cmd.CombinedSetting()
 
 	//nolint:wrapcheck
-	return db.InTransaction(ctx, s.db, func(dbctx repository.DBContext) error {
-		if err := s.load(ctx, dbctx, &setkey); err != nil {
+	return db.InTransaction(ctx, s.db, func(ctx context.Context) error {
+		if err := s.load(ctx, &setkey); err != nil {
 			return err
 		}
 
@@ -102,7 +102,7 @@ func (s SettingsSrv) SaveSettings(ctx context.Context, cmd *command.ChangeSettin
 			dbsett.Key = key
 			dbsett.Value = value
 
-			if err := s.settRepo.SaveSettings(ctx, dbctx, &dbsett); err != nil {
+			if err := s.settRepo.SaveSettings(ctx, &dbsett); err != nil {
 				return aerr.ApplyFor(ErrRepositoryError, err)
 			}
 		}
@@ -113,10 +113,9 @@ func (s SettingsSrv) SaveSettings(ctx context.Context, cmd *command.ChangeSettin
 
 func (s SettingsSrv) load( //nolint:cyclop
 	ctx context.Context,
-	dbctx repository.DBContext,
 	key *settingsKeys,
 ) error {
-	user, err := s.usersRepo.GetUser(ctx, dbctx, key.username)
+	user, err := s.usersRepo.GetUser(ctx, key.username)
 	if errors.Is(err, repository.ErrNoData) {
 		return ErrUnknownUser
 	} else if err != nil {
@@ -127,7 +126,7 @@ func (s SettingsSrv) load( //nolint:cyclop
 
 	switch key.scope {
 	case "device":
-		device, err := s.devicesRepo.GetDevice(ctx, dbctx, user.ID, key.devicename)
+		device, err := s.devicesRepo.GetDevice(ctx, user.ID, key.devicename)
 		if errors.Is(err, repository.ErrNoData) {
 			return ErrUnknownDevice
 		} else if err != nil {
@@ -137,7 +136,7 @@ func (s SettingsSrv) load( //nolint:cyclop
 		key.deviceid = &device.ID
 
 	case "podcast":
-		p, err := s.podcastsRepo.GetPodcast(ctx, dbctx, user.ID, key.podcast)
+		p, err := s.podcastsRepo.GetPodcast(ctx, user.ID, key.podcast)
 		if errors.Is(err, repository.ErrNoData) {
 			return ErrUnknownPodcast
 		} else if err != nil {
@@ -147,7 +146,7 @@ func (s SettingsSrv) load( //nolint:cyclop
 		key.podcastid = &p.ID
 
 	case "episode":
-		p, err := s.podcastsRepo.GetPodcast(ctx, dbctx, user.ID, key.podcast)
+		p, err := s.podcastsRepo.GetPodcast(ctx, user.ID, key.podcast)
 		if errors.Is(err, repository.ErrNoData) {
 			return ErrUnknownEpisode
 		} else if err != nil {
@@ -156,7 +155,7 @@ func (s SettingsSrv) load( //nolint:cyclop
 
 		key.podcastid = &p.ID
 
-		e, err := s.episodesRepo.GetEpisode(ctx, dbctx, user.ID, p.ID, key.episode)
+		e, err := s.episodesRepo.GetEpisode(ctx, user.ID, p.ID, key.episode)
 		if errors.Is(err, repository.ErrNoData) {
 			return ErrUnknownPodcast
 		} else if err != nil {

@@ -90,8 +90,8 @@ func (s *SessionStore) Release() error {
 
 	ctx := log.Logger.WithContext(context.Background())
 
-	err = db.InTransaction(ctx, s.db, func(tx repository.DBContext) error {
-		return s.repo.SaveSession(ctx, tx, s.sid, data)
+	err = db.InTransaction(ctx, s.db, func(ctx context.Context) error {
+		return s.repo.SaveSession(ctx, s.sid, data)
 	})
 	if err != nil {
 		return fmt.Errorf("put session into db error: %w", err)
@@ -145,8 +145,8 @@ func (p *SessionProvider) Init(gclifetime int64, config string) error {
 func (p *SessionProvider) Read(sid string) (session.RawStore, error) { //nolint:ireturn
 	ctx := p.logger.WithContext(context.Background())
 
-	storedSession, err := db.InTransactionR(ctx, p.db, func(dbctx repository.DBContext) (repository.SessionDB, error) {
-		stored, err := p.repo.ReadOrCreate(ctx, dbctx, sid)
+	storedSession, err := db.InTransactionR(ctx, p.db, func(ctx context.Context) (repository.SessionDB, error) {
+		stored, err := p.repo.ReadOrCreate(ctx, sid)
 		if err != nil {
 			return stored, fmt.Errorf("read or create session %q from db error: %w", sid, err)
 		}
@@ -176,7 +176,7 @@ func (p *SessionProvider) Exist(sid string) (bool, error) {
 
 	defer conn.Close()
 
-	exists, err := p.repo.SessionExists(ctx, conn, sid)
+	exists, err := p.repo.SessionExists(ctx, sid)
 	if err != nil {
 		return false, fmt.Errorf("check session %q exists error: %w", sid, err)
 	}
@@ -188,8 +188,8 @@ func (p *SessionProvider) Exist(sid string) (bool, error) {
 func (p *SessionProvider) Destroy(sid string) error {
 	ctx := p.logger.WithContext(context.Background())
 
-	err := db.InTransaction(ctx, p.db, func(tx repository.DBContext) error {
-		return p.repo.DeleteSession(ctx, tx, sid)
+	err := db.InTransaction(ctx, p.db, func(ctx context.Context) error {
+		return p.repo.DeleteSession(ctx, sid)
 	})
 	if err != nil {
 		return fmt.Errorf("delete session %q error: %w", sid, err)
@@ -204,12 +204,12 @@ func (p *SessionProvider) Regenerate(oldsid, sid string) (session.RawStore, erro
 
 	ctx := p.logger.WithContext(context.Background())
 
-	storedSession, err := db.InTransactionR(ctx, p.db, func(dbctx repository.DBContext) (repository.SessionDB, error) {
-		if err := p.repo.RegenerateSession(ctx, dbctx, oldsid, sid); err != nil {
+	storedSession, err := db.InTransactionR(ctx, p.db, func(ctx context.Context) (repository.SessionDB, error) {
+		if err := p.repo.RegenerateSession(ctx, oldsid, sid); err != nil {
 			return repository.SessionDB{}, fmt.Errorf("regenerate session error: %w", err)
 		}
 
-		stored, err := p.repo.ReadOrCreate(ctx, dbctx, sid)
+		stored, err := p.repo.ReadOrCreate(ctx, sid)
 		if err != nil {
 			return stored, fmt.Errorf("read or create session %q from db error: %w", sid, err)
 		}
@@ -239,7 +239,7 @@ func (p *SessionProvider) Count() (int, error) {
 
 	defer conn.Close()
 
-	total, err := p.repo.CountSessions(ctx, conn)
+	total, err := p.repo.CountSessions(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("error counting records: %w", err)
 	}
@@ -253,8 +253,8 @@ func (p *SessionProvider) GC() {
 
 	ctx := p.logger.WithContext(context.Background())
 
-	err := db.InTransaction(ctx, p.db, func(dbctx repository.DBContext) error {
-		return p.repo.CleanSessions(ctx, dbctx, p.maxlifetime, 2*time.Hour) //nolint:mnd
+	err := db.InTransaction(ctx, p.db, func(ctx context.Context) error {
+		return p.repo.CleanSessions(ctx, p.maxlifetime, 2*time.Hour) //nolint:mnd
 	})
 	if err != nil {
 		p.logger.Error().Err(err).Msg("gc sessions error")

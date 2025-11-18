@@ -41,15 +41,15 @@ func (d *DevicesSrv) UpdateDevice(ctx context.Context, cmd *command.UpdateDevice
 	}
 
 	//nolint:wrapcheck
-	return db.InTransaction(ctx, d.db, func(tx repository.DBContext) error {
-		user, err := d.usersRepo.GetUser(ctx, tx, cmd.UserName)
+	return db.InTransaction(ctx, d.db, func(ctx context.Context) error {
+		user, err := d.usersRepo.GetUser(ctx, cmd.UserName)
 		if errors.Is(err, repository.ErrNoData) {
 			return ErrUnknownUser
 		} else if err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		device, err := d.devicesRepo.GetDevice(ctx, tx, user.ID, cmd.DeviceName)
+		device, err := d.devicesRepo.GetDevice(ctx, user.ID, cmd.DeviceName)
 		if errors.Is(err, repository.ErrNoData) {
 			// new device
 			device = repository.DeviceDB{UserID: user.ID, Name: cmd.DeviceName}
@@ -60,7 +60,7 @@ func (d *DevicesSrv) UpdateDevice(ctx context.Context, cmd *command.UpdateDevice
 		device.Caption = cmd.Caption
 		device.DevType = cmd.DeviceType
 
-		_, err = d.devicesRepo.SaveDevice(ctx, tx, &device)
+		_, err = d.devicesRepo.SaveDevice(ctx, &device)
 		if err != nil {
 			return aerr.Wrapf(err, "save device failed")
 		}
@@ -75,15 +75,15 @@ func (d *DevicesSrv) ListDevices(ctx context.Context, query *query.GetDevicesQue
 		return nil, aerr.Wrapf(err, "validate query failed")
 	}
 
-	devices, err := db.InConnectionR(ctx, d.db, func(conn repository.DBContext) (repository.DevicesDB, error) {
-		user, err := d.usersRepo.GetUser(ctx, conn, query.UserName)
+	devices, err := db.InConnectionR(ctx, d.db, func(ctx context.Context) (repository.DevicesDB, error) {
+		user, err := d.usersRepo.GetUser(ctx, query.UserName)
 		if errors.Is(err, repository.ErrNoData) {
 			return nil, ErrUnknownUser
 		} else if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		devices, err := d.devicesRepo.ListDevices(ctx, conn, user.ID)
+		devices, err := d.devicesRepo.ListDevices(ctx, user.ID)
 		if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err, "get devices from db failed")
 		}
@@ -110,22 +110,22 @@ func (d *DevicesSrv) DeleteDevice(ctx context.Context, cmd *command.DeleteDevice
 	}
 
 	//nolint:wrapcheck
-	return db.InTransaction(ctx, d.db, func(tx repository.DBContext) error {
-		user, err := d.usersRepo.GetUser(ctx, tx, cmd.UserName)
+	return db.InTransaction(ctx, d.db, func(ctx context.Context) error {
+		user, err := d.usersRepo.GetUser(ctx, cmd.UserName)
 		if errors.Is(err, repository.ErrNoData) {
 			return ErrUnknownUser
 		} else if err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		device, err := d.devicesRepo.GetDevice(ctx, tx, user.ID, cmd.DeviceName)
+		device, err := d.devicesRepo.GetDevice(ctx, user.ID, cmd.DeviceName)
 		if errors.Is(err, repository.ErrNoData) {
 			return ErrUnknownDevice
 		} else if err != nil {
 			return aerr.Wrapf(err, "get device from repo failed")
 		}
 
-		if err = d.devicesRepo.DeleteDevice(ctx, tx, device.ID); err != nil {
+		if err = d.devicesRepo.DeleteDevice(ctx, device.ID); err != nil {
 			return aerr.Wrapf(err, "save device failed")
 		}
 

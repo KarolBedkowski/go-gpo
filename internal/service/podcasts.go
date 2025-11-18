@@ -40,15 +40,15 @@ func (p *PodcastsSrv) GetPodcasts(ctx context.Context, username string) ([]model
 		return nil, ErrEmptyUsername
 	}
 
-	subs, err := db.InConnectionR(ctx, p.db, func(dbctx repository.DBContext) ([]repository.PodcastDB, error) {
-		user, err := p.usersRepo.GetUser(ctx, dbctx, username)
+	subs, err := db.InConnectionR(ctx, p.db, func(ctx context.Context) ([]repository.PodcastDB, error) {
+		user, err := p.usersRepo.GetUser(ctx, username)
 		if errors.Is(err, repository.ErrNoData) {
 			return nil, ErrUnknownUser
 		} else if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		subs, err := p.podcastsRepo.ListSubscribedPodcasts(ctx, dbctx, user.ID, time.Time{})
+		subs, err := p.podcastsRepo.ListSubscribedPodcasts(ctx, user.ID, time.Time{})
 		if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
@@ -78,15 +78,15 @@ func (p *PodcastsSrv) GetPodcastsWithLastEpisode(ctx context.Context, username s
 	}
 
 	//nolint:wrapcheck
-	return db.InConnectionR(ctx, p.db, func(dbctx repository.DBContext) ([]model.PodcastWithLastEpisode, error) {
-		user, err := p.usersRepo.GetUser(ctx, dbctx, username)
+	return db.InConnectionR(ctx, p.db, func(ctx context.Context) ([]model.PodcastWithLastEpisode, error) {
+		user, err := p.usersRepo.GetUser(ctx, username)
 		if errors.Is(err, repository.ErrNoData) {
 			return nil, ErrUnknownUser
 		} else if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		subs, err := p.podcastsRepo.ListSubscribedPodcasts(ctx, dbctx, user.ID, time.Time{})
+		subs, err := p.podcastsRepo.ListSubscribedPodcasts(ctx, user.ID, time.Time{})
 		if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
@@ -98,7 +98,7 @@ func (p *PodcastsSrv) GetPodcastsWithLastEpisode(ctx context.Context, username s
 				URL:   s.URL,
 			}
 
-			lastEpisode, err := p.episodesRepo.GetLastEpisodeAction(ctx, dbctx, user.ID, s.ID, false)
+			lastEpisode, err := p.episodesRepo.GetLastEpisodeAction(ctx, user.ID, s.ID, false)
 			if errors.Is(err, repository.ErrNoData) {
 				continue
 			} else if err != nil {

@@ -43,8 +43,8 @@ func (u *UsersSrv) LoginUser(ctx context.Context, username, password string) (mo
 		return model.User{}, aerr.ErrValidation.WithMsg("password can't be empty")
 	}
 
-	user, err := db.InConnectionR(ctx, u.db, func(conn repository.DBContext) (repository.UserDB, error) {
-		return u.usersRepo.GetUser(ctx, conn, username)
+	user, err := db.InConnectionR(ctx, u.db, func(ctx context.Context) (repository.UserDB, error) {
+		return u.usersRepo.GetUser(ctx, username)
 	})
 
 	if errors.Is(err, repository.ErrNoData) {
@@ -76,9 +76,9 @@ func (u *UsersSrv) AddUser(ctx context.Context, cmd *command.NewUserCmd) (comman
 	}
 
 	//nolint:wrapcheck
-	return db.InTransactionR(ctx, u.db, func(dbctx repository.DBContext) (command.NewUserCmdResult, error) {
+	return db.InTransactionR(ctx, u.db, func(ctx context.Context) (command.NewUserCmdResult, error) {
 		// is user exists?
-		_, err := u.usersRepo.GetUser(ctx, dbctx, cmd.UserName)
+		_, err := u.usersRepo.GetUser(ctx, cmd.UserName)
 		switch {
 		case errors.Is(err, repository.ErrNoData):
 			// ok; user not exists
@@ -105,7 +105,7 @@ func (u *UsersSrv) AddUser(ctx context.Context, cmd *command.NewUserCmd) (comman
 			UpdatedAt: now,
 		}
 
-		uid, err := u.usersRepo.SaveUser(ctx, dbctx, &udb)
+		uid, err := u.usersRepo.SaveUser(ctx, &udb)
 		if err != nil {
 			return res, aerr.ApplyFor(ErrRepositoryError, err)
 		}
@@ -126,9 +126,9 @@ func (u *UsersSrv) ChangePassword(ctx context.Context, cmd *command.ChangeUserPa
 	}
 
 	//nolint: wrapcheck
-	return db.InTransaction(ctx, u.db, func(dbctx repository.DBContext) error {
+	return db.InTransaction(ctx, u.db, func(ctx context.Context) error {
 		// is user exists?
-		user, err := u.usersRepo.GetUser(ctx, dbctx, cmd.UserName)
+		user, err := u.usersRepo.GetUser(ctx, cmd.UserName)
 
 		if errors.Is(err, repository.ErrNoData) {
 			return ErrUnknownUser
@@ -147,7 +147,7 @@ func (u *UsersSrv) ChangePassword(ctx context.Context, cmd *command.ChangeUserPa
 
 		user.UpdatedAt = time.Now().UTC()
 
-		if _, err = u.usersRepo.SaveUser(ctx, dbctx, &user); err != nil {
+		if _, err = u.usersRepo.SaveUser(ctx, &user); err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
@@ -156,8 +156,8 @@ func (u *UsersSrv) ChangePassword(ctx context.Context, cmd *command.ChangeUserPa
 }
 
 func (u *UsersSrv) GetUsers(ctx context.Context, activeOnly bool) ([]model.User, error) {
-	users, err := db.InConnectionR(ctx, u.db, func(dbctx repository.DBContext) ([]repository.UserDB, error) {
-		return u.usersRepo.ListUsers(ctx, dbctx, activeOnly)
+	users, err := db.InConnectionR(ctx, u.db, func(ctx context.Context) ([]repository.UserDB, error) {
+		return u.usersRepo.ListUsers(ctx, activeOnly)
 	})
 	if err != nil {
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)
@@ -172,8 +172,8 @@ func (u *UsersSrv) LockAccount(ctx context.Context, cmd command.LockAccountCmd) 
 	}
 
 	//nolint:wrapcheck
-	return db.InTransaction(ctx, u.db, func(dbctx repository.DBContext) error {
-		udb, err := u.usersRepo.GetUser(ctx, dbctx, cmd.UserName)
+	return db.InTransaction(ctx, u.db, func(ctx context.Context) error {
+		udb, err := u.usersRepo.GetUser(ctx, cmd.UserName)
 		if errors.Is(err, repository.ErrNoData) {
 			return ErrUnknownUser
 		} else if err != nil {
@@ -183,7 +183,7 @@ func (u *UsersSrv) LockAccount(ctx context.Context, cmd command.LockAccountCmd) 
 		udb.Password = model.UserLockedPassword
 		udb.UpdatedAt = time.Now().UTC()
 
-		if _, err = u.usersRepo.SaveUser(ctx, dbctx, &udb); err != nil {
+		if _, err = u.usersRepo.SaveUser(ctx, &udb); err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
@@ -197,15 +197,15 @@ func (u *UsersSrv) DeleteUser(ctx context.Context, cmd *command.DeleteUserCmd) e
 	}
 
 	//nolint:wrapcheck
-	return db.InTransaction(ctx, u.db, func(dbctx repository.DBContext) error {
-		user, err := u.usersRepo.GetUser(ctx, dbctx, cmd.UserName)
+	return db.InTransaction(ctx, u.db, func(ctx context.Context) error {
+		user, err := u.usersRepo.GetUser(ctx, cmd.UserName)
 		if errors.Is(err, repository.ErrNoData) {
 			return ErrUnknownUser
 		} else if err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		if err = u.usersRepo.DeleteUser(ctx, dbctx, user.ID); err != nil {
+		if err = u.usersRepo.DeleteUser(ctx, user.ID); err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 

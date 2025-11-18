@@ -322,7 +322,7 @@ func prepareSqliteConnstr(connstr string) (string, error) {
 
 // InConnectionR run `fun` in database context. Open/close connection. Return `fun` result and error.
 func InConnectionR[T any](ctx context.Context, r *Database,
-	fun func(repository.DBContext) (T, error),
+	fun func(context.Context) (T, error),
 ) (T, error) {
 	start := time.Now()
 	defer r.observeQueryDuration(start)
@@ -334,7 +334,9 @@ func InConnectionR[T any](ctx context.Context, r *Database,
 
 	defer r.CloseConnection(ctx, conn)
 
-	res, err := fun(conn)
+	ctx = repository.WithCtx(ctx, conn)
+
+	res, err := fun(ctx)
 	if err != nil {
 		return res, err
 	}
@@ -342,7 +344,7 @@ func InConnectionR[T any](ctx context.Context, r *Database,
 	return res, nil
 }
 
-func InTransaction(ctx context.Context, r *Database, fun func(repository.DBContext) error) error {
+func InTransaction(ctx context.Context, r *Database, fun func(context.Context) error) error {
 	start := time.Now()
 	defer r.observeQueryDuration(start)
 
@@ -358,7 +360,9 @@ func InTransaction(ctx context.Context, r *Database, fun func(repository.DBConte
 		return aerr.ApplyFor(aerr.ErrDatabase, err, "begin tx failed")
 	}
 
-	err = fun(tx)
+	ctx = repository.WithCtx(ctx, tx)
+
+	err = fun(ctx)
 	if err != nil {
 		if err := tx.Rollback(); err != nil {
 			merr := errors.Join(err, fmt.Errorf("commit error: %w", err))
@@ -378,7 +382,7 @@ func InTransaction(ctx context.Context, r *Database, fun func(repository.DBConte
 
 // InTransactionR run `fun` in db transactions; return `fun` result and error.
 func InTransactionR[T any](ctx context.Context, r *Database,
-	fun func(repository.DBContext) (T, error),
+	fun func(context.Context) (T, error),
 ) (T, error) {
 	start := time.Now()
 	defer r.observeQueryDuration(start)
@@ -395,7 +399,9 @@ func InTransactionR[T any](ctx context.Context, r *Database,
 		return *new(T), aerr.ApplyFor(aerr.ErrDatabase, err, "begin tx failed")
 	}
 
-	res, err := fun(tx)
+	ctx = repository.WithCtx(ctx, tx)
+
+	res, err := fun(ctx)
 	if err != nil {
 		if err := tx.Rollback(); err != nil {
 			merr := errors.Join(err, fmt.Errorf("commit error: %w", err))

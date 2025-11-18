@@ -48,10 +48,9 @@ func (e *EpisodesSrv) GetEpisodes(ctx context.Context, query *query.GetEpisodesQ
 		return nil, aerr.Wrapf(err, "validate query failed")
 	}
 
-	episodes, err := db.InConnectionR(ctx, e.db, func(conn repository.DBContext) ([]repository.EpisodeDB, error) {
+	episodes, err := db.InConnectionR(ctx, e.db, func(ctx context.Context) ([]repository.EpisodeDB, error) {
 		return e.getEpisodes(
 			ctx,
-			conn,
 			query.UserName,
 			query.DeviceName,
 			query.Podcast,
@@ -75,8 +74,8 @@ func (e *EpisodesSrv) AddAction(ctx context.Context, username string, action ...
 	}
 
 	//nolint:wrapcheck
-	return db.InTransaction(ctx, e.db, func(dbctx repository.DBContext) error {
-		user, err := e.usersRepo.GetUser(ctx, dbctx, username)
+	return db.InTransaction(ctx, e.db, func(ctx context.Context) error {
+		user, err := e.usersRepo.GetUser(ctx, username)
 		if errors.Is(err, repository.ErrNoData) {
 			return ErrUnknownUser
 		} else if err != nil {
@@ -84,12 +83,12 @@ func (e *EpisodesSrv) AddAction(ctx context.Context, username string, action ...
 		}
 
 		// cache devices and podcasts
-		podcastscache, err := e.createPodcastsCache(ctx, dbctx, user.ID)
+		podcastscache, err := e.createPodcastsCache(ctx, user.ID)
 		if err != nil {
 			return err
 		}
 
-		devicescache, err := e.createDevicesCache(ctx, dbctx, user.ID)
+		devicescache, err := e.createDevicesCache(ctx, user.ID)
 		if err != nil {
 			return err
 		}
@@ -112,12 +111,12 @@ func (e *EpisodesSrv) AddAction(ctx context.Context, username string, action ...
 			episodes[idx] = episode
 		}
 
-		if err = e.episodesRepo.SaveEpisode(ctx, dbctx, user.ID, episodes...); err != nil {
+		if err = e.episodesRepo.SaveEpisode(ctx, user.ID, episodes...); err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
 		for _, deviceid := range devicescache.GetUsedValues() {
-			if err := e.devicesRepo.MarkSeen(ctx, dbctx, time.Now().UTC(), *deviceid); err != nil {
+			if err := e.devicesRepo.MarkSeen(ctx, time.Now().UTC(), *deviceid); err != nil {
 				return aerr.ApplyFor(ErrRepositoryError, err)
 			}
 		}
@@ -147,8 +146,8 @@ func (e *EpisodesSrv) GetUpdates(ctx context.Context, query *query.GetEpisodeUpd
 		return nil, aerr.Wrapf(err, "validate query failed")
 	}
 
-	episodes, err := db.InConnectionR(ctx, e.db, func(conn repository.DBContext) ([]repository.EpisodeDB, error) {
-		return e.getEpisodes(ctx, conn, query.UserName, query.DeviceName, "", query.Since, true, 0)
+	episodes, err := db.InConnectionR(ctx, e.db, func(ctx context.Context) ([]repository.EpisodeDB, error) {
+		return e.getEpisodes(ctx, query.UserName, query.DeviceName, "", query.Since, true, 0)
 	})
 	if err != nil {
 		return nil, err //nolint:wrapcheck
@@ -176,15 +175,15 @@ func (e *EpisodesSrv) GetFavorites(ctx context.Context, username string) ([]mode
 		return nil, ErrEmptyUsername
 	}
 
-	episodes, err := db.InConnectionR(ctx, e.db, func(dbctx repository.DBContext) ([]repository.EpisodeDB, error) {
-		user, err := e.usersRepo.GetUser(ctx, dbctx, username)
+	episodes, err := db.InConnectionR(ctx, e.db, func(ctx context.Context) ([]repository.EpisodeDB, error) {
+		user, err := e.usersRepo.GetUser(ctx, username)
 		if errors.Is(err, repository.ErrNoData) {
 			return nil, ErrUnknownUser
 		} else if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		episodes, err := e.episodesRepo.ListFavorites(ctx, dbctx, user.ID)
+		episodes, err := e.episodesRepo.ListFavorites(ctx, user.ID)
 		if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
@@ -202,30 +201,29 @@ func (e *EpisodesSrv) GetFavorites(ctx context.Context, username string) ([]mode
 
 func (e *EpisodesSrv) getEpisodes(
 	ctx context.Context,
-	dbctx repository.DBContext,
 	username, devicename, podcast string,
 	since time.Time,
 	aggregated bool,
 	limit uint,
 ) ([]repository.EpisodeDB, error) {
-	user, err := e.usersRepo.GetUser(ctx, dbctx, username)
+	user, err := e.usersRepo.GetUser(ctx, username)
 	if errors.Is(err, repository.ErrNoData) {
 		return nil, ErrUnknownUser
 	} else if err != nil {
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
-	_, err = e.getDeviceID(ctx, dbctx, user.ID, devicename)
+	_, err = e.getDeviceID(ctx, user.ID, devicename)
 	if err != nil {
 		return nil, err
 	}
 
-	podcastid, err := e.getPodcastID(ctx, dbctx, user.ID, podcast)
+	podcastid, err := e.getPodcastID(ctx, user.ID, podcast)
 	if err != nil {
 		return nil, err
 	}
 
-	episodes, err := e.episodesRepo.ListEpisodeActions(ctx, dbctx, user.ID, nil, podcastid, since, aggregated,
+	episodes, err := e.episodesRepo.ListEpisodeActions(ctx, user.ID, nil, podcastid, since, aggregated,
 		limit)
 	if err != nil {
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)
@@ -234,10 +232,8 @@ func (e *EpisodesSrv) getEpisodes(
 	return episodes, nil
 }
 
-func (e *EpisodesSrv) createPodcastsCache(ctx context.Context, dbctx repository.DBContext,
-	userid int64,
-) (DynamicCache[string, int64], error) {
-	podcasts, err := e.podcastsRepo.ListSubscribedPodcasts(ctx, dbctx, userid, time.Time{})
+func (e *EpisodesSrv) createPodcastsCache(ctx context.Context, userid int64) (DynamicCache[string, int64], error) {
+	podcasts, err := e.podcastsRepo.ListSubscribedPodcasts(ctx, userid, time.Time{})
 	if err != nil {
 		return DynamicCache[string, int64]{}, aerr.Wrapf(err, "load podcasts into cache failed")
 	}
@@ -245,7 +241,7 @@ func (e *EpisodesSrv) createPodcastsCache(ctx context.Context, dbctx repository.
 	podcastscache := DynamicCache[string, int64]{
 		items: podcasts.ToIDsMap(),
 		creator: func(key string) (int64, error) {
-			id, err := e.podcastsRepo.SavePodcast(ctx, dbctx,
+			id, err := e.podcastsRepo.SavePodcast(ctx,
 				&repository.PodcastDB{UserID: userid, URL: key, Subscribed: true})
 			if err != nil {
 				return 0, aerr.Wrapf(err, "create new podcast failed")
@@ -258,10 +254,8 @@ func (e *EpisodesSrv) createPodcastsCache(ctx context.Context, dbctx repository.
 	return podcastscache, nil
 }
 
-func (e *EpisodesSrv) createDevicesCache(ctx context.Context, dbctx repository.DBContext,
-	userid int64,
-) (DynamicCache[string, *int64], error) {
-	devices, err := e.devicesRepo.ListDevices(ctx, dbctx, userid)
+func (e *EpisodesSrv) createDevicesCache(ctx context.Context, userid int64) (DynamicCache[string, *int64], error) {
+	devices, err := e.devicesRepo.ListDevices(ctx, userid)
 	if err != nil {
 		return DynamicCache[string, *int64]{}, aerr.Wrapf(err, "load devices into cache failed")
 	}
@@ -278,7 +272,7 @@ func (e *EpisodesSrv) createDevicesCache(ctx context.Context, dbctx repository.D
 				return nil, nil //nolint:nilnil
 			}
 
-			did, err := e.devicesRepo.SaveDevice(ctx, dbctx,
+			did, err := e.devicesRepo.SaveDevice(ctx,
 				&repository.DeviceDB{UserID: userid, Name: key, DevType: "other"})
 			if err != nil {
 				return nil, aerr.Wrapf(err, "create new device failed")
@@ -293,7 +287,6 @@ func (e *EpisodesSrv) createDevicesCache(ctx context.Context, dbctx repository.D
 
 func (e *EpisodesSrv) getDeviceID(
 	ctx context.Context,
-	dbctx repository.DBContext,
 	userid int64,
 	devicename string,
 ) (*int64, error) {
@@ -301,14 +294,14 @@ func (e *EpisodesSrv) getDeviceID(
 		return nil, nil //nolint:nilnil
 	}
 
-	device, err := e.devicesRepo.GetDevice(ctx, dbctx, userid, devicename)
+	device, err := e.devicesRepo.GetDevice(ctx, userid, devicename)
 	if errors.Is(err, repository.ErrNoData) {
 		return nil, ErrUnknownDevice
 	} else if err != nil {
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
-	if err := e.devicesRepo.MarkSeen(ctx, dbctx, time.Now().UTC(), device.ID); err != nil {
+	if err := e.devicesRepo.MarkSeen(ctx, time.Now().UTC(), device.ID); err != nil {
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
@@ -317,7 +310,6 @@ func (e *EpisodesSrv) getDeviceID(
 
 func (e *EpisodesSrv) getPodcastID(
 	ctx context.Context,
-	dbctx repository.DBContext,
 	userid int64,
 	podcast string,
 ) (*int64, error) {
@@ -325,7 +317,7 @@ func (e *EpisodesSrv) getPodcastID(
 		return nil, nil //nolint:nilnil
 	}
 
-	p, err := e.podcastsRepo.GetPodcast(ctx, dbctx, userid, podcast)
+	p, err := e.podcastsRepo.GetPodcast(ctx, userid, podcast)
 	if errors.Is(err, repository.ErrNoData) {
 		return nil, ErrUnknownPodcast
 	} else if err != nil {

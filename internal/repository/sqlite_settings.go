@@ -16,7 +16,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 )
 
-func (s SqliteRepository) ListSettings(ctx context.Context, dbctx DBContext,
+func (s SqliteRepository) ListSettings(ctx context.Context,
 	userid int64, podcastid, episodeid, deviceid *int64, scope string,
 ) ([]SettingsDB, error) {
 	logger := log.Ctx(ctx)
@@ -25,6 +25,7 @@ func (s SqliteRepository) ListSettings(ctx context.Context, dbctx DBContext,
 		Msg("get settings")
 
 	res := []SettingsDB{}
+	dbctx := Ctx(ctx)
 
 	query := "SELECT user_id, podcast_id, episode_id, device_id, scope, key, value " +
 		"FROM settings WHERE user_id=? AND scope=? AND podcast_id IS ? AND episode_id IS ? and device_id IS ? "
@@ -38,7 +39,7 @@ func (s SqliteRepository) ListSettings(ctx context.Context, dbctx DBContext,
 }
 
 // GetSettings return setting for user, scope and key. Create empty SettingsDB object when no data found in db.
-func (s SqliteRepository) GetSettings(ctx context.Context, dbctx DBContext,
+func (s SqliteRepository) GetSettings(ctx context.Context,
 	userid int64, podcastid, episodeid, deviceid *int64, scope, key string,
 ) (SettingsDB, error) {
 	logger := log.Ctx(ctx)
@@ -46,6 +47,7 @@ func (s SqliteRepository) GetSettings(ctx context.Context, dbctx DBContext,
 		Any("podcast_id", podcastid).Any("episode_id", episodeid).Any("device_id", deviceid).
 		Msg("get settings")
 
+	dbctx := Ctx(ctx)
 	res := SettingsDB{}
 
 	query := "SELECT user_id, podcast_id, episode_id, device_id, scope, key, value " +
@@ -84,9 +86,11 @@ func (s SqliteRepository) GetSettings(ctx context.Context, dbctx DBContext,
 }
 
 // SaveSettings insert or update setting.
-func (s SqliteRepository) SaveSettings(ctx context.Context, dbctx DBContext, sett *SettingsDB) error {
+func (s SqliteRepository) SaveSettings(ctx context.Context, sett *SettingsDB) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Object("settings", sett).Msg("save settings")
+
+	dbctx := Ctx(ctx)
 
 	_, err := dbctx.ExecContext(
 		ctx,
