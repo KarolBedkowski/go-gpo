@@ -169,14 +169,9 @@ func (p *SessionProvider) Read(sid string) (session.RawStore, error) { //nolint:
 func (p *SessionProvider) Exist(sid string) (bool, error) {
 	ctx := p.logger.WithContext(context.Background())
 
-	conn, err := p.db.GetConnection(ctx)
-	if err != nil {
-		return false, fmt.Errorf("get db connection error: %w", err)
-	}
-
-	defer conn.Close()
-
-	exists, err := p.repo.SessionExists(ctx, sid)
+	exists, err := db.InConnectionR(ctx, p.db, func(ctx context.Context) (bool, error) {
+		return p.repo.SessionExists(ctx, sid)
+	})
 	if err != nil {
 		return false, fmt.Errorf("check session %q exists error: %w", sid, err)
 	}
@@ -232,14 +227,9 @@ func (p *SessionProvider) Regenerate(oldsid, sid string) (session.RawStore, erro
 func (p *SessionProvider) Count() (int, error) {
 	ctx := p.logger.WithContext(context.Background())
 
-	conn, err := p.db.GetConnection(ctx)
-	if err != nil {
-		return 0, fmt.Errorf("get db connection error: %w", err)
-	}
-
-	defer conn.Close()
-
-	total, err := p.repo.CountSessions(ctx)
+	total, err := db.InConnectionR(ctx, p.db, func(ctx context.Context) (int, error) {
+		return p.repo.CountSessions(ctx)
+	})
 	if err != nil {
 		return 0, fmt.Errorf("error counting records: %w", err)
 	}
