@@ -37,7 +37,8 @@ func TestEpisodesServiceSave(t *testing.T) {
 	)
 
 	episodeActions := prepareEpisodes()
-	err := episodesSrv.AddAction(ctx, "user1", episodeActions...)
+
+	err := episodesSrv.AddAction(ctx, &command.AddActionCmd{UserName: "user1", Actions: episodeActions})
 	assert.NoErr(t, err)
 
 	// get last action for each episodes
@@ -121,7 +122,7 @@ func TestEpisodesServiceActions(t *testing.T) {
 	)
 
 	episodeActions := prepareEpisodes()
-	err := episodesSrv.AddAction(ctx, "user1", episodeActions...)
+	err := episodesSrv.AddAction(ctx, &command.AddActionCmd{UserName: "user1", Actions: episodeActions})
 	assert.NoErr(t, err)
 
 	// get all
@@ -205,7 +206,7 @@ func TestEpisodesServiceUpdates(t *testing.T) {
 	)
 
 	episodeActions := prepareEpisodes()
-	err := episodesSrv.AddAction(ctx, "user1", episodeActions...)
+	err := episodesSrv.AddAction(ctx, &command.AddActionCmd{UserName: "user1", Actions: episodeActions})
 	assert.NoErr(t, err)
 
 	// without device, no include actions (last action only)
@@ -289,7 +290,7 @@ func TestEpisodesServiceLastEpisodes(t *testing.T) {
 	)
 
 	episodeActions := prepareEpisodes()
-	err := episodesSrv.AddAction(ctx, "user1", episodeActions...)
+	err := episodesSrv.AddAction(ctx, &command.AddActionCmd{UserName: "user1", Actions: episodeActions})
 	assert.NoErr(t, err)
 
 	q := query.GetEpisodesQuery{
@@ -357,7 +358,7 @@ func TestEpisodesServiceFavorites(t *testing.T) {
 	)
 
 	episodeActions := prepareEpisodes()
-	err := episodesSrv.AddAction(ctx, "user1", episodeActions...)
+	err := episodesSrv.AddAction(ctx, &command.AddActionCmd{UserName: "user1", Actions: episodeActions})
 	assert.NoErr(t, err)
 
 	cmd := command.NewSetFavoriteEpisodeCmd("user1", episodeActions[1].Podcast, episodeActions[1].Episode)
@@ -399,7 +400,7 @@ func TestEpisodesServiceNewDevPodcast(t *testing.T) {
 		Timestamp: time.Date(2025, 1, 5, 3, 4, 5, 0, time.UTC),
 	}
 
-	err := episodesSrv.AddAction(ctx, "user1", action)
+	err := episodesSrv.AddAction(ctx, &command.AddActionCmd{UserName: "user1", Actions: []model.Episode{action}})
 	assert.NoErr(t, err)
 
 	q := query.GetEpisodesQuery{

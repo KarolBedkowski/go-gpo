@@ -11,7 +11,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
@@ -72,7 +71,7 @@ func (l *List) listDevices(ctx context.Context, devsrv *service.DevicesSrv) erro
 }
 
 func (l *List) listSubscriptions(ctx context.Context, subssrv *service.SubscriptionsSrv) error {
-	subs, err := subssrv.GetUserSubscriptions(ctx, l.UserName, time.Time{})
+	subs, err := subssrv.GetUserSubscriptions(ctx, &query.GetUserSubscriptionsQuery{UserName: l.UserName})
 	if err != nil {
 		return fmt.Errorf("get subscriptions list error: %w", err)
 	}

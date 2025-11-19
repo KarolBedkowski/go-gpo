@@ -62,7 +62,9 @@ func (u updatesResource) getUpdates(
 		return
 	}
 
-	state, err := u.subsSrv.GetSubscriptionChanges(ctx, user, devicename, since)
+	q := query.GetSubscriptionChangesQuery{UserName: user, DeviceName: devicename, Since: since}
+
+	state, err := u.subsSrv.GetSubscriptionChanges(ctx, &q)
 	if err != nil {
 		checkAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get subscription changes error")

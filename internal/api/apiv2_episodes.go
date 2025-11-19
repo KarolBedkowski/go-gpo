@@ -14,6 +14,7 @@ import (
 
 	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/query"
@@ -89,9 +90,11 @@ func (er episodesResource) uploadEpisodeActions(
 		actions = append(actions, reqEpisode.toModel())
 	}
 
-	user := internal.ContextUser(ctx)
-
-	if err := er.episodesSrv.AddAction(ctx, user, actions...); err != nil {
+	cmd := command.AddActionCmd{
+		UserName: internal.ContextUser(ctx),
+		Actions:  actions,
+	}
+	if err := er.episodesSrv.AddAction(ctx, &cmd); err != nil {
 		checkAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).
 			Err(err).Msg("save episodes error")

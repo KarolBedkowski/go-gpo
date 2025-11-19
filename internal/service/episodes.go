@@ -15,6 +15,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
@@ -69,14 +70,14 @@ func (e *EpisodesSrv) GetEpisodes(ctx context.Context, query *query.GetEpisodesQ
 
 // AddAction save new actions.
 // Podcasts and devices are cached and - if not exists for requested action - created.
-func (e *EpisodesSrv) AddAction(ctx context.Context, username string, action ...model.Episode) error { //nolint:cyclop
-	if username == "" {
-		return ErrEmptyUsername
+func (e *EpisodesSrv) AddAction(ctx context.Context, cmd *command.AddActionCmd) error { //nolint:cyclop
+	if err := cmd.Validate(); err != nil {
+		return aerr.Wrapf(err, "validate command failed")
 	}
 
 	//nolint:wrapcheck
 	return db.InTransaction(ctx, e.db, func(ctx context.Context) error {
-		user, err := e.usersRepo.GetUser(ctx, username)
+		user, err := e.usersRepo.GetUser(ctx, cmd.UserName)
 		if errors.Is(err, repository.ErrNoData) {
 			return ErrUnknownUser
 		} else if err != nil {
@@ -94,8 +95,8 @@ func (e *EpisodesSrv) AddAction(ctx context.Context, username string, action ...
 			return err
 		}
 
-		episodes := make([]repository.EpisodeDB, len(action))
-		for idx, act := range action {
+		episodes := make([]repository.EpisodeDB, len(cmd.Actions))
+		for idx, act := range cmd.Actions {
 			episode := act.ToDBModel()
 
 			episode.PodcastID, err = podcastscache.GetOrCreate(act.Podcast)

@@ -116,7 +116,9 @@ func prepareTestEpisode(ctx context.Context, t *testing.T, i do.Injector,
 			Timestamp: time.Date(2025, 1, 5, 3, 4, 5, 0, time.UTC),
 		}
 
-		err := episodesSrv.AddAction(ctx, username, action)
+		err := episodesSrv.AddAction(ctx, &command.AddActionCmd{
+			UserName: username, Actions: []model.Episode{action},
+		})
 		assert.NoErr(t, err)
 	}
 }

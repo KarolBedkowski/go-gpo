@@ -17,6 +17,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/opml"
+	"gitlab.com/kabes/go-gpo/internal/query"
 	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
 
@@ -68,7 +69,9 @@ func (sr subscriptionsResource) devSubscriptions(
 		sinceTS = time.Unix(ts, 0)
 	}
 
-	state, err := sr.subsSrv.GetSubscriptionChanges(ctx, user, devicename, sinceTS)
+	q := query.GetSubscriptionChangesQuery{UserName: user, DeviceName: devicename, Since: sinceTS}
+
+	state, err := sr.subsSrv.GetSubscriptionChanges(ctx, &q)
 	if err != nil {
 		checkAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get device subscriptions changes error")
@@ -99,7 +102,7 @@ func (sr subscriptionsResource) userSubscriptions(
 	_ = r
 	user := internal.ContextUser(ctx)
 
-	subs, err := sr.subsSrv.GetUserSubscriptions(ctx, user, time.Time{})
+	subs, err := sr.subsSrv.GetUserSubscriptions(ctx, &query.GetUserSubscriptionsQuery{UserName: user})
 	if err != nil {
 		checkAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get user subscriptions error")

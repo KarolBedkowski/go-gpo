@@ -18,6 +18,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
+	"gitlab.com/kabes/go-gpo/internal/query"
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
@@ -38,27 +39,23 @@ func NewSubscriptionsSrv(i do.Injector) (*SubscriptionsSrv, error) {
 }
 
 // GetUserSubscriptions is simple api.
-func (s *SubscriptionsSrv) GetUserSubscriptions(ctx context.Context, username string, since time.Time,
+func (s *SubscriptionsSrv) GetUserSubscriptions(ctx context.Context, query *query.GetUserSubscriptionsQuery,
 ) ([]string, error) {
-	if username == "" {
-		return nil, ErrEmptyUsername
+	if err := query.Validate(); err != nil {
+		return nil, aerr.Wrapf(err, "validation query failed")
 	}
 
-	return s.getSubsctiptions(ctx, username, "", since)
+	return s.getSubsctiptions(ctx, query.UserName, "", query.Since)
 }
 
 // GetSubscriptions is simple api.
-func (s *SubscriptionsSrv) GetSubscriptions(ctx context.Context, username, devicename string, since time.Time,
+func (s *SubscriptionsSrv) GetSubscriptions(ctx context.Context, query *query.GetSubscriptionsQuery,
 ) ([]string, error) {
-	if username == "" {
-		return nil, ErrEmptyUsername
+	if err := query.Validate(); err != nil {
+		return nil, aerr.Wrapf(err, "validation query failed")
 	}
 
-	if devicename == "" {
-		return nil, aerr.ErrValidation.WithMsg("device can't be empty")
-	}
-
-	return s.getSubsctiptions(ctx, username, devicename, since)
+	return s.getSubsctiptions(ctx, query.UserName, query.DeviceName, query.Since)
 }
 
 // ReplaceSubscriptions replace all subscriptions for given user. Create device when no exists.
@@ -185,14 +182,14 @@ func (s *SubscriptionsSrv) ChangeSubscriptions( //nolint:cyclop
 	return res, err //nolint:wrapcheck
 }
 
-func (s *SubscriptionsSrv) GetSubscriptionChanges(ctx context.Context, username, devicename string, since time.Time) (
+func (s *SubscriptionsSrv) GetSubscriptionChanges(ctx context.Context, query *query.GetSubscriptionChangesQuery) (
 	model.SubscriptionState, error,
 ) {
-	if username == "" {
-		return model.SubscriptionState{}, ErrEmptyUsername
+	if err := query.Validate(); err != nil {
+		return model.SubscriptionState{}, aerr.Wrapf(err, "validation query failed")
 	}
 
-	podcasts, err := s.getPodcasts(ctx, username, devicename, since)
+	podcasts, err := s.getPodcasts(ctx, query.UserName, query.DeviceName, query.Since)
 	if err != nil {
 		return model.SubscriptionState{}, err
 	}
