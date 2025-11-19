@@ -75,6 +75,9 @@ func CheckAndWriteError(w http.ResponseWriter, r *http.Request, err error) {
 		// write message if is defined in error
 		WriteError(w, r, http.StatusInternalServerError, msg)
 
+	case aerr.HasTag(err, aerr.ValidationError):
+		WriteError(w, r, http.StatusBadRequest, msg)
+
 	case aerr.HasTag(err, aerr.DataError):
 		WriteError(w, r, http.StatusBadRequest, msg)
 
