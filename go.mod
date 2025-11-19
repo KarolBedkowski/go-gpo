@@ -13,9 +13,9 @@ require (
 	github.com/pressly/goose/v3 v3.26.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/rs/zerolog v1.34.0
-	github.com/samber/do/http/chi/v2 v2.0.0-20251108205504-7f395f28bfb8
+	github.com/samber/do/http/chi/v2 v2.0.0-20251118210046-5eb1787bed23
 	github.com/samber/do/v2 v2.0.0
-	github.com/urfave/cli/v3 v3.6.0
+	github.com/urfave/cli/v3 v3.6.1
 	golang.org/x/crypto v0.44.0
 	golang.org/x/term v0.37.0
 )
@@ -30,7 +30,7 @@ require (
 	github.com/mfridman/interpolate v0.0.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
-	github.com/prometheus/common v0.67.2 // indirect
+	github.com/prometheus/common v0.67.3 // indirect
 	github.com/prometheus/procfs v0.19.2 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/samber/go-type-to-string v1.8.0 // indirect
