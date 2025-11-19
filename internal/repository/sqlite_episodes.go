@@ -38,7 +38,7 @@ func (s SqliteRepository) GetEpisode(
 
 	res := EpisodeDB{}
 
-	dbctx := Ctx(ctx)
+	dbctx := MustCtx(ctx)
 
 	err := dbctx.GetContext(ctx, &res, query, userid, podcastid, episode, episode)
 	if err != nil {
@@ -69,7 +69,7 @@ func (s SqliteRepository) ListEpisodeActions(
 		"LEFT JOIN devices d on d.id=e.device_id " +
 		"WHERE p.user_id=? AND e.updated_at > ?"
 	args := []any{userid, since}
-	dbctx := Ctx(ctx)
+	dbctx := MustCtx(ctx)
 
 	if deviceid != nil {
 		query += " AND (e.device_id != ? OR e.device_id is NULL) "
@@ -123,7 +123,7 @@ func (s SqliteRepository) ListFavorites(ctx context.Context, userid int64) ([]Ep
 		"WHERE p.user_id=? AND s.scope = 'episode' and s.key = 'is_favorite'"
 
 	res := []EpisodeDB{}
-	dbctx := Ctx(ctx)
+	dbctx := MustCtx(ctx)
 
 	err := dbctx.SelectContext(ctx, &res, query, userid)
 	if err != nil {
@@ -153,7 +153,7 @@ func (s SqliteRepository) GetLastEpisodeAction(ctx context.Context,
 
 	query += "ORDER BY e.updated_at DESC LIMIT 1"
 
-	dbctx := Ctx(ctx)
+	dbctx := MustCtx(ctx)
 	res := EpisodeDB{}
 
 	err := dbctx.GetContext(ctx, &res, query, userid, podcastid)
@@ -185,7 +185,7 @@ func (s SqliteRepository) saveEpisode(ctx context.Context, episode EpisodeDB) er
 	logger := log.Ctx(ctx)
 	logger.Debug().Object("episode", episode).Msg("save episode")
 
-	dbctx := Ctx(ctx)
+	dbctx := MustCtx(ctx)
 
 	_, err := dbctx.ExecContext(
 		ctx,

@@ -42,7 +42,16 @@ func WithCtx(ctx context.Context, dbctx DBContext) context.Context {
 	return context.WithValue(ctx, CtxDBContextKey, dbctx)
 }
 
-func Ctx(ctx context.Context) DBContext {
+func Ctx(ctx context.Context) (DBContext, bool) {
+	value, ok := ctx.Value(CtxDBContextKey).(DBContext)
+	if !ok || value == nil {
+		return nil, false
+	}
+
+	return value, true
+}
+
+func MustCtx(ctx context.Context) DBContext {
 	value, ok := ctx.Value(CtxDBContextKey).(DBContext)
 	if !ok || value == nil {
 		panic("no dbcontext in context")
