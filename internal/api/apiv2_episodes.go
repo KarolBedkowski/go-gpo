@@ -14,10 +14,12 @@ import (
 
 	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/query"
 	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
+	"gitlab.com/kabes/go-gpo/internal/validators"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
@@ -146,7 +148,7 @@ func (er episodesResource) getEpisodeActions(
 		Actions   []episode `json:"actions"`
 		Timestamp int64     `json:"timestamp"`
 	}{
-		Actions:   model.Map(res, newEpisodesFromModel),
+		Actions:   common.Map(res, newEpisodesFromModel),
 		Timestamp: time.Now().UTC().Unix(),
 	}
 
@@ -189,7 +191,7 @@ func newEpisodesFromModel(e *model.Episode) episode {
 func (e *episode) sanitize() [][]string {
 	var changes [][]string
 
-	spodcast := model.SanitizeURL(e.Podcast)
+	spodcast := validators.SanitizeURL(e.Podcast)
 	if spodcast != e.Podcast {
 		e.Podcast = spodcast
 		if spodcast != "" {
@@ -197,7 +199,7 @@ func (e *episode) sanitize() [][]string {
 		}
 	}
 
-	sepisode := model.SanitizeURL(e.Episode)
+	sepisode := validators.SanitizeURL(e.Episode)
 	if sepisode != e.Episode {
 		e.Episode = sepisode
 		if spodcast != "" {

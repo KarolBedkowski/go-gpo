@@ -15,6 +15,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/query"
@@ -63,7 +64,7 @@ func (e *EpisodesSrv) GetEpisodes(ctx context.Context, query *query.GetEpisodesQ
 		return nil, err //nolint:wrapcheck
 	}
 
-	return model.Map(episodes, model.NewEpisodeFromDBModel), nil
+	return common.Map(episodes, model.NewEpisodeFromDBModel), nil
 }
 
 // AddAction save new actions.
@@ -158,7 +159,7 @@ func (e *EpisodesSrv) GetUpdates(ctx context.Context, query *query.GetEpisodeUpd
 		createFunc = model.NewEpisodeUpdateWithEpisodeFromDBModel
 	}
 
-	return model.Map(episodes, createFunc), nil
+	return common.Map(episodes, createFunc), nil
 }
 
 // GetLastActions return last `limit` actions for `username`.
@@ -194,7 +195,7 @@ func (e *EpisodesSrv) GetFavorites(ctx context.Context, username string) ([]mode
 		return nil, err //nolint: wrapcheck
 	}
 
-	return model.Map(episodes, model.NewFavoriteFromDBModel), nil
+	return common.Map(episodes, model.NewFavoriteFromDBModel), nil
 }
 
 // ------------------------------------------------------

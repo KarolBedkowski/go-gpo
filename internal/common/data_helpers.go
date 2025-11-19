@@ -1,7 +1,7 @@
-package model
+package common //nolint:revive
 
 //
-// model_helpers.go
+// data_helpers.go
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
 //
 // Distributed under terms of the GPLv3 license.

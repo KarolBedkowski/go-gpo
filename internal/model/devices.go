@@ -10,8 +10,6 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
-var ValidDevTypes = []string{"desktop", "laptop", "mobile", "server", "other"}
-
 //------------------------------------------------------------------------------
 
 type Device struct {

@@ -1,4 +1,4 @@
-package model
+package validators
 
 //
 // subscriptions_test.go

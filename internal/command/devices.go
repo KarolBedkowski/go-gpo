@@ -7,10 +7,8 @@ package command
 // Distributed under terms of the GPLv3 license.
 //
 import (
-	"slices"
-
 	"gitlab.com/kabes/go-gpo/internal/aerr"
-	"gitlab.com/kabes/go-gpo/internal/model"
+	"gitlab.com/kabes/go-gpo/internal/validators"
 )
 
 type UpdateDeviceCmd struct {
@@ -33,7 +31,7 @@ func (u *UpdateDeviceCmd) Validate() error {
 		return aerr.ErrValidation.WithMsg("device type can't be empty")
 	}
 
-	if !slices.Contains(model.ValidDevTypes, u.DeviceType) {
+	if !validators.IsValidDevType(u.DeviceType) {
 		return aerr.ErrValidation.WithMsg("invalid device type %q", u.DeviceType)
 	}
 

@@ -14,6 +14,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/command"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/query"
 	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
@@ -100,7 +101,7 @@ func (d deviceResource) listDevices(
 		return
 	}
 
-	resdevices := model.Map(devices, newDeviceFromModel)
+	resdevices := common.Map(devices, newDeviceFromModel)
 
 	render.Status(r, http.StatusOK)
 	render.JSON(w, r, resdevices)

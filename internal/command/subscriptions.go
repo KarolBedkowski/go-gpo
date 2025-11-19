@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"gitlab.com/kabes/go-gpo/internal/aerr"
-	"gitlab.com/kabes/go-gpo/internal/model"
+	"gitlab.com/kabes/go-gpo/internal/validators"
 )
 
 var ErrEmptyUsername = aerr.NewSimple("username can't be empty").WithTag(aerr.ValidationError)
@@ -28,8 +28,8 @@ type ChangeSubscriptionsCmd struct {
 func (s *ChangeSubscriptionsCmd) Sanitize() [][]string {
 	var chAdd, chRem [][]string
 
-	s.Add, chAdd = model.SanitizeURLs(s.Add)
-	s.Remove, chRem = model.SanitizeURLs(s.Remove)
+	s.Add, chAdd = validators.SanitizeURLs(s.Add)
+	s.Remove, chRem = validators.SanitizeURLs(s.Remove)
 
 	changes := make([][]string, 0)
 	changes = append(changes, chAdd...)

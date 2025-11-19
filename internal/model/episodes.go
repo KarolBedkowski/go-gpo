@@ -13,6 +13,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
@@ -33,7 +34,7 @@ type Episode struct {
 func NewEpisodeFromDBModel(episodedb *repository.EpisodeDB) Episode {
 	episode := Episode{
 		Podcast:   episodedb.PodcastURL,
-		Device:    NVL(episodedb.Device, ""),
+		Device:    common.NVL(episodedb.Device, ""),
 		Episode:   episodedb.URL,
 		Action:    episodedb.Action,
 		Timestamp: episodedb.UpdatedAt,
@@ -69,7 +70,7 @@ func (e *Episode) Validate() error {
 func (e *Episode) ToDBModel() repository.EpisodeDB {
 	return repository.EpisodeDB{ //nolint:exhaustruct
 		URL:        e.Episode,
-		Device:     NilIf(e.Device, ""),
+		Device:     common.NilIf(e.Device, ""),
 		Action:     e.Action,
 		UpdatedAt:  e.Timestamp,
 		CreatedAt:  e.Timestamp,
@@ -107,9 +108,9 @@ type Favorite struct {
 
 func NewFavoriteFromDBModel(episodedb *repository.EpisodeDB) Favorite {
 	return Favorite{
-		Title:        Coalesce(episodedb.Title, episodedb.URL),
+		Title:        common.Coalesce(episodedb.Title, episodedb.URL),
 		URL:          episodedb.URL,
-		PodcastTitle: Coalesce(episodedb.PodcastTitle, episodedb.PodcastURL),
+		PodcastTitle: common.Coalesce(episodedb.PodcastTitle, episodedb.PodcastURL),
 		PodcastURL:   episodedb.PodcastURL,
 		Website:      "",
 		MygpoLink:    "",
@@ -165,9 +166,9 @@ func NewEpisodeUpdateWithEpisodeFromDBModel(episodedb *repository.EpisodeDB) Epi
 
 	if episodedb.Action != "new" {
 		episodeUpdate.Episode = &Episode{
-			Podcast:   Coalesce(episodedb.PodcastTitle, episodedb.PodcastURL),
-			Episode:   Coalesce(episodedb.Title, episodedb.URL),
-			Device:    NVL(episodedb.Device, ""),
+			Podcast:   common.Coalesce(episodedb.PodcastTitle, episodedb.PodcastURL),
+			Episode:   common.Coalesce(episodedb.Title, episodedb.URL),
+			Device:    common.NVL(episodedb.Device, ""),
 			Action:    episodedb.Action,
 			Timestamp: episodedb.UpdatedAt,
 			GUID:      episodedb.GUID,

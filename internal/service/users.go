@@ -15,6 +15,7 @@ import (
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/command"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/repository"
@@ -163,7 +164,7 @@ func (u *UsersSrv) GetUsers(ctx context.Context, activeOnly bool) ([]model.User,
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
-	return model.Map(users, model.NewUserFromUserDB), nil
+	return common.Map(users, model.NewUserFromUserDB), nil
 }
 
 func (u *UsersSrv) LockAccount(ctx context.Context, cmd command.LockAccountCmd) error {

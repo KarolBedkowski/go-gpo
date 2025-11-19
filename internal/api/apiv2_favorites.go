@@ -14,6 +14,7 @@ import (
 
 	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
@@ -59,7 +60,7 @@ func (u favoritesResource) getFafovites(
 		return
 	}
 
-	resfavs := model.Map(favorites, newFavoriteFromModel)
+	resfavs := common.Map(favorites, newFavoriteFromModel)
 	render.JSON(w, r, resfavs)
 }
 

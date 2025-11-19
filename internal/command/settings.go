@@ -1,16 +1,16 @@
 package command
 
-import (
-	"github.com/rs/zerolog"
-	"gitlab.com/kabes/go-gpo/internal/aerr"
-)
-
 //
 // settings.go
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
 //
 // Distributed under terms of the GPLv3 license.
 //
+
+import (
+	"github.com/rs/zerolog"
+	"gitlab.com/kabes/go-gpo/internal/aerr"
+)
 
 type ChangeSettingsCmd struct {
 	UserName   string

@@ -11,6 +11,7 @@ import (
 
 	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/query"
 	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
@@ -90,9 +91,9 @@ func (u updatesResource) getUpdates(
 		Updates    []episodeUpdate `json:"updates"`
 		Timestamps int64           `json:"timestamp"`
 	}{
-		Add:        model.Map(state.Added, newPodcastFromModel),
+		Add:        common.Map(state.Added, newPodcastFromModel),
 		Remove:     state.RemovedURLs(),
-		Updates:    model.Map(updates, newEpisodeUpdateFromModel),
+		Updates:    common.Map(updates, newEpisodeUpdateFromModel),
 		Timestamps: time.Now().UTC().Unix(),
 	}
 
