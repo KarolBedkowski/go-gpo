@@ -9,35 +9,46 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
+	"syscall"
 
+	"github.com/rs/zerolog/log"
 	"github.com/samber/do/v2"
+	"github.com/urfave/cli/v3"
 	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/service"
+	"golang.org/x/term"
 )
 
 //---------------------------------------------------------------------
 
-type ChangeUserPassword struct {
-	Database string
-	Password string
-	UserName string
+func NewChangeUserPasswordCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "password",
+		Usage: "set new user password / unlock account",
+		Flags: []cli.Flag{
+			&cli.StringFlag{Name: "username", Required: true, Aliases: []string{"u"}},
+			&cli.StringFlag{Name: "password", Aliases: []string{"p"}},
+		},
+		Action: wrap(changeUserPasswordCmd),
+	}
 }
 
-func (c *ChangeUserPassword) Start(ctx context.Context) error {
-	injector := createInjector(ctx)
-
-	db := do.MustInvoke[*db.Database](injector)
-	if err := db.Connect(ctx, "sqlite3", c.Database); err != nil {
-		return fmt.Errorf("connect to database error: %w", err)
+func changeUserPasswordCmd(ctx context.Context, clicmd *cli.Command, injector do.Injector) error {
+	pass, err := readValidatePassword(clicmd.String("password"))
+	if err != nil {
+		return err
 	}
 
+	username := clicmd.String("username")
 	usersrv := do.MustInvoke[*service.UsersSrv](injector)
 
 	cmd := command.ChangeUserPasswordCmd{
-		UserName:         c.UserName,
-		Password:         c.Password,
+		UserName:         username,
+		Password:         pass,
 		CurrentPassword:  "",
 		CheckCurrentPass: false,
 	}
@@ -45,34 +56,78 @@ func (c *ChangeUserPassword) Start(ctx context.Context) error {
 		return fmt.Errorf("change user password error: %w", err)
 	}
 
-	fmt.Printf("Changed password for user %q\n", c.UserName)
+	fmt.Printf("Changed password for user %q\n", username)
 
 	return nil
+}
+
+func readValidatePassword(pass string) (string, error) {
+	pass = strings.TrimSpace(pass)
+	if pass == "" {
+		fmt.Print("Enter new password: ")
+
+		bytepw, err := term.ReadPassword(syscall.Stdin)
+		if err != nil {
+			return "", fmt.Errorf("read password error: %w", err)
+		}
+
+		pass = strings.TrimSpace(string(bytepw))
+	}
+
+	if pass == "" {
+		return "", errors.New("password can't be empty") //nolint:err113
+	}
+
+	return pass, nil
 }
 
 //---------------------------------------------------------------------
 
-type LockUserAccount struct {
-	Database string
-	UserName string
+func NewLockUserCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "lock",
+		Usage: "lock user account",
+		Flags: []cli.Flag{
+			&cli.StringFlag{Name: "username", Required: true, Aliases: []string{"u"}},
+		},
+		Action: wrap(lockUserCmd),
+	}
 }
 
-func (l *LockUserAccount) Start(ctx context.Context) error {
-	injector := createInjector(ctx)
-
-	db := do.MustInvoke[*db.Database](injector)
-	if err := db.Connect(ctx, "sqlite3", l.Database); err != nil {
-		return fmt.Errorf("connect to database error: %w", err)
-	}
-
+func lockUserCmd(ctx context.Context, clicmd *cli.Command, injector do.Injector) error {
+	username := clicmd.String("username")
 	usersrv := do.MustInvoke[*service.UsersSrv](injector)
 
-	la := command.LockAccountCmd{UserName: l.UserName}
+	la := command.LockAccountCmd{UserName: username}
 	if err := usersrv.LockAccount(ctx, la); err != nil {
 		return fmt.Errorf("change user password error: %w", err)
 	}
 
-	fmt.Printf("User %q locked\n", l.UserName)
+	fmt.Printf("User %q locked\n", username)
 
 	return nil
+}
+
+func wrap(
+	cmdfunc func(ctx context.Context, clicmd *cli.Command, i do.Injector) error,
+) func(ctx context.Context, clicmd *cli.Command) error {
+	return func(ctx context.Context, clicmd *cli.Command) error {
+		initializeLogger(clicmd.String("log.level"), clicmd.String("log.format"))
+
+		ctx = log.Logger.WithContext(ctx)
+
+		database := clicmd.String("database")
+		if database == "" {
+			return errors.New("database can't be empty") //nolint:err113
+		}
+
+		injector := createInjector(ctx)
+
+		db := do.MustInvoke[*db.Database](injector)
+		if err := db.Connect(ctx, "sqlite3", database); err != nil {
+			return fmt.Errorf("connect to database error: %w", err)
+		}
+
+		return cmdfunc(ctx, clicmd, injector)
+	}
 }

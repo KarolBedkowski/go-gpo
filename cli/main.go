@@ -11,15 +11,11 @@ import (
 	// _ "github.com/WAY29/icecream-go/icecream".
 
 	"context"
-	"errors"
 	"fmt"
 	"os"
-	"strings"
-	"syscall"
 
 	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli/v3"
-	"golang.org/x/term"
 
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/cmd"
@@ -136,8 +132,8 @@ func usersSubCmd() *cli.Command {
 			addUserCmd(),
 			deleteUsersCmd(),
 			listUsersCmd(),
-			lockUserCmd(),
-			changeUserPasswordCmd(),
+			cmd.NewLockUserCmd(),
+			cmd.NewChangeUserPasswordCmd(),
 		},
 	}
 }
@@ -198,63 +194,6 @@ func listUsersCmd() *cli.Command {
 			s := cmd.ListUsers{
 				Database:   c.String("database"),
 				ActiveOnly: c.Bool("active-only"),
-			}
-
-			return s.Start(log.Logger.WithContext(ctx))
-		},
-	}
-}
-
-func changeUserPasswordCmd() *cli.Command {
-	return &cli.Command{
-		Name:  "password",
-		Usage: "set new user password / unlock account",
-		Flags: []cli.Flag{
-			&cli.StringFlag{Name: "username", Required: true, Aliases: []string{"u"}},
-			&cli.StringFlag{Name: "password", Aliases: []string{"p"}},
-		},
-		Action: func(ctx context.Context, clicmd *cli.Command) error {
-			initializeLogger(clicmd.String("log.level"), clicmd.String("log.format"))
-
-			pass := strings.TrimSpace(clicmd.String("password"))
-			if pass == "" {
-				fmt.Print("Enter new password: ")
-
-				bytepw, err := term.ReadPassword(syscall.Stdin)
-				if err != nil {
-					return fmt.Errorf("read password error: %w", err)
-				}
-
-				pass = strings.TrimSpace(string(bytepw))
-			}
-
-			if pass != "" {
-				return errors.New("password can't be empty") //nolint:err113
-			}
-
-			s := cmd.ChangeUserPassword{
-				Database: clicmd.String("database"),
-				Password: pass,
-				UserName: clicmd.String("username"),
-			}
-
-			return s.Start(log.Logger.WithContext(ctx))
-		},
-	}
-}
-
-func lockUserCmd() *cli.Command {
-	return &cli.Command{
-		Name:  "lock",
-		Usage: "lock user account",
-		Flags: []cli.Flag{
-			&cli.StringFlag{Name: "username", Required: true, Aliases: []string{"u"}},
-		},
-		Action: func(ctx context.Context, c *cli.Command) error {
-			initializeLogger(c.String("log.level"), c.String("log.format"))
-			s := cmd.LockUserAccount{
-				Database: c.String("database"),
-				UserName: c.String("username"),
 			}
 
 			return s.Start(log.Logger.WithContext(ctx))
@@ -336,7 +275,7 @@ func listCmd() *cli.Command {
 
 func dbConnstrValidator(connstr string) error {
 	if connstr == "" {
-		return aerr.NewSimple("database connection string cannot be empty")
+		return aerr.New("database connection string cannot be empty")
 	}
 
 	return nil
