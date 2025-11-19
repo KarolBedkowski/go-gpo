@@ -17,6 +17,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/db"
 )
 
 func (s SqliteRepository) GetEpisode(
@@ -38,7 +39,7 @@ func (s SqliteRepository) GetEpisode(
 
 	res := EpisodeDB{}
 
-	dbctx := MustCtx(ctx)
+	dbctx := db.MustCtx(ctx)
 
 	err := dbctx.GetContext(ctx, &res, query, userid, podcastid, episode, episode)
 	if err != nil {
@@ -69,7 +70,7 @@ func (s SqliteRepository) ListEpisodeActions(
 		"LEFT JOIN devices d on d.id=e.device_id " +
 		"WHERE p.user_id=? AND e.updated_at > ?"
 	args := []any{userid, since}
-	dbctx := MustCtx(ctx)
+	dbctx := db.MustCtx(ctx)
 
 	if deviceid != nil {
 		query += " AND (e.device_id != ? OR e.device_id is NULL) "
@@ -123,7 +124,7 @@ func (s SqliteRepository) ListFavorites(ctx context.Context, userid int64) ([]Ep
 		"WHERE p.user_id=? AND s.scope = 'episode' and s.key = 'is_favorite'"
 
 	res := []EpisodeDB{}
-	dbctx := MustCtx(ctx)
+	dbctx := db.MustCtx(ctx)
 
 	err := dbctx.SelectContext(ctx, &res, query, userid)
 	if err != nil {
@@ -153,7 +154,7 @@ func (s SqliteRepository) GetLastEpisodeAction(ctx context.Context,
 
 	query += "ORDER BY e.updated_at DESC LIMIT 1"
 
-	dbctx := MustCtx(ctx)
+	dbctx := db.MustCtx(ctx)
 	res := EpisodeDB{}
 
 	err := dbctx.GetContext(ctx, &res, query, userid, podcastid)
@@ -185,7 +186,7 @@ func (s SqliteRepository) saveEpisode(ctx context.Context, episode EpisodeDB) er
 	logger := log.Ctx(ctx)
 	logger.Debug().Object("episode", episode).Msg("save episode")
 
-	dbctx := MustCtx(ctx)
+	dbctx := db.MustCtx(ctx)
 
 	_, err := dbctx.ExecContext(
 		ctx,

@@ -17,6 +17,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/db"
 )
 
 var ErrDuplicatedSID = errors.New("sid already exists")
@@ -25,7 +26,7 @@ func (s SqliteRepository) DeleteSession(ctx context.Context, sid string) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Str("sid", sid).Msg("delete session")
 
-	dbctx := MustCtx(ctx)
+	dbctx := db.MustCtx(ctx)
 
 	_, err := dbctx.ExecContext(ctx, "DELETE FROM sessions WHERE key=?", sid)
 	if err != nil {
@@ -39,7 +40,7 @@ func (s SqliteRepository) SaveSession(ctx context.Context, sid string, data []by
 	logger := log.Ctx(ctx)
 	logger.Debug().Str("sid", sid).Msg("save session")
 
-	dbctx := MustCtx(ctx)
+	dbctx := db.MustCtx(ctx)
 
 	_, err := dbctx.ExecContext(ctx,
 		"UPDATE sessions SET data=?, created_at=? WHERE key=?",
@@ -55,7 +56,7 @@ func (s SqliteRepository) RegenerateSession(ctx context.Context, oldsid, newsid 
 	logger := log.Ctx(ctx)
 	logger.Debug().Str("sid", newsid).Str("old_sid", oldsid).Msg("regenerate session")
 
-	dbctx := MustCtx(ctx)
+	dbctx := db.MustCtx(ctx)
 
 	res, err := dbctx.ExecContext(ctx, "UPDATE sessions SET key=? WHERE key=?", newsid, oldsid)
 	if err != nil {
@@ -89,7 +90,7 @@ func (s SqliteRepository) CountSessions(ctx context.Context) (int, error) {
 
 	var total int
 
-	dbctx := MustCtx(ctx)
+	dbctx := db.MustCtx(ctx)
 
 	if err := dbctx.GetContext(ctx, &total, "SELECT COUNT(*) AS num FROM sessions"); err != nil {
 		return 0, aerr.Wrapf(err, "count sessions failed")
@@ -108,7 +109,7 @@ func (s SqliteRepository) CleanSessions(
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("clean sessions (%s, %s)", oldestUsed, oldestEmpty)
 
-	dbctx := MustCtx(ctx)
+	dbctx := db.MustCtx(ctx)
 
 	res, err := dbctx.ExecContext(ctx, "DELETE FROM sessions WHERE created_at < ?", oldestUsed)
 	if err != nil {
@@ -146,7 +147,7 @@ func (s SqliteRepository) ReadOrCreate(ctx context.Context, sid string) (Session
 		SID:       sid,
 		CreatedAt: time.Now().UTC(),
 	}
-	dbctx := MustCtx(ctx)
+	dbctx := db.MustCtx(ctx)
 	err := dbctx.GetContext(ctx, &session, "SELECT key, data, created_at FROM sessions WHERE key=?", sid)
 
 	if errors.Is(err, sql.ErrNoRows) {
@@ -166,7 +167,7 @@ func (s SqliteRepository) SessionExists(ctx context.Context, sid string) (bool, 
 	logger := log.Ctx(ctx)
 	logger.Debug().Msg("count sessions")
 
-	dbctx := MustCtx(ctx)
+	dbctx := db.MustCtx(ctx)
 
 	var count int
 

@@ -14,6 +14,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/db"
 )
 
 func (s SqliteRepository) ListSettings(ctx context.Context,
@@ -25,7 +26,7 @@ func (s SqliteRepository) ListSettings(ctx context.Context,
 		Msg("get settings")
 
 	res := []SettingsDB{}
-	dbctx := MustCtx(ctx)
+	dbctx := db.MustCtx(ctx)
 
 	query := "SELECT user_id, podcast_id, episode_id, device_id, scope, key, value " +
 		"FROM settings WHERE user_id=? AND scope=? AND podcast_id IS ? AND episode_id IS ? and device_id IS ? "
@@ -47,7 +48,7 @@ func (s SqliteRepository) GetSettings(ctx context.Context,
 		Any("podcast_id", podcastid).Any("episode_id", episodeid).Any("device_id", deviceid).
 		Msg("get settings")
 
-	dbctx := MustCtx(ctx)
+	dbctx := db.MustCtx(ctx)
 	res := SettingsDB{}
 
 	query := "SELECT user_id, podcast_id, episode_id, device_id, scope, key, value " +
@@ -90,7 +91,7 @@ func (s SqliteRepository) SaveSettings(ctx context.Context, sett *SettingsDB) er
 	logger := log.Ctx(ctx)
 	logger.Debug().Object("settings", sett).Msg("save settings")
 
-	dbctx := MustCtx(ctx)
+	dbctx := db.MustCtx(ctx)
 
 	_, err := dbctx.ExecContext(
 		ctx,

@@ -24,7 +24,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
-	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
 //go:embed "migrations/*.sql"
@@ -334,7 +333,7 @@ func InConnectionR[T any](ctx context.Context, r *Database,
 
 	defer r.CloseConnection(ctx, conn)
 
-	ctx = repository.WithCtx(ctx, conn)
+	ctx = WithCtx(ctx, conn)
 
 	res, err := fun(ctx)
 	if err != nil {
@@ -360,7 +359,7 @@ func InTransaction(ctx context.Context, r *Database, fun func(context.Context) e
 		return aerr.ApplyFor(aerr.ErrDatabase, err, "begin tx failed")
 	}
 
-	ctx = repository.WithCtx(ctx, tx)
+	ctx = WithCtx(ctx, tx)
 
 	err = fun(ctx)
 	if err != nil {
@@ -399,7 +398,7 @@ func InTransactionR[T any](ctx context.Context, r *Database,
 		return *new(T), aerr.ApplyFor(aerr.ErrDatabase, err, "begin tx failed")
 	}
 
-	ctx = repository.WithCtx(ctx, tx)
+	ctx = WithCtx(ctx, tx)
 
 	res, err := fun(ctx)
 	if err != nil {
@@ -441,4 +440,4 @@ var maintScripts = []string{
 	"PRAGMA optimize;",
 }
 
-//------------------------------------------------------------------------------
+// ------------------------------------------------------

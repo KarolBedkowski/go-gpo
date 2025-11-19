@@ -10,55 +10,7 @@ package repository
 import (
 	"context"
 	"time"
-
-	"github.com/jmoiron/sqlx"
 )
-
-type Queryer interface {
-	sqlx.QueryerContext
-	SelectContext(ctx context.Context, dest any, query string, args ...any) error
-	GetContext(ctx context.Context, dest any, query string, args ...any) error
-}
-
-type DBContext interface {
-	// sqlx.ExtContext
-	sqlx.QueryerContext
-	sqlx.ExecerContext
-
-	SelectContext(ctx context.Context, dest any, query string, args ...any) error
-	GetContext(ctx context.Context, dest any, query string, args ...any) error
-}
-
-// ------------------------------------------------------
-
-var CtxDBContextKey = any("CtxDBContextKey")
-
-func WithCtx(ctx context.Context, dbctx DBContext) context.Context {
-	db, ok := ctx.Value(CtxDBContextKey).(DBContext)
-	if ok && db != nil {
-		return ctx
-	}
-
-	return context.WithValue(ctx, CtxDBContextKey, dbctx)
-}
-
-func Ctx(ctx context.Context) (DBContext, bool) {
-	value, ok := ctx.Value(CtxDBContextKey).(DBContext)
-	if !ok || value == nil {
-		return nil, false
-	}
-
-	return value, true
-}
-
-func MustCtx(ctx context.Context) DBContext {
-	value, ok := ctx.Value(CtxDBContextKey).(DBContext)
-	if !ok || value == nil {
-		panic("no dbcontext in context")
-	}
-
-	return value
-}
 
 // ------------------------------------------------------
 

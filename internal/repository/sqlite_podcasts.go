@@ -15,6 +15,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/db"
 )
 
 func (s SqliteRepository) ListSubscribedPodcasts(ctx context.Context, userid int64, since time.Time,
@@ -23,7 +24,7 @@ func (s SqliteRepository) ListSubscribedPodcasts(ctx context.Context, userid int
 	logger.Debug().Int64("user_id", userid).Msgf("get subscribed podcasts since %s", since)
 
 	res := []PodcastDB{}
-	dbctx := MustCtx(ctx)
+	dbctx := db.MustCtx(ctx)
 
 	err := dbctx.SelectContext(ctx, &res,
 		"SELECT p.id, p.user_id, p.url, p.title, p.subscribed, p.created_at, p.updated_at "+
@@ -44,7 +45,7 @@ func (s SqliteRepository) ListPodcasts(ctx context.Context, userid int64, since 
 	logger.Debug().Int64("user_id", userid).Msgf("get podcasts since %s", since)
 
 	res := []PodcastDB{}
-	dbctx := MustCtx(ctx)
+	dbctx := db.MustCtx(ctx)
 
 	err := dbctx.SelectContext(ctx, &res,
 		"SELECT p.id, p.user_id, p.url, p.title, p.subscribed, p.created_at, p.updated_at "+
@@ -65,7 +66,7 @@ func (s SqliteRepository) GetPodcast(
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Str("podcast_url", podcasturl).Msg("get podcast")
 
-	dbctx := MustCtx(ctx)
+	dbctx := db.MustCtx(ctx)
 	podcast := PodcastDB{}
 
 	err := dbctx.GetContext(ctx, &podcast,
@@ -84,7 +85,7 @@ func (s SqliteRepository) GetPodcast(
 
 func (s SqliteRepository) SavePodcast(ctx context.Context, podcast *PodcastDB) (int64, error) {
 	logger := log.Ctx(ctx)
-	dbctx := MustCtx(ctx)
+	dbctx := db.MustCtx(ctx)
 
 	if podcast.ID == 0 {
 		logger.Debug().Object("podcast", podcast).Msg("insert podcast")

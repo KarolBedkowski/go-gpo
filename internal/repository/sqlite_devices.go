@@ -15,6 +15,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/db"
 )
 
 func (s SqliteRepository) GetDevice(
@@ -25,7 +26,7 @@ func (s SqliteRepository) GetDevice(
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Str("device_name", devicename).Msg("get device")
 
-	dbctx := MustCtx(ctx)
+	dbctx := db.MustCtx(ctx)
 
 	device := DeviceDB{}
 	err := dbctx.GetContext(ctx, &device,
@@ -54,7 +55,7 @@ func (s SqliteRepository) GetDevice(
 
 func (s SqliteRepository) SaveDevice(ctx context.Context, device *DeviceDB) (int64, error) {
 	logger := log.Ctx(ctx)
-	dbctx := MustCtx(ctx)
+	dbctx := db.MustCtx(ctx)
 
 	if device.ID == 0 {
 		logger.Debug().Object("device", device).Msg("insert device")
@@ -98,7 +99,7 @@ func (s SqliteRepository) ListDevices(ctx context.Context, userid int64) (Device
 	// all device have the same number of subscriptions
 	var subscriptions int
 
-	dbctx := MustCtx(ctx)
+	dbctx := db.MustCtx(ctx)
 
 	err := dbctx.GetContext(ctx, &subscriptions,
 		"SELECT count(*) FROM podcasts where user_id=? and subscribed",
@@ -127,7 +128,7 @@ func (s SqliteRepository) DeleteDevice(ctx context.Context, deviceid int64) erro
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("device_id", deviceid).Msg("delete device")
 
-	dbctx := MustCtx(ctx)
+	dbctx := db.MustCtx(ctx)
 
 	_, err := dbctx.ExecContext(ctx, "UPDATE episodes SET device_id=NULL WHERE device_id=?", deviceid)
 	if err != nil {
@@ -146,7 +147,7 @@ func (s SqliteRepository) MarkSeen(ctx context.Context, ts time.Time, deviceid .
 	logger := log.Ctx(ctx)
 	logger.Debug().Ints64("device_id", deviceid).Msgf("mark device seen at: %s", ts)
 
-	dbctx := MustCtx(ctx)
+	dbctx := db.MustCtx(ctx)
 
 	for _, did := range deviceid {
 		_, err := dbctx.ExecContext(ctx, "UPDATE devices SET last_seen_at=? WHERE id=?", ts, did)

@@ -15,13 +15,14 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/db"
 )
 
 func (s SqliteRepository) GetUser(ctx context.Context, username string) (UserDB, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Str("user_name", username).Msg("get user")
 
-	dbctx := MustCtx(ctx)
+	dbctx := db.MustCtx(ctx)
 	user := UserDB{}
 
 	err := dbctx.GetContext(ctx, &user,
@@ -41,7 +42,7 @@ func (s SqliteRepository) GetUser(ctx context.Context, username string) (UserDB,
 
 func (s SqliteRepository) SaveUser(ctx context.Context, user *UserDB) (int64, error) {
 	logger := log.Ctx(ctx)
-	dbctx := MustCtx(ctx)
+	dbctx := db.MustCtx(ctx)
 
 	if user.ID == 0 {
 		logger.Debug().Object("user", user).Msg("insert user")
@@ -89,7 +90,7 @@ func (s SqliteRepository) ListUsers(ctx context.Context, activeOnly bool) ([]Use
 
 	sql += " ORDER BY username"
 
-	dbctx := MustCtx(ctx)
+	dbctx := db.MustCtx(ctx)
 
 	err := dbctx.SelectContext(ctx, &users, sql)
 	if err != nil {
@@ -104,7 +105,7 @@ func (s SqliteRepository) DeleteUser(ctx context.Context, userid int64) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Msg("delete user")
 
-	dbctx := MustCtx(ctx)
+	dbctx := db.MustCtx(ctx)
 
 	_, err := dbctx.ExecContext(ctx,
 		"DELETE FROM episodes WHERE podcast_id IN (SELECT id FROM podcasts WHERE user_id=?)",
