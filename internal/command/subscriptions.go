@@ -11,11 +11,10 @@ import (
 	"slices"
 	"time"
 
+	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/validators"
 )
-
-var ErrEmptyUsername = aerr.NewSimple("username can't be empty").WithTag(aerr.ValidationError)
 
 type ChangeSubscriptionsCmd struct {
 	UserName   string
@@ -40,7 +39,7 @@ func (s *ChangeSubscriptionsCmd) Sanitize() [][]string {
 
 func (s *ChangeSubscriptionsCmd) Validate() error {
 	if s.UserName == "" {
-		return ErrEmptyUsername
+		return internal.ErrEmptyUsername
 	}
 
 	for _, i := range s.Add {
@@ -67,7 +66,7 @@ type ReplaceSubscriptionsCmd struct {
 
 func (r *ReplaceSubscriptionsCmd) Validate() error {
 	if r.UserName == "" {
-		return ErrEmptyUsername
+		return internal.ErrEmptyUsername
 	}
 
 	return nil

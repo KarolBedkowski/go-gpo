@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/samber/do/v2"
+	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
@@ -37,13 +38,13 @@ func NewPodcastsSrv(i do.Injector) (*PodcastsSrv, error) {
 
 func (p *PodcastsSrv) GetPodcasts(ctx context.Context, username string) ([]model.Podcast, error) {
 	if username == "" {
-		return nil, ErrEmptyUsername
+		return nil, internal.ErrEmptyUsername
 	}
 
 	subs, err := db.InConnectionR(ctx, p.db, func(ctx context.Context) ([]repository.PodcastDB, error) {
 		user, err := p.usersRepo.GetUser(ctx, username)
 		if errors.Is(err, repository.ErrNoData) {
-			return nil, ErrUnknownUser
+			return nil, internal.ErrUnknownUser
 		} else if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
@@ -74,14 +75,14 @@ func (p *PodcastsSrv) GetPodcasts(ctx context.Context, username string) ([]model
 func (p *PodcastsSrv) GetPodcastsWithLastEpisode(ctx context.Context, username string,
 ) ([]model.PodcastWithLastEpisode, error) {
 	if username == "" {
-		return nil, ErrEmptyUsername
+		return nil, internal.ErrEmptyUsername
 	}
 
 	//nolint:wrapcheck
 	return db.InConnectionR(ctx, p.db, func(ctx context.Context) ([]model.PodcastWithLastEpisode, error) {
 		user, err := p.usersRepo.GetUser(ctx, username)
 		if errors.Is(err, repository.ErrNoData) {
-			return nil, ErrUnknownUser
+			return nil, internal.ErrUnknownUser
 		} else if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}

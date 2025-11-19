@@ -22,14 +22,14 @@ type AppError struct {
 	stack   []string
 }
 
-func New(msg string, args ...any) AppError {
+func NewWStack(msg string, args ...any) AppError {
 	return AppError{
 		stack: getStack(),
 		msg:   fmt.Sprintf(msg, args...),
 	}
 }
 
-func NewSimple(msg string, args ...any) AppError {
+func New(msg string, args ...any) AppError {
 	return AppError{
 		msg: fmt.Sprintf(msg, args...),
 	}

@@ -12,6 +12,7 @@ import (
 	"errors"
 
 	"github.com/samber/do/v2"
+	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/db"
@@ -44,7 +45,7 @@ func (d *DevicesSrv) UpdateDevice(ctx context.Context, cmd *command.UpdateDevice
 	return db.InTransaction(ctx, d.db, func(ctx context.Context) error {
 		user, err := d.usersRepo.GetUser(ctx, cmd.UserName)
 		if errors.Is(err, repository.ErrNoData) {
-			return ErrUnknownUser
+			return internal.ErrUnknownUser
 		} else if err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
@@ -78,7 +79,7 @@ func (d *DevicesSrv) ListDevices(ctx context.Context, query *query.GetDevicesQue
 	devices, err := db.InConnectionR(ctx, d.db, func(ctx context.Context) (repository.DevicesDB, error) {
 		user, err := d.usersRepo.GetUser(ctx, query.UserName)
 		if errors.Is(err, repository.ErrNoData) {
-			return nil, ErrUnknownUser
+			return nil, internal.ErrUnknownUser
 		} else if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
@@ -113,14 +114,14 @@ func (d *DevicesSrv) DeleteDevice(ctx context.Context, cmd *command.DeleteDevice
 	return db.InTransaction(ctx, d.db, func(ctx context.Context) error {
 		user, err := d.usersRepo.GetUser(ctx, cmd.UserName)
 		if errors.Is(err, repository.ErrNoData) {
-			return ErrUnknownUser
+			return internal.ErrUnknownUser
 		} else if err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
 		device, err := d.devicesRepo.GetDevice(ctx, user.ID, cmd.DeviceName)
 		if errors.Is(err, repository.ErrNoData) {
-			return ErrUnknownDevice
+			return internal.ErrUnknownDevice
 		} else if err != nil {
 			return aerr.Wrapf(err, "get device from repo failed")
 		}

@@ -9,7 +9,6 @@ package api
 import (
 	"context"
 	"net/http"
-	"slices"
 	"time"
 
 	"gitlab.com/kabes/go-gpo/internal"
@@ -215,15 +214,15 @@ func (e *episode) sanitize() [][]string {
 
 func (e *episode) validate() error {
 	if e.Podcast == "" {
-		return aerr.NewSimple("empty `podcast`").WithTag(aerr.DataError)
+		return aerr.New("empty `podcast`").WithTag(aerr.ValidationError)
 	}
 
 	if e.Episode == "" {
-		return aerr.NewSimple("empty `episode`").WithTag(aerr.DataError)
+		return aerr.New("empty `episode`").WithTag(aerr.ValidationError)
 	}
 
-	if !slices.Contains(model.ValidActions, e.Action) {
-		return aerr.NewSimple("invalid `action`").WithTag(aerr.DataError)
+	if !validators.IsValidEpisodeAction(e.Action) {
+		return aerr.New("invalid `action`").WithTag(aerr.ValidationError)
 	}
 
 	var err error

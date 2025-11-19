@@ -14,6 +14,7 @@ import (
 	//	"gitlab.com/kabes/go-gpo/internal/model"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/do/v2"
+	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/db"
@@ -117,7 +118,7 @@ func (s SettingsSrv) load( //nolint:cyclop
 ) error {
 	user, err := s.usersRepo.GetUser(ctx, key.username)
 	if errors.Is(err, repository.ErrNoData) {
-		return ErrUnknownUser
+		return internal.ErrUnknownUser
 	} else if err != nil {
 		return aerr.ApplyFor(ErrRepositoryError, err)
 	}
@@ -128,7 +129,7 @@ func (s SettingsSrv) load( //nolint:cyclop
 	case "device":
 		device, err := s.devicesRepo.GetDevice(ctx, user.ID, key.devicename)
 		if errors.Is(err, repository.ErrNoData) {
-			return ErrUnknownDevice
+			return internal.ErrUnknownDevice
 		} else if err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
@@ -138,7 +139,7 @@ func (s SettingsSrv) load( //nolint:cyclop
 	case "podcast":
 		p, err := s.podcastsRepo.GetPodcast(ctx, user.ID, key.podcast)
 		if errors.Is(err, repository.ErrNoData) {
-			return ErrUnknownPodcast
+			return internal.ErrUnknownPodcast
 		} else if err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
@@ -148,7 +149,7 @@ func (s SettingsSrv) load( //nolint:cyclop
 	case "episode":
 		p, err := s.podcastsRepo.GetPodcast(ctx, user.ID, key.podcast)
 		if errors.Is(err, repository.ErrNoData) {
-			return ErrUnknownEpisode
+			return internal.ErrUnknownEpisode
 		} else if err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
@@ -157,7 +158,7 @@ func (s SettingsSrv) load( //nolint:cyclop
 
 		e, err := s.episodesRepo.GetEpisode(ctx, user.ID, p.ID, key.episode)
 		if errors.Is(err, repository.ErrNoData) {
-			return ErrUnknownPodcast
+			return internal.ErrUnknownPodcast
 		} else if err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
@@ -166,7 +167,7 @@ func (s SettingsSrv) load( //nolint:cyclop
 	case "account":
 		// no extra data
 	default:
-		return aerr.NewSimple("unknown scope")
+		return aerr.New("unknown scope").WithTag(aerr.ValidationError)
 	}
 
 	return nil

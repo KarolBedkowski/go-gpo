@@ -12,6 +12,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/samber/do/v2"
 
+	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/assert"
 	"gitlab.com/kabes/go-gpo/internal/command"
 )
@@ -21,7 +22,7 @@ func TestUsers(t *testing.T) {
 	usersSrv := do.MustInvoke[*UsersSrv](i)
 
 	_, err := usersSrv.LoginUser(ctx, "test", "test123")
-	assert.ErrSpec(t, err, ErrUnknownUser)
+	assert.ErrSpec(t, err, internal.ErrUnknownUser)
 
 	newuser := command.NewUserCmd{UserName: "test", Password: "test123", Email: "test@example.com", Name: "test user 1"}
 	res, err := usersSrv.AddUser(ctx, &newuser)
@@ -35,13 +36,13 @@ func TestUsers(t *testing.T) {
 	assert.Equal(t, user.Email, newuser.Email)
 
 	_, err = usersSrv.LoginUser(ctx, "test", "test1233")
-	assert.ErrSpec(t, err, ErrUnauthorized)
+	assert.ErrSpec(t, err, internal.ErrUnauthorized)
 
 	// lock account and try login
 	err = usersSrv.LockAccount(ctx, command.LockAccountCmd{UserName: "test"})
 	assert.NoErr(t, err)
 	user, err = usersSrv.LoginUser(ctx, "test", "test123")
-	assert.ErrSpec(t, err, ErrUserAccountLocked)
+	assert.ErrSpec(t, err, internal.ErrUserAccountLocked)
 
 	// change pass and unlock
 	chpasscmd := command.ChangeUserPasswordCmd{
@@ -64,7 +65,7 @@ func TestUsers(t *testing.T) {
 		Name:     "test user 2",
 	}
 	_, err = usersSrv.AddUser(ctx, &newuser2)
-	assert.ErrSpec(t, err, ErrUserExists)
+	assert.ErrSpec(t, err, internal.ErrUserExists)
 
 	newuser2.UserName = "test2"
 	res2, err := usersSrv.AddUser(ctx, &newuser2)
@@ -108,7 +109,7 @@ func TestDeleteUser(t *testing.T) {
 	)
 
 	err := usersSrv.DeleteUser(ctx, &command.DeleteUserCmd{UserName: "user3"})
-	assert.ErrSpec(t, err, ErrUnknownUser)
+	assert.ErrSpec(t, err, internal.ErrUnknownUser)
 
 	err = usersSrv.DeleteUser(ctx, &command.DeleteUserCmd{UserName: "user2"})
 	assert.NoErr(t, err)

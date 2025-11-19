@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/go-chi/render"
+	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
-	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
 // ensureList create empty list if `inp` is null or return `inp` otherwise.
@@ -47,7 +47,7 @@ func checkAndWriteError(w http.ResponseWriter, r *http.Request, err error) {
 	status := http.StatusInternalServerError
 
 	switch {
-	case errors.Is(err, service.ErrUnknownDevice):
+	case errors.Is(err, internal.ErrUnknownDevice):
 		status = http.StatusNotFound
 
 	case aerr.HasTag(err, aerr.InternalError):

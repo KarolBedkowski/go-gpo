@@ -13,6 +13,8 @@ import (
 
 var ErrNoData = errors.New("no result")
 
+//----------------------------------------
+
 type DeviceDB struct {
 	ID         int64     `db:"id"`
 	UserID     int64     `db:"user_id"`

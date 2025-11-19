@@ -76,7 +76,7 @@ func (a authenticator) handle(next http.Handler) http.Handler {
 			sess := session.GetSession(r)
 
 			_, err := a.usersSrv.LoginUser(ctx, username, password)
-			if errors.Is(err, service.ErrUnauthorized) || errors.Is(err, service.ErrUnknownUser) {
+			if errors.Is(err, internal.ErrUnauthorized) || errors.Is(err, internal.ErrUnknownUser) {
 				logger.Warn().Err(err).Str("user_name", username).Msg("auth failed")
 				w.Header().Add("WWW-Authenticate", "Basic realm=\"go-gpo\"")
 

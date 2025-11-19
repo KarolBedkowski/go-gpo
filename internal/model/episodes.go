@@ -8,16 +8,14 @@ package model
 //
 
 import (
-	"slices"
 	"time"
 
 	"github.com/rs/zerolog"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/repository"
+	"gitlab.com/kabes/go-gpo/internal/validators"
 )
-
-var ValidActions = []string{"download", "delete", "play", "new", "flattr", ""}
 
 type Episode struct {
 	Podcast   string
@@ -53,7 +51,7 @@ func NewEpisodeFromDBModel(episodedb *repository.EpisodeDB) Episode {
 }
 
 func (e *Episode) Validate() error {
-	if !slices.Contains(ValidActions, e.Action) {
+	if !validators.IsValidEpisodeAction(e.Action) {
 		return aerr.ErrValidation.WithUserMsg("invalid action")
 	}
 

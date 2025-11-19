@@ -66,7 +66,7 @@ func TestAppErrorWrap(t *testing.T) {
 }
 
 func TestAppErrorSimple(t *testing.T) {
-	err := NewSimple("error1")
+	err := New("error1")
 
 	aerr1 := Wrap(err)
 	assert.True(t, errors.Is(aerr1, err))
@@ -125,7 +125,7 @@ func TestAppErrorMeta(t *testing.T) {
 }
 
 func TestAppErrorTags(t *testing.T) {
-	aerr0 := New("error1")
+	aerr0 := NewWStack("error1")
 
 	aerr1 := aerr0.WithTag("k1")
 	assert.Equal(t, GetTags(aerr1), []string{"k1"})
@@ -144,7 +144,7 @@ func TestAppErrorTags(t *testing.T) {
 }
 
 func TestAppErrorErr(t *testing.T) {
-	err := NewSimple("simple error%d", 1)
+	err := New("simple error%d", 1)
 	err0 := Newf("error %s-%d", "1", 2)
 
 	aerr1 := err.WithError(err0)
