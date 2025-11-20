@@ -19,7 +19,7 @@ import (
 
 //---------------------------------------------------------------------
 
-func NewAddUserCmd() *cli.Command {
+func newAddUserCmd() *cli.Command {
 	return &cli.Command{
 		Name:  "add",
 		Usage: "add new user",
@@ -59,7 +59,7 @@ func addUserCmd(ctx context.Context, clicmd *cli.Command, injector do.Injector) 
 
 // ---------------------------------------------------------------------
 
-func NewListUsersCmd() *cli.Command {
+func newListUsersCmd() *cli.Command {
 	return &cli.Command{
 		Name:  "list",
 		Usage: "list user accounts",
@@ -97,7 +97,7 @@ func listUsersCmd(ctx context.Context, clicmd *cli.Command, injector do.Injector
 
 // ---------------------------------------------------------------------
 
-func NewDeleteUsersCmd() *cli.Command {
+func newDeleteUsersCmd() *cli.Command {
 	return &cli.Command{
 		Name:  "delete",
 		Usage: "delete user account",

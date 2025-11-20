@@ -19,7 +19,7 @@ import (
 
 //---------------------------------------------------------------------
 
-func NewUpdateDeviceCmd() *cli.Command {
+func newUpdateDeviceCmd() *cli.Command {
 	return &cli.Command{
 		Name:  "update",
 		Usage: "add or update device",
@@ -56,7 +56,7 @@ func updateDeviceCmd(ctx context.Context, clicmd *cli.Command, injector do.Injec
 
 //---------------------------------------------------------------------
 
-func NewDeleteDeviceCmd() *cli.Command {
+func newDeleteDeviceCmd() *cli.Command {
 	return &cli.Command{
 		Name:  "delete",
 		Usage: "delete device",
@@ -83,7 +83,7 @@ func deleteDeviceCmd(ctx context.Context, clicmd *cli.Command, injector do.Injec
 
 //-----------
 
-func NewListDeviceCmd() *cli.Command {
+func newListDeviceCmd() *cli.Command {
 	return &cli.Command{
 		Name:  "list",
 		Usage: "list devices",

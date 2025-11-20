@@ -23,7 +23,7 @@ import (
 
 //---------------------------------------------------------------------
 
-func NewChangeUserPasswordCmd() *cli.Command {
+func newChangeUserPasswordCmd() *cli.Command {
 	return &cli.Command{
 		Name:  "password",
 		Usage: "set new user password / unlock account",
@@ -81,7 +81,7 @@ func readValidatePassword(pass string) (string, error) {
 
 //---------------------------------------------------------------------
 
-func NewLockUserCmd() *cli.Command {
+func newLockUserCmd() *cli.Command {
 	return &cli.Command{
 		Name:  "lock",
 		Usage: "lock user account",

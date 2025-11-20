@@ -16,7 +16,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/db"
 )
 
-func NewMigrateCmd() *cli.Command {
+func newMigrateCmd() *cli.Command {
 	return &cli.Command{
 		Name:   "migrate",
 		Usage:  "update database",

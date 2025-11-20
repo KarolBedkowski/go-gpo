@@ -20,7 +20,7 @@ import (
 
 const ListSupportedObjects = "devices, subs"
 
-func NewListCmd() *cli.Command {
+func newListCmd() *cli.Command {
 	return &cli.Command{
 		Name:  "list",
 		Usage: "list user objects.",

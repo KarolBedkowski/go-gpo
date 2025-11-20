@@ -16,7 +16,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/db"
 )
 
-func NewMaintenanceCmd() *cli.Command {
+func newMaintenanceCmd() *cli.Command {
 	return &cli.Command{
 		Name:   "maintenance",
 		Usage:  "maintenance database",

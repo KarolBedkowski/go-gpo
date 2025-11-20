@@ -29,7 +29,7 @@ import (
 	gpoweb "gitlab.com/kabes/go-gpo/internal/web"
 )
 
-func NewStartServerCmd() *cli.Command {
+func newStartServerCmd() *cli.Command {
 	return &cli.Command{
 		Name:  "serve",
 		Usage: "start server",
