@@ -1,11 +1,11 @@
 //
-// maintenance.go
+// migrate.go
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
 //
 // Distributed under terms of the GPLv3 license.
 //
 
-package cmd
+package cli
 
 import (
 	"context"
@@ -16,23 +16,23 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/db"
 )
 
-func NewMaintenanceCmd() *cli.Command {
+func NewMigrateCmd() *cli.Command {
 	return &cli.Command{
-		Name:   "maintenance",
-		Usage:  "maintenance database",
-		Action: wrap(maintenanceCmd),
+		Name:   "migrate",
+		Usage:  "update database",
+		Action: wrap(migrateCmd),
 	}
 }
 
-func maintenanceCmd(ctx context.Context, _ *cli.Command, injector do.Injector) error {
+func migrateCmd(ctx context.Context, _ *cli.Command, injector do.Injector) error {
 	db := do.MustInvoke[*db.Database](injector)
 
-	err := db.Maintenance(ctx)
+	err := db.Migrate(ctx, "sqlite3")
 	if err != nil {
-		return fmt.Errorf("maintenance error: %w", err)
+		return fmt.Errorf("migrate error: %w", err)
 	}
 
-	fmt.Printf("Done")
+	fmt.Printf("Migration finished")
 
 	return nil
 }

@@ -17,7 +17,7 @@ import (
 	"github.com/urfave/cli/v3"
 
 	"gitlab.com/kabes/go-gpo/internal/aerr"
-	"gitlab.com/kabes/go-gpo/internal/cmd"
+	acli "gitlab.com/kabes/go-gpo/internal/cli"
 	"gitlab.com/kabes/go-gpo/internal/config"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -30,7 +30,7 @@ func main() {
 		Usage:   "Print version.",
 	}
 
-	cmd := &cli.Command{
+	cli := &cli.Command{
 		Name:    "go-gpo",
 		Version: config.VersionString,
 		Flags: []cli.Flag{
@@ -60,22 +60,22 @@ func main() {
 			&cli.StringFlag{Name: "debug", Usage: "Debug flags", Sources: cli.EnvVars("GOGPO_DEBUG")},
 		},
 		Commands: []*cli.Command{
-			cmd.NewStartServerCmd(),
-			cmd.NewListCmd(),
+			acli.NewStartServerCmd(),
+			acli.NewListCmd(),
 			databaseSubCmd(),
 			usersSubCmd(),
 			devicesSubCmd(),
 		},
 	}
 
-	if err := cmd.Run(context.Background(), os.Args); err != nil {
+	if err := cli.Run(context.Background(), os.Args); err != nil {
 		if h := aerr.GetUserMessage(err); h != "" {
 			fmt.Printf("Error: %s\n", h)
 		} else {
 			fmt.Printf("Error: %s\n", err.Error())
 		}
 
-		if cmd.String("log.level") == "debug" {
+		if cli.String("log.level") == "debug" {
 			fmt.Printf("Error: %#+v\n", err)
 		}
 	}
@@ -86,11 +86,11 @@ func usersSubCmd() *cli.Command {
 		Name:  "user",
 		Usage: "manage users",
 		Commands: []*cli.Command{
-			cmd.NewAddUserCmd(),
-			cmd.NewDeleteUsersCmd(),
-			cmd.NewListUsersCmd(),
-			cmd.NewLockUserCmd(),
-			cmd.NewChangeUserPasswordCmd(),
+			acli.NewAddUserCmd(),
+			acli.NewDeleteUsersCmd(),
+			acli.NewListUsersCmd(),
+			acli.NewLockUserCmd(),
+			acli.NewChangeUserPasswordCmd(),
 		},
 	}
 }
@@ -100,8 +100,8 @@ func databaseSubCmd() *cli.Command {
 		Name:  "database",
 		Usage: "manage database",
 		Commands: []*cli.Command{
-			cmd.NewMigrateCmd(),
-			cmd.NewMaintenanceCmd(),
+			acli.NewMigrateCmd(),
+			acli.NewMaintenanceCmd(),
 		},
 	}
 }
@@ -111,9 +111,9 @@ func devicesSubCmd() *cli.Command {
 		Name:  "device",
 		Usage: "manage devices",
 		Commands: []*cli.Command{
-			cmd.NewUpdateDeviceCmd(),
-			cmd.NewDeleteDeviceCmd(),
-			cmd.NewListDeviceCmd(),
+			acli.NewUpdateDeviceCmd(),
+			acli.NewDeleteDeviceCmd(),
+			acli.NewListDeviceCmd(),
 		},
 	}
 }
