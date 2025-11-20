@@ -12,35 +12,36 @@ import (
 	"fmt"
 
 	"github.com/samber/do/v2"
+	"github.com/urfave/cli/v3"
 	"gitlab.com/kabes/go-gpo/internal/command"
-	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
 //---------------------------------------------------------------------
 
-type AddUser struct {
-	Database string
-	Name     string
-	Password string
-	Email    string
-	UserName string
+func NewAddUserCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "add",
+		Usage: "add new user",
+		Flags: []cli.Flag{
+			&cli.StringFlag{Name: "username", Required: true, Aliases: []string{"u"}},
+			&cli.StringFlag{Name: "password", Required: true, Aliases: []string{"p"}},
+			&cli.StringFlag{Name: "email", Aliases: []string{"e"}},
+			&cli.StringFlag{Name: "name", Aliases: []string{"n"}},
+		},
+		Action: wrap(addUserCmd),
+	}
 }
 
-func (a *AddUser) Start(ctx context.Context) error {
-	injector := createInjector(ctx)
-
-	db := do.MustInvoke[*db.Database](injector)
-	if err := db.Connect(ctx, "sqlite3", a.Database); err != nil {
-		return fmt.Errorf("connect to database error: %w", err)
-	}
+func addUserCmd(ctx context.Context, clicmd *cli.Command, injector do.Injector) error {
+	username := clicmd.String("username")
 
 	usersrv := do.MustInvoke[*service.UsersSrv](injector)
 	cmd := command.NewUserCmd{
-		UserName: a.UserName,
-		Password: a.Password,
-		Email:    a.Email,
-		Name:     a.Name,
+		UserName: username,
+		Password: clicmd.String("password"),
+		Email:    clicmd.String("email"),
+		Name:     clicmd.String("name"),
 	}
 
 	res, err := usersrv.AddUser(ctx, &cmd)
@@ -48,7 +49,7 @@ func (a *AddUser) Start(ctx context.Context) error {
 	case err != nil:
 		return fmt.Errorf("add user error: %w", err)
 	case res.UserID > 0:
-		fmt.Printf("User %q created; id: %d\n", a.UserName, res.UserID)
+		fmt.Printf("User %q created; id: %d\n", username, res.UserID)
 	default:
 		fmt.Printf("Create user failed\n")
 	}
@@ -58,22 +59,21 @@ func (a *AddUser) Start(ctx context.Context) error {
 
 // ---------------------------------------------------------------------
 
-type ListUsers struct {
-	Database   string
-	ActiveOnly bool
+func NewListUsersCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "list",
+		Usage: "list user accounts",
+		Flags: []cli.Flag{
+			&cli.BoolFlag{Name: "active-only", Usage: "show active only accounts", Aliases: []string{"a"}},
+		},
+		Action: wrap(listUsersCmd),
+	}
 }
 
-func (l *ListUsers) Start(ctx context.Context) error {
-	injector := createInjector(ctx)
-
-	db := do.MustInvoke[*db.Database](injector)
-	if err := db.Connect(ctx, "sqlite3", l.Database); err != nil {
-		return fmt.Errorf("connect to database error: %w", err)
-	}
-
+func listUsersCmd(ctx context.Context, clicmd *cli.Command, injector do.Injector) error {
 	usersrv := do.MustInvoke[*service.UsersSrv](injector)
 
-	users, err := usersrv.GetUsers(ctx, l.ActiveOnly)
+	users, err := usersrv.GetUsers(ctx, clicmd.Bool("active-only"))
 	if err != nil {
 		return fmt.Errorf("get users error: %w", err)
 	}
@@ -97,25 +97,27 @@ func (l *ListUsers) Start(ctx context.Context) error {
 
 // ---------------------------------------------------------------------
 
-type DeleteUser struct {
-	Database string
-	UserName string
+func NewDeleteUsersCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "delete",
+		Usage: "delete user account",
+		Flags: []cli.Flag{
+			&cli.StringFlag{Name: "username", Required: true, Aliases: []string{"u"}},
+		},
+		Action: wrap(deleteUserCmd),
+	}
 }
 
-func (d *DeleteUser) Start(ctx context.Context) error {
-	injector := createInjector(ctx)
-
-	db := do.MustInvoke[*db.Database](injector)
-	if err := db.Connect(ctx, "sqlite3", d.Database); err != nil {
-		return fmt.Errorf("connect to database error: %w", err)
-	}
-
+func deleteUserCmd(ctx context.Context, clicmd *cli.Command, injector do.Injector) error {
+	username := clicmd.String("username")
 	usersrv := do.MustInvoke[*service.UsersSrv](injector)
 
-	err := usersrv.DeleteUser(ctx, &command.DeleteUserCmd{UserName: d.UserName})
+	err := usersrv.DeleteUser(ctx, &command.DeleteUserCmd{UserName: username})
 	if err != nil {
 		return fmt.Errorf("delete user error: %w", err)
 	}
+
+	fmt.Printf("User %s deleted\n", username)
 
 	return nil
 }

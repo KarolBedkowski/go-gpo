@@ -12,36 +12,38 @@ import (
 	"fmt"
 
 	"github.com/samber/do/v2"
+	"github.com/urfave/cli/v3"
 	"gitlab.com/kabes/go-gpo/internal/command"
-	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
 //---------------------------------------------------------------------
 
-type UpdateDevice struct {
-	Database      string
-	UserName      string
-	DeviceName    string
-	DeviceType    string
-	DeviceCaption string
+func NewUpdateDeviceCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "update",
+		Usage: "add or update device",
+		Flags: []cli.Flag{
+			&cli.StringFlag{Name: "username", Required: true, Aliases: []string{"u"}},
+			&cli.StringFlag{Name: "device", Required: true, Aliases: []string{"d"}},
+			&cli.StringFlag{
+				Name: "type", Required: false, Aliases: []string{"t"}, Value: "mobile",
+				Usage: "device type (desktop, laptop, mobile, server, other)",
+			},
+			&cli.StringFlag{Name: "caption", Required: false, Aliases: []string{"c"}},
+		},
+		Action: wrap(updateDeviceCmd),
+	}
 }
 
-func (u *UpdateDevice) Start(ctx context.Context) error {
-	injector := createInjector(ctx)
-
-	db := do.MustInvoke[*db.Database](injector)
-	if err := db.Connect(ctx, "sqlite3", u.Database); err != nil {
-		return fmt.Errorf("connect to database error: %w", err)
-	}
-
+func updateDeviceCmd(ctx context.Context, clicmd *cli.Command, injector do.Injector) error {
 	devsrv := do.MustInvoke[*service.DevicesSrv](injector)
 
 	cmd := command.UpdateDeviceCmd{
-		UserName:   u.UserName,
-		DeviceName: u.DeviceName,
-		DeviceType: u.DeviceType,
-		Caption:    u.DeviceCaption,
+		UserName:   clicmd.String("username"),
+		DeviceName: clicmd.String("device"),
+		DeviceType: clicmd.String("type"),
+		Caption:    clicmd.String("caption"),
 	}
 	if err := devsrv.UpdateDevice(ctx, &cmd); err != nil {
 		return fmt.Errorf("update device error: %w", err)
@@ -54,23 +56,22 @@ func (u *UpdateDevice) Start(ctx context.Context) error {
 
 //---------------------------------------------------------------------
 
-type DeleteDevice struct {
-	Database   string
-	UserName   string
-	DeviceName string
+func NewDeleteDeviceCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "delete",
+		Usage: "delete device",
+		Flags: []cli.Flag{
+			&cli.StringFlag{Name: "username", Required: true, Aliases: []string{"u"}},
+			&cli.StringFlag{Name: "device", Required: true, Aliases: []string{"d"}},
+		},
+		Action: wrap(deleteDeviceCmd),
+	}
 }
 
-func (d *DeleteDevice) Start(ctx context.Context) error {
-	injector := createInjector(ctx)
-
-	db := do.MustInvoke[*db.Database](injector)
-	if err := db.Connect(ctx, "sqlite3", d.Database); err != nil {
-		return fmt.Errorf("connect to database error: %w", err)
-	}
-
+func deleteDeviceCmd(ctx context.Context, clicmd *cli.Command, injector do.Injector) error {
 	devsrv := do.MustInvoke[*service.DevicesSrv](injector)
 
-	cmd := command.DeleteDeviceCmd{UserName: d.UserName, DeviceName: d.DeviceName}
+	cmd := command.DeleteDeviceCmd{UserName: clicmd.String("username"), DeviceName: clicmd.String("device")}
 	if err := devsrv.DeleteDevice(ctx, &cmd); err != nil {
 		return fmt.Errorf("delete device error: %w", err)
 	}
@@ -78,4 +79,17 @@ func (d *DeleteDevice) Start(ctx context.Context) error {
 	fmt.Printf("Device updated")
 
 	return nil
+}
+
+//-----------
+
+func NewListDeviceCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "list",
+		Usage: "list devices",
+		Flags: []cli.Flag{
+			&cli.StringFlag{Name: "username", Required: true, Aliases: []string{"u"}},
+		},
+		Action: wrap(listDevicesCmd),
+	}
 }

@@ -21,6 +21,7 @@ import (
 	"github.com/rs/zerolog/log"
 	dochi "github.com/samber/do/http/chi/v2"
 	"github.com/samber/do/v2"
+	"gitlab.com/kabes/go-gpo/internal/aerr"
 	gpoapi "gitlab.com/kabes/go-gpo/internal/api"
 	"gitlab.com/kabes/go-gpo/internal/config"
 	gpoweb "gitlab.com/kabes/go-gpo/internal/web"
@@ -31,6 +32,14 @@ type Configuration struct {
 	WebRoot       string
 	DebugFlags    config.DebugFlags
 	EnableMetrics bool
+}
+
+func (c *Configuration) Validate() error {
+	if c.Listen == "" {
+		return aerr.ErrValidation.WithUserMsg("listen address can't be empty")
+	}
+
+	return nil
 }
 
 const (

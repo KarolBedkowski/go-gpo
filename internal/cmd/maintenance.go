@@ -12,20 +12,20 @@ import (
 	"fmt"
 
 	"github.com/samber/do/v2"
+	"github.com/urfave/cli/v3"
 	"gitlab.com/kabes/go-gpo/internal/db"
 )
 
-type Maintenance struct {
-	Database string
+func NewMaintenanceCmd() *cli.Command {
+	return &cli.Command{
+		Name:   "maintenance",
+		Usage:  "maintenance database",
+		Action: wrap(maintenanceCmd),
+	}
 }
 
-func (m *Maintenance) Start(ctx context.Context) error {
-	injector := createInjector(ctx)
-
+func maintenanceCmd(ctx context.Context, _ *cli.Command, injector do.Injector) error {
 	db := do.MustInvoke[*db.Database](injector)
-	if err := db.Connect(ctx, "sqlite3", m.Database); err != nil {
-		return fmt.Errorf("connect to database error: %w", err)
-	}
 
 	err := db.Maintenance(ctx)
 	if err != nil {

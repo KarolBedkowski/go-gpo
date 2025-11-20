@@ -12,20 +12,20 @@ import (
 	"fmt"
 
 	"github.com/samber/do/v2"
+	"github.com/urfave/cli/v3"
 	"gitlab.com/kabes/go-gpo/internal/db"
 )
 
-type Migrate struct {
-	Database string
+func NewMigrateCmd() *cli.Command {
+	return &cli.Command{
+		Name:   "migrate",
+		Usage:  "update database",
+		Action: wrap(migrateCmd),
+	}
 }
 
-func (m *Migrate) Start(ctx context.Context) error {
-	injector := createInjector(ctx)
-
+func migrateCmd(ctx context.Context, _ *cli.Command, injector do.Injector) error {
 	db := do.MustInvoke[*db.Database](injector)
-	if err := db.Connect(ctx, "sqlite3", m.Database); err != nil {
-		return fmt.Errorf("connect to database error: %w", err)
-	}
 
 	err := db.Migrate(ctx, "sqlite3")
 	if err != nil {

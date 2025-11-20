@@ -10,52 +10,51 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/samber/do/v2"
+	"github.com/urfave/cli/v3"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
-	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/query"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
-type List struct {
-	Database   string
-	UserName   string
-	DeviceName string
-	Object     string
-}
-
 const ListSupportedObjects = "devices, subs"
 
-func (l *List) Start(ctx context.Context) error {
-	if err := l.validate(); err != nil {
-		return fmt.Errorf("validation error: %w", err)
-	}
-
-	injector := createInjector(ctx)
-
-	db := do.MustInvoke[*db.Database](injector)
-	if err := db.Connect(ctx, "sqlite3", l.Database); err != nil {
-		return fmt.Errorf("connect to database error: %w", err)
-	}
-
-	devSrv := do.MustInvoke[*service.DevicesSrv](injector)
-	subsSrv := do.MustInvoke[*service.SubscriptionsSrv](injector)
-
-	switch strings.TrimSpace(l.Object) {
-	case "devices":
-		return l.listDevices(ctx, devSrv)
-	case "subs":
-		return l.listSubscriptions(ctx, subsSrv)
-
-	default:
-		return aerr.ErrValidation.WithUserMsg("unknown object for query %q", l.Object)
+func NewListCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "list",
+		Usage: "list user objects.",
+		Flags: []cli.Flag{
+			&cli.StringFlag{Name: "username", Required: true, Aliases: []string{"u"}},
+			&cli.StringFlag{
+				Name:     "object",
+				Required: true,
+				Usage:    "object to list (" + ListSupportedObjects + ")",
+				Aliases:  []string{"o"},
+			},
+			&cli.StringFlag{Name: "device", Aliases: []string{"d"}},
+		},
+		Action: wrap(listCmd),
 	}
 }
 
-func (l *List) listDevices(ctx context.Context, devsrv *service.DevicesSrv) error {
-	devices, err := devsrv.ListDevices(ctx, &query.GetDevicesQuery{UserName: l.UserName})
+func listCmd(ctx context.Context, clicmd *cli.Command, injector do.Injector) error {
+	object := clicmd.String("object")
+	switch object {
+	case "devices":
+		return listDevicesCmd(ctx, clicmd, injector)
+	case "subs":
+		return listSubscriptionsCmd(ctx, clicmd, injector)
+
+	default:
+		return aerr.ErrValidation.WithUserMsg("unknown object for query %q", object)
+	}
+}
+
+func listDevicesCmd(ctx context.Context, clicmd *cli.Command, injector do.Injector) error {
+	devsrv := do.MustInvoke[*service.DevicesSrv](injector)
+
+	devices, err := devsrv.ListDevices(ctx, &query.GetDevicesQuery{UserName: clicmd.String("username")})
 	if err != nil {
 		return fmt.Errorf("get device list error: %w", err)
 	}
@@ -70,8 +69,13 @@ func (l *List) listDevices(ctx context.Context, devsrv *service.DevicesSrv) erro
 	return nil
 }
 
-func (l *List) listSubscriptions(ctx context.Context, subssrv *service.SubscriptionsSrv) error {
-	subs, err := subssrv.GetUserSubscriptions(ctx, &query.GetUserSubscriptionsQuery{UserName: l.UserName})
+func listSubscriptionsCmd(ctx context.Context, clicmd *cli.Command, injector do.Injector) error {
+	subssrv := do.MustInvoke[*service.SubscriptionsSrv](injector)
+
+	subs, err := subssrv.GetUserSubscriptions(
+		ctx,
+		&query.GetUserSubscriptionsQuery{UserName: clicmd.String("username")},
+	)
 	if err != nil {
 		return fmt.Errorf("get subscriptions list error: %w", err)
 	}
@@ -81,18 +85,6 @@ func (l *List) listSubscriptions(ctx context.Context, subssrv *service.Subscript
 	}
 
 	fmt.Printf("\nTotal: %d\n", len(subs))
-
-	return nil
-}
-
-func (l *List) validate() error {
-	l.UserName = strings.TrimSpace(l.UserName)
-	l.Object = strings.TrimSpace(l.Object)
-	l.DeviceName = strings.TrimSpace(l.DeviceName)
-
-	if l.UserName == "" {
-		return aerr.ErrValidation.WithUserMsg("username can't be empty")
-	}
 
 	return nil
 }

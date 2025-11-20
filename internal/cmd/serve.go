@@ -20,6 +20,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/do/v2"
+	"github.com/urfave/cli/v3"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	gpoapi "gitlab.com/kabes/go-gpo/internal/api"
 	"gitlab.com/kabes/go-gpo/internal/config"
@@ -28,46 +29,91 @@ import (
 	gpoweb "gitlab.com/kabes/go-gpo/internal/web"
 )
 
-type Server struct {
-	Database      string
-	Listen        string
-	WebRoot       string
-	DebugFlags    config.DebugFlags
-	EnableMetrics bool
+func NewStartServerCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "serve",
+		Usage: "start server",
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:    "address",
+				Value:   ":8080",
+				Usage:   "listen address",
+				Aliases: []string{"a"},
+				Sources: cli.EnvVars("GOGPO_SERVER_ADDRESS"),
+				Config:  cli.StringConfig{TrimSpace: true},
+			},
+			&cli.StringFlag{
+				Name:    "web-root",
+				Value:   "/",
+				Usage:   "path root",
+				Aliases: []string{"a"},
+				Sources: cli.EnvVars("GOGPO_SERVER_WEBROOT"),
+				Config:  cli.StringConfig{TrimSpace: true},
+			},
+			&cli.BoolFlag{
+				Name:    "enable-metrics",
+				Usage:   "enable prometheus metrics (/metrics endpoint)",
+				Sources: cli.EnvVars("GOGPO_SERVER_METRICS"),
+			},
+		},
+		Action: wrap(startServerCmd),
+	}
 }
 
-func (s *Server) Start(ctx context.Context) error {
-	if err := s.validate(); err != nil {
-		return fmt.Errorf("validation error: %w", err)
+func startServerCmd(ctx context.Context, clicmd *cli.Command, rootInjector do.Injector) error {
+	injector := rootInjector.Scope("server",
+		gpoweb.Package,
+		gpoapi.Package,
+		server.Package,
+	)
+
+	serverConf := server.Configuration{
+		Listen:        strings.TrimSpace(clicmd.String("address")),
+		DebugFlags:    config.NewDebugFLags(clicmd.String("debug")),
+		WebRoot:       strings.TrimSuffix(clicmd.String("web-root"), "/"),
+		EnableMetrics: clicmd.Bool("enable-metrics"),
 	}
 
+	if err := serverConf.Validate(); err != nil {
+		return aerr.Wrapf(err, "server config validation failed")
+	}
+
+	do.ProvideNamedValue(injector, "server.webroot", clicmd.String("web-root"))
+	do.ProvideValue(injector, &serverConf)
+
+	if serverConf.DebugFlags.HasFlag(config.DebugDo) {
+		enableDoDebug(ctx, injector.RootScope())
+	}
+
+	s := Server{
+		db:   do.MustInvoke[*db.Database](injector),
+		conf: serverConf,
+	}
+
+	return s.start(ctx, injector)
+}
+
+type Server struct {
+	db   *db.Database
+	conf server.Configuration
+}
+
+func (s *Server) start(ctx context.Context, injector do.Injector) error {
 	logger := log.Ctx(ctx)
 	logger.Log().Msgf("Starting go-gpo (%s)...", config.VersionString)
 
 	s.startSystemdWatchdog(logger)
-
-	injector := s.createInjector(createInjector(ctx))
-
-	if s.DebugFlags.HasFlag(config.DebugDo) {
-		enableDoDebug(ctx, injector.RootScope())
-	}
+	s.db.RegisterMetrics(s.conf.DebugFlags.HasFlag(config.DebugDBQueryMetrics))
 
 	ctx, cancel := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGINT)
 	defer cancel()
-
-	database := do.MustInvoke[*db.Database](injector)
-	if err := database.Connect(ctx, "sqlite3", s.Database); err != nil {
-		return fmt.Errorf("connect to database error: %w", err)
-	}
-
-	database.RegisterMetrics(s.DebugFlags.HasFlag(config.DebugDBQueryMetrics))
 
 	var group run.Group
 	group.Add(run.ContextHandler(ctx))
 
 	srv := do.MustInvoke[server.Server](injector)
 	group.Add(func() error {
-		logger.Log().Msgf("Listen on %s...", s.Listen)
+		logger.Log().Msgf("Listen on %s...", s.conf.Listen)
 
 		if err := srv.Start(ctx); err != nil {
 			return fmt.Errorf("start server error: %w", err)
@@ -75,7 +121,8 @@ func (s *Server) Start(ctx context.Context) error {
 
 		return nil
 	}, srv.Stop)
-	group.Add(func() error { return database.StartBackgroundMaintenance(ctx) }, func(_ error) {})
+
+	group.Add(func() error { return s.db.StartBackgroundMaintenance(ctx) }, func(_ error) {})
 
 	systemd.NotifyReady()           //nolint:errcheck
 	systemd.NotifyStatus("running") //nolint:errcheck
@@ -97,33 +144,4 @@ func (*Server) startSystemdWatchdog(logger *zerolog.Logger) {
 	} else if err != nil {
 		logger.Warn().Err(err).Msg("systemd autowatchdog start error")
 	}
-}
-
-func (s *Server) createInjector(root do.Injector) *do.Scope {
-	injector := root.Scope("server",
-		gpoweb.Package,
-		gpoapi.Package,
-		server.Package,
-	)
-
-	do.ProvideNamedValue(injector, "server.webroot", s.WebRoot)
-	do.ProvideValue(injector, &server.Configuration{
-		Listen:        s.Listen,
-		DebugFlags:    s.DebugFlags,
-		WebRoot:       s.WebRoot,
-		EnableMetrics: s.EnableMetrics,
-	})
-
-	return injector
-}
-
-func (s *Server) validate() error {
-	s.Listen = strings.TrimSpace(s.Listen)
-	s.WebRoot = strings.TrimSuffix(s.WebRoot, "/")
-
-	if s.Listen == "" {
-		return aerr.ErrValidation.WithUserMsg("listen address can't be empty")
-	}
-
-	return nil
 }
