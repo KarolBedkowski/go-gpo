@@ -11,6 +11,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -116,7 +117,7 @@ func New(injector do.Injector) (Server, error) {
 	}, nil
 }
 
-func (s *Server) Start(ctx context.Context) error {
+func (s *Server) Run(ctx context.Context) error {
 	if s.cfg.DebugFlags.HasFlag(config.DebugRouter) {
 		logRoutes(ctx, s.router)
 	}
@@ -124,6 +125,30 @@ func (s *Server) Start(ctx context.Context) error {
 	if err := s.s.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("listen error: %w", err)
 	}
+
+	return nil
+}
+
+func (s *Server) Start(ctx context.Context) error {
+	logger := log.Logger
+	logger.Log().Msgf("Listen on %s...", s.cfg.Listen)
+
+	if s.cfg.DebugFlags.HasFlag(config.DebugRouter) {
+		logRoutes(ctx, s.router)
+	}
+
+	lc := net.ListenConfig{}
+
+	ln, err := lc.Listen(ctx, "tcp", s.cfg.Listen)
+	if err != nil {
+		return aerr.Wrapf(err, "start listen error")
+	}
+
+	go func() {
+		if err := s.s.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			logger.Log().Err(err).Msg("serve error")
+		}
+	}()
 
 	return nil
 }
@@ -139,6 +164,19 @@ func (s *Server) Stop(_ error) {
 	} else {
 		logger.Debug().Msg("server stopped")
 	}
+}
+
+func (s *Server) Shutdown(ctx context.Context) error {
+	logger := log.Ctx(ctx)
+	logger.Debug().Msg("server stopping...")
+
+	if err := s.s.Shutdown(ctx); err != nil {
+		return aerr.Wrapf(err, "shutdown server failed")
+	}
+
+	logger.Debug().Msg("server stopped")
+
+	return nil
 }
 
 func logRoutes(ctx context.Context, r chi.Routes) {

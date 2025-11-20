@@ -217,7 +217,7 @@ func (r *Database) Maintenance(ctx context.Context) error {
 	return nil
 }
 
-func (r *Database) StartBackgroundMaintenance(ctx context.Context) error {
+func (r *Database) RunBackgroundMaintenance(ctx context.Context) error {
 	const startHour = 4
 
 	logger := log.Ctx(ctx)
@@ -242,6 +242,12 @@ func (r *Database) StartBackgroundMaintenance(ctx context.Context) error {
 			r.Maintenance(ctx)
 		}
 	}
+}
+
+func (r *Database) StartBackgroundMaintenance(ctx context.Context) error {
+	go r.RunBackgroundMaintenance(ctx)
+
+	return nil
 }
 
 func (r *Database) onConnect(ctx context.Context, db sqlx.ExecerContext) error {

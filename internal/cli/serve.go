@@ -9,14 +9,11 @@ package cli
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"os/signal"
 	"strings"
 	"syscall"
 
 	"github.com/Merovius/systemd"
-	"github.com/oklog/run"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/do/v2"
@@ -108,32 +105,20 @@ func (s *Server) start(ctx context.Context, injector do.Injector) error {
 	ctx, cancel := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGINT)
 	defer cancel()
 
-	var group run.Group
-	group.Add(run.ContextHandler(ctx))
-
 	srv := do.MustInvoke[server.Server](injector)
-	group.Add(func() error {
-		logger.Log().Msgf("Listen on %s...", s.conf.Listen)
+	if err := srv.Start(ctx); err != nil {
+		return aerr.Wrapf(err, "start server failed")
+	}
 
-		if err := srv.Start(ctx); err != nil {
-			return fmt.Errorf("start server error: %w", err)
-		}
-
-		return nil
-	}, srv.Stop)
-
-	group.Add(func() error { return s.db.StartBackgroundMaintenance(ctx) }, func(_ error) {})
+	s.db.StartBackgroundMaintenance(ctx)
 
 	systemd.NotifyReady()           //nolint:errcheck
 	systemd.NotifyStatus("running") //nolint:errcheck
 
-	if err := group.Run(); err != nil && !errors.Is(err, context.Canceled) {
-		return fmt.Errorf("start failed: %w", err)
-	}
+	<-ctx.Done()
 
-	shutdownInjector(ctx, injector)
-	logger.Info().Msg("stopped")
 	systemd.NotifyStatus("stopped") //nolint:errcheck
+	logger.Info().Msg("server stopped")
 
 	return nil
 }

@@ -9,12 +9,11 @@ package cli
 
 import (
 	"context"
-	"errors"
-	"fmt"
 
 	"github.com/rs/zerolog/log"
 	"github.com/samber/do/v2"
 	"github.com/urfave/cli/v3"
+	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/db"
 )
 
@@ -28,17 +27,17 @@ func wrap(
 
 		database := clicmd.String("database")
 		if database == "" {
-			return errors.New("database can't be empty") //nolint:err113
+			return aerr.New("database argument can't be empty").WithTag(aerr.ValidationError)
 		}
 
 		injector := createInjector(ctx)
 
 		db := do.MustInvoke[*db.Database](injector)
 		if err := db.Connect(ctx, "sqlite3", database); err != nil {
-			return fmt.Errorf("connect to database error: %w", err)
+			return aerr.Wrapf(err, "connect to database failed")
 		}
 
-		defer db.Shutdown(ctx)
+		defer shutdownInjector(ctx, injector)
 
 		return cmdfunc(ctx, clicmd, injector)
 	}
