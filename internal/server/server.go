@@ -29,27 +29,6 @@ import (
 	gpoweb "gitlab.com/kabes/go-gpo/internal/web"
 )
 
-type Configuration struct {
-	Listen        string
-	WebRoot       string
-	DebugFlags    config.DebugFlags
-	EnableMetrics bool
-	TLSKey        string
-	TLSCert       string
-}
-
-func (c *Configuration) Validate() error {
-	if c.Listen == "" {
-		return aerr.ErrValidation.WithUserMsg("listen address can't be empty")
-	}
-
-	if (c.TLSKey != "") != (c.TLSCert != "") {
-		return aerr.ErrValidation.WithUserMsg("both tls key and cert must be defined")
-	}
-
-	return nil
-}
-
 const (
 	sessionMaxLifetime    = (24 * 60 * 60) * time.Second //nolint:mnd
 	defaultReadTimeout    = 60 * time.Second
@@ -148,7 +127,7 @@ func (s *Server) Start(ctx context.Context) error {
 		return aerr.Wrapf(err, "start listen error")
 	}
 
-	logger.Log().Msgf("Listen on %s (https=%v)...", s.cfg.Listen, s.cfg.TLSCert != "")
+	logger.Log().Msgf("Listen on %s (https=%v)...", s.cfg.Listen, s.cfg.tlsEnabled())
 
 	go func() {
 		if err := s.s.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {

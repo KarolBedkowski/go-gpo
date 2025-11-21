@@ -304,6 +304,7 @@ type sessionMiddleware func(http.Handler) http.Handler
 func newSessionMiddleware(i do.Injector) (sessionMiddleware, error) {
 	db := do.MustInvoke[*db.Database](i)
 	repo := do.MustInvoke[repository.SessionRepository](i)
+	cfg := do.MustInvoke[*Configuration](i)
 
 	session.RegisterFn("db", func() session.Provider {
 		return service.NewSessionProvider(db, repo, sessionMaxLifetime)
@@ -315,7 +316,8 @@ func newSessionMiddleware(i do.Injector) (sessionMiddleware, error) {
 		CookieName:     "sessionid",
 		SameSite:       http.SameSiteLaxMode,
 		Maxlifetime:    int64(sessionMaxLifetime.Seconds()),
-		// Secure:         true,
+		Secure:         cfg.useSecureCookie(),
+		CookiePath:     cfg.WebRoot,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("start session manager error: %w", err)

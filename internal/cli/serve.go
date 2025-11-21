@@ -66,6 +66,11 @@ func newStartServerCmd() *cli.Command {
 				Config:    cli.StringConfig{TrimSpace: true},
 				TakesFile: true,
 			},
+			&cli.BoolFlag{
+				Name:    "secure-cookie",
+				Usage:   "use secure (https only) cookie",
+				Sources: cli.EnvVars("GOGPO_SERVER_SECURE_COOKIE"),
+			},
 		},
 		Action: wrap(startServerCmd),
 	}
@@ -85,6 +90,7 @@ func startServerCmd(ctx context.Context, clicmd *cli.Command, rootInjector do.In
 		EnableMetrics: clicmd.Bool("enable-metrics"),
 		TLSKey:        clicmd.String("key"),
 		TLSCert:       clicmd.String("cert"),
+		CookieSecure:  clicmd.Bool("secure-cookie"),
 	}
 
 	if err := serverConf.Validate(); err != nil {
@@ -98,25 +104,21 @@ func startServerCmd(ctx context.Context, clicmd *cli.Command, rootInjector do.In
 		enableDoDebug(ctx, injector.RootScope())
 	}
 
-	s := Server{
-		db:   do.MustInvoke[*db.Database](injector),
-		conf: serverConf,
-	}
+	s := Server{}
 
-	return s.start(ctx, injector)
+	return s.start(ctx, injector, &serverConf)
 }
 
-type Server struct {
-	db   *db.Database
-	conf server.Configuration
-}
+type Server struct{}
 
-func (s *Server) start(ctx context.Context, injector do.Injector) error {
+func (s *Server) start(ctx context.Context, injector do.Injector, cfg *server.Configuration) error {
 	logger := log.Ctx(ctx)
 	logger.Log().Msgf("Starting go-gpo (%s)...", config.VersionString)
 
 	s.startSystemdWatchdog(logger)
-	s.db.RegisterMetrics(s.conf.DebugFlags.HasFlag(config.DebugDBQueryMetrics))
+
+	db := do.MustInvoke[*db.Database](injector)
+	db.RegisterMetrics(cfg.DebugFlags.HasFlag(config.DebugDBQueryMetrics))
 
 	ctx, cancel := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGINT)
 	defer cancel()
@@ -126,7 +128,7 @@ func (s *Server) start(ctx context.Context, injector do.Injector) error {
 		return aerr.Wrapf(err, "start server failed")
 	}
 
-	s.db.StartBackgroundMaintenance(ctx)
+	db.StartBackgroundMaintenance(ctx)
 
 	systemd.NotifyReady()           //nolint:errcheck
 	systemd.NotifyStatus("running") //nolint:errcheck
