@@ -8,7 +8,6 @@ package api
 import (
 	"context"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -57,16 +56,12 @@ func (sr subscriptionsResource) devSubscriptions(
 	user := internal.ContextUser(ctx)
 	devicename := internal.ContextDevice(ctx)
 
-	var sinceTS time.Time
+	sinceTS, err := getSinceParameter(r)
+	if err != nil {
+		logger.Debug().Err(err).Msgf("parse since failed")
+		w.WriteHeader(http.StatusBadRequest)
 
-	if since := r.URL.Query().Get("since"); since != "" {
-		ts, err := strconv.ParseInt(since, 10, 64)
-		if err != nil {
-			logger.Debug().Err(err).Msgf("parse since=%q error", since)
-			w.WriteHeader(http.StatusBadRequest)
-		}
-
-		sinceTS = time.Unix(ts, 0)
+		return
 	}
 
 	q := query.GetSubscriptionChangesQuery{UserName: user, DeviceName: devicename, Since: sinceTS}

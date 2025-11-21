@@ -36,7 +36,7 @@ func getSinceParameter(r *http.Request) (time.Time, error) {
 			return since, fmt.Errorf("parse since %q error: %w", s, err)
 		}
 
-		since = time.Unix(se, 0)
+		since = time.Unix(se, 0).UTC()
 	}
 
 	return since, nil
