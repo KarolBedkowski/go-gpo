@@ -52,6 +52,20 @@ func newStartServerCmd() *cli.Command {
 				Usage:   "enable prometheus metrics (/metrics endpoint)",
 				Sources: cli.EnvVars("GOGPO_SERVER_METRICS"),
 			},
+			&cli.StringFlag{
+				Name:      "cert",
+				Usage:     "tls certificate file",
+				Sources:   cli.EnvVars("GOGPO_SERVER_CERT"),
+				Config:    cli.StringConfig{TrimSpace: true},
+				TakesFile: true,
+			},
+			&cli.StringFlag{
+				Name:      "key",
+				Usage:     "tls key file",
+				Sources:   cli.EnvVars("GOGPO_SERVER_KEY"),
+				Config:    cli.StringConfig{TrimSpace: true},
+				TakesFile: true,
+			},
 		},
 		Action: wrap(startServerCmd),
 	}
@@ -69,6 +83,8 @@ func startServerCmd(ctx context.Context, clicmd *cli.Command, rootInjector do.In
 		DebugFlags:    config.NewDebugFLags(clicmd.String("debug")),
 		WebRoot:       strings.TrimSuffix(clicmd.String("web-root"), "/"),
 		EnableMetrics: clicmd.Bool("enable-metrics"),
+		TLSKey:        clicmd.String("key"),
+		TLSCert:       clicmd.String("cert"),
 	}
 
 	if err := serverConf.Validate(); err != nil {

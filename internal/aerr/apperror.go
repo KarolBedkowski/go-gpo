@@ -338,7 +338,11 @@ func CollectErrors(err error) []string {
 		}
 
 		errmsg := apperr.Error()
-		errmsg += " [" + apperr.stack[0] + "]"
+
+		if len(apperr.stack) > 0 {
+			errmsg += " [" + apperr.stack[0] + "]"
+		}
+
 		errmsg += fmt.Sprintf("%v/%v", apperr.tags, apperr.meta)
 
 		errs = append(errs, errmsg)

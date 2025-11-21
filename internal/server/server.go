@@ -9,6 +9,7 @@ package server
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"net"
@@ -33,11 +34,17 @@ type Configuration struct {
 	WebRoot       string
 	DebugFlags    config.DebugFlags
 	EnableMetrics bool
+	TLSKey        string
+	TLSCert       string
 }
 
 func (c *Configuration) Validate() error {
 	if c.Listen == "" {
 		return aerr.ErrValidation.WithUserMsg("listen address can't be empty")
+	}
+
+	if (c.TLSKey != "") != (c.TLSCert != "") {
+		return aerr.ErrValidation.WithUserMsg("both tls key and cert must be defined")
 	}
 
 	return nil
@@ -131,21 +138,20 @@ func (s *Server) Run(ctx context.Context) error {
 
 func (s *Server) Start(ctx context.Context) error {
 	logger := log.Logger
-	logger.Log().Msgf("Listen on %s...", s.cfg.Listen)
 
 	if s.cfg.DebugFlags.HasFlag(config.DebugRouter) {
 		logRoutes(ctx, s.router)
 	}
 
-	lc := net.ListenConfig{}
-
-	ln, err := lc.Listen(ctx, "tcp", s.cfg.Listen)
+	listener, err := s.newListener(ctx)
 	if err != nil {
 		return aerr.Wrapf(err, "start listen error")
 	}
 
+	logger.Log().Msgf("Listen on %s (https=%v)...", s.cfg.Listen, s.cfg.TLSCert != "")
+
 	go func() {
-		if err := s.s.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err := s.s.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Log().Err(err).Msg("serve error")
 		}
 	}()
@@ -194,4 +200,35 @@ func logRoutes(ctx context.Context, r chi.Routes) {
 	if err := chi.Walk(r, walkFunc); err != nil {
 		logger.Error().Err(err).Msg("routers walk error")
 	}
+}
+
+func (s *Server) newListener(ctx context.Context) (net.Listener, error) {
+	if s.cfg.TLSKey == "" || s.cfg.TLSCert == "" {
+		lc := net.ListenConfig{}
+
+		l, err := lc.Listen(ctx, "tcp", s.cfg.Listen)
+		if err != nil {
+			return nil, aerr.Wrapf(err, "listen failed").WithMeta("address", s.cfg.Listen)
+		}
+
+		return l, nil
+	}
+
+	cert, err := tls.LoadX509KeyPair(s.cfg.TLSCert, s.cfg.TLSKey)
+	if err != nil {
+		return nil, aerr.Wrapf(err, "load certificates failed").
+			WithMeta("cert", s.cfg.TLSCert, "key", s.cfg.TLSKey)
+	}
+
+	cfg := tls.Config{
+		Certificates: []tls.Certificate{cert},
+		MinVersion:   tls.VersionTLS12,
+	}
+
+	l, err := tls.Listen("tcp", s.cfg.Listen, &cfg)
+	if err != nil {
+		return nil, aerr.Wrapf(err, "tls listen failed").WithMeta("address", s.cfg.Listen)
+	}
+
+	return l, nil
 }
