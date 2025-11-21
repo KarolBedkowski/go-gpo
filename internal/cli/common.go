@@ -21,7 +21,9 @@ func wrap(
 	cmdfunc func(ctx context.Context, clicmd *cli.Command, i do.Injector) error,
 ) func(ctx context.Context, clicmd *cli.Command) error {
 	return func(ctx context.Context, clicmd *cli.Command) error {
-		initializeLogger(clicmd.String("log.level"), clicmd.String("log.format"))
+		if err := initializeLogger(clicmd.String("log.level"), clicmd.String("log.format")); err != nil {
+			return err
+		}
 
 		ctx = log.Logger.WithContext(ctx)
 

@@ -5,7 +5,10 @@
 package cli
 
 import (
+	"fmt"
+	"io"
 	stdlog "log"
+	"log/syslog"
 	"os"
 	"time"
 
@@ -16,44 +19,42 @@ import (
 )
 
 // InitializeLogger set log level and optional log filename.
-func initializeLogger(level, format string) {
+func initializeLogger(level, format string) error {
 	zerolog.ErrorMarshalFunc = aerr.ErrorMarshalFunc //nolint:reassign
 
-	var llog zerolog.Logger
+	var writer io.Writer
 
 	switch format {
 	case "json":
-		llog = log.Logger
+		writer = os.Stderr
 
-	case "syslog":
-		llog = log.Output(zerolog.ConsoleWriter{ //nolint:exhaustruct
+	case "text":
+		writer = zerolog.ConsoleWriter{ //nolint:exhaustruct
 			Out:          os.Stderr,
 			NoColor:      true,
 			PartsExclude: []string{zerolog.TimestampFieldName},
-		})
+		}
+
+	case "syslog":
+		syslogwriter, err := syslog.New(syslog.LOG_USER, "gogpo")
+		if err != nil {
+			return fmt.Errorf("init syslog error: %w", err)
+		}
+
+		writer = zerolog.SyslogLevelWriter(syslogwriter)
 
 	case "journald":
-		llog = log.Output(journald.NewJournalDWriter())
+		writer = journald.NewJournalDWriter()
 
 	default:
 		if format != "" && format != "logfmt" {
 			log.Error().Msgf("logger: unknown log format %q; using logfmt", format)
 		}
 
-		console := outputIsConsole()
-
-		// log full datetime when log is written to file; skip date on console.
-		tformat := time.RFC3339
-		if console {
-			tformat = time.TimeOnly
-		}
-
-		llog = log.Output(zerolog.ConsoleWriter{ //nolint:exhaustruct
-			Out:        os.Stderr,
-			NoColor:    !outputIsConsole(),
-			TimeFormat: tformat,
-		})
+		writer = setupConsoleWriter()
 	}
+
+	log.Logger = log.Output(writer).With().Timestamp().Caller().Logger()
 
 	if l, err := zerolog.ParseLevel(level); err == nil {
 		zerolog.SetGlobalLevel(l)
@@ -62,10 +63,26 @@ func initializeLogger(level, format string) {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
 
-	log.Logger = llog.With().Timestamp().Caller().Logger()
-
 	stdlog.SetFlags(0)
 	stdlog.SetOutput(log.Logger)
+
+	return nil
+}
+
+func setupConsoleWriter() io.Writer {
+	console := outputIsConsole()
+
+	// log full datetime when log is written to file; skip date on console.
+	tformat := time.RFC3339
+	if console {
+		tformat = time.TimeOnly
+	}
+
+	return zerolog.ConsoleWriter{ //nolint:exhaustruct
+		Out:        os.Stderr,
+		NoColor:    !console,
+		TimeFormat: tformat,
+	}
 }
 
 func outputIsConsole() bool {
