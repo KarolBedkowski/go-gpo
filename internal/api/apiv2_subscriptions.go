@@ -84,6 +84,9 @@ func (sr subscriptionsResource) devSubscriptions(
 		Timestamp: time.Now().UTC().Unix(),
 	}
 
+	logger.Debug().Msgf("dev subscriptions result: added=%d, removed=%d, ts=%d",
+		len(res.Add), len(res.Remove), res.Timestamp)
+
 	w.WriteHeader(http.StatusOK)
 	render.JSON(w, r, &res)
 }
@@ -116,6 +119,8 @@ func (sr subscriptionsResource) userSubscriptions(
 		return
 	}
 
+	logger.Debug().Msgf("userSubscriptions: count=%d", len(subs))
+
 	w.WriteHeader(http.StatusOK)
 	w.Write(result)
 }
@@ -144,6 +149,8 @@ func (sr subscriptionsResource) uploadSubscriptionChanges(
 		Remove:     changes.Remove,
 		Timestamp:  time.Now().UTC(),
 	}
+
+	logger.Debug().Msgf("uploadSubscription: add=%d, remove=%d", len(cmd.Add), len(cmd.Remove))
 
 	res, err := sr.subsSrv.ChangeSubscriptions(ctx, &cmd)
 	if err != nil {

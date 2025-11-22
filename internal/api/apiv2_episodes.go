@@ -89,6 +89,8 @@ func (er episodesResource) uploadEpisodeActions(
 		actions = append(actions, reqEpisode.toModel())
 	}
 
+	logger.Debug().Msgf("uploadEpisodeActions: count=%d, changedurls=%d", len(actions), len(changedurls))
+
 	cmd := command.AddActionCmd{
 		UserName: internal.ContextUser(ctx),
 		Actions:  actions,
@@ -153,6 +155,8 @@ func (er episodesResource) getEpisodeActions(
 		Actions:   common.Map(res, newEpisodesFromModel),
 		Timestamp: time.Now().UTC().Unix(),
 	}
+
+	logger.Debug().Msgf("getEpisodeActions: count=%d", len(resp.Actions))
 
 	render.JSON(w, r, &resp)
 }

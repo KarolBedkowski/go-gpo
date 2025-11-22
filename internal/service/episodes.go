@@ -12,6 +12,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal"
@@ -72,6 +73,9 @@ func (e *EpisodesSrv) GetEpisodes(ctx context.Context, query *query.GetEpisodesQ
 // AddAction save new actions.
 // Podcasts and devices are cached and - if not exists for requested action - created.
 func (e *EpisodesSrv) AddAction(ctx context.Context, cmd *command.AddActionCmd) error { //nolint:cyclop
+	logger := zerolog.Ctx(ctx)
+	logger.Debug().Str("username", cmd.UserName).Msgf("add actions: %d", len(cmd.Actions))
+
 	if err := cmd.Validate(); err != nil {
 		return aerr.Wrapf(err, "validate command failed")
 	}
@@ -230,7 +234,8 @@ func (e *EpisodesSrv) getEpisodes(
 func (e *EpisodesSrv) createPodcastsCache(ctx context.Context, userid int64) (DynamicCache[string, int64], error) {
 	podcasts, err := e.podcastsRepo.ListSubscribedPodcasts(ctx, userid, time.Time{})
 	if err != nil {
-		return DynamicCache[string, int64]{}, aerr.Wrapf(err, "load podcasts into cache failed")
+		return DynamicCache[string, int64]{}, aerr.Wrapf(err, "load podcasts into cache failed").
+			WithMeta("user_id", userid)
 	}
 
 	podcastscache := DynamicCache[string, int64]{
@@ -239,7 +244,7 @@ func (e *EpisodesSrv) createPodcastsCache(ctx context.Context, userid int64) (Dy
 			id, err := e.podcastsRepo.SavePodcast(ctx,
 				&repository.PodcastDB{UserID: userid, URL: key, Subscribed: true})
 			if err != nil {
-				return 0, aerr.Wrapf(err, "create new podcast failed")
+				return 0, aerr.Wrapf(err, "create new podcast failed").WithMeta("podcast_url", key, "user_id", userid)
 			}
 
 			return id, nil
@@ -252,7 +257,8 @@ func (e *EpisodesSrv) createPodcastsCache(ctx context.Context, userid int64) (Dy
 func (e *EpisodesSrv) createDevicesCache(ctx context.Context, userid int64) (DynamicCache[string, *int64], error) {
 	devices, err := e.devicesRepo.ListDevices(ctx, userid)
 	if err != nil {
-		return DynamicCache[string, *int64]{}, aerr.Wrapf(err, "load devices into cache failed")
+		return DynamicCache[string, *int64]{}, aerr.Wrapf(err, "load devices into cache failed").
+			WithMeta("user_id", userid)
 	}
 
 	items := make(map[string]*int64, len(devices))
@@ -270,7 +276,7 @@ func (e *EpisodesSrv) createDevicesCache(ctx context.Context, userid int64) (Dyn
 			did, err := e.devicesRepo.SaveDevice(ctx,
 				&repository.DeviceDB{UserID: userid, Name: key, DevType: "other"})
 			if err != nil {
-				return nil, aerr.Wrapf(err, "create new device failed")
+				return nil, aerr.Wrapf(err, "create new device failed").WithMeta("device_name", key, "user_id", userid)
 			}
 
 			return &did, nil
