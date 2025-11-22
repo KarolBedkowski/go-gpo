@@ -128,15 +128,6 @@ func (e *EpisodesSrv) AddAction(ctx context.Context, cmd *command.AddActionCmd) 
 	})
 }
 
-// GetActions return list of episode actions for username and optional podcast and devicename.
-// Device name is ignored as all devices are synced and should have the same data.
-// Used by /api/2/episodes.
-// TODO: merge with GetEpisodes.
-func (e *EpisodesSrv) GetActions(ctx context.Context, query *query.GetEpisodesQuery,
-) ([]model.Episode, error) {
-	return e.GetEpisodes(ctx, query)
-}
-
 // GetUpdates return list of EpisodeUpdate for `username` and optionally `devicename` and `since`.
 // if `includeActions` add to each episode last action.
 // devicename is ignored but checked

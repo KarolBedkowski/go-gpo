@@ -138,7 +138,7 @@ func (er episodesResource) getEpisodeActions(
 		Aggregated: aggregated,
 	}
 
-	res, err := er.episodesSrv.GetActions(ctx, &query)
+	res, err := er.episodesSrv.GetEpisodes(ctx, &query)
 	if err != nil {
 		checkAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get episodes actions error")

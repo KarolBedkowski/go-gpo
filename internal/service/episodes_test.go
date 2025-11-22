@@ -129,7 +129,7 @@ func TestEpisodesServiceActions(t *testing.T) {
 	q := query.GetEpisodesQuery{
 		UserName: "user1",
 	}
-	episodes, err := episodesSrv.GetActions(ctx, &q)
+	episodes, err := episodesSrv.GetEpisodes(ctx, &q)
 	assert.NoErr(t, err)
 	assert.Equal(t, len(episodes), 4)
 	assert.Equal(t, episodes[0], episodeActions[0])
@@ -142,7 +142,7 @@ func TestEpisodesServiceActions(t *testing.T) {
 		UserName: "user1",
 		Since:    time.Date(2025, 1, 4, 0, 0, 0, 0, time.UTC),
 	}
-	episodes, err = episodesSrv.GetActions(ctx, &q)
+	episodes, err = episodesSrv.GetEpisodes(ctx, &q)
 	assert.NoErr(t, err)
 	assert.Equal(t, len(episodes), 2)
 	assert.Equal(t, episodes[0], episodeActions[2])
@@ -153,7 +153,7 @@ func TestEpisodesServiceActions(t *testing.T) {
 		UserName:   "user1",
 		Aggregated: true,
 	}
-	episodes, err = episodesSrv.GetActions(ctx, &q)
+	episodes, err = episodesSrv.GetEpisodes(ctx, &q)
 	assert.NoErr(t, err)
 	assert.Equal(t, len(episodes), 3)
 	assert.Equal(t, episodes[0], episodeActions[1])
@@ -166,7 +166,7 @@ func TestEpisodesServiceActions(t *testing.T) {
 		Podcast:    "http://example.com/p1",
 		DeviceName: "dev2",
 	}
-	episodes, err = episodesSrv.GetActions(ctx, &q)
+	episodes, err = episodesSrv.GetEpisodes(ctx, &q)
 	assert.NoErr(t, err)
 	assert.Equal(t, len(episodes), 3)
 	assert.Equal(t, episodes[0], episodeActions[0])
@@ -180,7 +180,7 @@ func TestEpisodesServiceActions(t *testing.T) {
 		DeviceName: "dev2",
 		Aggregated: true,
 	}
-	episodes, err = episodesSrv.GetActions(ctx, &q)
+	episodes, err = episodesSrv.GetEpisodes(ctx, &q)
 	assert.NoErr(t, err)
 	assert.Equal(t, len(episodes), 2)
 	assert.Equal(t, episodes[0], episodeActions[1])
