@@ -37,7 +37,7 @@ func (u settingsResource) Routes() *chi.Mux {
 	r.With(checkUserMiddleware).
 		Get(`/{user:[\w+.-]+}/{scope:[a-z]+}.json`, srvsupport.Wrap(u.getSettings))
 	r.With(checkUserMiddleware).
-		Post(`/{user:[\w+.-]+}/{scope:[a-z]+}.json`, srvsupport.Wrap(u.setSettings))
+		Post(`/{user:[\w+.-]+}/{scope:[a-z]+}.json`, srvsupport.Wrap(u.postSettings))
 
 	return r
 }
@@ -69,7 +69,7 @@ func (u settingsResource) getSettings(
 	render.JSON(w, r, &res)
 }
 
-func (u settingsResource) setSettings(
+func (u settingsResource) postSettings(
 	ctx context.Context,
 	w http.ResponseWriter,
 	r *http.Request,

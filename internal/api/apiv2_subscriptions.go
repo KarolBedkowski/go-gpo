@@ -134,7 +134,11 @@ func (sr subscriptionsResource) uploadSubscriptionChanges(
 	user := internal.ContextUser(ctx)
 	devicename := internal.ContextDevice(ctx)
 
-	changes := subscriptionChangesRequest{}
+	changes := struct {
+		Add    []string `json:"add"`
+		Remove []string `json:"remove"`
+	}{}
+
 	if err := render.DecodeJSON(r.Body, &changes); err != nil {
 		logger.Debug().Err(err).Msgf("parse json error")
 		writeError(w, r, http.StatusBadRequest)
@@ -172,8 +176,3 @@ func (sr subscriptionsResource) uploadSubscriptionChanges(
 }
 
 // -----------------------------
-
-type subscriptionChangesRequest struct {
-	Add    []string `json:"add"`
-	Remove []string `json:"remove"`
-}
