@@ -75,7 +75,7 @@ func newStartServerCmd() *cli.Command {
 			},
 			&cli.BoolFlag{
 				Name:    "enable-podcasts-loader",
-				Usage:   "Enable background worker that download podcast information",
+				Usage:   "Enable background worker that download podcast information. This may east a lot of memory....",
 				Sources: cli.EnvVars("GOGPO_SERVER_PODCAST_LOADER"),
 			},
 		},
