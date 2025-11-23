@@ -99,7 +99,7 @@ func startServerCmd(ctx context.Context, clicmd *cli.Command, rootInjector do.In
 		return aerr.Wrapf(err, "server config validation failed")
 	}
 
-	do.ProvideNamedValue(injector, "server.webroot", clicmd.String("web-root"))
+	do.ProvideNamedValue(injector, "server.webroot", serverConf.WebRoot)
 	do.ProvideValue(injector, &serverConf)
 
 	if serverConf.DebugFlags.HasFlag(config.DebugDo) {
