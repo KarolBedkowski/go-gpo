@@ -160,12 +160,22 @@ func (e *EpisodesSrv) GetUpdates(ctx context.Context, query *query.GetEpisodeUpd
 }
 
 // GetLastActions return last `limit` actions for `username`.
-func (e *EpisodesSrv) GetLastActions(ctx context.Context, query *query.GetEpisodesQuery,
-) ([]model.Episode, error) {
-	query.Podcast = ""
-	query.DeviceName = ""
+func (e *EpisodesSrv) GetLastActions(ctx context.Context, query *query.GetLastEpisodesActionsQuery,
+) ([]model.EpisodeLastAction, error) {
+	log.Ctx(ctx).Debug().Object("query", query).Msgf("get episodes")
 
-	return e.GetEpisodes(ctx, query)
+	if err := query.Validate(); err != nil {
+		return nil, aerr.Wrapf(err, "validate query failed")
+	}
+
+	episodes, err := db.InConnectionR(ctx, e.db, func(ctx context.Context) ([]repository.EpisodeDB, error) {
+		return e.getEpisodes(ctx, query.UserName, "", "", query.Since, true, query.Limit)
+	})
+	if err != nil {
+		return nil, err //nolint:wrapcheck
+	}
+
+	return common.Map(episodes, model.NewEpisodeLastActionFromDBModel), nil
 }
 
 func (e *EpisodesSrv) GetFavorites(ctx context.Context, username string) ([]model.Favorite, error) {

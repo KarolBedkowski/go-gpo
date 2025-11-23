@@ -293,7 +293,7 @@ func TestEpisodesServiceLastEpisodes(t *testing.T) {
 	err := episodesSrv.AddAction(ctx, &command.AddActionCmd{UserName: "user1", Actions: episodeActions})
 	assert.NoErr(t, err)
 
-	q := query.GetEpisodesQuery{
+	q := query.GetLastEpisodesActionsQuery{
 		UserName: "user1",
 		Since:    time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		Limit:    2,
@@ -302,13 +302,13 @@ func TestEpisodesServiceLastEpisodes(t *testing.T) {
 	assert.NoErr(t, err)
 	assert.Equal(t, len(actions), 2)
 	assert.Equal(t, actions[0].Episode, episodeActions[2].Episode)
-	assert.Equal(t, actions[0].Podcast, episodeActions[2].Podcast)
+	assert.Equal(t, actions[0].PodcastURL, episodeActions[2].Podcast)
 	assert.Equal(t, actions[0].Action, episodeActions[2].Action)
 	assert.Equal(t, actions[1].Episode, episodeActions[3].Episode)
-	assert.Equal(t, actions[1].Podcast, episodeActions[3].Podcast)
+	assert.Equal(t, actions[1].PodcastURL, episodeActions[3].Podcast)
 	assert.Equal(t, actions[1].Action, episodeActions[3].Action)
 
-	q = query.GetEpisodesQuery{
+	q = query.GetLastEpisodesActionsQuery{
 		UserName: "user1",
 		Since:    time.Date(2025, 1, 3, 0, 0, 0, 0, time.UTC),
 	}
@@ -316,16 +316,16 @@ func TestEpisodesServiceLastEpisodes(t *testing.T) {
 	assert.NoErr(t, err)
 	assert.Equal(t, len(actions), 3)
 	assert.Equal(t, actions[0].Episode, episodeActions[1].Episode)
-	assert.Equal(t, actions[0].Podcast, episodeActions[1].Podcast)
+	assert.Equal(t, actions[0].PodcastURL, episodeActions[1].Podcast)
 	assert.Equal(t, actions[0].Action, episodeActions[1].Action)
 	assert.Equal(t, actions[1].Episode, episodeActions[2].Episode)
-	assert.Equal(t, actions[1].Podcast, episodeActions[2].Podcast)
+	assert.Equal(t, actions[1].PodcastURL, episodeActions[2].Podcast)
 	assert.Equal(t, actions[1].Action, episodeActions[2].Action)
 	assert.Equal(t, actions[2].Episode, episodeActions[3].Episode)
-	assert.Equal(t, actions[2].Podcast, episodeActions[3].Podcast)
+	assert.Equal(t, actions[2].PodcastURL, episodeActions[3].Podcast)
 	assert.Equal(t, actions[2].Action, episodeActions[3].Action)
 
-	q = query.GetEpisodesQuery{
+	q = query.GetLastEpisodesActionsQuery{
 		UserName: "user1",
 		Since:    time.Date(2025, 1, 4, 0, 0, 0, 0, time.UTC),
 		Limit:    1,
@@ -334,7 +334,7 @@ func TestEpisodesServiceLastEpisodes(t *testing.T) {
 	assert.NoErr(t, err)
 	assert.Equal(t, len(actions), 1)
 	assert.Equal(t, actions[0].Episode, episodeActions[3].Episode)
-	assert.Equal(t, actions[0].Podcast, episodeActions[3].Podcast)
+	assert.Equal(t, actions[0].PodcastURL, episodeActions[3].Podcast)
 	assert.Equal(t, actions[0].Action, episodeActions[3].Action)
 }
 

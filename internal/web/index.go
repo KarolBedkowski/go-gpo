@@ -47,7 +47,7 @@ const maxLastAction = 25
 func (i indexPage) indexPage(ctx context.Context, writer http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
 	user := internal.ContextUser(ctx)
 
-	query := query.GetEpisodesQuery{
+	query := query.GetLastEpisodesActionsQuery{
 		UserName: user,
 		Limit:    maxLastAction,
 	}
@@ -63,7 +63,7 @@ func (i indexPage) indexPage(ctx context.Context, writer http.ResponseWriter, r 
 	slices.Reverse(lastactions)
 
 	data := struct {
-		LastActions []model.Episode
+		LastActions []model.EpisodeLastAction
 	}{lastactions}
 
 	if err := i.template.executeTemplate(writer, "index.tmpl", data); err != nil {

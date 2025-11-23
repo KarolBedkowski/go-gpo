@@ -62,3 +62,24 @@ func (q *GetEpisodeUpdatesQuery) MarshalZerologObject(event *zerolog.Event) {
 		Time("since", q.Since).
 		Bool("include_actions", q.IncludeActions)
 }
+
+// ------------------------------------------------------------------------------
+type GetLastEpisodesActionsQuery struct {
+	UserName string
+	Since    time.Time
+	Limit    uint
+}
+
+func (q *GetLastEpisodesActionsQuery) Validate() error {
+	if q.UserName == "" {
+		return aerr.ErrValidation.WithMsg("user name can't be empty")
+	}
+
+	return nil
+}
+
+func (q *GetLastEpisodesActionsQuery) MarshalZerologObject(event *zerolog.Event) {
+	event.Str("username", q.UserName).
+		Time("since", q.Since).
+		Uint("limit", q.Limit)
+}

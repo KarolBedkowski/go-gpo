@@ -31,7 +31,7 @@
 		{{ range .LastActions }}
 			<tr>
 				<td>{{ .Timestamp}}</td>
-				<td>{{ .Podcast }}</td>
+				<td>{{ .PodcastTitle }}<br/><small>{{ .PodcastURL }}</small></td>
 				<td>{{ .Episode }}</td>
 				<td>{{ .Device }}</td>
 				<td>{{ .Action}}</td>

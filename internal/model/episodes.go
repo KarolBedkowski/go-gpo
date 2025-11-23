@@ -183,3 +183,38 @@ func NewEpisodeUpdateWithEpisodeFromDBModel(episodedb *repository.EpisodeDB) Epi
 
 	return episodeUpdate
 }
+
+// ------------------------------------------------------
+
+type EpisodeLastAction struct {
+	PodcastTitle string
+	PodcastURL   string
+	Episode      string
+	Device       string
+	Action       string
+	Timestamp    time.Time
+	Started      *int
+	Position     *int
+	Total        *int
+}
+
+func NewEpisodeLastActionFromDBModel(episodedb *repository.EpisodeDB) EpisodeLastAction {
+	episode := EpisodeLastAction{
+		PodcastURL:   episodedb.PodcastURL,
+		PodcastTitle: episodedb.PodcastTitle,
+		Device:       common.NVL(episodedb.Device, ""),
+		Episode:      episodedb.URL,
+		Action:       episodedb.Action,
+		Timestamp:    episodedb.UpdatedAt,
+		Started:      nil,
+		Position:     nil,
+		Total:        nil,
+	}
+	if episodedb.Action == "play" {
+		episode.Started = episodedb.Started
+		episode.Position = episodedb.Position
+		episode.Total = episodedb.Total
+	}
+
+	return episode
+}
