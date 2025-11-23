@@ -28,7 +28,7 @@ func (s SqliteRepository) ListSubscribedPodcasts(ctx context.Context, userid int
 
 	err := dbctx.SelectContext(ctx, &res,
 		"SELECT p.id, p.user_id, p.url, p.title, p.subscribed, p.created_at, p.updated_at, p.metadata_updated_at, "+
-			"p.description, p.website "+
+			"coalesce(p.description, '') as description, coalesce(p.website, '') as website "+
 			"FROM podcasts p "+
 			"WHERE p.user_id=? AND p.updated_at > ? and subscribed "+
 			"ORDER BY p.title, p.url",
@@ -50,7 +50,7 @@ func (s SqliteRepository) ListPodcasts(ctx context.Context, userid int64, since 
 
 	err := dbctx.SelectContext(ctx, &res,
 		"SELECT p.id, p.user_id, p.url, p.title, p.subscribed, p.created_at, p.updated_at, p.metadata_updated_at, "+
-			"p.description, p.website "+
+			"coalesce(p.description, '') as description, coalesce(p.website, '') as website "+
 			"FROM podcasts p "+
 			"WHERE p.user_id=? AND p.updated_at > ?", userid, since)
 	if err != nil {
@@ -73,7 +73,7 @@ func (s SqliteRepository) GetPodcast(
 
 	err := dbctx.GetContext(ctx, &podcast,
 		"SELECT p.id, p.user_id, p.url, p.title, p.subscribed, p.created_at, p.updated_at, p.metadata_updated_at, "+
-			"p.description, p.website "+
+			"coalesce(p.description, '') as description, coalesce(p.website, '') as website "+
 			"FROM podcasts p "+
 			"WHERE p.user_id=? AND p.url = ?", userid, podcasturl)
 	switch {

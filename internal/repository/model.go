@@ -5,6 +5,7 @@
 package repository
 
 import (
+	"database/sql"
 	"errors"
 	"time"
 
@@ -72,9 +73,9 @@ type PodcastDB struct {
 	Description string `db:"description"`
 	Website     string `db:"website"`
 
-	CreatedAt     time.Time `db:"created_at"`
-	UpdatedAt     time.Time `db:"updated_at"`
-	MetaUpdatedAt time.Time `db:"metadata_updated_at"`
+	CreatedAt     time.Time    `db:"created_at"`
+	UpdatedAt     time.Time    `db:"updated_at"`
+	MetaUpdatedAt sql.NullTime `db:"metadata_updated_at"`
 }
 
 func (p *PodcastDB) SetSubscribed(timestamp time.Time) bool {
@@ -109,7 +110,7 @@ func (p *PodcastDB) MarshalZerologObject(event *zerolog.Event) {
 		Bool("subscribed", p.Subscribed).
 		Time("created_at", p.CreatedAt).
 		Time("updated_at", p.UpdatedAt).
-		Time("metadata_updated_at", p.MetaUpdatedAt)
+		Time("metadata_updated_at", p.MetaUpdatedAt.Time)
 }
 
 //------------------------------------------------------------------------------
