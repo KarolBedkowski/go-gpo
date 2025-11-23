@@ -9,16 +9,18 @@
   <table>
     <thead>
       <tr>
-        <th>Title</th>
-        <th>URL</th>
+        <th>Title<br/><small>URL</small></th>
+        <th>Description</th>
+        <th>Website</th>
         <th>Last action date</th>
       </tr>
     </thead>
     <tbody>
       {{range .Podcasts}}
       <tr>
-        <td>{{ .Title }}</td>
-        <td><a href="{{webroot}}/web/episode/?podcast={{ .URL }}">{{ .URL }}</a></td>
+        <td><a href="{{webroot}}/web/episode/?podcast={{ .URL }}">{{ .Title }}<br/><small>{{ .URL }}</small></a></td>
+        <td>{{ .Description }}</td>
+        <td>{{ with .Website }}<a href="{{ . }}">Website</a>{{ end }}</td>
         <td>{{ with .LastEpisode }}{{ .Timestamp }} ({{ .Action }}){{ end }}</td>
       </tr>
       {{end}}

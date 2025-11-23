@@ -61,14 +61,20 @@ func (d DevicesDB) ToIDsMap() map[string]int64 {
 	return devices
 }
 
+//------------------------------------------------------------------------------
+
 type PodcastDB struct {
-	ID         int64     `db:"id"`
-	UserID     int64     `db:"user_id"`
-	Title      string    `db:"title"`
-	URL        string    `db:"url"`
-	Subscribed bool      `db:"subscribed"`
-	CreatedAt  time.Time `db:"created_at"`
-	UpdatedAt  time.Time `db:"updated_at"`
+	ID          int64  `db:"id"`
+	UserID      int64  `db:"user_id"`
+	Title       string `db:"title"`
+	URL         string `db:"url"`
+	Subscribed  bool   `db:"subscribed"`
+	Description string `db:"description"`
+	Website     string `db:"website"`
+
+	CreatedAt     time.Time `db:"created_at"`
+	UpdatedAt     time.Time `db:"updated_at"`
+	MetaUpdatedAt time.Time `db:"metadata_updated_at"`
 }
 
 func (p *PodcastDB) SetSubscribed(timestamp time.Time) bool {
@@ -98,10 +104,26 @@ func (p *PodcastDB) MarshalZerologObject(event *zerolog.Event) {
 		Int64("user_id", p.UserID).
 		Str("title", p.Title).
 		Str("url", p.URL).
+		Str("website", p.Website).
+		Str("description", p.Description).
 		Bool("subscribed", p.Subscribed).
 		Time("created_at", p.CreatedAt).
-		Time("updated_at", p.UpdatedAt)
+		Time("updated_at", p.UpdatedAt).
+		Time("metadata_updated_at", p.MetaUpdatedAt)
 }
+
+//------------------------------------------------------------------------------
+
+type PodcastMetaUpdateDB struct {
+	Title       string `db:"title"`
+	URL         string `db:"url"`
+	Description string `db:"description"`
+	Website     string `db:"website"`
+
+	MetaUpdatedAt time.Time `db:"metadata_updated_at"`
+}
+
+//------------------------------------------------------------------------------
 
 type PodcastsDB []PodcastDB
 
@@ -154,6 +176,8 @@ func (s PodcastsDB) ToIDsMap() map[string]int64 {
 	return res
 }
 
+//------------------------------------------------------------------------------
+
 type EpisodeDB struct {
 	ID        int64     `db:"id"`
 	PodcastID int64     `db:"podcast_id"`
@@ -192,6 +216,8 @@ func (e EpisodeDB) MarshalZerologObject(event *zerolog.Event) {
 		Any("device", e.Device)
 }
 
+//------------------------------------------------------------------------------
+
 type UserDB struct {
 	ID        int64     `db:"id"`
 	UserName  string    `db:"username"`
@@ -217,6 +243,7 @@ func (u UserDB) MarshalZerologObject(event *zerolog.Event) {
 		Time("updated_at", u.UpdatedAt)
 }
 
+// ------------------------------------------------------------------------------
 type SettingsDB struct {
 	UserID    int64  `db:"user_id"`
 	PodcastID *int64 `db:"podcast_id"`

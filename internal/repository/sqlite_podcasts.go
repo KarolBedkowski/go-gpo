@@ -27,7 +27,8 @@ func (s SqliteRepository) ListSubscribedPodcasts(ctx context.Context, userid int
 	dbctx := db.MustCtx(ctx)
 
 	err := dbctx.SelectContext(ctx, &res,
-		"SELECT p.id, p.user_id, p.url, p.title, p.subscribed, p.created_at, p.updated_at "+
+		"SELECT p.id, p.user_id, p.url, p.title, p.subscribed, p.created_at, p.updated_at, p.metadata_updated_at, "+
+			"p.description, p.website "+
 			"FROM podcasts p "+
 			"WHERE p.user_id=? AND p.updated_at > ? and subscribed "+
 			"ORDER BY p.title, p.url",
@@ -48,7 +49,8 @@ func (s SqliteRepository) ListPodcasts(ctx context.Context, userid int64, since 
 	dbctx := db.MustCtx(ctx)
 
 	err := dbctx.SelectContext(ctx, &res,
-		"SELECT p.id, p.user_id, p.url, p.title, p.subscribed, p.created_at, p.updated_at "+
+		"SELECT p.id, p.user_id, p.url, p.title, p.subscribed, p.created_at, p.updated_at, p.metadata_updated_at, "+
+			"p.description, p.website "+
 			"FROM podcasts p "+
 			"WHERE p.user_id=? AND p.updated_at > ?", userid, since)
 	if err != nil {
@@ -70,7 +72,8 @@ func (s SqliteRepository) GetPodcast(
 	podcast := PodcastDB{}
 
 	err := dbctx.GetContext(ctx, &podcast,
-		"SELECT p.id, p.user_id, p.url, p.title, p.subscribed, p.created_at, p.updated_at "+
+		"SELECT p.id, p.user_id, p.url, p.title, p.subscribed, p.created_at, p.updated_at, p.metadata_updated_at, "+
+			"p.description, p.website "+
 			"FROM podcasts p "+
 			"WHERE p.user_id=? AND p.url = ?", userid, podcasturl)
 	switch {
@@ -92,14 +95,18 @@ func (s SqliteRepository) SavePodcast(ctx context.Context, podcast *PodcastDB) (
 
 		res, err := dbctx.ExecContext(
 			ctx,
-			"INSERT INTO podcasts (user_id, title, url, subscribed, created_at, updated_at) "+
-				"VALUES(?, ?, ?, ?, ?, ?)",
+			"INSERT INTO podcasts "+
+				"(user_id, title, url, subscribed, created_at, updated_at, metadata_updated_at, website, description) "+
+				"VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)",
 			podcast.UserID,
 			podcast.Title,
 			podcast.URL,
 			podcast.Subscribed,
 			podcast.CreatedAt,
 			podcast.UpdatedAt,
+			podcast.MetaUpdatedAt,
+			podcast.Website,
+			podcast.Description,
 		)
 		if err != nil {
 			return 0, aerr.Wrapf(err, "insert podcast failed").WithMeta("podcast_url", podcast.URL)
@@ -129,12 +136,15 @@ func (s SqliteRepository) SavePodcast(ctx context.Context, podcast *PodcastDB) (
 	return podcast.ID, nil
 }
 
-func (s SqliteRepository) ListPodcastsToUpdate(ctx context.Context) ([]string, error) {
+func (s SqliteRepository) ListPodcastsToUpdate(ctx context.Context, since time.Time) ([]string, error) {
 	dbctx := db.MustCtx(ctx)
 
 	var res []string
 
-	err := dbctx.SelectContext(ctx, &res, "SELECT DISTINCT p.url FROM podcasts p WHERE p.subscribed AND title=''")
+	err := dbctx.SelectContext(ctx, &res,
+		"SELECT DISTINCT p.url FROM podcasts p "+
+			"WHERE p.subscribed AND (metadata_updated_at IS NULL OR metadata_updated_at < ?)",
+		since)
 	if err != nil {
 		return nil, aerr.Wrapf(err, "get list podcasts to update failed")
 	}
@@ -142,14 +152,15 @@ func (s SqliteRepository) ListPodcastsToUpdate(ctx context.Context) ([]string, e
 	return res, nil
 }
 
-func (s SqliteRepository) UpdatePodcastsInfo(ctx context.Context, url, title string) error {
+func (s SqliteRepository) UpdatePodcastsInfo(ctx context.Context, update *PodcastMetaUpdateDB) error {
 	dbctx := db.MustCtx(ctx)
 
 	_, err := dbctx.ExecContext(ctx,
-		"UPDATE podcasts SET title=? WHERE subscribed AND url=? AND title = ''",
-		title, url)
+		"UPDATE podcasts SET title=?, description=?, website=?, metadata_updated_at=? "+
+			"WHERE url=?",
+		update.Title, update.Description, update.Website, update.MetaUpdatedAt, update.URL)
 	if err != nil {
-		return aerr.Wrapf(err, "update podcasts failed").WithMeta("url", url, "title", title)
+		return aerr.Wrapf(err, "update podcasts failed").WithMeta("podcast_update", update)
 	}
 
 	return nil

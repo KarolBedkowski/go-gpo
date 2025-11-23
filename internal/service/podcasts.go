@@ -98,8 +98,10 @@ func (p *PodcastsSrv) GetPodcastsWithLastEpisode(ctx context.Context, username s
 		podcasts := make([]model.PodcastWithLastEpisode, len(subs))
 		for idx, s := range subs {
 			podcasts[idx] = model.PodcastWithLastEpisode{
-				Title: s.Title,
-				URL:   s.URL,
+				Title:       s.Title,
+				URL:         s.URL,
+				Website:     s.Website,
+				Description: s.Description,
 			}
 
 			lastEpisode, err := p.episodesRepo.GetLastEpisodeAction(ctx, user.ID, s.ID, false)
@@ -117,12 +119,14 @@ func (p *PodcastsSrv) GetPodcastsWithLastEpisode(ctx context.Context, username s
 	})
 }
 
-func (p *PodcastsSrv) DownloadPodcastsInfo(ctx context.Context) error {
+func (p *PodcastsSrv) DownloadPodcastsInfo(ctx context.Context, since time.Time) error {
 	logger := zerolog.Ctx(ctx)
 	logger.Debug().Msg("start downloading podcasts info")
 
 	// get podcasts to update
-	urls, err := db.InConnectionR(ctx, p.db, p.podcastsRepo.ListPodcastsToUpdate)
+	urls, err := db.InConnectionR(ctx, p.db, func(ctx context.Context) ([]string, error) {
+		return p.podcastsRepo.ListPodcastsToUpdate(ctx, since)
+	})
 	if err != nil {
 		return aerr.ApplyFor(ErrRepositoryError, err)
 	}
@@ -132,6 +136,8 @@ func (p *PodcastsSrv) DownloadPodcastsInfo(ctx context.Context) error {
 
 		return nil
 	}
+
+	logger.Debug().Msgf("start downloading podcasts finished; found %d", len(urls))
 
 	tasks := make(chan string, len(urls))
 
@@ -175,12 +181,21 @@ func (p *PodcastsSrv) downloadPodcastInfoWorker(ctx context.Context, urls <-chan
 
 		logger.Debug().Str("podcast_url", url).Msgf("got podcast title: %q", feed.Title)
 
-		if feed.Title == "" {
-			continue
+		title := feed.Title
+		if title == "" {
+			title = "<no title>"
+		}
+
+		update := repository.PodcastMetaUpdateDB{
+			URL:           url,
+			Title:         title,
+			Description:   feed.Description,
+			Website:       feed.Link,
+			MetaUpdatedAt: time.Now().UTC(),
 		}
 
 		err = db.InTransaction(ctx, p.db, func(ctx context.Context) error {
-			return p.podcastsRepo.UpdatePodcastsInfo(ctx, url, feed.Title)
+			return p.podcastsRepo.UpdatePodcastsInfo(ctx, &update)
 		})
 		if err != nil {
 			logger.Error().Err(err).Str("podcast_url", url).Msg("update podcast info failed")

@@ -173,6 +173,10 @@ func (s *Server) backgroundWorker(ctx context.Context, injector do.Injector) {
 		case <-time.After(1 * time.Hour):
 		}
 
-		podcastSrv.DownloadPodcastsInfo(ctx)
+		since := time.Now().Add(-24 * time.Hour).UTC()
+
+		if err := podcastSrv.DownloadPodcastsInfo(ctx, since); err != nil {
+			logger.Error().Err(err).Msg("download podcast info failed")
+		}
 	}
 }

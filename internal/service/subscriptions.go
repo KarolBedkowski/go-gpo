@@ -202,8 +202,10 @@ func (s *SubscriptionsSrv) GetSubscriptionChanges(ctx context.Context, query *qu
 
 	for _, p := range podcasts {
 		podcast := model.Podcast{
-			Title: p.Title,
-			URL:   p.URL,
+			Title:       p.Title,
+			URL:         p.URL,
+			Description: p.Description,
+			Website:     p.Website,
 		}
 		if p.Subscribed {
 			state.Added = append(state.Added, podcast)
