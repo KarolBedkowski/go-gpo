@@ -121,7 +121,7 @@ func (p *PodcastsSrv) GetPodcastsWithLastEpisode(ctx context.Context, username s
 
 func (p *PodcastsSrv) DownloadPodcastsInfo(ctx context.Context, since time.Time) error {
 	logger := zerolog.Ctx(ctx)
-	logger.Debug().Msg("start downloading podcasts info")
+	logger.Debug().Msgf("start downloading podcasts info; since=%v", since)
 
 	// get podcasts to update
 	urls, err := db.InConnectionR(ctx, p.db, func(ctx context.Context) ([]string, error) {

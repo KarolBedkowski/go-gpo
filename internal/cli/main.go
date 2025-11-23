@@ -61,6 +61,7 @@ func Main() {
 			databaseSubCmd(),
 			usersSubCmd(),
 			devicesSubCmd(),
+			podcastSubCmd(),
 		},
 	}
 
@@ -110,6 +111,16 @@ func devicesSubCmd() *cli.Command {
 			newUpdateDeviceCmd(),
 			newDeleteDeviceCmd(),
 			newListDeviceCmd(),
+		},
+	}
+}
+
+func podcastSubCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "podcast",
+		Usage: "manage podcasts",
+		Commands: []*cli.Command{
+			newDownloadPodcastsInfoCmd(),
 		},
 	}
 }
