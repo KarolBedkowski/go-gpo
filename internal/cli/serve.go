@@ -12,6 +12,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/Merovius/systemd"
 	"github.com/rs/zerolog"
@@ -23,6 +24,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/config"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/server"
+	"gitlab.com/kabes/go-gpo/internal/service"
 	gpoweb "gitlab.com/kabes/go-gpo/internal/web"
 )
 
@@ -130,6 +132,8 @@ func (s *Server) start(ctx context.Context, injector do.Injector, cfg *server.Co
 
 	db.StartBackgroundMaintenance(ctx)
 
+	go s.backgroundWorker(ctx, injector)
+
 	systemd.NotifyReady()           //nolint:errcheck
 	systemd.NotifyStatus("running") //nolint:errcheck
 
@@ -146,5 +150,22 @@ func (*Server) startSystemdWatchdog(logger *zerolog.Logger) {
 		logger.Info().Msgf("systemd autowatchdog started; duration=%s", dur)
 	} else if err != nil {
 		logger.Warn().Err(err).Msg("systemd autowatchdog start error")
+	}
+}
+
+func (s *Server) backgroundWorker(ctx context.Context, injector do.Injector) {
+	logger := log.Ctx(ctx)
+	logger.Info().Msg("start background worker")
+
+	podcastSrv := do.MustInvoke[*service.PodcastsSrv](injector)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(1 * time.Hour):
+		}
+
+		podcastSrv.DownloadPodcastsInfo(ctx)
 	}
 }

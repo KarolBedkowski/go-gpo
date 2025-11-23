@@ -128,3 +128,29 @@ func (s SqliteRepository) SavePodcast(ctx context.Context, podcast *PodcastDB) (
 
 	return podcast.ID, nil
 }
+
+func (s SqliteRepository) ListPodcastsToUpdate(ctx context.Context) ([]string, error) {
+	dbctx := db.MustCtx(ctx)
+
+	var res []string
+
+	err := dbctx.SelectContext(ctx, &res, "SELECT DISTINCT p.url FROM podcasts p WHERE p.subscribed AND title=''")
+	if err != nil {
+		return nil, aerr.Wrapf(err, "get list podcasts to update failed")
+	}
+
+	return res, nil
+}
+
+func (s SqliteRepository) UpdatePodcastsInfo(ctx context.Context, url, title string) error {
+	dbctx := db.MustCtx(ctx)
+
+	_, err := dbctx.ExecContext(ctx,
+		"UPDATE podcasts SET title=? WHERE subscribed AND url=? AND title = ''",
+		title, url)
+	if err != nil {
+		return aerr.Wrapf(err, "update podcasts failed").WithMeta("url", url, "title", title)
+	}
+
+	return nil
+}

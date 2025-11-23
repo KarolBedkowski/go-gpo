@@ -10,8 +10,11 @@ package service
 import (
 	"context"
 	"errors"
+	"sync"
 	"time"
 
+	"github.com/mmcdole/gofeed"
+	"github.com/rs/zerolog"
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
@@ -112,4 +115,75 @@ func (p *PodcastsSrv) GetPodcastsWithLastEpisode(ctx context.Context, username s
 
 		return podcasts, nil
 	})
+}
+
+func (p *PodcastsSrv) DownloadPodcastsInfo(ctx context.Context) error {
+	logger := zerolog.Ctx(ctx)
+	logger.Debug().Msg("start downloading podcasts info")
+
+	// get podcasts to update
+	urls, err := db.InConnectionR(ctx, p.db, p.podcastsRepo.ListPodcastsToUpdate)
+	if err != nil {
+		return aerr.ApplyFor(ErrRepositoryError, err)
+	}
+
+	if len(urls) == 0 {
+		logger.Debug().Msg("start downloading podcasts finished; no url to update found")
+
+		return nil
+	}
+
+	tasks := make(chan string, len(urls))
+
+	var wg sync.WaitGroup
+	for range min(len(urls), 5) { //nolint:mnd
+		wg.Go(func() { p.downloadPodcastInfoWorker(ctx, tasks) })
+	}
+
+	for _, u := range urls {
+		tasks <- u
+	}
+
+	close(tasks)
+
+	wg.Wait()
+
+	logger.Info().Msgf("downloading podcasts info finished, count: %d", len(urls))
+
+	return nil
+}
+
+const downloadPodcastInfoTimeout = 10 * time.Second
+
+func (p *PodcastsSrv) downloadPodcastInfoWorker(ctx context.Context, urls <-chan string) {
+	logger := zerolog.Ctx(ctx)
+
+	for url := range urls {
+		logger.Debug().Str("podcast_url", url).Msg("downloading podcast info")
+
+		dctx, cancel := context.WithTimeout(ctx, downloadPodcastInfoTimeout)
+		fp := gofeed.NewParser()
+		feed, err := fp.ParseURLWithContext(url, dctx)
+
+		cancel()
+
+		if err != nil {
+			logger.Info().Str("podcast_url", url).Err(err).Msg("download podcast info failed")
+
+			continue
+		}
+
+		logger.Debug().Str("podcast_url", url).Msgf("got podcast title: %q", feed.Title)
+
+		if feed.Title == "" {
+			continue
+		}
+
+		err = db.InTransaction(ctx, p.db, func(ctx context.Context) error {
+			return p.podcastsRepo.UpdatePodcastsInfo(ctx, url, feed.Title)
+		})
+		if err != nil {
+			logger.Error().Err(err).Str("podcast_url", url).Msg("update podcast info failed")
+		}
+	}
 }

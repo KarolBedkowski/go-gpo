@@ -47,6 +47,9 @@ type PodcastsRepository interface {
 	ListPodcasts(ctx context.Context, userid int64, since time.Time) (PodcastsDB, error)
 	GetPodcast(ctx context.Context, userid int64, podcasturl string) (PodcastDB, error)
 	SavePodcast(ctx context.Context, podcast *PodcastDB) (int64, error)
+	// ListPodcastsToUpdate return list of url-s podcasts that need update (load title etc).
+	ListPodcastsToUpdate(ctx context.Context) ([]string, error)
+	UpdatePodcastsInfo(ctx context.Context, url, title string) error
 }
 
 type SettingsRepository interface {
