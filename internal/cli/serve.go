@@ -73,6 +73,11 @@ func newStartServerCmd() *cli.Command {
 				Usage:   "use secure (https only) cookie",
 				Sources: cli.EnvVars("GOGPO_SERVER_SECURE_COOKIE"),
 			},
+			&cli.BoolFlag{
+				Name:    "enable-podcasts-loader",
+				Usage:   "Enable background worker that download podcast information",
+				Sources: cli.EnvVars("GOGPO_SERVER_PODCAST_LOADER"),
+			},
 		},
 		Action: wrap(startServerCmd),
 	}
@@ -108,12 +113,12 @@ func startServerCmd(ctx context.Context, clicmd *cli.Command, rootInjector do.In
 
 	s := Server{}
 
-	return s.start(ctx, injector, &serverConf)
+	return s.start(ctx, injector, &serverConf, clicmd.Bool("enable-podcasts-loader"))
 }
 
 type Server struct{}
 
-func (s *Server) start(ctx context.Context, injector do.Injector, cfg *server.Configuration) error {
+func (s *Server) start(ctx context.Context, injector do.Injector, cfg *server.Configuration, podcastWorker bool) error {
 	logger := log.Ctx(ctx)
 	logger.Log().Msgf("Starting go-gpo (%s)...", config.VersionString)
 
@@ -132,7 +137,9 @@ func (s *Server) start(ctx context.Context, injector do.Injector, cfg *server.Co
 
 	db.StartBackgroundMaintenance(ctx)
 
-	go s.backgroundWorker(ctx, injector)
+	if podcastWorker {
+		go s.backgroundWorker(ctx, injector)
+	}
 
 	systemd.NotifyReady()           //nolint:errcheck
 	systemd.NotifyStatus("running") //nolint:errcheck
