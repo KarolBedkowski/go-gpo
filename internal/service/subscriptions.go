@@ -138,10 +138,12 @@ func (s *SubscriptionsSrv) ChangeSubscriptions( //nolint:cyclop
 		if err != nil {
 			return err
 		}
+
 		// check service
-		_, err = s.getUserDevice(ctx, user.ID, cmd.DeviceName)
-		if err != nil {
-			return err
+		if cmd.DeviceName != "" {
+			if _, err = s.getUserDevice(ctx, user.ID, cmd.DeviceName); err != nil {
+				return err
+			}
 		}
 
 		subscribed, err := s.podcastsRepo.ListPodcasts(ctx, user.ID, time.Time{})

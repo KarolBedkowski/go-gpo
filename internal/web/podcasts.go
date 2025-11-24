@@ -10,32 +10,38 @@ package web
 import (
 	"context"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
 type podcastPages struct {
-	podcastsSrv *service.PodcastsSrv
-	template    templates
+	podcastsSrv      *service.PodcastsSrv
+	subscriptionsSrv *service.SubscriptionsSrv
+	template         templates
 }
 
 func newPodcastPages(i do.Injector) (podcastPages, error) {
 	return podcastPages{
-		podcastsSrv: do.MustInvoke[*service.PodcastsSrv](i),
-		template:    do.MustInvoke[templates](i),
+		podcastsSrv:      do.MustInvoke[*service.PodcastsSrv](i),
+		subscriptionsSrv: do.MustInvoke[*service.SubscriptionsSrv](i),
+		template:         do.MustInvoke[templates](i),
 	}, nil
 }
 
 func (p podcastPages) Routes() *chi.Mux {
 	r := chi.NewRouter()
 	r.Get(`/`, srvsupport.Wrap(p.list))
+	r.Post(`/`, srvsupport.Wrap(p.addPodcast))
 
 	return r
 }
@@ -61,4 +67,38 @@ func (p podcastPages) list(ctx context.Context, w http.ResponseWriter, r *http.R
 		logger.Error().Err(err).Msg("execute template error")
 		srvsupport.WriteError(w, r, http.StatusInternalServerError, "")
 	}
+}
+
+func (p podcastPages) addPodcast(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
+	if err := r.ParseForm(); err != nil {
+		logger.Error().Err(err).Msg("parse form error")
+		srvsupport.WriteError(w, r, http.StatusBadRequest, "")
+	}
+
+	var podcast string
+	if podcasts, ok := r.Form["url"]; ok && len(podcasts) == 1 {
+		podcast = strings.TrimSpace(podcasts[0])
+	}
+
+	if podcast == "" {
+		p.list(ctx, w, r, logger)
+
+		return
+	}
+
+	cmd := command.ChangeSubscriptionsCmd{
+		UserName:   internal.ContextUser(ctx),
+		DeviceName: "",
+		Add:        []string{podcast},
+		Timestamp:  time.Now(),
+	}
+
+	if _, err := p.subscriptionsSrv.ChangeSubscriptions(ctx, &cmd); err != nil {
+		srvsupport.CheckAndWriteError(w, r, err)
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("add podcast error")
+
+		return
+	}
+
+	p.list(ctx, w, r, logger)
 }
