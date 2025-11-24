@@ -41,6 +41,36 @@ func (q *GetEpisodesQuery) MarshalZerologObject(event *zerolog.Event) {
 
 //------------------------------------------------------------------------------
 
+type GetEpisodesByPodcastQuery struct {
+	UserName   string
+	PodcastID  int64
+	Since      time.Time
+	Aggregated bool
+	Limit      uint
+}
+
+func (q *GetEpisodesByPodcastQuery) Validate() error {
+	if q.UserName == "" {
+		return aerr.ErrValidation.WithMsg("user name can't be empty")
+	}
+
+	if q.PodcastID < 0 {
+		return aerr.ErrValidation.WithMsg("invalid podcast id")
+	}
+
+	return nil
+}
+
+func (q *GetEpisodesByPodcastQuery) MarshalZerologObject(event *zerolog.Event) {
+	event.Str("username", q.UserName).
+		Int64("podcast_id", q.PodcastID).
+		Time("since", q.Since).
+		Bool("aggregate", q.Aggregated).
+		Uint("limit", q.Limit)
+}
+
+//------------------------------------------------------------------------------
+
 type GetEpisodeUpdatesQuery struct {
 	UserName       string
 	DeviceName     string

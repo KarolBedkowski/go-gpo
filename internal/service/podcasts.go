@@ -98,6 +98,7 @@ func (p *PodcastsSrv) GetPodcastsWithLastEpisode(ctx context.Context, username s
 		podcasts := make([]model.PodcastWithLastEpisode, len(subs))
 		for idx, s := range subs {
 			podcasts[idx] = model.PodcastWithLastEpisode{
+				PodcastID:   s.ID,
 				Title:       s.Title,
 				URL:         s.URL,
 				Website:     s.Website,

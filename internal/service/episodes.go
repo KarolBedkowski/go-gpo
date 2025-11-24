@@ -70,6 +70,35 @@ func (e *EpisodesSrv) GetEpisodes(ctx context.Context, query *query.GetEpisodesQ
 	return common.Map(episodes, model.NewEpisodeFromDBModel), nil
 }
 
+func (e *EpisodesSrv) GetEpisodesByPodcast(ctx context.Context, query *query.GetEpisodesByPodcastQuery,
+) ([]model.Episode, error) {
+	if err := query.Validate(); err != nil {
+		return nil, aerr.Wrapf(err, "validate query failed")
+	}
+
+	episodes, err := db.InConnectionR(ctx, e.db, func(ctx context.Context) ([]repository.EpisodeDB, error) {
+		user, err := e.usersRepo.GetUser(ctx, query.UserName)
+		if errors.Is(err, repository.ErrNoData) {
+			return nil, internal.ErrUnknownUser
+		} else if err != nil {
+			return nil, aerr.ApplyFor(ErrRepositoryError, err)
+		}
+
+		episodes, err := e.episodesRepo.ListEpisodeActions(ctx, user.ID, nil,
+			&query.PodcastID, query.Since, query.Aggregated, query.Limit)
+		if err != nil {
+			return nil, aerr.ApplyFor(ErrRepositoryError, err)
+		}
+
+		return episodes, nil
+	})
+	if err != nil {
+		return nil, err //nolint:wrapcheck
+	}
+
+	return common.Map(episodes, model.NewEpisodeFromDBModel), nil
+}
+
 // AddAction save new actions.
 // Podcasts and devices are cached and - if not exists for requested action - created.
 func (e *EpisodesSrv) AddAction(ctx context.Context, cmd *command.AddActionCmd) error { //nolint:cyclop

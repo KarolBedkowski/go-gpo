@@ -18,6 +18,7 @@ type Podcast struct {
 }
 
 type PodcastWithLastEpisode struct {
+	PodcastID   int64
 	Title       string
 	URL         string
 	Description string

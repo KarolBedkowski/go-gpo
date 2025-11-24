@@ -10,6 +10,7 @@ package web
 import (
 	"context"
 	"net/http"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
@@ -52,13 +53,21 @@ func (e episodePages) list(ctx context.Context, w http.ResponseWriter, r *http.R
 		return
 	}
 
-	query := query.GetEpisodesQuery{
+	podcastid, err := strconv.ParseInt(podcast, 10, 64)
+	if err != nil {
+		logger.Debug().Err(err).Msgf("invalid podcast id")
+		w.WriteHeader(http.StatusBadRequest)
+
+		return
+	}
+
+	query := query.GetEpisodesByPodcastQuery{
 		UserName:   user,
-		Podcast:    podcast,
+		PodcastID:  podcastid,
 		Aggregated: true,
 	}
 
-	episodes, err := e.episodeSrv.GetEpisodes(ctx, &query)
+	episodes, err := e.episodeSrv.GetEpisodesByPodcast(ctx, &query)
 	if err != nil {
 		srvsupport.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get podcast episodes error")
