@@ -426,14 +426,8 @@ func InTransactionR[T any](ctx context.Context, r *Database,
 
 //------------------------------------------------------------------------------
 
+// FIXME: move to repo
 var maintScripts = []string{
-	// delete actions for episode if given episode has been deleted
-	"DELETE FROM episodes AS e " +
-		"WHERE action != 'delete' " +
-		"AND updated_at < datetime('now','-1 month') " +
-		"AND EXISTS (" +
-		" SELECT NULL FROM episodes AS ed " +
-		" WHERE ed.url = e.url AND ed.action = 'delete' AND ed.updated_at > e.updated_at);",
 	// delete play actions when for given episode never play action exists
 	"DELETE FROM episodes AS e " +
 		"WHERE action = 'play' " +
