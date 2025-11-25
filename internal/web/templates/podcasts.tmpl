@@ -18,15 +18,19 @@
         <th>Description</th>
         <th>Website</th>
         <th>Last action date</th>
+        <th>&nbsp;</th>
       </tr>
     </thead>
     <tbody>
       {{range .Podcasts}}
       <tr>
-        <td><a href="{{webroot}}/web/episode/?podcast={{ .PodcastID }}">{{ .Title }}<br/><small>{{ .URL }}</small></a></td>
+        <td><a href="{{webroot}}/web/podcast/{{ .PodcastID }}/">{{ .Title }}<br/><small>{{ .URL }}</small></a></td>
         <td>{{ .Description }}</td>
         <td>{{ with .Website }}<a href="{{ . }}">Website</a>{{ end }}</td>
         <td>{{ with .LastEpisode }}{{ .Timestamp }} ({{ .Action }}){{ end }}</td>
+        <td>
+          <a href="{{webroot}}/web/episode/?podcast={{ .PodcastID }}">Episodes</a>
+        </td>
       </tr>
       {{end}}
     </tbody>

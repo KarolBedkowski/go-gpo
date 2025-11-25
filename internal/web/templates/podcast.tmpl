@@ -1,0 +1,17 @@
+{{ template "_base.tmpl" . }}
+
+{{ define "title" }}Podcasts{{ end }}
+
+{{ define "body" }}
+
+  <h1>Podcast</h1>
+
+  {{ with .Podcast }}
+  <dl>
+    <dt>Title<dt><dd>{{ .Title }}</dd>
+    <dt>URL<dt><dd>{{ .URL }}</dd>
+    <dt>Description<dt><dd>{{ .Description }}</dd>
+    <dt>Website<dt><dd>{{ .Website }}</dd>
+  </dl>
+  {{ end }}
+{{ end }}

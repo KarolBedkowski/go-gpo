@@ -9,7 +9,9 @@ package web
 
 import (
 	"context"
+	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -20,6 +22,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/model"
+	"gitlab.com/kabes/go-gpo/internal/repository"
 	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
@@ -42,6 +45,7 @@ func (p podcastPages) Routes() *chi.Mux {
 	r := chi.NewRouter()
 	r.Get(`/`, srvsupport.Wrap(p.list))
 	r.Post(`/`, srvsupport.Wrap(p.addPodcast))
+	r.Get(`/{podcastid:[0-9]+}/`, srvsupport.Wrap(p.podcastGet))
 
 	return r
 }
@@ -101,4 +105,43 @@ func (p podcastPages) addPodcast(ctx context.Context, w http.ResponseWriter, r *
 	}
 
 	p.list(ctx, w, r, logger)
+}
+
+func (p podcastPages) podcastGet(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
+	podcastidS := chi.URLParam(r, "podcastid")
+	if podcastidS == "" {
+		srvsupport.WriteError(w, r, http.StatusBadRequest, "")
+
+		return
+	}
+
+	podcastid, err := strconv.ParseInt(podcastidS, 10, 64)
+	if err != nil {
+		srvsupport.WriteError(w, r, http.StatusBadRequest, "")
+
+		return
+	}
+
+	user := internal.ContextUser(ctx)
+
+	podcast, err := p.podcastsSrv.GetPodcast(ctx, user, podcastid)
+	if errors.Is(err, repository.ErrNoData) {
+		srvsupport.WriteError(w, r, http.StatusNotFound, "")
+
+		return
+	} else if err != nil {
+		logger.Error().Err(err).Int64("podcast_id", podcastid).Msg("get podcast failed")
+		srvsupport.WriteError(w, r, http.StatusBadRequest, "")
+
+		return
+	}
+
+	data := struct {
+		Podcast model.Podcast
+	}{Podcast: podcast}
+
+	if err := p.template.executeTemplate(w, "podcast.tmpl", &data); err != nil {
+		logger.Error().Err(err).Msg("execute template error")
+		srvsupport.WriteError(w, r, http.StatusInternalServerError, "")
+	}
 }

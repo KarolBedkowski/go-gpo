@@ -60,6 +60,31 @@ func (s SqliteRepository) ListPodcasts(ctx context.Context, userid int64, since 
 	return res, nil
 }
 
+func (s SqliteRepository) GetPodcastByID(
+	ctx context.Context,
+	userid, podcastid int64,
+) (PodcastDB, error) {
+	logger := log.Ctx(ctx)
+	logger.Debug().Int64("user_id", userid).Int64("podcast_id", podcastid).Msg("get podcast")
+
+	dbctx := db.MustCtx(ctx)
+	podcast := PodcastDB{}
+
+	err := dbctx.GetContext(ctx, &podcast,
+		"SELECT p.id, p.user_id, p.url, p.title, p.subscribed, p.created_at, p.updated_at, p.metadata_updated_at, "+
+			"coalesce(p.description, '') as description, coalesce(p.website, '') as website "+
+			"FROM podcasts p "+
+			"WHERE p.user_id=? AND p.id = ?", userid, podcastid)
+	switch {
+	case err == nil:
+		return podcast, nil
+	case errors.Is(err, sql.ErrNoRows):
+		return podcast, ErrNoData
+	default:
+		return podcast, aerr.Wrapf(err, "query podcast failed").WithMeta("podcastid", podcastid)
+	}
+}
+
 func (s SqliteRepository) GetPodcast(
 	ctx context.Context,
 	userid int64,

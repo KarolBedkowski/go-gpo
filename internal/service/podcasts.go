@@ -39,6 +39,36 @@ func NewPodcastsSrv(i do.Injector) (*PodcastsSrv, error) {
 	}, nil
 }
 
+func (p *PodcastsSrv) GetPodcast(ctx context.Context, username string, podcastid int64) (model.Podcast, error) {
+	if username == "" {
+		return model.Podcast{}, internal.ErrEmptyUsername
+	}
+
+	//nolint:wrapcheck
+	return db.InConnectionR(ctx, p.db, func(ctx context.Context) (model.Podcast, error) {
+		user, err := p.usersRepo.GetUser(ctx, username)
+		if errors.Is(err, repository.ErrNoData) {
+			return model.Podcast{}, internal.ErrUnknownUser
+		} else if err != nil {
+			return model.Podcast{}, aerr.ApplyFor(ErrRepositoryError, err)
+		}
+
+		podcast, err := p.podcastsRepo.GetPodcastByID(ctx, user.ID, podcastid)
+		if err != nil {
+			return model.Podcast{}, aerr.ApplyFor(ErrRepositoryError, err)
+		}
+
+		return model.Podcast{
+			Title:       podcast.Title,
+			URL:         podcast.URL,
+			Description: podcast.Description,
+			LogoURL:     "",
+			Website:     podcast.Website,
+			MygpoLink:   "",
+		}, nil
+	})
+}
+
 func (p *PodcastsSrv) GetPodcasts(ctx context.Context, username string) ([]model.Podcast, error) {
 	if username == "" {
 		return nil, internal.ErrEmptyUsername
