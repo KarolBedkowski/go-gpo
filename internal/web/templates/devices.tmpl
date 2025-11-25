@@ -10,6 +10,7 @@
         <th>Type</th>
         <th>Caption</th>
         <th>Last seen</th>
+        <th>&nbsp;</th>
       </tr>
     </thead>
     <tbody>
@@ -19,6 +20,7 @@
         <td>{{ .DevType }}</td>
         <td>{{ .Caption }}</td>
         <td>{{ .LastSeenAt }}</td>
+        <td><a href="{{ webroot }}/web/device/{{ .Name }}/delete">Delete</a></td>
       </tr>
       {{end}}
     </tbody>
