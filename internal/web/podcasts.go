@@ -31,6 +31,7 @@ type podcastPages struct {
 	podcastsSrv      *service.PodcastsSrv
 	subscriptionsSrv *service.SubscriptionsSrv
 	template         templates
+	webroot          string
 }
 
 func newPodcastPages(i do.Injector) (podcastPages, error) {
@@ -38,6 +39,7 @@ func newPodcastPages(i do.Injector) (podcastPages, error) {
 		podcastsSrv:      do.MustInvoke[*service.PodcastsSrv](i),
 		subscriptionsSrv: do.MustInvoke[*service.SubscriptionsSrv](i),
 		template:         do.MustInvoke[templates](i),
+		webroot:          do.MustInvokeNamed[string](i, "server.webroot"),
 	}, nil
 }
 
@@ -46,6 +48,7 @@ func (p podcastPages) Routes() *chi.Mux {
 	r.Get(`/`, srvsupport.Wrap(p.list))
 	r.Post(`/`, srvsupport.Wrap(p.addPodcast))
 	r.Get(`/{podcastid:[0-9]+}/`, srvsupport.Wrap(p.podcastGet))
+	r.Post(`/{podcastid:[0-9]+}/unsubscribe`, srvsupport.Wrap(p.podcastUnsubscribe))
 
 	return r
 }
@@ -104,19 +107,12 @@ func (p podcastPages) addPodcast(ctx context.Context, w http.ResponseWriter, r *
 		return
 	}
 
-	p.list(ctx, w, r, logger)
+	http.Redirect(w, r, p.webroot+"/web/podcast/", http.StatusFound)
 }
 
 func (p podcastPages) podcastGet(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
-	podcastidS := chi.URLParam(r, "podcastid")
-	if podcastidS == "" {
-		srvsupport.WriteError(w, r, http.StatusBadRequest, "")
-
-		return
-	}
-
-	podcastid, err := strconv.ParseInt(podcastidS, 10, 64)
-	if err != nil {
+	podcastid, ok := podcastFromURLParam(r)
+	if !ok {
 		srvsupport.WriteError(w, r, http.StatusBadRequest, "")
 
 		return
@@ -144,4 +140,62 @@ func (p podcastPages) podcastGet(ctx context.Context, w http.ResponseWriter, r *
 		logger.Error().Err(err).Msg("execute template error")
 		srvsupport.WriteError(w, r, http.StatusInternalServerError, "")
 	}
+}
+
+func (p podcastPages) podcastUnsubscribe(
+	ctx context.Context,
+	w http.ResponseWriter,
+	r *http.Request,
+	logger *zerolog.Logger,
+) {
+	podcastid, ok := podcastFromURLParam(r)
+	if !ok {
+		srvsupport.WriteError(w, r, http.StatusBadRequest, "")
+
+		return
+	}
+
+	user := internal.ContextUser(ctx)
+
+	podcast, err := p.podcastsSrv.GetPodcast(ctx, user, podcastid)
+	if errors.Is(err, repository.ErrNoData) {
+		srvsupport.WriteError(w, r, http.StatusNotFound, "")
+
+		return
+	} else if err != nil {
+		logger.Error().Err(err).Int64("podcast_id", podcastid).Msg("get podcast failed")
+		srvsupport.WriteError(w, r, http.StatusBadRequest, "")
+
+		return
+	}
+
+	cmd := command.ChangeSubscriptionsCmd{
+		UserName:   user,
+		DeviceName: "",
+		Remove:     []string{podcast.URL},
+		Timestamp:  time.Now(),
+	}
+
+	if _, err := p.subscriptionsSrv.ChangeSubscriptions(ctx, &cmd); err != nil {
+		srvsupport.CheckAndWriteError(w, r, err)
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("add podcast error")
+
+		return
+	}
+
+	http.Redirect(w, r, p.webroot+"/web/podcast/", http.StatusFound)
+}
+
+func podcastFromURLParam(r *http.Request) (int64, bool) {
+	podcastidS := chi.URLParam(r, "podcastid")
+	if podcastidS == "" {
+		return 0, false
+	}
+
+	podcastid, err := strconv.ParseInt(podcastidS, 10, 64)
+	if err != nil {
+		return 0, false
+	}
+
+	return podcastid, true
 }
