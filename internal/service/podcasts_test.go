@@ -50,7 +50,7 @@ func TestPodcastsServiceUserPodcastsExt(t *testing.T) {
 
 	prepareTestSub(ctx, t, i, "user1", "dev1", subscribed...)
 
-	podcasts, err := podcastsSrv.GetPodcastsWithLastEpisode(ctx, "user1")
+	podcasts, err := podcastsSrv.GetPodcastsWithLastEpisode(ctx, "user1", true)
 	assert.NoErr(t, err)
 	assert.Equal(t, len(podcasts), 3)
 	assert.Equal(t, podcasts[0].URL, "http://example.com/p1")
@@ -59,6 +59,6 @@ func TestPodcastsServiceUserPodcastsExt(t *testing.T) {
 
 	// TODO: check episode
 
-	_, err = podcastsSrv.GetPodcastsWithLastEpisode(ctx, "user3")
+	_, err = podcastsSrv.GetPodcastsWithLastEpisode(ctx, "user3", true)
 	assert.ErrSpec(t, err, internal.ErrUnknownUser)
 }

@@ -15,6 +15,7 @@ type Podcast struct {
 	LogoURL     string
 	Website     string
 	MygpoLink   string
+	Subscribed  bool
 }
 
 type PodcastWithLastEpisode struct {
@@ -26,6 +27,7 @@ type PodcastWithLastEpisode struct {
 	LogoURL     string
 	Website     string
 	MygpoLink   string
+	Subscribed  bool
 
 	LastEpisode *Episode
 }

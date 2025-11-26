@@ -15,7 +15,15 @@
   </dl>
   {{ end }}
 
+
+  {{ if .Podcast.Subscribed }}
   <form method="POST" action="unsubscribe">
     <button type="submit">Unsubscribe</button>
   </form>
+  {{ else }} 
+  <form method="POST" action="resubscribe">
+    <button type="submit">Subscribe again</button>
+  </form>
+  {{ end }}
+
 {{ end }}

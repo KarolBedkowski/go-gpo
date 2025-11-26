@@ -65,6 +65,7 @@ func (p *PodcastsSrv) GetPodcast(ctx context.Context, username string, podcastid
 			LogoURL:     "",
 			Website:     podcast.Website,
 			MygpoLink:   "",
+			Subscribed:  podcast.Subscribed,
 		}, nil
 	})
 }
@@ -97,15 +98,20 @@ func (p *PodcastsSrv) GetPodcasts(ctx context.Context, username string) ([]model
 
 	for _, s := range subs {
 		podcasts = append(podcasts, model.Podcast{
-			Title: s.Title,
-			URL:   s.URL,
+			Title:       s.Title,
+			URL:         s.URL,
+			Description: s.Description,
+			LogoURL:     "",
+			Website:     s.Website,
+			MygpoLink:   "",
+			Subscribed:  s.Subscribed,
 		})
 	}
 
 	return podcasts, nil
 }
 
-func (p *PodcastsSrv) GetPodcastsWithLastEpisode(ctx context.Context, username string,
+func (p *PodcastsSrv) GetPodcastsWithLastEpisode(ctx context.Context, username string, subscribedOnly bool,
 ) ([]model.PodcastWithLastEpisode, error) {
 	if username == "" {
 		return nil, internal.ErrEmptyUsername
@@ -120,7 +126,13 @@ func (p *PodcastsSrv) GetPodcastsWithLastEpisode(ctx context.Context, username s
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		subs, err := p.podcastsRepo.ListSubscribedPodcasts(ctx, user.ID, time.Time{})
+		var subs repository.PodcastsDB
+		if subscribedOnly {
+			subs, err = p.podcastsRepo.ListSubscribedPodcasts(ctx, user.ID, time.Time{})
+		} else {
+			subs, err = p.podcastsRepo.ListPodcasts(ctx, user.ID, time.Time{})
+		}
+
 		if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
@@ -133,6 +145,7 @@ func (p *PodcastsSrv) GetPodcastsWithLastEpisode(ctx context.Context, username s
 				URL:         s.URL,
 				Website:     s.Website,
 				Description: s.Description,
+				Subscribed:  s.Subscribed,
 			}
 
 			lastEpisode, err := p.episodesRepo.GetLastEpisodeAction(ctx, user.ID, s.ID, false)

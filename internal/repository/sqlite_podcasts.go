@@ -52,7 +52,7 @@ func (s SqliteRepository) ListPodcasts(ctx context.Context, userid int64, since 
 		"SELECT p.id, p.user_id, p.url, p.title, p.subscribed, p.created_at, p.updated_at, p.metadata_updated_at, "+
 			"coalesce(p.description, '') as description, coalesce(p.website, '') as website "+
 			"FROM podcasts p "+
-			"WHERE p.user_id=? AND p.updated_at > ?", userid, since)
+			"WHERE p.user_id=? AND p.updated_at > ? ORDER BY p.title, p.url", userid, since)
 	if err != nil {
 		return nil, aerr.Wrapf(err, "query podcasts failed").WithMeta("user_id", userid, "since", since)
 	}
