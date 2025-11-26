@@ -181,43 +181,28 @@ func (r *Database) CloseConnection(ctx context.Context, conn *sqlx.Conn) {
 	}
 }
 
-func (r *Database) Maintenance(ctx context.Context) error {
-	logger := log.Ctx(ctx)
+type MaintenanceRepository interface {
+	Maintenance(ctx context.Context) error
+}
 
-	for idx, sql := range maintScripts {
-		logger.Debug().Msgf("run maintenance script[%d]: %q", idx, sql)
-
-		res, err := r.db.ExecContext(ctx, sql)
-		if err != nil {
-			return aerr.ApplyFor(aerr.ErrDatabase, err, "execute maintenance script failed").
-				WithMeta("sql", sql)
-		}
-
-		rowsaffected, err := res.RowsAffected()
-		if err != nil {
-			return aerr.ApplyFor(aerr.ErrDatabase, err, "execute maintenance script - failed get rows affected").
-				WithMeta("sql", sql)
-		}
-
-		logger.Debug().Msgf("run maintenance script[%d] finished; row affected: %d", idx, rowsaffected)
+func (r *Database) Maintenance(ctx context.Context, repo MaintenanceRepository) error {
+	conn, err := r.GetConnection(ctx)
+	if err != nil {
+		return err
 	}
 
-	// print some stats
-	var numEpisodes, numPodcasts int
-	if err := r.db.GetContext(ctx, &numEpisodes, "SELECT count(*) FROM episodes"); err != nil {
-		return aerr.ApplyFor(aerr.ErrDatabase, err, "execute maintenance - count episodes failed")
-	}
+	defer r.CloseConnection(ctx, conn)
 
-	if err := r.db.GetContext(ctx, &numPodcasts, "SELECT count(*) FROM podcasts"); err != nil {
-		return aerr.ApplyFor(aerr.ErrDatabase, err, "execute maintenance - count podcasts failed")
-	}
+	ctx = WithCtx(ctx, conn)
 
-	logger.Info().Msgf("database maintenance finished; podcasts: %d; episodes: %d", numPodcasts, numEpisodes)
+	if err := repo.Maintenance(ctx); err != nil {
+		return aerr.Wrapf(err, "run maintenance failed")
+	}
 
 	return nil
 }
 
-func (r *Database) RunBackgroundMaintenance(ctx context.Context) error {
+func (r *Database) RunBackgroundMaintenance(ctx context.Context, repo MaintenanceRepository) error {
 	const startHour = 4
 
 	logger := log.Ctx(ctx)
@@ -239,15 +224,9 @@ func (r *Database) RunBackgroundMaintenance(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case <-time.After(wait):
-			r.Maintenance(ctx)
+			r.Maintenance(ctx, repo)
 		}
 	}
-}
-
-func (r *Database) StartBackgroundMaintenance(ctx context.Context) error {
-	go r.RunBackgroundMaintenance(ctx)
-
-	return nil
 }
 
 func (r *Database) onConnect(ctx context.Context, db sqlx.ExecerContext) error {
@@ -422,22 +401,6 @@ func InTransactionR[T any](ctx context.Context, r *Database,
 	}
 
 	return res, nil
-}
-
-//------------------------------------------------------------------------------
-
-// FIXME: move to repo
-var maintScripts = []string{
-	// delete play actions when for given episode never play action exists
-	"DELETE FROM episodes AS e " +
-		"WHERE action = 'play' " +
-		"AND updated_at < datetime('now','-14 day') " +
-		"AND EXISTS (" +
-		" SELECT NULL FROM episodes AS ed " +
-		" WHERE ed.url = e.url AND ed.action = 'play' AND ed.updated_at > e.updated_at);",
-	"VACUUM;",
-	"ANALYZE;",
-	"PRAGMA optimize;",
 }
 
 // ------------------------------------------------------

@@ -23,6 +23,7 @@ import (
 	gpoapi "gitlab.com/kabes/go-gpo/internal/api"
 	"gitlab.com/kabes/go-gpo/internal/config"
 	"gitlab.com/kabes/go-gpo/internal/db"
+	"gitlab.com/kabes/go-gpo/internal/repository"
 	"gitlab.com/kabes/go-gpo/internal/server"
 	"gitlab.com/kabes/go-gpo/internal/service"
 	gpoweb "gitlab.com/kabes/go-gpo/internal/web"
@@ -124,8 +125,8 @@ func (s *Server) start(ctx context.Context, injector do.Injector, cfg *server.Co
 
 	s.startSystemdWatchdog(logger)
 
-	db := do.MustInvoke[*db.Database](injector)
-	db.RegisterMetrics(cfg.DebugFlags.HasFlag(config.DebugDBQueryMetrics))
+	database := do.MustInvoke[*db.Database](injector)
+	database.RegisterMetrics(cfg.DebugFlags.HasFlag(config.DebugDBQueryMetrics))
 
 	ctx, cancel := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGINT)
 	defer cancel()
@@ -135,7 +136,9 @@ func (s *Server) start(ctx context.Context, injector do.Injector, cfg *server.Co
 		return aerr.Wrapf(err, "start server failed")
 	}
 
-	db.StartBackgroundMaintenance(ctx)
+	maintRepo := do.MustInvoke[repository.MaintenanceRepository](injector)
+
+	go database.RunBackgroundMaintenance(ctx, maintRepo)
 
 	if podcastWorker {
 		go s.backgroundWorker(ctx, injector)

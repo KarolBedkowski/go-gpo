@@ -1,4 +1,4 @@
-package common
+package common //nolint:revive
 
 //
 // Common application errors

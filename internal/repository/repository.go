@@ -78,3 +78,7 @@ type Repository interface {
 	SettingsRepository
 	SessionRepository
 }
+
+type MaintenanceRepository interface {
+	Maintenance(ctx context.Context) error
+}
