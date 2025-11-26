@@ -12,9 +12,9 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/samber/do/v2"
-	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/command"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/opml"
 	"gitlab.com/kabes/go-gpo/internal/query"
 	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
@@ -53,8 +53,8 @@ func (sr subscriptionsResource) devSubscriptions(
 	r *http.Request,
 	logger *zerolog.Logger,
 ) {
-	user := internal.ContextUser(ctx)
-	devicename := internal.ContextDevice(ctx)
+	user := common.ContextUser(ctx)
+	devicename := common.ContextDevice(ctx)
 
 	sinceTS, err := getSinceParameter(r)
 	if err != nil {
@@ -98,7 +98,7 @@ func (sr subscriptionsResource) userSubscriptions(
 	logger *zerolog.Logger,
 ) {
 	_ = r
-	user := internal.ContextUser(ctx)
+	user := common.ContextUser(ctx)
 
 	subs, err := sr.subsSrv.GetUserSubscriptions(ctx, &query.GetUserSubscriptionsQuery{UserName: user})
 	if err != nil {
@@ -131,8 +131,8 @@ func (sr subscriptionsResource) uploadSubscriptionChanges(
 	r *http.Request,
 	logger *zerolog.Logger,
 ) {
-	user := internal.ContextUser(ctx)
-	devicename := internal.ContextDevice(ctx)
+	user := common.ContextUser(ctx)
+	devicename := common.ContextDevice(ctx)
 
 	changes := struct {
 		Add    []string `json:"add"`

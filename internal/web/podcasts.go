@@ -18,9 +18,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 	"github.com/samber/do/v2"
-	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/command"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/repository"
 	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
@@ -55,7 +55,7 @@ func (p podcastPages) Routes() *chi.Mux {
 }
 
 func (p podcastPages) list(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
-	user := internal.ContextUser(ctx)
+	user := common.ContextUser(ctx)
 
 	subscribedOnly := !r.URL.Query().Has("showall")
 
@@ -101,7 +101,7 @@ func (p podcastPages) addPodcast(ctx context.Context, w http.ResponseWriter, r *
 	}
 
 	cmd := command.ChangeSubscriptionsCmd{
-		UserName:   internal.ContextUser(ctx),
+		UserName:   common.ContextUser(ctx),
 		DeviceName: "",
 		Add:        []string{podcast},
 		Timestamp:  time.Now(),
@@ -149,7 +149,7 @@ func (p podcastPages) podcastUnsubscribe(
 	}
 
 	cmd := command.ChangeSubscriptionsCmd{
-		UserName:   internal.ContextUser(ctx),
+		UserName:   common.ContextUser(ctx),
 		DeviceName: "",
 		Remove:     []string{podcast.URL},
 		Timestamp:  time.Now(),
@@ -179,7 +179,7 @@ func (p podcastPages) podcastResubscribe(
 	}
 
 	cmd := command.ChangeSubscriptionsCmd{
-		UserName:   internal.ContextUser(ctx),
+		UserName:   common.ContextUser(ctx),
 		DeviceName: "",
 		Add:        []string{podcast.URL},
 		Timestamp:  time.Now(),
@@ -207,7 +207,7 @@ func (p podcastPages) podcastFromURLParam(ctx context.Context, r *http.Request, 
 		return model.Podcast{}, false, http.StatusBadRequest
 	}
 
-	user := internal.ContextUser(ctx)
+	user := common.ContextUser(ctx)
 
 	podcast, err := p.podcastsSrv.GetPodcast(ctx, user, podcastid)
 	if errors.Is(err, repository.ErrNoData) {

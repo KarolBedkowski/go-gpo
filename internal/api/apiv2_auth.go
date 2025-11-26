@@ -13,7 +13,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 	"github.com/samber/do/v2"
-	"gitlab.com/kabes/go-gpo/internal"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 )
 
@@ -33,7 +33,7 @@ func (ar authResource) Routes() *chi.Mux {
 
 func (ar authResource) login(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
 	sess := session.GetSession(r)
-	user := internal.ContextUser(ctx)
+	user := common.ContextUser(ctx)
 
 	switch u := srvsupport.SessionUser(sess); u {
 	case "":
@@ -48,7 +48,7 @@ func (ar authResource) login(ctx context.Context, w http.ResponseWriter, r *http
 
 func (ar authResource) logout(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
 	sess := session.GetSession(r)
-	user := internal.ContextUser(ctx)
+	user := common.ContextUser(ctx)
 	username := srvsupport.SessionUser(sess)
 
 	logger.Info().Str("user", user).Msg("logout user")

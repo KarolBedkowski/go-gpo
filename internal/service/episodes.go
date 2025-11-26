@@ -15,7 +15,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/do/v2"
-	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/common"
@@ -79,7 +78,7 @@ func (e *EpisodesSrv) GetEpisodesByPodcast(ctx context.Context, query *query.Get
 	episodes, err := db.InConnectionR(ctx, e.db, func(ctx context.Context) ([]repository.EpisodeDB, error) {
 		user, err := e.usersRepo.GetUser(ctx, query.UserName)
 		if errors.Is(err, repository.ErrNoData) {
-			return nil, internal.ErrUnknownUser
+			return nil, common.ErrUnknownUser
 		} else if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
@@ -113,7 +112,7 @@ func (e *EpisodesSrv) AddAction(ctx context.Context, cmd *command.AddActionCmd) 
 	return db.InTransaction(ctx, e.db, func(ctx context.Context) error {
 		user, err := e.usersRepo.GetUser(ctx, cmd.UserName)
 		if errors.Is(err, repository.ErrNoData) {
-			return internal.ErrUnknownUser
+			return common.ErrUnknownUser
 		} else if err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
@@ -209,13 +208,13 @@ func (e *EpisodesSrv) GetLastActions(ctx context.Context, query *query.GetLastEp
 
 func (e *EpisodesSrv) GetFavorites(ctx context.Context, username string) ([]model.Favorite, error) {
 	if username == "" {
-		return nil, internal.ErrEmptyUsername
+		return nil, common.ErrEmptyUsername
 	}
 
 	episodes, err := db.InConnectionR(ctx, e.db, func(ctx context.Context) ([]repository.EpisodeDB, error) {
 		user, err := e.usersRepo.GetUser(ctx, username)
 		if errors.Is(err, repository.ErrNoData) {
-			return nil, internal.ErrUnknownUser
+			return nil, common.ErrUnknownUser
 		} else if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
@@ -245,7 +244,7 @@ func (e *EpisodesSrv) getEpisodes(
 ) ([]repository.EpisodeDB, error) {
 	user, err := e.usersRepo.GetUser(ctx, username)
 	if errors.Is(err, repository.ErrNoData) {
-		return nil, internal.ErrUnknownUser
+		return nil, common.ErrUnknownUser
 	} else if err != nil {
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
@@ -336,7 +335,7 @@ func (e *EpisodesSrv) getDeviceID(
 
 	device, err := e.devicesRepo.GetDevice(ctx, userid, devicename)
 	if errors.Is(err, repository.ErrNoData) {
-		return nil, internal.ErrUnknownDevice
+		return nil, common.ErrUnknownDevice
 	} else if err != nil {
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
@@ -359,7 +358,7 @@ func (e *EpisodesSrv) getPodcastID(
 
 	p, err := e.podcastsRepo.GetPodcast(ctx, userid, podcast)
 	if errors.Is(err, repository.ErrNoData) {
-		return nil, internal.ErrUnknownPodcast
+		return nil, common.ErrUnknownPodcast
 	} else if err != nil {
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}

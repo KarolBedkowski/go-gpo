@@ -14,9 +14,9 @@ import (
 	"time"
 
 	"github.com/samber/do/v2"
-	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/command"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/query"
@@ -77,7 +77,7 @@ func (s *SubscriptionsSrv) ReplaceSubscriptions( //nolint:cyclop
 
 		// check dev
 		_, err = s.getUserDevice(ctx, user.ID, cmd.DeviceName)
-		if errors.Is(err, internal.ErrUnknownDevice) {
+		if errors.Is(err, common.ErrUnknownDevice) {
 			_, err = s.createUserDevice(ctx, user.ID, cmd.DeviceName)
 		}
 
@@ -227,7 +227,7 @@ func (s *SubscriptionsSrv) getSubsctiptions(ctx context.Context, username, devic
 	return db.InConnectionR(ctx, s.db, func(ctx context.Context) ([]string, error) {
 		user, err := s.usersRepo.GetUser(ctx, username)
 		if errors.Is(err, repository.ErrNoData) {
-			return nil, internal.ErrUnknownUser
+			return nil, common.ErrUnknownUser
 		} else if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
@@ -252,7 +252,7 @@ func (s *SubscriptionsSrv) getSubsctiptions(ctx context.Context, username, devic
 func (s *SubscriptionsSrv) getUser(ctx context.Context, username string) (repository.UserDB, error) {
 	user, err := s.usersRepo.GetUser(ctx, username)
 	if errors.Is(err, repository.ErrNoData) {
-		return user, internal.ErrUnknownUser
+		return user, common.ErrUnknownUser
 	} else if err != nil {
 		return user, aerr.ApplyFor(ErrRepositoryError, err)
 	}
@@ -268,7 +268,7 @@ func (s *SubscriptionsSrv) getUserDevice(
 ) (repository.DeviceDB, error) {
 	device, err := s.devicesRepo.GetDevice(ctx, userid, devicename)
 	if errors.Is(err, repository.ErrNoData) {
-		return device, internal.ErrUnknownDevice
+		return device, common.ErrUnknownDevice
 	} else if err != nil {
 		return device, aerr.ApplyFor(ErrRepositoryError, err)
 	}

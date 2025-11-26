@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"time"
 
-	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/common"
@@ -92,7 +91,7 @@ func (er episodesResource) uploadEpisodeActions(
 	logger.Debug().Msgf("uploadEpisodeActions: count=%d, changedurls=%d", len(actions), len(changedurls))
 
 	cmd := command.AddActionCmd{
-		UserName: internal.ContextUser(ctx),
+		UserName: common.ContextUser(ctx),
 		Actions:  actions,
 	}
 	if err := er.episodesSrv.AddAction(ctx, &cmd); err != nil {
@@ -119,7 +118,7 @@ func (er episodesResource) getEpisodeActions(
 	r *http.Request,
 	logger *zerolog.Logger,
 ) {
-	user := internal.ContextUser(ctx)
+	user := common.ContextUser(ctx)
 	podcast := r.URL.Query().Get("podcast")
 	device := r.URL.Query().Get("device")
 	aggregated := r.URL.Query().Get("aggregated") == "true"

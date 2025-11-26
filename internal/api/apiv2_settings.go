@@ -8,9 +8,9 @@ import (
 	"context"
 	"net/http"
 
-	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/command"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/query"
 	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
@@ -48,7 +48,7 @@ func (u settingsResource) getSettings(
 	r *http.Request,
 	logger *zerolog.Logger,
 ) {
-	user := internal.ContextUser(ctx)
+	user := common.ContextUser(ctx)
 	key := query.SettingsQuery{
 		UserName:   user,
 		Scope:      chi.URLParam(r, "scope"),
@@ -75,7 +75,7 @@ func (u settingsResource) postSettings(
 	r *http.Request,
 	logger *zerolog.Logger,
 ) {
-	user := internal.ContextUser(ctx)
+	user := common.ContextUser(ctx)
 
 	var reqData struct {
 		Set    map[string]string `json:"set"`

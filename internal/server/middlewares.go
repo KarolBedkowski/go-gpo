@@ -24,7 +24,7 @@ import (
 	"github.com/rs/zerolog/hlog"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/do/v2"
-	"gitlab.com/kabes/go-gpo/internal"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/config"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/repository"
@@ -41,7 +41,7 @@ func AuthenticatedOnly(next http.Handler) http.Handler {
 		logger.Debug().Str("session_user", user).Msg("authenticated only check")
 
 		if user != "" {
-			ctx := internal.ContextWithUser(r.Context(), user)
+			ctx := common.ContextWithUser(r.Context(), user)
 			next.ServeHTTP(w, r.WithContext(ctx))
 
 			return
@@ -76,7 +76,7 @@ func (a authenticator) handle(next http.Handler) http.Handler {
 			sess := session.GetSession(r)
 
 			_, err := a.usersSrv.LoginUser(ctx, username, password)
-			if errors.Is(err, internal.ErrUnauthorized) || errors.Is(err, internal.ErrUnknownUser) {
+			if errors.Is(err, common.ErrUnauthorized) || errors.Is(err, common.ErrUnknownUser) {
 				logger.Warn().Err(err).Str("user_name", username).Msg("auth failed")
 				w.Header().Add("WWW-Authenticate", "Basic realm=\"go-gpo\"")
 
@@ -98,7 +98,7 @@ func (a authenticator) handle(next http.Handler) http.Handler {
 
 			lloger.Info().Msgf("user authenticated")
 
-			r = r.WithContext(internal.ContextWithUser(ctx, username))
+			r = r.WithContext(common.ContextWithUser(ctx, username))
 			_ = sess.Set("user", username)
 		}
 

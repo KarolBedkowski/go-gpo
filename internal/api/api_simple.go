@@ -16,9 +16,9 @@ import (
 	"github.com/go-chi/render"
 	"github.com/rs/zerolog"
 	"github.com/samber/do/v2"
-	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/command"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/opml"
 	"gitlab.com/kabes/go-gpo/internal/query"
 	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
@@ -54,7 +54,7 @@ func (s *simpleResource) downloadUserSubscriptions(
 	r *http.Request,
 	logger *zerolog.Logger,
 ) {
-	user := internal.ContextUser(ctx)
+	user := common.ContextUser(ctx)
 
 	subs, err := s.subServ.GetUserSubscriptions(ctx, &query.GetUserSubscriptionsQuery{UserName: user})
 	if err != nil {
@@ -97,8 +97,8 @@ func (s *simpleResource) downloadDevSubscriptions(
 	r *http.Request,
 	logger *zerolog.Logger,
 ) {
-	user := internal.ContextUser(ctx)
-	devicename := internal.ContextDevice(ctx)
+	user := common.ContextUser(ctx)
+	devicename := common.ContextDevice(ctx)
 
 	subs, err := s.subServ.GetSubscriptions(ctx, &query.GetSubscriptionsQuery{UserName: user, DeviceName: devicename})
 	if err != nil {
@@ -138,8 +138,8 @@ func (s *simpleResource) uploadSubscriptions(
 	r *http.Request,
 	logger *zerolog.Logger,
 ) {
-	user := internal.ContextUser(ctx)
-	devicename := internal.ContextDevice(ctx)
+	user := common.ContextUser(ctx)
+	devicename := common.ContextDevice(ctx)
 
 	var (
 		subs []string

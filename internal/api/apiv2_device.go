@@ -11,7 +11,6 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/samber/do/v2"
-	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/common"
@@ -52,8 +51,8 @@ func (d deviceResource) updateDevice(
 	r *http.Request,
 	logger *zerolog.Logger,
 ) {
-	user := internal.ContextUser(ctx)
-	devicename := internal.ContextDevice(ctx)
+	user := common.ContextUser(ctx)
+	devicename := common.ContextDevice(ctx)
 
 	// updateDevice device data
 	var reqData struct {
@@ -91,7 +90,7 @@ func (d deviceResource) listDevices(
 	r *http.Request,
 	logger *zerolog.Logger,
 ) {
-	user := internal.ContextUser(ctx)
+	user := common.ContextUser(ctx)
 
 	devices, err := d.deviceSrv.ListDevices(ctx, &query.GetDevicesQuery{UserName: user})
 	if err != nil {

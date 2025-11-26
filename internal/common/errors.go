@@ -1,4 +1,4 @@
-package internal
+package common
 
 //
 // Common application errors

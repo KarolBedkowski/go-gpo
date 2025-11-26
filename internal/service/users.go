@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/samber/do/v2"
-	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/common"
@@ -38,7 +37,7 @@ func NewUsersSrv(i do.Injector) (*UsersSrv, error) {
 
 func (u *UsersSrv) LoginUser(ctx context.Context, username, password string) (model.User, error) {
 	if username == "" {
-		return model.User{}, internal.ErrEmptyUsername
+		return model.User{}, common.ErrEmptyUsername
 	}
 
 	if password == "" {
@@ -50,17 +49,17 @@ func (u *UsersSrv) LoginUser(ctx context.Context, username, password string) (mo
 	})
 
 	if errors.Is(err, repository.ErrNoData) {
-		return model.User{}, internal.ErrUnknownUser
+		return model.User{}, common.ErrUnknownUser
 	} else if err != nil {
 		return model.User{}, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
 	if user.Password == model.UserLockedPassword {
-		return model.User{}, internal.ErrUserAccountLocked
+		return model.User{}, common.ErrUserAccountLocked
 	}
 
 	if !u.passHasher.CheckPassword(password, user.Password) {
-		return model.User{}, internal.ErrUnauthorized
+		return model.User{}, common.ErrUnauthorized
 	}
 
 	return model.NewUserFromUserDB(&user), nil
@@ -86,7 +85,7 @@ func (u *UsersSrv) AddUser(ctx context.Context, cmd *command.NewUserCmd) (comman
 			// ok; user not exists
 		case err == nil:
 			// user exists
-			return res, internal.ErrUserExists
+			return res, common.ErrUserExists
 		default:
 			// failed to get user
 			return res, aerr.ApplyFor(ErrRepositoryError, err)
@@ -133,7 +132,7 @@ func (u *UsersSrv) ChangePassword(ctx context.Context, cmd *command.ChangeUserPa
 		user, err := u.usersRepo.GetUser(ctx, cmd.UserName)
 
 		if errors.Is(err, repository.ErrNoData) {
-			return internal.ErrUnknownUser
+			return common.ErrUnknownUser
 		} else if err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
@@ -177,7 +176,7 @@ func (u *UsersSrv) LockAccount(ctx context.Context, cmd command.LockAccountCmd) 
 	return db.InTransaction(ctx, u.db, func(ctx context.Context) error {
 		udb, err := u.usersRepo.GetUser(ctx, cmd.UserName)
 		if errors.Is(err, repository.ErrNoData) {
-			return internal.ErrUnknownUser
+			return common.ErrUnknownUser
 		} else if err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
@@ -202,7 +201,7 @@ func (u *UsersSrv) DeleteUser(ctx context.Context, cmd *command.DeleteUserCmd) e
 	return db.InTransaction(ctx, u.db, func(ctx context.Context) error {
 		user, err := u.usersRepo.GetUser(ctx, cmd.UserName)
 		if errors.Is(err, repository.ErrNoData) {
-			return internal.ErrUnknownUser
+			return common.ErrUnknownUser
 		} else if err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}

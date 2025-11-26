@@ -11,8 +11,8 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/hlog"
 	"github.com/rs/zerolog/log"
-	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/common"
 )
 
 //
@@ -68,7 +68,7 @@ func CheckAndWriteError(w http.ResponseWriter, r *http.Request, err error) {
 	msg := aerr.GetUserMessage(err)
 
 	switch {
-	case errors.Is(err, internal.ErrUnknownDevice):
+	case errors.Is(err, common.ErrUnknownDevice):
 		WriteError(w, r, http.StatusNotFound, msg)
 
 	case aerr.HasTag(err, aerr.InternalError):

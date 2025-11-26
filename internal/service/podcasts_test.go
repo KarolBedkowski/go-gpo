@@ -10,8 +10,8 @@ import (
 	"testing"
 
 	"github.com/samber/do/v2"
-	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/assert"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/model"
 )
 
@@ -36,7 +36,7 @@ func TestPodcastsServiceUserPodcasts(t *testing.T) {
 	assert.Equal(t, len(podcasts), 0)
 
 	podcasts, err = podcastsSrv.GetPodcasts(ctx, "user3")
-	assert.ErrSpec(t, err, internal.ErrUnknownUser)
+	assert.ErrSpec(t, err, common.ErrUnknownUser)
 }
 
 func TestPodcastsServiceUserPodcastsExt(t *testing.T) {
@@ -60,5 +60,5 @@ func TestPodcastsServiceUserPodcastsExt(t *testing.T) {
 	// TODO: check episode
 
 	_, err = podcastsSrv.GetPodcastsWithLastEpisode(ctx, "user3", true)
-	assert.ErrSpec(t, err, internal.ErrUnknownUser)
+	assert.ErrSpec(t, err, common.ErrUnknownUser)
 }

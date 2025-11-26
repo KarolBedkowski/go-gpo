@@ -16,8 +16,8 @@ import (
 	"github.com/mmcdole/gofeed"
 	"github.com/rs/zerolog"
 	"github.com/samber/do/v2"
-	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/repository"
@@ -41,14 +41,14 @@ func NewPodcastsSrv(i do.Injector) (*PodcastsSrv, error) {
 
 func (p *PodcastsSrv) GetPodcast(ctx context.Context, username string, podcastid int64) (model.Podcast, error) {
 	if username == "" {
-		return model.Podcast{}, internal.ErrEmptyUsername
+		return model.Podcast{}, common.ErrEmptyUsername
 	}
 
 	//nolint:wrapcheck
 	return db.InConnectionR(ctx, p.db, func(ctx context.Context) (model.Podcast, error) {
 		user, err := p.usersRepo.GetUser(ctx, username)
 		if errors.Is(err, repository.ErrNoData) {
-			return model.Podcast{}, internal.ErrUnknownUser
+			return model.Podcast{}, common.ErrUnknownUser
 		} else if err != nil {
 			return model.Podcast{}, aerr.ApplyFor(ErrRepositoryError, err)
 		}
@@ -72,13 +72,13 @@ func (p *PodcastsSrv) GetPodcast(ctx context.Context, username string, podcastid
 
 func (p *PodcastsSrv) GetPodcasts(ctx context.Context, username string) ([]model.Podcast, error) {
 	if username == "" {
-		return nil, internal.ErrEmptyUsername
+		return nil, common.ErrEmptyUsername
 	}
 
 	subs, err := db.InConnectionR(ctx, p.db, func(ctx context.Context) ([]repository.PodcastDB, error) {
 		user, err := p.usersRepo.GetUser(ctx, username)
 		if errors.Is(err, repository.ErrNoData) {
-			return nil, internal.ErrUnknownUser
+			return nil, common.ErrUnknownUser
 		} else if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
@@ -114,14 +114,14 @@ func (p *PodcastsSrv) GetPodcasts(ctx context.Context, username string) ([]model
 func (p *PodcastsSrv) GetPodcastsWithLastEpisode(ctx context.Context, username string, subscribedOnly bool,
 ) ([]model.PodcastWithLastEpisode, error) {
 	if username == "" {
-		return nil, internal.ErrEmptyUsername
+		return nil, common.ErrEmptyUsername
 	}
 
 	//nolint:wrapcheck
 	return db.InConnectionR(ctx, p.db, func(ctx context.Context) ([]model.PodcastWithLastEpisode, error) {
 		user, err := p.usersRepo.GetUser(ctx, username)
 		if errors.Is(err, repository.ErrNoData) {
-			return nil, internal.ErrUnknownUser
+			return nil, common.ErrUnknownUser
 		} else if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}

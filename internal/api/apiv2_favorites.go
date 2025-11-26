@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"time"
 
-	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/model"
@@ -50,7 +49,7 @@ func (u favoritesResource) getFafovites(
 	r *http.Request,
 	logger *zerolog.Logger,
 ) {
-	user := internal.ContextUser(ctx)
+	user := common.ContextUser(ctx)
 
 	favorites, err := u.episodesSrv.GetFavorites(ctx, user)
 	if err != nil {

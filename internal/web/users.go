@@ -15,8 +15,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 	"github.com/samber/do/v2"
-	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/command"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
@@ -76,7 +76,7 @@ func (u userPages) doChangePassword(ctx context.Context, r *http.Request, logger
 		return "Error: " + msg
 	}
 
-	username := internal.ContextUser(ctx)
+	username := common.ContextUser(ctx)
 	up := command.ChangeUserPasswordCmd{
 		UserName: username, Password: npass, CurrentPassword: cpass, CheckCurrentPass: true,
 	}

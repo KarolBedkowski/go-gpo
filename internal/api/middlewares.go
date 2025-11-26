@@ -13,7 +13,7 @@ import (
 	"gitea.com/go-chi/session"
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog/hlog"
-	"gitlab.com/kabes/go-gpo/internal"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 )
 
@@ -46,7 +46,7 @@ func checkUserMiddleware(next http.Handler) http.Handler {
 			sess.Set("user", user)
 		}
 
-		ctx := internal.ContextWithUser(req.Context(), user)
+		ctx := common.ContextWithUser(req.Context(), user)
 		llogger := logger.With().Str("user_name", user).Logger()
 		ctx = llogger.WithContext(ctx)
 
@@ -64,7 +64,7 @@ func checkDeviceMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx := internal.ContextWithDevice(req.Context(), devicename)
+		ctx := common.ContextWithDevice(req.Context(), devicename)
 		logger := hlog.FromRequest(req).With().Str("device_id", devicename).Logger()
 		ctx = logger.WithContext(ctx)
 

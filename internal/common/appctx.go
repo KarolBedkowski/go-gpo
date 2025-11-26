@@ -1,15 +1,13 @@
-package internal
-
-// TODO: move this
+package common
 
 import (
 	"context"
 )
 
-var CtxUserKey = any("CtxUserKey")
+var ctxUserKey = any("ctxUserKey")
 
 func ContextUser(ctx context.Context) string {
-	suser, ok := ctx.Value(CtxUserKey).(string)
+	suser, ok := ctx.Value(ctxUserKey).(string)
 	if ok {
 		return suser
 	}
@@ -18,15 +16,15 @@ func ContextUser(ctx context.Context) string {
 }
 
 func ContextWithUser(ctx context.Context, username string) context.Context {
-	return context.WithValue(ctx, CtxUserKey, username)
+	return context.WithValue(ctx, ctxUserKey, username)
 }
 
 // ------------------------------------------------------
 
-var CtxDeviceKey = any("CtxDeviceKey")
+var ctxDeviceKey = any("ctxDeviceKey")
 
 func ContextDevice(ctx context.Context) string {
-	value, ok := ctx.Value(CtxDeviceKey).(string)
+	value, ok := ctx.Value(ctxDeviceKey).(string)
 	if ok {
 		return value
 	}
@@ -35,5 +33,5 @@ func ContextDevice(ctx context.Context) string {
 }
 
 func ContextWithDevice(ctx context.Context, devicename string) context.Context {
-	return context.WithValue(ctx, CtxDeviceKey, devicename)
+	return context.WithValue(ctx, ctxDeviceKey, devicename)
 }

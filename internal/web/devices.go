@@ -14,9 +14,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 	"github.com/samber/do/v2"
-	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/command"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/query"
 	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
@@ -45,7 +45,7 @@ func (d devicePages) Routes() *chi.Mux {
 }
 
 func (d devicePages) list(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
-	user := internal.ContextUser(ctx)
+	user := common.ContextUser(ctx)
 
 	devices, err := d.deviceSrv.ListDevices(ctx, &query.GetDevicesQuery{UserName: user})
 	if err != nil {
@@ -97,7 +97,7 @@ func (d devicePages) deletePost(ctx context.Context, w http.ResponseWriter, r *h
 	}
 
 	cmd := command.DeleteDeviceCmd{
-		UserName:   internal.ContextUser(ctx),
+		UserName:   common.ContextUser(ctx),
 		DeviceName: devicename,
 	}
 

@@ -14,9 +14,9 @@ import (
 	//	"gitlab.com/kabes/go-gpo/internal/model"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/do/v2"
-	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/command"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/query"
@@ -118,7 +118,7 @@ func (s SettingsSrv) load( //nolint:cyclop
 ) error {
 	user, err := s.usersRepo.GetUser(ctx, key.username)
 	if errors.Is(err, repository.ErrNoData) {
-		return internal.ErrUnknownUser
+		return common.ErrUnknownUser
 	} else if err != nil {
 		return aerr.ApplyFor(ErrRepositoryError, err)
 	}
@@ -129,7 +129,7 @@ func (s SettingsSrv) load( //nolint:cyclop
 	case "device":
 		device, err := s.devicesRepo.GetDevice(ctx, user.ID, key.devicename)
 		if errors.Is(err, repository.ErrNoData) {
-			return internal.ErrUnknownDevice
+			return common.ErrUnknownDevice
 		} else if err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
@@ -139,7 +139,7 @@ func (s SettingsSrv) load( //nolint:cyclop
 	case "podcast":
 		p, err := s.podcastsRepo.GetPodcast(ctx, user.ID, key.podcast)
 		if errors.Is(err, repository.ErrNoData) {
-			return internal.ErrUnknownPodcast
+			return common.ErrUnknownPodcast
 		} else if err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
@@ -149,7 +149,7 @@ func (s SettingsSrv) load( //nolint:cyclop
 	case "episode":
 		p, err := s.podcastsRepo.GetPodcast(ctx, user.ID, key.podcast)
 		if errors.Is(err, repository.ErrNoData) {
-			return internal.ErrUnknownEpisode
+			return common.ErrUnknownEpisode
 		} else if err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
@@ -158,7 +158,7 @@ func (s SettingsSrv) load( //nolint:cyclop
 
 		e, err := s.episodesRepo.GetEpisode(ctx, user.ID, p.ID, key.episode)
 		if errors.Is(err, repository.ErrNoData) {
-			return internal.ErrUnknownPodcast
+			return common.ErrUnknownPodcast
 		} else if err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
