@@ -66,7 +66,7 @@ func (i indexPage) indexPage(ctx context.Context, writer http.ResponseWriter, r 
 		LastActions []model.EpisodeLastAction
 	}{lastactions}
 
-	if err := i.template.executeTemplate(writer, "index.tmpl", data); err != nil {
+	if err := i.template.executeTemplate(writer, "index.tmpl", &data); err != nil {
 		logger.Error().Err(err).Msg("execute template error")
 		srvsupport.WriteError(writer, r, http.StatusInternalServerError, "")
 	}
