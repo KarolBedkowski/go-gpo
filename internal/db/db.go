@@ -181,54 +181,6 @@ func (r *Database) CloseConnection(ctx context.Context, conn *sqlx.Conn) {
 	}
 }
 
-type MaintenanceRepository interface {
-	Maintenance(ctx context.Context) error
-}
-
-func (r *Database) Maintenance(ctx context.Context, repo MaintenanceRepository) error {
-	conn, err := r.GetConnection(ctx)
-	if err != nil {
-		return err
-	}
-
-	defer r.CloseConnection(ctx, conn)
-
-	ctx = WithCtx(ctx, conn)
-
-	if err := repo.Maintenance(ctx); err != nil {
-		return aerr.Wrapf(err, "run maintenance failed")
-	}
-
-	return nil
-}
-
-func (r *Database) RunBackgroundMaintenance(ctx context.Context, repo MaintenanceRepository) error {
-	const startHour = 4
-
-	logger := log.Ctx(ctx)
-	logger.Info().Msg("start background maintenance task")
-
-	for {
-		now := time.Now().UTC()
-		nextRun := time.Date(now.Year(), now.Month(), now.Day(), startHour, 0, 0, 0, time.UTC)
-
-		if nextRun.Before(now) {
-			nextRun = nextRun.Add(time.Duration(60*60*24) * time.Second) //nolint:mnd
-		}
-
-		wait := nextRun.Sub(now)
-
-		logger.Debug().Msgf("maintenance task - next run %s wait %s", nextRun, wait)
-
-		select {
-		case <-ctx.Done():
-			return nil
-		case <-time.After(wait):
-			r.Maintenance(ctx, repo)
-		}
-	}
-}
-
 func (r *Database) onConnect(ctx context.Context, db sqlx.ExecerContext) error {
 	_, err := db.ExecContext(ctx,
 		"PRAGMA temp_store = MEMORY;",

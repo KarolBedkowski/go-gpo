@@ -23,7 +23,6 @@ import (
 	gpoapi "gitlab.com/kabes/go-gpo/internal/api"
 	"gitlab.com/kabes/go-gpo/internal/config"
 	"gitlab.com/kabes/go-gpo/internal/db"
-	"gitlab.com/kabes/go-gpo/internal/repository"
 	"gitlab.com/kabes/go-gpo/internal/server"
 	"gitlab.com/kabes/go-gpo/internal/service"
 	gpoweb "gitlab.com/kabes/go-gpo/internal/web"
@@ -136,9 +135,8 @@ func (s *Server) start(ctx context.Context, injector do.Injector, cfg *server.Co
 		return aerr.Wrapf(err, "start server failed")
 	}
 
-	maintRepo := do.MustInvoke[repository.MaintenanceRepository](injector)
-
-	go database.RunBackgroundMaintenance(ctx, maintRepo)
+	maintSrv := do.MustInvoke[*service.MaintenanceSrv](injector)
+	go s.runBackgroundMaintenance(ctx, maintSrv)
 
 	if podcastWorker {
 		go s.backgroundWorker(ctx, injector)
@@ -180,6 +178,35 @@ func (s *Server) backgroundWorker(ctx context.Context, injector do.Injector) {
 
 		if err := podcastSrv.DownloadPodcastsInfo(ctx, since); err != nil {
 			logger.Error().Err(err).Msg("download podcast info failed")
+		}
+	}
+}
+
+func (s *Server) runBackgroundMaintenance(ctx context.Context, maintSrv *service.MaintenanceSrv) {
+	const startHour = 4
+
+	logger := log.Ctx(ctx)
+	logger.Info().Msg("start background maintenance task")
+
+	for {
+		now := time.Now().UTC()
+		nextRun := time.Date(now.Year(), now.Month(), now.Day(), startHour, 0, 0, 0, time.UTC)
+
+		if nextRun.Before(now) {
+			nextRun = nextRun.Add(time.Duration(60*60*24) * time.Second) //nolint:mnd
+		}
+
+		wait := nextRun.Sub(now)
+
+		logger.Debug().Msgf("maintenance task - next run %s wait %s", nextRun, wait)
+
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(wait):
+			if err := maintSrv.MaintainDatabase(ctx); err != nil {
+				logger.Error().Err(err).Msg("run database maintenance failed")
+			}
 		}
 	}
 }

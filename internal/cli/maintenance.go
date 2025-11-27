@@ -13,8 +13,7 @@ import (
 
 	"github.com/samber/do/v2"
 	"github.com/urfave/cli/v3"
-	"gitlab.com/kabes/go-gpo/internal/db"
-	"gitlab.com/kabes/go-gpo/internal/repository"
+	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
 func newMaintenanceCmd() *cli.Command {
@@ -26,10 +25,9 @@ func newMaintenanceCmd() *cli.Command {
 }
 
 func maintenanceCmd(ctx context.Context, _ *cli.Command, injector do.Injector) error {
-	db := do.MustInvoke[*db.Database](injector)
-	repo := do.MustInvoke[repository.MaintenanceRepository](injector)
+	maintSrv := do.MustInvoke[*service.MaintenanceSrv](injector)
 
-	err := db.Maintenance(ctx, repo)
+	err := maintSrv.MaintainDatabase(ctx)
 	if err != nil {
 		return fmt.Errorf("maintenance error: %w", err)
 	}

@@ -122,7 +122,7 @@ func (s *SubscriptionsSrv) ReplaceSubscriptions( //nolint:cyclop
 	})
 }
 
-func (s *SubscriptionsSrv) ChangeSubscriptions( //nolint:cyclop
+func (s *SubscriptionsSrv) ChangeSubscriptions( //nolint:cyclop,gocognit
 	ctx context.Context, cmd *command.ChangeSubscriptionsCmd,
 ) (command.ChangeSubscriptionsCmdResult, error) {
 	res := command.ChangeSubscriptionsCmdResult{

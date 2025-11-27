@@ -14,4 +14,5 @@ var Package = do.Package(
 	do.Lazy(NewPodcastsSrv),
 	do.Lazy(NewSettingsSrv),
 	do.Lazy(NewSubscriptionsSrv),
+	do.Lazy(NewMaintenanceSrv),
 )
