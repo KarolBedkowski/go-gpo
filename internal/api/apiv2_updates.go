@@ -55,7 +55,7 @@ func (u updatesResource) getUpdates(
 
 	since, err := getSinceParameter(r)
 	if err != nil {
-		logger.Debug().Err(err).Msgf("parse since error")
+		logger.Debug().Err(err).Msg("parse since error")
 		writeError(w, r, http.StatusBadRequest)
 
 		return

@@ -25,7 +25,7 @@ func checkUserMiddleware(next http.Handler) http.Handler {
 
 		user := chi.URLParam(req, "user")
 		if user == "" {
-			logger.Debug().Msgf("empty user")
+			logger.Debug().Msg("empty user")
 			w.WriteHeader(http.StatusBadRequest)
 
 			return
@@ -58,7 +58,7 @@ func checkDeviceMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		devicename := chi.URLParam(req, "devicename")
 		if devicename == "" {
-			hlog.FromRequest(req).Debug().Msgf("empty devicename")
+			hlog.FromRequest(req).Debug().Msg("empty devicename")
 			w.WriteHeader(http.StatusBadRequest)
 
 			return

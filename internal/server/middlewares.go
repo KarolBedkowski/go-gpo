@@ -96,7 +96,7 @@ func (a authenticator) handle(next http.Handler) http.Handler {
 			lloger := logger.With().Str("user_name", username).Logger()
 			ctx = lloger.WithContext(ctx)
 
-			lloger.Info().Msgf("user authenticated")
+			lloger.Info().Msg("user authenticated")
 
 			r = r.WithContext(common.ContextWithUser(ctx, username))
 			_ = sess.Set("user", username)

@@ -40,7 +40,7 @@ func (s *SessionStore) Set(key, value any) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	log.Logger.Debug().Msgf("set session: %v=%v", key, value)
+	log.Logger.Debug().Msgf("set session: %v=%v", key, &value)
 
 	s.data[key] = value
 
@@ -73,7 +73,7 @@ func (s *SessionStore) ID() string {
 // save postgres session values to database.
 // must call this method to save values to database.
 func (s *SessionStore) Release() error {
-	log.Logger.Debug().Msgf("session release: %+v", s.data)
+	log.Logger.Debug().Msgf("session release: %+v", &s.data)
 
 	var (
 		data []byte

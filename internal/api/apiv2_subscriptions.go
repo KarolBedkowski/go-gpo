@@ -58,7 +58,7 @@ func (sr subscriptionsResource) devSubscriptions(
 
 	sinceTS, err := getSinceParameter(r)
 	if err != nil {
-		logger.Debug().Err(err).Msgf("parse since failed")
+		logger.Debug().Err(err).Msg("parse since failed")
 		w.WriteHeader(http.StatusBadRequest)
 
 		return

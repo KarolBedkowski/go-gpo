@@ -47,7 +47,7 @@ func (e episodePages) list(ctx context.Context, w http.ResponseWriter, r *http.R
 
 	podcast := r.URL.Query().Get("podcast")
 	if podcast == "" {
-		logger.Debug().Msgf("empty podcast")
+		logger.Debug().Msg("empty podcast")
 		w.WriteHeader(http.StatusBadRequest)
 
 		return
@@ -55,7 +55,7 @@ func (e episodePages) list(ctx context.Context, w http.ResponseWriter, r *http.R
 
 	podcastid, err := strconv.ParseInt(podcast, 10, 64)
 	if err != nil {
-		logger.Debug().Err(err).Msgf("invalid podcast id")
+		logger.Debug().Err(err).Msg("invalid podcast id")
 		w.WriteHeader(http.StatusBadRequest)
 
 		return

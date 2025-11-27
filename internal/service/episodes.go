@@ -45,7 +45,7 @@ func NewEpisodesSrv(i do.Injector) (*EpisodesSrv, error) {
 // GetEpisodes return list of episodes for `username`, `podcast` and `devicename` (ignored).
 // Return last action.
 func (e *EpisodesSrv) GetEpisodes(ctx context.Context, query *query.GetEpisodesQuery) ([]model.Episode, error) {
-	log.Ctx(ctx).Debug().Object("query", query).Msgf("get episodes")
+	log.Ctx(ctx).Debug().Object("query", query).Msg("get episodes")
 
 	if err := query.Validate(); err != nil {
 		return nil, aerr.Wrapf(err, "validate query failed")
@@ -166,7 +166,7 @@ func (e *EpisodesSrv) AddAction(ctx context.Context, cmd *command.AddActionCmd) 
 // Used by /api/2/updates.
 func (e *EpisodesSrv) GetUpdates(ctx context.Context, query *query.GetEpisodeUpdatesQuery,
 ) ([]model.EpisodeUpdate, error) {
-	log.Ctx(ctx).Debug().Object("query", query).Msgf("get episodes updates")
+	log.Ctx(ctx).Debug().Object("query", query).Msg("get episodes updates")
 
 	if err := query.Validate(); err != nil {
 		return nil, aerr.Wrapf(err, "validate query failed")
@@ -190,7 +190,7 @@ func (e *EpisodesSrv) GetUpdates(ctx context.Context, query *query.GetEpisodeUpd
 // GetLastActions return last `limit` actions for `username`.
 func (e *EpisodesSrv) GetLastActions(ctx context.Context, query *query.GetLastEpisodesActionsQuery,
 ) ([]model.EpisodeLastAction, error) {
-	log.Ctx(ctx).Debug().Object("query", query).Msgf("get episodes")
+	log.Ctx(ctx).Debug().Object("query", query).Msg("get episodes")
 
 	if err := query.Validate(); err != nil {
 		return nil, aerr.Wrapf(err, "validate query failed")

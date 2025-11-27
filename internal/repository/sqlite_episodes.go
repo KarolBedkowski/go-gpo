@@ -88,7 +88,7 @@ func (s SqliteRepository) ListEpisodeActions(
 		query += " LIMIT " + strconv.FormatUint(uint64(lastelements), 10)
 	}
 
-	logger.Debug().Msgf("get episodes - query=%q, args=%v", query, args)
+	logger.Debug().Msgf("get episodes - query=%q, args=%v", query, &args)
 
 	res := []EpisodeDB{}
 
@@ -169,7 +169,7 @@ func (s SqliteRepository) GetLastEpisodeAction(ctx context.Context,
 
 func (s SqliteRepository) SaveEpisode(ctx context.Context, userid int64, episode ...EpisodeDB) error {
 	logger := log.Ctx(ctx)
-	logger.Debug().Int64("user_id", userid).Msgf("save episode")
+	logger.Debug().Int64("user_id", userid).Msg("save episode")
 
 	for _, eps := range episode {
 		logger.Debug().Object("episode", eps).Msg("update episode")

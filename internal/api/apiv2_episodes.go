@@ -57,7 +57,7 @@ func (er episodesResource) uploadEpisodeActions(
 	var reqData []episode
 
 	if err := render.DecodeJSON(r.Body, &reqData); err != nil {
-		logger.Debug().Err(err).Msgf("parse json error")
+		logger.Debug().Err(err).Msg("parse json error")
 		http.Error(w, "invalid reqData data", http.StatusBadRequest)
 
 		return
@@ -73,13 +73,13 @@ func (er episodesResource) uploadEpisodeActions(
 
 		// skip invalid (non http*) podcasts)
 		if reqEpisode.Podcast == "" {
-			logger.Debug().Interface("req", reqEpisode).Msgf("skipped episode")
+			logger.Debug().Interface("req", reqEpisode).Msg("skipped episode")
 
 			continue
 		}
 
 		if err := reqEpisode.validate(); err != nil {
-			logger.Debug().Err(err).Interface("req", reqEpisode).Msgf("validate error")
+			logger.Debug().Err(err).Interface("req", reqEpisode).Msg("validate error")
 			http.Error(w, "validate reqData data failed", http.StatusBadRequest)
 
 			return
@@ -125,7 +125,7 @@ func (er episodesResource) getEpisodeActions(
 
 	since, err := getSinceParameter(r)
 	if err != nil {
-		logger.Debug().Err(err).Msgf("parse since parameter to time error")
+		logger.Debug().Err(err).Msg("parse since parameter to time error")
 		writeError(w, r, http.StatusBadRequest)
 
 		return
