@@ -19,9 +19,9 @@ var Package = do.Package(
 	do.Lazy(func(_ do.Injector) (PodcastsRepository, error) {
 		return &SqliteRepository{}, nil
 	}),
-	do.Lazy(func(_ do.Injector) (DevicesRepository, error) {
-		return &SqliteRepository{}, nil
-	}),
+	// do.Lazy(func(_ do.Injector) (DevicesRepository, error) {
+	// 	return &SqliteRepository{}, nil
+	// }),
 	do.Lazy(func(_ do.Injector) (EpisodesRepository, error) {
 		return &SqliteRepository{}, nil
 	}),

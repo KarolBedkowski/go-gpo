@@ -117,7 +117,7 @@ func (s SettingsSrv) load( //nolint:cyclop
 	key *settingsKeys,
 ) error {
 	user, err := s.usersRepo.GetUser(ctx, key.username)
-	if errors.Is(err, repository.ErrNoData) {
+	if errors.Is(err, common.ErrNoData) {
 		return common.ErrUnknownUser
 	} else if err != nil {
 		return aerr.ApplyFor(ErrRepositoryError, err)
@@ -128,7 +128,7 @@ func (s SettingsSrv) load( //nolint:cyclop
 	switch key.scope {
 	case "device":
 		device, err := s.devicesRepo.GetDevice(ctx, user.ID, key.devicename)
-		if errors.Is(err, repository.ErrNoData) {
+		if errors.Is(err, common.ErrNoData) {
 			return common.ErrUnknownDevice
 		} else if err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
@@ -138,7 +138,7 @@ func (s SettingsSrv) load( //nolint:cyclop
 
 	case "podcast":
 		p, err := s.podcastsRepo.GetPodcast(ctx, user.ID, key.podcast)
-		if errors.Is(err, repository.ErrNoData) {
+		if errors.Is(err, common.ErrNoData) {
 			return common.ErrUnknownPodcast
 		} else if err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
@@ -148,7 +148,7 @@ func (s SettingsSrv) load( //nolint:cyclop
 
 	case "episode":
 		p, err := s.podcastsRepo.GetPodcast(ctx, user.ID, key.podcast)
-		if errors.Is(err, repository.ErrNoData) {
+		if errors.Is(err, common.ErrNoData) {
 			return common.ErrUnknownEpisode
 		} else if err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
@@ -157,7 +157,7 @@ func (s SettingsSrv) load( //nolint:cyclop
 		key.podcastid = &p.ID
 
 		e, err := s.episodesRepo.GetEpisode(ctx, user.ID, p.ID, key.episode)
-		if errors.Is(err, repository.ErrNoData) {
+		if errors.Is(err, common.ErrNoData) {
 			return common.ErrUnknownPodcast
 		} else if err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)

@@ -226,7 +226,7 @@ func (s *SubscriptionsSrv) getSubsctiptions(ctx context.Context, username, devic
 	//nolint:wrapcheck
 	return db.InConnectionR(ctx, s.db, func(ctx context.Context) ([]string, error) {
 		user, err := s.usersRepo.GetUser(ctx, username)
-		if errors.Is(err, repository.ErrNoData) {
+		if errors.Is(err, common.ErrNoData) {
 			return nil, common.ErrUnknownUser
 		} else if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
@@ -251,7 +251,7 @@ func (s *SubscriptionsSrv) getSubsctiptions(ctx context.Context, username, devic
 
 func (s *SubscriptionsSrv) getUser(ctx context.Context, username string) (repository.UserDB, error) {
 	user, err := s.usersRepo.GetUser(ctx, username)
-	if errors.Is(err, repository.ErrNoData) {
+	if errors.Is(err, common.ErrNoData) {
 		return user, common.ErrUnknownUser
 	} else if err != nil {
 		return user, aerr.ApplyFor(ErrRepositoryError, err)
@@ -265,9 +265,9 @@ func (s *SubscriptionsSrv) getUserDevice(
 	ctx context.Context,
 	userid int64,
 	devicename string,
-) (repository.DeviceDB, error) {
+) (*model.Device, error) {
 	device, err := s.devicesRepo.GetDevice(ctx, userid, devicename)
-	if errors.Is(err, repository.ErrNoData) {
+	if errors.Is(err, common.ErrNoData) {
 		return device, common.ErrUnknownDevice
 	} else if err != nil {
 		return device, aerr.ApplyFor(ErrRepositoryError, err)
@@ -284,15 +284,15 @@ func (s *SubscriptionsSrv) createUserDevice(
 	ctx context.Context,
 	username int64,
 	devicename string,
-) (repository.DeviceDB, error) {
-	device := repository.DeviceDB{
-		Name:   devicename,
-		UserID: username,
+) (*model.Device, error) {
+	device := model.Device{
+		Name: devicename,
+		User: &model.User{ID: username},
 	}
 
 	_, err := s.devicesRepo.SaveDevice(ctx, &device)
 	if err != nil {
-		return device, aerr.ApplyFor(ErrRepositoryError, err, "save device failed")
+		return nil, aerr.ApplyFor(ErrRepositoryError, err, "save device failed")
 	}
 
 	return s.getUserDevice(ctx, username, devicename)

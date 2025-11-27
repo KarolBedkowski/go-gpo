@@ -1,8 +1,9 @@
+package sqlite
+
 // model.go
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
 //
 // Distributed under terms of the GPLv3 license.
-package repository
 
 import (
 	"database/sql"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"gitlab.com/kabes/go-gpo/internal/common"
+	"gitlab.com/kabes/go-gpo/internal/model"
 )
 
 var ErrNoData = common.ErrNoData
@@ -29,7 +31,19 @@ type DeviceDB struct {
 	Subscriptions int `db:"subscriptions"`
 }
 
-func (d DeviceDB) MarshalZerologObject(event *zerolog.Event) {
+func (d *DeviceDB) ToModel() *model.Device {
+	return &model.Device{
+		ID:            d.ID,
+		Name:          d.Name,
+		DevType:       d.DevType,
+		Caption:       d.Caption,
+		Subscriptions: d.Subscriptions,
+		UpdatedAt:     d.UpdatedAt,
+		LastSeenAt:    d.LastSeenAt,
+	}
+}
+
+func (d *DeviceDB) MarshalZerologObject(event *zerolog.Event) {
 	event.Int64("id", d.ID).
 		Int64("user_id", d.UserID).
 		Str("name", d.Name).

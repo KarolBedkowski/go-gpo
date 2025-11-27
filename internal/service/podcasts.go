@@ -47,7 +47,7 @@ func (p *PodcastsSrv) GetPodcast(ctx context.Context, username string, podcastid
 	//nolint:wrapcheck
 	return db.InConnectionR(ctx, p.db, func(ctx context.Context) (model.Podcast, error) {
 		user, err := p.usersRepo.GetUser(ctx, username)
-		if errors.Is(err, repository.ErrNoData) {
+		if errors.Is(err, common.ErrNoData) {
 			return model.Podcast{}, common.ErrUnknownUser
 		} else if err != nil {
 			return model.Podcast{}, aerr.ApplyFor(ErrRepositoryError, err)
@@ -77,7 +77,7 @@ func (p *PodcastsSrv) GetPodcasts(ctx context.Context, username string) ([]model
 
 	subs, err := db.InConnectionR(ctx, p.db, func(ctx context.Context) ([]repository.PodcastDB, error) {
 		user, err := p.usersRepo.GetUser(ctx, username)
-		if errors.Is(err, repository.ErrNoData) {
+		if errors.Is(err, common.ErrNoData) {
 			return nil, common.ErrUnknownUser
 		} else if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
@@ -120,7 +120,7 @@ func (p *PodcastsSrv) GetPodcastsWithLastEpisode(ctx context.Context, username s
 	//nolint:wrapcheck
 	return db.InConnectionR(ctx, p.db, func(ctx context.Context) ([]model.PodcastWithLastEpisode, error) {
 		user, err := p.usersRepo.GetUser(ctx, username)
-		if errors.Is(err, repository.ErrNoData) {
+		if errors.Is(err, common.ErrNoData) {
 			return nil, common.ErrUnknownUser
 		} else if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
@@ -149,13 +149,13 @@ func (p *PodcastsSrv) GetPodcastsWithLastEpisode(ctx context.Context, username s
 			}
 
 			lastEpisode, err := p.episodesRepo.GetLastEpisodeAction(ctx, user.ID, s.ID, false)
-			if errors.Is(err, repository.ErrNoData) {
+			if errors.Is(err, common.ErrNoData) {
 				continue
 			} else if err != nil {
 				return nil, aerr.ApplyFor(ErrRepositoryError, err, "failed to get last episode")
 			}
 
-			ep := model.NewEpisodeFromDBModel(&lastEpisode)
+			ep := NewEpisodeFromDBModel(&lastEpisode)
 			podcasts[idx].LastEpisode = &ep
 		}
 

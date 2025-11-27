@@ -1,4 +1,4 @@
-package repository
+package sqlite
 
 //
 // devices.go
@@ -15,14 +15,16 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/db"
+	"gitlab.com/kabes/go-gpo/internal/model"
 )
 
 func (s SqliteRepository) GetDevice(
 	ctx context.Context,
 	userid int64,
 	devicename string,
-) (DeviceDB, error) {
+) (*model.Device, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Str("device_name", devicename).Msg("get device")
 
@@ -35,9 +37,9 @@ func (s SqliteRepository) GetDevice(
 		userid, devicename)
 
 	if errors.Is(err, sql.ErrNoRows) {
-		return device, ErrNoData
+		return nil, common.ErrNoData
 	} else if err != nil {
-		return device, aerr.Wrapf(err, "select device failed").WithMeta("user_id", userid, "device_name", devicename)
+		return nil, aerr.Wrapf(err, "select device failed").WithMeta("user_id", userid, "device_name", devicename)
 	}
 
 	logger.Debug().Int64("user_id", userid).Str("device_name", devicename).Msg("count subscriptions")
@@ -47,15 +49,19 @@ func (s SqliteRepository) GetDevice(
 		userid,
 	)
 	if err != nil {
-		return device, aerr.Wrapf(err, "count subscriptions failed").WithMeta("user_id", userid)
+		return nil, aerr.Wrapf(err, "count subscriptions failed").WithMeta("user_id", userid)
 	}
 
-	return device, nil
+	logger.Debug().Int("subs", device.Subscriptions).Msg("count subscriptions finished")
+
+	return device.ToModel(), nil
 }
 
-func (s SqliteRepository) SaveDevice(ctx context.Context, device *DeviceDB) (int64, error) {
+func (s SqliteRepository) SaveDevice(ctx context.Context, device *model.Device) (int64, error) {
 	logger := log.Ctx(ctx)
 	dbctx := db.MustCtx(ctx)
+
+	logger.Debug().Object("device", device).Msg("save device")
 
 	if device.ID == 0 {
 		logger.Debug().Object("device", device).Msg("insert device")
@@ -65,7 +71,7 @@ func (s SqliteRepository) SaveDevice(ctx context.Context, device *DeviceDB) (int
 		res, err := dbctx.ExecContext(ctx,
 			"INSERT INTO devices (user_id, name, dev_type, caption, updated_at, created_at, last_seen_at) "+
 				"VALUES(?, ?, ?, ?, ?, ?, ?)",
-			device.UserID, device.Name, device.DevType, device.Caption, now, now, now)
+			device.User.ID, device.Name, device.DevType, device.Caption, now, now, now)
 		if err != nil {
 			return 0, aerr.Wrapf(err, "insert device failed")
 		}
@@ -73,7 +79,7 @@ func (s SqliteRepository) SaveDevice(ctx context.Context, device *DeviceDB) (int
 		id, err := res.LastInsertId()
 		if err != nil {
 			return 0, aerr.Wrapf(err, "get last id device failed").
-				WithMeta("device_name", device.Name, "user_id", device.UserID)
+				WithMeta("device_name", device.Name, "user_id", device.User.ID)
 		}
 
 		return id, nil
@@ -92,7 +98,7 @@ func (s SqliteRepository) SaveDevice(ctx context.Context, device *DeviceDB) (int
 	return device.ID, nil
 }
 
-func (s SqliteRepository) ListDevices(ctx context.Context, userid int64) (DevicesDB, error) {
+func (s SqliteRepository) ListDevices(ctx context.Context, userid int64) ([]*model.Device, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Msg("list devices - count subscriptions")
 
@@ -110,15 +116,20 @@ func (s SqliteRepository) ListDevices(ctx context.Context, userid int64) (Device
 
 	logger.Debug().Int64("user_id", userid).Msg("list devices")
 
-	res := []*DeviceDB{}
+	devices := []DeviceDB{}
 
-	err = dbctx.SelectContext(ctx, &res,
+	err = dbctx.SelectContext(ctx, &devices,
 		"SELECT id, user_id, name, dev_type, caption, ? as subscriptions, created_at, updated_at, last_seen_at "+
 			"FROM devices WHERE user_id=? "+
 			"ORDER BY name",
 		subscriptions, userid)
 	if err != nil {
 		return nil, aerr.Wrapf(err, "select device failed").WithMeta("user_id", userid)
+	}
+
+	res := make([]*model.Device, len(devices))
+	for i, d := range devices {
+		res[i] = d.ToModel()
 	}
 
 	return res, nil

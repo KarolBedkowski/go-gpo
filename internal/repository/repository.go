@@ -10,14 +10,16 @@ package repository
 import (
 	"context"
 	"time"
+
+	"gitlab.com/kabes/go-gpo/internal/model"
 )
 
 // ------------------------------------------------------
 
 type DevicesRepository interface {
-	GetDevice(ctx context.Context, userid int64, devicename string) (DeviceDB, error)
-	SaveDevice(ctx context.Context, device *DeviceDB) (int64, error)
-	ListDevices(ctx context.Context, userid int64) (DevicesDB, error)
+	GetDevice(ctx context.Context, userid int64, devicename string) (*model.Device, error)
+	SaveDevice(ctx context.Context, device *model.Device) (int64, error)
+	ListDevices(ctx context.Context, userid int64) ([]*model.Device, error)
 	DeleteDevice(ctx context.Context, deviceid int64) error
 	MarkSeen(ctx context.Context, ts time.Time, deviceid ...int64) error
 }

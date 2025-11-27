@@ -22,7 +22,6 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/model"
-	"gitlab.com/kabes/go-gpo/internal/repository"
 	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
@@ -210,7 +209,7 @@ func (p podcastPages) podcastFromURLParam(ctx context.Context, r *http.Request, 
 	user := common.ContextUser(ctx)
 
 	podcast, err := p.podcastsSrv.GetPodcast(ctx, user, podcastid)
-	if errors.Is(err, repository.ErrNoData) {
+	if errors.Is(err, common.ErrNoData) {
 		return model.Podcast{}, false, http.StatusNotFound
 	} else if err != nil {
 		logger.Error().Err(err).Int64("podcast_id", podcastid).Msg("get podcast failed")

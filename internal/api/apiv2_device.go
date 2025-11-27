@@ -100,7 +100,7 @@ func (d deviceResource) listDevices(
 		return
 	}
 
-	resdevices := common.Map(devices, newDeviceFromModel)
+	resdevices := common.MapP(devices, newDeviceFromModel)
 
 	render.Status(r, http.StatusOK)
 	render.JSON(w, r, resdevices)
@@ -116,7 +116,7 @@ type device struct {
 
 func newDeviceFromModel(d *model.Device) device {
 	return device{
-		User:          d.User,
+		User:          d.UserName,
 		Name:          d.Name,
 		DevType:       d.DevType,
 		Caption:       d.Caption,

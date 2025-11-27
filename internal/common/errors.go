@@ -10,6 +10,8 @@ package common //nolint:revive
 //
 
 import (
+	"errors"
+
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 )
 
@@ -27,3 +29,5 @@ var (
 	ErrUnknownEpisode = aerr.New("unknown episode").WithTag(aerr.ValidationError)
 	ErrUserExists     = aerr.New("username exists").WithUserMsg("user name already exists")
 )
+
+var ErrNoData = errors.New("no result")

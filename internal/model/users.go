@@ -4,13 +4,12 @@
 // Distributed under terms of the GPLv3 license.
 package model
 
-import (
-	"gitlab.com/kabes/go-gpo/internal/repository"
-)
+import "github.com/rs/zerolog"
 
 const UserLockedPassword = "LOCKED"
 
 type User struct {
+	ID       int64
 	UserName string
 	Password string
 	Email    string
@@ -19,12 +18,10 @@ type User struct {
 	Locked bool
 }
 
-func NewUserFromUserDB(u *repository.UserDB) User {
-	return User{
-		UserName: u.UserName,
-		Password: u.Password,
-		Email:    u.Email,
-		Name:     u.Name,
-		Locked:   u.Password == UserLockedPassword,
-	}
+func (u *User) MarshalZerologObject(event *zerolog.Event) {
+	event.Int64("id", u.ID).
+		Str("user_name", u.UserName).
+		Str("email", u.Email).
+		Str("name", u.Name).
+		Bool("locked", u.Locked)
 }
