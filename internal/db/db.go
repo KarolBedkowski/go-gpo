@@ -193,12 +193,12 @@ func (r *Database) onConnect(ctx context.Context, db sqlx.ExecerContext) error {
 }
 
 func (r *Database) onClose(ctx context.Context, db sqlx.ExecerContext) error {
-	// _, err := db.ExecContext(ctx,
-	// 	"PRAGMA optimize",
-	// )
-	// if err != nil {
-	// 	return aerr.ApplyFor(aerr.ErrDatabase, err, "execute onClose script failed")
-	// }
+	_, err := db.ExecContext(ctx,
+		"PRAGMA optimize",
+	)
+	if err != nil {
+		return aerr.ApplyFor(aerr.ErrDatabase, err, "execute onClose script failed")
+	}
 
 	return nil
 }
