@@ -57,9 +57,11 @@ type PodcastsRepository interface {
 
 type SettingsRepository interface {
 	ListSettings(ctx context.Context, userid int64, podcastid, episodeid, deviceid *int64, scope string,
-	) ([]SettingsDB, error)
+	) (model.Settings, error)
 	// save (insert or update) or delete settings
-	SaveSettings(ctx context.Context, sett *SettingsDB) error
+	SaveSettings(ctx context.Context,
+		userid int64, podcastid, episodeid, deviceid *int64, scope, key, value string,
+	) error
 }
 
 type SessionRepository interface {

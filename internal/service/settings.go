@@ -59,15 +59,10 @@ func (s SettingsSrv) GetSettings(ctx context.Context, query *query.SettingsQuery
 			return nil, err
 		}
 
-		sett, err := s.settRepo.ListSettings(ctx, setkey.userid, setkey.podcastid, setkey.episodeid,
+		settings, err := s.settRepo.ListSettings(ctx, setkey.userid, setkey.podcastid, setkey.episodeid,
 			setkey.deviceid, query.Scope)
 		if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err, "failed get list settings")
-		}
-
-		settings := make(map[string]string)
-		for _, s := range sett {
-			settings[s.Key] = s.Value
 		}
 
 		return settings, nil
@@ -91,19 +86,15 @@ func (s SettingsSrv) SaveSettings(ctx context.Context, cmd *command.ChangeSettin
 			return err
 		}
 
-		dbsett := repository.SettingsDB{
-			UserID:    setkey.userid,
-			PodcastID: setkey.podcastid,
-			EpisodeID: setkey.episodeid,
-			DeviceID:  setkey.deviceid,
-			Scope:     setkey.scope,
-		}
-
 		for key, value := range settings {
-			dbsett.Key = key
-			dbsett.Value = value
-
-			if err := s.settRepo.SaveSettings(ctx, &dbsett); err != nil {
+			if err := s.settRepo.SaveSettings(ctx,
+				setkey.userid,
+				setkey.podcastid,
+				setkey.episodeid,
+				setkey.deviceid,
+				setkey.scope,
+				key, value,
+			); err != nil {
 				return aerr.ApplyFor(ErrRepositoryError, err)
 			}
 		}

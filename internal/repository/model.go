@@ -245,25 +245,6 @@ func (u UserDB) MarshalZerologObject(event *zerolog.Event) {
 }
 
 // ------------------------------------------------------------------------------
-type SettingsDB struct {
-	UserID    int64  `db:"user_id"`
-	PodcastID *int64 `db:"podcast_id"`
-	EpisodeID *int64 `db:"episode_id"`
-	DeviceID  *int64 `db:"device_id"`
-	Scope     string `db:"scope"`
-	Key       string `db:"key"`
-	Value     string `db:"value"`
-}
-
-func (s SettingsDB) MarshalZerologObject(event *zerolog.Event) {
-	event.Int64("user_id", s.UserID).
-		Any("podcast_id", s.PodcastID).
-		Any("episode_id", s.EpisodeID).
-		Any("device_id", s.DeviceID).
-		Str("scope", s.Scope).
-		Str("key", s.Key).
-		Str("value", s.Value)
-}
 
 type SessionDB struct {
 	SID       string    `db:"key"`

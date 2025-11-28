@@ -15,11 +15,12 @@ import (
 	"github.com/rs/zerolog/log"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/db"
+	"gitlab.com/kabes/go-gpo/internal/model"
 )
 
 func (s SqliteRepository) ListSettings(ctx context.Context,
 	userid int64, podcastid, episodeid, deviceid *int64, scope string,
-) ([]SettingsDB, error) {
+) (model.Settings, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Str("settings_scope", scope).
 		Any("podcast_id", podcastid).Any("episode_id", episodeid).Any("device_id", deviceid).
@@ -33,10 +34,15 @@ func (s SqliteRepository) ListSettings(ctx context.Context,
 	args := []any{userid, scope, podcastid, episodeid, deviceid}
 
 	if err := dbctx.SelectContext(ctx, &res, query, args...); err != nil {
-		return res, aerr.Wrapf(err, "select settings failed")
+		return nil, aerr.Wrapf(err, "select settings failed")
 	}
 
-	return res, nil
+	settings := make(map[string]string)
+	for _, r := range res {
+		settings[r.Key] = r.Value
+	}
+
+	return settings, nil
 }
 
 // GetSettings return setting for user, scope and key. Create empty SettingsDB object when no data found in db.
@@ -87,9 +93,13 @@ func (s SqliteRepository) GetSettings(ctx context.Context,
 }
 
 // SaveSettings insert or update setting.
-func (s SqliteRepository) SaveSettings(ctx context.Context, sett *SettingsDB) error {
+func (s SqliteRepository) SaveSettings(ctx context.Context,
+	userid int64, podcastid, episodeid, deviceid *int64, scope, key, value string,
+) error {
 	logger := log.Ctx(ctx)
-	logger.Debug().Object("settings", sett).Msg("save settings")
+	logger.Debug().Int64("user_id", userid).Any("podcast_id", podcastid).Any("episode_id", episodeid).
+		Any("device_id", deviceid).Str("scope", scope).Str("key", key).Str("value", value).
+		Msg("save settings")
 
 	dbctx := db.MustCtx(ctx)
 
@@ -97,13 +107,13 @@ func (s SqliteRepository) SaveSettings(ctx context.Context, sett *SettingsDB) er
 		ctx,
 		"DELETE from settings "+
 			"WHERE user_id=? AND podcast_id IS ? AND episode_id IS ? AND device_id IS ? AND scope=? and key=?;",
-		sett.UserID, sett.PodcastID, sett.EpisodeID, sett.DeviceID, sett.Scope, sett.Key,
+		userid, podcastid, episodeid, deviceid, scope, key,
 	)
 	if err != nil {
 		return aerr.Wrapf(err, "delete settings error")
 	}
 
-	if sett.Value == "" {
+	if value == "" {
 		return nil
 	}
 
@@ -112,10 +122,10 @@ func (s SqliteRepository) SaveSettings(ctx context.Context, sett *SettingsDB) er
 		ctx,
 		"INSERT INTO settings (user_id, podcast_id, episode_id, device_id, scope, key, value) "+
 			"VALUES(?, ?, ?, ?, ?, ?, ?)",
-		sett.UserID, sett.PodcastID, sett.EpisodeID, sett.DeviceID, sett.Scope, sett.Key, sett.Value,
+		userid, podcastid, episodeid, deviceid, scope, key, value,
 	)
 	if err != nil {
-		return aerr.Wrapf(err, "upsert settings error").WithMeta("args", sett)
+		return aerr.Wrapf(err, "insert settings error")
 	}
 
 	return nil
