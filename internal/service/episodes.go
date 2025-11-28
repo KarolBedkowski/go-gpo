@@ -51,7 +51,8 @@ func (e *EpisodesSrv) GetEpisodes(ctx context.Context, query *query.GetEpisodesQ
 		return nil, aerr.Wrapf(err, "validate query failed")
 	}
 
-	episodes, err := db.InConnectionR(ctx, e.db, func(ctx context.Context) ([]repository.EpisodeDB, error) {
+	//nolint:wrapcheck
+	return db.InConnectionR(ctx, e.db, func(ctx context.Context) ([]model.Episode, error) {
 		return e.getEpisodes(
 			ctx,
 			query.UserName,
@@ -62,11 +63,6 @@ func (e *EpisodesSrv) GetEpisodes(ctx context.Context, query *query.GetEpisodesQ
 			query.Limit,
 		)
 	})
-	if err != nil {
-		return nil, err //nolint:wrapcheck
-	}
-
-	return common.Map(episodes, NewEpisodeFromDBModel), nil
 }
 
 func (e *EpisodesSrv) GetEpisodesByPodcast(ctx context.Context, query *query.GetEpisodesByPodcastQuery,
@@ -74,8 +70,8 @@ func (e *EpisodesSrv) GetEpisodesByPodcast(ctx context.Context, query *query.Get
 	if err := query.Validate(); err != nil {
 		return nil, aerr.Wrapf(err, "validate query failed")
 	}
-
-	episodes, err := db.InConnectionR(ctx, e.db, func(ctx context.Context) ([]repository.EpisodeDB, error) {
+	//nolint:wrapcheck
+	return db.InConnectionR(ctx, e.db, func(ctx context.Context) ([]model.Episode, error) {
 		user, err := e.usersRepo.GetUser(ctx, query.UserName)
 		if errors.Is(err, common.ErrNoData) {
 			return nil, common.ErrUnknownUser
@@ -91,11 +87,6 @@ func (e *EpisodesSrv) GetEpisodesByPodcast(ctx context.Context, query *query.Get
 
 		return episodes, nil
 	})
-	if err != nil {
-		return nil, err //nolint:wrapcheck
-	}
-
-	return common.Map(episodes, NewEpisodeFromDBModel), nil
 }
 
 // AddAction save new actions.
@@ -128,19 +119,23 @@ func (e *EpisodesSrv) AddAction(ctx context.Context, cmd *command.AddActionCmd) 
 			return err
 		}
 
-		episodes := make([]repository.EpisodeDB, len(cmd.Actions))
+		episodes := make([]model.Episode, len(cmd.Actions))
 		for idx, act := range cmd.Actions {
-			episode := EpisodeToDBModel(&act)
+			episode := act
 
-			episode.PodcastID, err = podcastscache.GetOrCreate(act.Podcast)
+			episode.Podcast.ID, err = podcastscache.GetOrCreate(act.Podcast.URL)
 			if err != nil {
 				return err
 			}
 
 			// devicecache handle nil for empty Device
-			episode.DeviceID, err = devicescache.GetOrCreate(act.Device)
-			if err != nil {
-				return err
+			if act.Device != nil {
+				did, err := devicescache.GetOrCreate(act.Device.Name)
+				if err != nil {
+					return err
+				}
+
+				episode.Device.ID = *did
 			}
 
 			episodes[idx] = episode
@@ -172,7 +167,7 @@ func (e *EpisodesSrv) GetUpdates(ctx context.Context, query *query.GetEpisodeUpd
 		return nil, aerr.Wrapf(err, "validate query failed")
 	}
 
-	episodes, err := db.InConnectionR(ctx, e.db, func(ctx context.Context) ([]repository.EpisodeDB, error) {
+	episodes, err := db.InConnectionR(ctx, e.db, func(ctx context.Context) ([]model.Episode, error) {
 		return e.getEpisodes(ctx, query.UserName, query.DeviceName, "", query.Since, true, 0)
 	})
 	if err != nil {
@@ -196,7 +191,7 @@ func (e *EpisodesSrv) GetLastActions(ctx context.Context, query *query.GetLastEp
 		return nil, aerr.Wrapf(err, "validate query failed")
 	}
 
-	episodes, err := db.InConnectionR(ctx, e.db, func(ctx context.Context) ([]repository.EpisodeDB, error) {
+	episodes, err := db.InConnectionR(ctx, e.db, func(ctx context.Context) ([]model.Episode, error) {
 		return e.getEpisodes(ctx, query.UserName, "", "", query.Since, true, query.Limit)
 	})
 	if err != nil {
@@ -211,7 +206,7 @@ func (e *EpisodesSrv) GetFavorites(ctx context.Context, username string) ([]mode
 		return nil, common.ErrEmptyUsername
 	}
 
-	episodes, err := db.InConnectionR(ctx, e.db, func(ctx context.Context) ([]repository.EpisodeDB, error) {
+	episodes, err := db.InConnectionR(ctx, e.db, func(ctx context.Context) ([]model.Episode, error) {
 		user, err := e.usersRepo.GetUser(ctx, username)
 		if errors.Is(err, common.ErrNoData) {
 			return nil, common.ErrUnknownUser
@@ -233,15 +228,15 @@ func (e *EpisodesSrv) GetFavorites(ctx context.Context, username string) ([]mode
 	return common.Map(episodes, NewFavoriteFromDBModel), nil
 }
 
-func NewFavoriteFromDBModel(episodedb *repository.EpisodeDB) model.Favorite {
+func NewFavoriteFromDBModel(episodedb *model.Episode) model.Favorite {
 	return model.Favorite{
 		Title:        common.Coalesce(episodedb.Title, episodedb.URL),
 		URL:          episodedb.URL,
-		PodcastTitle: common.Coalesce(episodedb.PodcastTitle, episodedb.PodcastURL),
-		PodcastURL:   episodedb.PodcastURL,
+		PodcastTitle: common.Coalesce(episodedb.Podcast.Title, episodedb.Podcast.URL),
+		PodcastURL:   episodedb.Podcast.URL,
 		Website:      "",
 		MygpoLink:    "",
-		Released:     episodedb.CreatedAt, // FIXME: this is not release date...
+		Released:     episodedb.Timestamp, // FIXME: this is not release date...
 	}
 }
 
@@ -253,7 +248,7 @@ func (e *EpisodesSrv) getEpisodes(
 	since time.Time,
 	aggregated bool,
 	limit uint,
-) ([]repository.EpisodeDB, error) {
+) ([]model.Episode, error) {
 	user, err := e.usersRepo.GetUser(ctx, username)
 	if errors.Is(err, common.ErrNoData) {
 		return nil, common.ErrUnknownUser
@@ -379,15 +374,15 @@ func (e *EpisodesSrv) getPodcastID(
 }
 
 // NewEpisodeUpdateWithEpisodeFromDBModel create new EpisodeUpdate WITH Episode.
-func NewEpisodeUpdateWithEpisodeFromDBModel(episodedb *repository.EpisodeDB) model.EpisodeUpdate {
+func NewEpisodeUpdateWithEpisodeFromDBModel(episodedb *model.Episode) model.EpisodeUpdate {
 	episodeUpdate := model.EpisodeUpdate{
 		Title:        episodedb.Title,
 		URL:          episodedb.URL,
-		PodcastTitle: episodedb.PodcastTitle,
-		PodcastURL:   episodedb.PodcastURL,
+		PodcastTitle: episodedb.Podcast.Title,
+		PodcastURL:   episodedb.Podcast.URL,
 		Status:       episodedb.Action,
 		// do not tracking released time; use updated time
-		Released:  episodedb.UpdatedAt,
+		Released:  episodedb.Timestamp,
 		Episode:   nil,
 		Website:   "",
 		MygpoLink: "",
@@ -395,11 +390,11 @@ func NewEpisodeUpdateWithEpisodeFromDBModel(episodedb *repository.EpisodeDB) mod
 
 	if episodedb.Action != "new" {
 		episodeUpdate.Episode = &model.Episode{
-			Podcast:   common.Coalesce(episodedb.PodcastTitle, episodedb.PodcastURL),
-			Episode:   common.Coalesce(episodedb.Title, episodedb.URL),
-			Device:    common.NVL(episodedb.Device, ""),
+			Podcast:   episodedb.Podcast,
+			URL:       common.Coalesce(episodedb.Title, episodedb.URL),
+			Device:    episodedb.Device,
 			Action:    episodedb.Action,
-			Timestamp: episodedb.UpdatedAt,
+			Timestamp: episodedb.Timestamp,
 			GUID:      episodedb.GUID,
 			Started:   nil,
 			Position:  nil,
@@ -415,14 +410,19 @@ func NewEpisodeUpdateWithEpisodeFromDBModel(episodedb *repository.EpisodeDB) mod
 	return episodeUpdate
 }
 
-func NewEpisodeLastActionFromDBModel(episodedb *repository.EpisodeDB) model.EpisodeLastAction {
+func NewEpisodeLastActionFromDBModel(episodedb *model.Episode) model.EpisodeLastAction {
+	dev := ""
+	if episodedb.Device != nil {
+		dev = episodedb.Device.Name
+	}
+
 	episode := model.EpisodeLastAction{
-		PodcastURL:   episodedb.PodcastURL,
-		PodcastTitle: episodedb.PodcastTitle,
-		Device:       common.NVL(episodedb.Device, ""),
+		PodcastURL:   episodedb.Podcast.URL,
+		PodcastTitle: episodedb.Podcast.Title,
+		Device:       dev,
 		Episode:      episodedb.URL,
 		Action:       episodedb.Action,
-		Timestamp:    episodedb.UpdatedAt,
+		Timestamp:    episodedb.Timestamp,
 		Started:      nil,
 		Position:     nil,
 		Total:        nil,
@@ -436,52 +436,16 @@ func NewEpisodeLastActionFromDBModel(episodedb *repository.EpisodeDB) model.Epis
 	return episode
 }
 
-func NewEpisodeFromDBModel(episodedb *repository.EpisodeDB) model.Episode {
-	episode := model.Episode{
-		Podcast:   episodedb.PodcastURL,
-		Device:    common.NVL(episodedb.Device, ""),
-		Episode:   episodedb.URL,
-		Action:    episodedb.Action,
-		Timestamp: episodedb.UpdatedAt,
-		GUID:      episodedb.GUID,
-		Started:   nil,
-		Position:  nil,
-		Total:     nil,
-	}
-	if episodedb.Action == "play" { //nolint:goconst
-		episode.Started = episodedb.Started
-		episode.Position = episodedb.Position
-		episode.Total = episodedb.Total
-	}
-
-	return episode
-}
-
-func EpisodeToDBModel(e *model.Episode) repository.EpisodeDB {
-	return repository.EpisodeDB{ //nolint:exhaustruct
-		URL:        e.Episode,
-		Device:     common.NilIf(e.Device, ""),
-		Action:     e.Action,
-		UpdatedAt:  e.Timestamp,
-		CreatedAt:  e.Timestamp,
-		Started:    e.Started,
-		Position:   e.Position,
-		Total:      e.Total,
-		PodcastURL: e.Podcast,
-		GUID:       e.GUID,
-	}
-}
-
 // NewEpisodeUpdateFromDBModel create new EpisodeUpdate WITHOUT Episode.
-func NewEpisodeUpdateFromDBModel(episodedb *repository.EpisodeDB) model.EpisodeUpdate {
+func NewEpisodeUpdateFromDBModel(episodedb *model.Episode) model.EpisodeUpdate {
 	return model.EpisodeUpdate{
 		Title:        episodedb.Title,
 		URL:          episodedb.URL,
-		PodcastTitle: episodedb.PodcastTitle,
-		PodcastURL:   episodedb.PodcastURL,
+		PodcastTitle: episodedb.Podcast.Title,
+		PodcastURL:   episodedb.Podcast.URL,
 		Status:       episodedb.Action,
 		// do not tracking released time; use updated time
-		Released:  episodedb.UpdatedAt,
+		Released:  episodedb.Timestamp,
 		Episode:   nil,
 		Website:   "",
 		MygpoLink: "",

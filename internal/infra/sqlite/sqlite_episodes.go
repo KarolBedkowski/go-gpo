@@ -18,24 +18,29 @@ import (
 	"github.com/rs/zerolog/log"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/db"
+	"gitlab.com/kabes/go-gpo/internal/model"
 )
 
 func (s SqliteRepository) GetEpisode(
 	ctx context.Context,
 	userid, podcastid int64,
 	episode string,
-) (EpisodeDB, error) {
+) (*model.Episode, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Int64("podcast_id", podcastid).Str("episode", episode).
 		Msgf("get episode")
 
 	// FIXME: or in where
 
-	query := "SELECT e.id, e.podcast_id, e.url, e.title, e.action, e.started, e.position, e.total, " +
-		" e.created_at, e.updated_at, p.url as podcast_url, p.title as podcast_title " +
-		"FROM episodes e " +
-		"JOIN podcasts p on p.id = e.podcast_id " +
-		"WHERE p.user_id=? AND e.podcast_id = ? and (e.url = ? or e.guid = ?)"
+	query := `
+		SELECT e.id, e.podcast_id, e.url, e.title, e.action, e.started, e.position, e.total,
+			e.created_at, e.updated_at, p.url as podcast_url, p.title as podcast_title,
+			e.device_id, d.name as device_name
+		FROM episodes e
+		JOIN podcasts p on p.id = e.podcast_id
+		LEFT JOIN devices d on d.id = e.device_id
+		WHERE p.user_id=? AND e.podcast_id = ? and (e.url = ? or e.guid = ?)
+	`
 
 	res := EpisodeDB{}
 
@@ -43,10 +48,12 @@ func (s SqliteRepository) GetEpisode(
 
 	err := dbctx.GetContext(ctx, &res, query, userid, podcastid, episode, episode)
 	if err != nil {
-		return res, aerr.Wrapf(err, "query episode failed").WithTag(aerr.InternalError)
+		return nil, aerr.Wrapf(err, "query episode failed").WithTag(aerr.InternalError)
 	}
 
-	return res, nil
+	ep := NewEpisodeFromDBModel(&res)
+
+	return &ep, nil
 }
 
 // ListEpisodeActions for user, and optionally for device and podcastid.
@@ -59,16 +66,19 @@ func (s SqliteRepository) ListEpisodeActions(
 	since time.Time,
 	aggregated bool,
 	lastelements uint,
-) ([]EpisodeDB, error) {
+) ([]model.Episode, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Any("podcast_id", podcastid).Any("device_id", deviceid).
 		Msgf("get episodes since=%s aggregated=%v", since, aggregated)
 
-	query := "SELECT e.id, e.podcast_id, e.url, e.title, e.action, e.started, e.position, e.total, e.guid, " +
-		" e.created_at, e.updated_at, p.url as podcast_url, p.title as podcast_title, d.name as device_name " +
-		"FROM episodes e JOIN podcasts p on p.id = e.podcast_id " +
-		"LEFT JOIN devices d on d.id=e.device_id " +
-		"WHERE p.user_id=? AND e.updated_at > ?"
+	query := `
+		SELECT e.id, e.podcast_id, e.url, e.title, e.action, e.started, e.position, e.total, e.guid,
+		 e.created_at, e.updated_at, p.url as podcast_url, p.title as podcast_title,
+		 e.device_id, d.name as device_name
+		FROM episodes e
+		JOIN podcasts p on p.id = e.podcast_id
+		LEFT JOIN devices d on d.id=e.device_id
+		WHERE p.user_id=? AND e.updated_at > ?`
 	args := []any{userid, since}
 	dbctx := db.MustCtx(ctx)
 
@@ -110,18 +120,21 @@ func (s SqliteRepository) ListEpisodeActions(
 	// sorting by ts asc
 	slices.Reverse(res)
 
-	return res, nil
+	return episodesFromDb(res), nil
 }
 
-func (s SqliteRepository) ListFavorites(ctx context.Context, userid int64) ([]EpisodeDB, error) {
+func (s SqliteRepository) ListFavorites(ctx context.Context, userid int64) ([]model.Episode, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Msg("get favorites")
 
-	query := "SELECT e.id, e.podcast_id, e.url, e.title, e.guid, " +
-		" e.created_at, e.updated_at, p.url as podcast_url, p.title as podcast_title " +
-		"FROM episodes e JOIN podcasts p on p.id = e.podcast_id " +
-		"JOIN settings s on s.episode_id = e.id " +
-		"WHERE p.user_id=? AND s.scope = 'episode' and s.key = 'is_favorite'"
+	query := `
+		SELECT e.id, e.podcast_id, e.url, e.title, e.guid,
+			e.created_at, e.updated_at, p.url as podcast_url, p.title as podcast_title
+		FROM episodes e
+		JOIN podcasts p on p.id = e.podcast_id
+		JOIN settings s on s.episode_id = e.id
+		WHERE p.user_id=? AND s.scope = 'episode' and s.key = 'is_favorite'
+		`
 
 	res := []EpisodeDB{}
 	dbctx := db.MustCtx(ctx)
@@ -131,22 +144,27 @@ func (s SqliteRepository) ListFavorites(ctx context.Context, userid int64) ([]Ep
 		return nil, aerr.Wrapf(err, "query episodes failed").WithTag(aerr.InternalError)
 	}
 
-	return res, nil
+	return episodesFromDb(res), nil
 }
 
 func (s SqliteRepository) GetLastEpisodeAction(ctx context.Context,
 	userid, podcastid int64, excludeDelete bool,
-) (EpisodeDB, error) {
+) (*model.Episode, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Int64("podcast_id", podcastid).
 		Msgf("get last episode action excludeDelete=%v", excludeDelete)
 
 		// FIXME: or in where
 
-	query := "SELECT e.id, e.podcast_id, e.url, e.title, e.action, e.started, e.position, e.total, " +
-		" e.created_at, e.updated_at, p.url as podcast_url, p.title as podcast_title " +
-		"FROM episodes e JOIN podcasts p on p.id = e.podcast_id " +
-		"WHERE p.user_id=? AND e.podcast_id = ? "
+	query := `
+		SELECT e.id, e.podcast_id, e.url, e.title, e.action, e.started, e.position, e.total,
+			e.created_at, e.updated_at, p.url as podcast_url, p.title as podcast_title,
+			e.device_id, d.name as device_name
+		FROM episodes e
+		JOIN podcasts p on p.id = e.podcast_id
+		LEFT JOIN devices d on d.id=e.device_id
+		WHERE p.user_id=? AND e.podcast_id = ?
+		`
 
 	if excludeDelete {
 		query += " AND e.action != 'delete' "
@@ -159,22 +177,24 @@ func (s SqliteRepository) GetLastEpisodeAction(ctx context.Context,
 
 	err := dbctx.GetContext(ctx, &res, query, userid, podcastid)
 	if errors.Is(err, sql.ErrNoRows) {
-		return res, ErrNoData
+		return nil, ErrNoData
 	} else if err != nil {
-		return res, aerr.Wrapf(err, "query episode failed").WithTag(aerr.InternalError)
+		return nil, aerr.Wrapf(err, "query episode failed").WithTag(aerr.InternalError)
 	}
 
-	return res, nil
+	ep := NewEpisodeFromDBModel(&res)
+
+	return &ep, nil
 }
 
-func (s SqliteRepository) SaveEpisode(ctx context.Context, userid int64, episode ...EpisodeDB) error {
+func (s SqliteRepository) SaveEpisode(ctx context.Context, userid int64, episode ...model.Episode) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Msg("save episode")
 
 	for _, eps := range episode {
-		logger.Debug().Object("episode", eps).Msg("update episode")
+		logger.Debug().Object("episode", &eps).Msg("update episode")
 
-		if err := s.saveEpisode(ctx, eps); err != nil {
+		if err := s.saveEpisode(ctx, &eps); err != nil {
 			return err
 		}
 	}
@@ -182,19 +202,24 @@ func (s SqliteRepository) SaveEpisode(ctx context.Context, userid int64, episode
 	return nil
 }
 
-func (s SqliteRepository) saveEpisode(ctx context.Context, episode EpisodeDB) error {
+func (s SqliteRepository) saveEpisode(ctx context.Context, episode *model.Episode) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Object("episode", episode).Msg("save episode")
 
 	dbctx := db.MustCtx(ctx)
+
+	deviceid := sql.NullInt64{}
+	if episode.Device != nil {
+		deviceid = sql.NullInt64{Valid: true, Int64: episode.Device.ID}
+	}
 
 	_, err := dbctx.ExecContext(
 		ctx,
 		"INSERT INTO episodes (podcast_id, device_id, title, url, action, started, position, total, guid, "+
 			"created_at, updated_at) "+
 			"VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		episode.PodcastID,
-		episode.DeviceID,
+		episode.Podcast.ID,
+		deviceid,
 		episode.Title,
 		episode.URL,
 		episode.Action,
@@ -202,12 +227,12 @@ func (s SqliteRepository) saveEpisode(ctx context.Context, episode EpisodeDB) er
 		episode.Position,
 		episode.Total,
 		episode.GUID,
-		episode.CreatedAt,
-		episode.UpdatedAt,
+		episode.Timestamp,
+		episode.Timestamp,
 	)
 	if err != nil {
 		return aerr.Wrapf(err, "insert episode failed").WithTag(aerr.InternalError).
-			WithMeta("podcast_id", episode.PodcastID, "episode_url", episode.URL)
+			WithMeta("podcast_id", episode.Podcast.ID, "episode_url", episode.URL)
 	}
 
 	return nil

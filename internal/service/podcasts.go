@@ -155,8 +155,7 @@ func (p *PodcastsSrv) GetPodcastsWithLastEpisode(ctx context.Context, username s
 				return nil, aerr.ApplyFor(ErrRepositoryError, err, "failed to get last episode")
 			}
 
-			ep := NewEpisodeFromDBModel(&lastEpisode)
-			podcasts[idx].LastEpisode = &ep
+			podcasts[idx].LastEpisode = lastEpisode
 		}
 
 		return podcasts, nil

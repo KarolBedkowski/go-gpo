@@ -179,9 +179,9 @@ type episode struct {
 
 func newEpisodesFromModel(e *model.Episode) episode {
 	return episode{
-		Podcast:   e.Podcast,
-		Episode:   e.Episode,
-		Device:    e.Device,
+		Podcast:   e.Podcast.URL,
+		Episode:   e.URL,
+		Device:    e.DeviceName(),
 		Action:    e.Action,
 		Timestamp: e.Timestamp.Format("2006-01-02T15:04:05"),
 		Started:   e.Started,
@@ -240,9 +240,9 @@ func (e *episode) validate() error {
 
 func (e *episode) toModel() model.Episode {
 	return model.Episode{
-		Podcast:   e.Podcast,
-		Episode:   e.Episode,
-		Device:    e.Device,
+		Podcast:   model.Podcast{URL: e.Podcast},
+		URL:       e.Episode,
+		Device:    &model.Device{Name: e.Device},
 		Action:    e.Action,
 		Timestamp: e.ts,
 		Started:   e.Started,

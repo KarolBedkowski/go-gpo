@@ -8,6 +8,7 @@ package model
 //
 
 type Podcast struct {
+	ID          int64
 	Title       string
 	URL         string
 	Description string

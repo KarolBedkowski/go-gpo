@@ -194,22 +194,22 @@ func (s PodcastsDB) ToIDsMap() map[string]int64 {
 //------------------------------------------------------------------------------
 
 type EpisodeDB struct {
-	ID        int64     `db:"id"`
-	PodcastID int64     `db:"podcast_id"`
-	DeviceID  *int64    `db:"device_id"`
-	Title     string    `db:"title"`
-	URL       string    `db:"url"`
-	Action    string    `db:"action"`
-	Started   *int      `db:"started"`
-	Position  *int      `db:"position"`
-	Total     *int      `db:"total"`
-	CreatedAt time.Time `db:"created_at"`
-	UpdatedAt time.Time `db:"updated_at"`
-	GUID      *string   `db:"guid"`
+	ID        int64         `db:"id"`
+	PodcastID int64         `db:"podcast_id"`
+	DeviceID  sql.NullInt64 `db:"device_id"`
+	Title     string        `db:"title"`
+	URL       string        `db:"url"`
+	Action    string        `db:"action"`
+	Started   *int          `db:"started"`
+	Position  *int          `db:"position"`
+	Total     *int          `db:"total"`
+	CreatedAt time.Time     `db:"created_at"`
+	UpdatedAt time.Time     `db:"updated_at"`
+	GUID      *string       `db:"guid"`
 
-	PodcastURL   string  `db:"podcast_url"`
-	PodcastTitle string  `db:"podcast_title"`
-	Device       *string `db:"device_name"`
+	PodcastURL   string         `db:"podcast_url"`
+	PodcastTitle string         `db:"podcast_title"`
+	DeviceName   sql.NullString `db:"device_name"`
 }
 
 func (e EpisodeDB) MarshalZerologObject(event *zerolog.Event) {
@@ -228,7 +228,89 @@ func (e EpisodeDB) MarshalZerologObject(event *zerolog.Event) {
 		Dict("podcast", zerolog.Dict().
 			Str("podcast_url", e.PodcastURL).
 			Str("podcast_title", e.PodcastTitle)).
-		Any("device", e.Device)
+		Any("device", e.DeviceName)
+}
+
+func NewEpisodeFromDBModel(episodedb *EpisodeDB) model.Episode {
+	var device *model.Device
+	if episodedb.DeviceID.Valid {
+		device = &model.Device{
+			ID:   episodedb.DeviceID.Int64,
+			Name: episodedb.DeviceName.String,
+		}
+	}
+
+	episode := model.Episode{
+		ID: episodedb.ID,
+		Podcast: model.Podcast{
+			ID:  episodedb.PodcastID,
+			URL: episodedb.PodcastURL,
+		},
+		Device:    device,
+		URL:       episodedb.URL,
+		Action:    episodedb.Action,
+		Timestamp: episodedb.UpdatedAt,
+		GUID:      episodedb.GUID,
+		Started:   nil,
+		Position:  nil,
+		Total:     nil,
+	}
+	if episodedb.Action == "play" {
+		episode.Started = episodedb.Started
+		episode.Position = episodedb.Position
+		episode.Total = episodedb.Total
+	}
+
+	return episode
+}
+
+func EpisodeToDBModel(episode *model.Episode) EpisodeDB {
+	edb := EpisodeDB{ //nolint:exhaustruct
+		URL:        episode.URL,
+		Action:     episode.Action,
+		UpdatedAt:  episode.Timestamp,
+		CreatedAt:  episode.Timestamp,
+		Started:    episode.Started,
+		Position:   episode.Position,
+		Total:      episode.Total,
+		PodcastURL: episode.Podcast.URL,
+		PodcastID:  episode.Podcast.ID,
+		GUID:       episode.GUID,
+	}
+
+	if episode.Device != nil {
+		edb.DeviceID = sql.NullInt64{Int64: episode.Device.ID, Valid: true}
+		edb.DeviceName = sql.NullString{String: episode.Device.Name, Valid: true}
+	}
+
+	return edb
+}
+
+// NewEpisodeUpdateFromDBModel create new EpisodeUpdate WITHOUT Episode.
+func NewEpisodeUpdateFromDBModel(episodedb *EpisodeDB) model.EpisodeUpdate {
+	return model.EpisodeUpdate{
+		Title:        episodedb.Title,
+		URL:          episodedb.URL,
+		PodcastTitle: episodedb.PodcastTitle,
+		PodcastURL:   episodedb.PodcastURL,
+		Status:       episodedb.Action,
+		// do not tracking released time; use updated time
+		Released:  episodedb.UpdatedAt,
+		Episode:   nil,
+		Website:   "",
+		MygpoLink: "",
+	}
+}
+
+//------------------------------------------------------------------------------
+
+func episodesFromDb(episodes []EpisodeDB) []model.Episode {
+	res := make([]model.Episode, len(episodes))
+	for i, r := range episodes {
+		res[i] = NewEpisodeFromDBModel(&r)
+	}
+
+	return res
 }
 
 //------------------------------------------------------------------------------

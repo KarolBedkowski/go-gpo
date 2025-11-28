@@ -16,15 +16,26 @@ import (
 )
 
 type Episode struct {
-	Podcast   string
-	Episode   string
-	Device    string
+	ID        int64
 	Action    string
 	Timestamp time.Time
 	Started   *int
 	Position  *int
 	Total     *int
 	GUID      *string
+	Title     string
+	URL       string
+
+	Podcast Podcast
+	Device  *Device
+}
+
+func (e *Episode) DeviceName() string {
+	if e.Device == nil {
+		return ""
+	}
+
+	return e.Device.Name
 }
 
 func (e *Episode) Validate() error {
@@ -43,9 +54,9 @@ func (e *Episode) Validate() error {
 }
 
 func (e *Episode) MarshalZerologObject(event *zerolog.Event) {
-	event.Str("podcast", e.Podcast).
-		Str("episode", e.Episode).
-		Str("device", e.Device).
+	event.Interface("podcast", e.Podcast).
+		Str("url", e.URL).
+		Object("device", e.Device).
 		Str("action", e.Action).
 		Time("timestamp", e.Timestamp).
 		Any("guid", e.GUID).

@@ -33,15 +33,15 @@ type UsersRepository interface {
 
 type EpisodesRepository interface {
 	// GetEpisode from repository. episode can be episode url or guid.
-	GetEpisode(ctx context.Context, userid, podcastid int64, episode string) (EpisodeDB, error)
+	GetEpisode(ctx context.Context, userid, podcastid int64, episode string) (*model.Episode, error)
 	ListEpisodeActions(
 		ctx context.Context, userid int64, deviceid, podcastid *int64, since time.Time, aggregated bool,
 		lastelements uint,
-	) ([]EpisodeDB, error)
-	SaveEpisode(ctx context.Context, userid int64, episode ...EpisodeDB) error
-	ListFavorites(ctx context.Context, userid int64) ([]EpisodeDB, error)
+	) ([]model.Episode, error)
+	SaveEpisode(ctx context.Context, userid int64, episode ...model.Episode) error
+	ListFavorites(ctx context.Context, userid int64) ([]model.Episode, error)
 	GetLastEpisodeAction(ctx context.Context,
-		userid, podcastid int64, excludeDelete bool) (EpisodeDB, error)
+		userid, podcastid int64, excludeDelete bool) (*model.Episode, error)
 }
 
 type PodcastsRepository interface {
