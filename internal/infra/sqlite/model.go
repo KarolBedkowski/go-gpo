@@ -325,7 +325,18 @@ type UserDB struct {
 	UpdatedAt time.Time `db:"updated_at"`
 }
 
-func (u UserDB) MarshalZerologObject(event *zerolog.Event) {
+func (u *UserDB) ToModel() *model.User {
+	return &model.User{
+		ID:       u.ID,
+		UserName: u.UserName,
+		Password: u.Password,
+		Email:    u.Email,
+		Name:     u.Name,
+		Locked:   u.Password == model.UserLockedPassword,
+	}
+}
+
+func (u *UserDB) MarshalZerologObject(event *zerolog.Event) {
 	pass := ""
 	if u.Password != "" {
 		pass = "***"
@@ -338,6 +349,17 @@ func (u UserDB) MarshalZerologObject(event *zerolog.Event) {
 		Str("name", u.Name).
 		Time("created_at", u.CreatedAt).
 		Time("updated_at", u.UpdatedAt)
+}
+
+//------------------------------------------------------------------------------
+
+func usersFromDb(users []UserDB) []model.User {
+	res := make([]model.User, len(users))
+	for i, r := range users {
+		res[i] = *r.ToModel()
+	}
+
+	return res
 }
 
 // ------------------------------------------------------------------------------

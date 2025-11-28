@@ -16,9 +16,10 @@ import (
 	"github.com/rs/zerolog/log"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/db"
+	"gitlab.com/kabes/go-gpo/internal/model"
 )
 
-func (s SqliteRepository) GetUser(ctx context.Context, username string) (UserDB, error) {
+func (s SqliteRepository) GetUser(ctx context.Context, username string) (*model.User, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Str("user_name", username).Msg("get user")
 
@@ -32,15 +33,15 @@ func (s SqliteRepository) GetUser(ctx context.Context, username string) (UserDB,
 
 	switch {
 	case err == nil:
-		return user, nil
+		return user.ToModel(), nil
 	case errors.Is(err, sql.ErrNoRows):
-		return user, ErrNoData
+		return nil, ErrNoData
 	default:
-		return user, aerr.Wrapf(err, "select user failed").WithTag(aerr.InternalError)
+		return nil, aerr.Wrapf(err, "select user failed").WithTag(aerr.InternalError)
 	}
 }
 
-func (s SqliteRepository) SaveUser(ctx context.Context, user *UserDB) (int64, error) {
+func (s SqliteRepository) SaveUser(ctx context.Context, user *model.User) (int64, error) {
 	logger := log.Ctx(ctx)
 	dbctx := db.MustCtx(ctx)
 
@@ -77,7 +78,7 @@ func (s SqliteRepository) SaveUser(ctx context.Context, user *UserDB) (int64, er
 }
 
 // ListUsers get all users from database.
-func (s SqliteRepository) ListUsers(ctx context.Context, activeOnly bool) ([]UserDB, error) {
+func (s SqliteRepository) ListUsers(ctx context.Context, activeOnly bool) ([]model.User, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("list users, active_only=%v", activeOnly)
 
@@ -97,7 +98,7 @@ func (s SqliteRepository) ListUsers(ctx context.Context, activeOnly bool) ([]Use
 		return nil, aerr.Wrapf(err, "select users failed").WithTag(aerr.InternalError)
 	}
 
-	return users, nil
+	return usersFromDb(users), nil
 }
 
 // DeleteUser and all related objects.

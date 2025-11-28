@@ -249,12 +249,12 @@ func (s *SubscriptionsSrv) getSubsctiptions(ctx context.Context, username, devic
 	})
 }
 
-func (s *SubscriptionsSrv) getUser(ctx context.Context, username string) (repository.UserDB, error) {
+func (s *SubscriptionsSrv) getUser(ctx context.Context, username string) (*model.User, error) {
 	user, err := s.usersRepo.GetUser(ctx, username)
 	if errors.Is(err, common.ErrNoData) {
-		return user, common.ErrUnknownUser
+		return nil, common.ErrUnknownUser
 	} else if err != nil {
-		return user, aerr.ApplyFor(ErrRepositoryError, err)
+		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
 	return user, nil

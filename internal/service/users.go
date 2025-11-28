@@ -10,7 +10,6 @@ package service
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
@@ -44,7 +43,7 @@ func (u *UsersSrv) LoginUser(ctx context.Context, username, password string) (mo
 		return model.User{}, aerr.ErrValidation.WithMsg("password can't be empty")
 	}
 
-	user, err := db.InConnectionR(ctx, u.db, func(ctx context.Context) (repository.UserDB, error) {
+	user, err := db.InConnectionR(ctx, u.db, func(ctx context.Context) (*model.User, error) {
 		return u.usersRepo.GetUser(ctx, username)
 	})
 
@@ -62,7 +61,7 @@ func (u *UsersSrv) LoginUser(ctx context.Context, username, password string) (mo
 		return model.User{}, common.ErrUnauthorized
 	}
 
-	return NewUserFromUserDB(&user), nil
+	return *user, nil
 }
 
 func (u *UsersSrv) AddUser(ctx context.Context, cmd *command.NewUserCmd) (command.NewUserCmdResult, error) {
@@ -96,14 +95,11 @@ func (u *UsersSrv) AddUser(ctx context.Context, cmd *command.NewUserCmd) (comman
 			return res, aerr.Wrapf(err, "hash password failed")
 		}
 
-		now := time.Now().UTC()
-		udb := repository.UserDB{
-			UserName:  cmd.UserName,
-			Password:  hashedPass,
-			Email:     cmd.Email,
-			Name:      cmd.Name,
-			CreatedAt: now,
-			UpdatedAt: now,
+		udb := model.User{
+			UserName: cmd.UserName,
+			Password: hashedPass,
+			Email:    cmd.Email,
+			Name:     cmd.Name,
 		}
 
 		uid, err := u.usersRepo.SaveUser(ctx, &udb)
@@ -146,9 +142,7 @@ func (u *UsersSrv) ChangePassword(ctx context.Context, cmd *command.ChangeUserPa
 			return aerr.Wrapf(err, "hash password failed")
 		}
 
-		user.UpdatedAt = time.Now().UTC()
-
-		if _, err = u.usersRepo.SaveUser(ctx, &user); err != nil {
+		if _, err = u.usersRepo.SaveUser(ctx, user); err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
@@ -157,14 +151,14 @@ func (u *UsersSrv) ChangePassword(ctx context.Context, cmd *command.ChangeUserPa
 }
 
 func (u *UsersSrv) GetUsers(ctx context.Context, activeOnly bool) ([]model.User, error) {
-	users, err := db.InConnectionR(ctx, u.db, func(ctx context.Context) ([]repository.UserDB, error) {
+	users, err := db.InConnectionR(ctx, u.db, func(ctx context.Context) ([]model.User, error) {
 		return u.usersRepo.ListUsers(ctx, activeOnly)
 	})
 	if err != nil {
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
-	return common.Map(users, NewUserFromUserDB), nil
+	return users, nil
 }
 
 func (u *UsersSrv) LockAccount(ctx context.Context, cmd command.LockAccountCmd) error {
@@ -182,9 +176,8 @@ func (u *UsersSrv) LockAccount(ctx context.Context, cmd command.LockAccountCmd) 
 		}
 
 		udb.Password = model.UserLockedPassword
-		udb.UpdatedAt = time.Now().UTC()
 
-		if _, err = u.usersRepo.SaveUser(ctx, &udb); err != nil {
+		if _, err = u.usersRepo.SaveUser(ctx, udb); err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 

@@ -10,9 +10,6 @@ package repository
 import "github.com/samber/do/v2"
 
 var Package = do.Package(
-	do.Lazy(func(_ do.Injector) (UsersRepository, error) {
-		return &SqliteRepository{}, nil
-	}),
 	do.Lazy(func(_ do.Injector) (MaintenanceRepository, error) {
 		return &SqliteRepository{}, nil
 	}),

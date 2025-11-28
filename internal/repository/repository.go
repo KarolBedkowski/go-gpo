@@ -25,9 +25,9 @@ type DevicesRepository interface {
 }
 
 type UsersRepository interface {
-	GetUser(ctx context.Context, username string) (UserDB, error)
-	SaveUser(ctx context.Context, user *UserDB) (int64, error)
-	ListUsers(ctx context.Context, activeOnly bool) ([]UserDB, error)
+	GetUser(ctx context.Context, username string) (*model.User, error)
+	SaveUser(ctx context.Context, user *model.User) (int64, error)
+	ListUsers(ctx context.Context, activeOnly bool) ([]model.User, error)
 	DeleteUser(ctx context.Context, userid int64) error
 }
 
