@@ -92,26 +92,17 @@ type PodcastDB struct {
 	MetaUpdatedAt sql.NullTime `db:"metadata_updated_at"`
 }
 
-func (p *PodcastDB) SetSubscribed(timestamp time.Time) bool {
-	if p.Subscribed {
-		return false
+func (p *PodcastDB) ToModel() *model.Podcast {
+	return &model.Podcast{
+		ID:          p.ID,
+		Title:       p.Title,
+		URL:         p.URL,
+		Description: p.Description,
+		Website:     p.Website,
+		UpdatedAt:   p.UpdatedAt,
+		Subscribed:  p.Subscribed,
+		User:        model.User{ID: p.UserID},
 	}
-
-	p.Subscribed = true
-	p.UpdatedAt = timestamp
-
-	return true
-}
-
-func (p *PodcastDB) SetUnsubscribed(timestamp time.Time) bool {
-	if !p.Subscribed {
-		return false
-	}
-
-	p.Subscribed = false
-	p.UpdatedAt = timestamp
-
-	return true
 }
 
 func (p *PodcastDB) MarshalZerologObject(event *zerolog.Event) {
@@ -125,6 +116,15 @@ func (p *PodcastDB) MarshalZerologObject(event *zerolog.Event) {
 		Time("created_at", p.CreatedAt).
 		Time("updated_at", p.UpdatedAt).
 		Time("metadata_updated_at", p.MetaUpdatedAt.Time)
+}
+
+func podcastsFromDb(podcasts []PodcastDB) []model.Podcast {
+	res := make([]model.Podcast, len(podcasts))
+	for i, r := range podcasts {
+		res[i] = *r.ToModel()
+	}
+
+	return res
 }
 
 //------------------------------------------------------------------------------

@@ -287,7 +287,7 @@ func (e *EpisodesSrv) createPodcastsCache(ctx context.Context, userid int64) (Dy
 		items: podcasts.ToIDsMap(),
 		creator: func(key string) (int64, error) {
 			id, err := e.podcastsRepo.SavePodcast(ctx,
-				&repository.PodcastDB{UserID: userid, URL: key, Subscribed: true})
+				&model.Podcast{User: model.User{ID: userid}, URL: key, Subscribed: true})
 			if err != nil {
 				return 0, aerr.Wrapf(err, "create new podcast failed").WithMeta("podcast_url", key, "user_id", userid)
 			}

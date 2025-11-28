@@ -74,8 +74,8 @@ func (p *PodcastsSrv) GetPodcasts(ctx context.Context, username string) ([]model
 	if username == "" {
 		return nil, common.ErrEmptyUsername
 	}
-
-	subs, err := db.InConnectionR(ctx, p.db, func(ctx context.Context) ([]repository.PodcastDB, error) {
+	//nolint:wrapcheck
+	return db.InConnectionR(ctx, p.db, func(ctx context.Context) ([]model.Podcast, error) {
 		user, err := p.usersRepo.GetUser(ctx, username)
 		if errors.Is(err, common.ErrNoData) {
 			return nil, common.ErrUnknownUser
@@ -90,25 +90,6 @@ func (p *PodcastsSrv) GetPodcasts(ctx context.Context, username string) ([]model
 
 		return subs, nil
 	})
-	if err != nil {
-		return nil, err //nolint:wrapcheck
-	}
-
-	podcasts := make([]model.Podcast, 0, len(subs))
-
-	for _, s := range subs {
-		podcasts = append(podcasts, model.Podcast{
-			Title:       s.Title,
-			URL:         s.URL,
-			Description: s.Description,
-			LogoURL:     "",
-			Website:     s.Website,
-			MygpoLink:   "",
-			Subscribed:  s.Subscribed,
-		})
-	}
-
-	return podcasts, nil
 }
 
 func (p *PodcastsSrv) GetPodcastsWithLastEpisode(ctx context.Context, username string, subscribedOnly bool,
@@ -126,7 +107,7 @@ func (p *PodcastsSrv) GetPodcastsWithLastEpisode(ctx context.Context, username s
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		var subs repository.PodcastsDB
+		var subs model.Podcasts
 		if subscribedOnly {
 			subs, err = p.podcastsRepo.ListSubscribedPodcasts(ctx, user.ID, time.Time{})
 		} else {
@@ -229,7 +210,7 @@ func (p *PodcastsSrv) downloadPodcastInfoWorker(ctx context.Context, urls <-chan
 			title = "<no title>"
 		}
 
-		update := repository.PodcastMetaUpdateDB{
+		update := model.PodcastMetaUpdate{
 			URL:           url,
 			Title:         title,
 			Description:   feed.Description,

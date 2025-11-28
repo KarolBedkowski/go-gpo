@@ -16,10 +16,11 @@ import (
 	"github.com/rs/zerolog/log"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/db"
+	"gitlab.com/kabes/go-gpo/internal/model"
 )
 
 func (s SqliteRepository) ListSubscribedPodcasts(ctx context.Context, userid int64, since time.Time,
-) (PodcastsDB, error) {
+) (model.Podcasts, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Msgf("get subscribed podcasts since %s", since)
 
@@ -37,11 +38,11 @@ func (s SqliteRepository) ListSubscribedPodcasts(ctx context.Context, userid int
 		return nil, aerr.Wrapf(err, "query podcasts failed").WithMeta("user_id", userid, "since", since)
 	}
 
-	return res, nil
+	return podcastsFromDb(res), nil
 }
 
 func (s SqliteRepository) ListPodcasts(ctx context.Context, userid int64, since time.Time,
-) (PodcastsDB, error) {
+) (model.Podcasts, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Msgf("get podcasts since %s", since)
 
@@ -57,13 +58,13 @@ func (s SqliteRepository) ListPodcasts(ctx context.Context, userid int64, since 
 		return nil, aerr.Wrapf(err, "query podcasts failed").WithMeta("user_id", userid, "since", since)
 	}
 
-	return res, nil
+	return podcastsFromDb(res), nil
 }
 
 func (s SqliteRepository) GetPodcastByID(
 	ctx context.Context,
 	userid, podcastid int64,
-) (PodcastDB, error) {
+) (*model.Podcast, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Int64("podcast_id", podcastid).Msg("get podcast")
 
@@ -77,11 +78,11 @@ func (s SqliteRepository) GetPodcastByID(
 			"WHERE p.user_id=? AND p.id = ?", userid, podcastid)
 	switch {
 	case err == nil:
-		return podcast, nil
+		return podcast.ToModel(), nil
 	case errors.Is(err, sql.ErrNoRows):
-		return podcast, ErrNoData
+		return nil, ErrNoData
 	default:
-		return podcast, aerr.Wrapf(err, "query podcast failed").WithMeta("podcastid", podcastid)
+		return nil, aerr.Wrapf(err, "query podcast failed").WithMeta("podcastid", podcastid)
 	}
 }
 
@@ -89,7 +90,7 @@ func (s SqliteRepository) GetPodcast(
 	ctx context.Context,
 	userid int64,
 	podcasturl string,
-) (PodcastDB, error) {
+) (*model.Podcast, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Str("podcast_url", podcasturl).Msg("get podcast")
 
@@ -103,17 +104,22 @@ func (s SqliteRepository) GetPodcast(
 			"WHERE p.user_id=? AND p.url = ?", userid, podcasturl)
 	switch {
 	case err == nil:
-		return podcast, nil
+		return podcast.ToModel(), nil
 	case errors.Is(err, sql.ErrNoRows):
-		return podcast, ErrNoData
+		return nil, ErrNoData
 	default:
-		return podcast, aerr.Wrapf(err, "query podcast failed").WithMeta("podcasturl", podcasturl)
+		return nil, aerr.Wrapf(err, "query podcast failed").WithMeta("podcasturl", podcasturl)
 	}
 }
 
-func (s SqliteRepository) SavePodcast(ctx context.Context, podcast *PodcastDB) (int64, error) {
+func (s SqliteRepository) SavePodcast(ctx context.Context, podcast *model.Podcast) (int64, error) {
 	logger := log.Ctx(ctx)
 	dbctx := db.MustCtx(ctx)
+
+	metaupdatedat := sql.NullTime{}
+	if !podcast.MetaUpdatedAt.IsZero() {
+		metaupdatedat = sql.NullTime{Time: podcast.MetaUpdatedAt, Valid: true}
+	}
 
 	if podcast.ID == 0 {
 		logger.Debug().Object("podcast", podcast).Msg("insert podcast")
@@ -123,13 +129,13 @@ func (s SqliteRepository) SavePodcast(ctx context.Context, podcast *PodcastDB) (
 			"INSERT INTO podcasts "+
 				"(user_id, title, url, subscribed, created_at, updated_at, metadata_updated_at, website, description) "+
 				"VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)",
-			podcast.UserID,
+			podcast.User.ID,
 			podcast.Title,
 			podcast.URL,
 			podcast.Subscribed,
-			podcast.CreatedAt,
+			time.Now().UTC(),
 			podcast.UpdatedAt,
-			podcast.MetaUpdatedAt,
+			metaupdatedat,
 			podcast.Website,
 			podcast.Description,
 		)
@@ -177,7 +183,7 @@ func (s SqliteRepository) ListPodcastsToUpdate(ctx context.Context, since time.T
 	return res, nil
 }
 
-func (s SqliteRepository) UpdatePodcastsInfo(ctx context.Context, update *PodcastMetaUpdateDB) error {
+func (s SqliteRepository) UpdatePodcastsInfo(ctx context.Context, update *model.PodcastMetaUpdate) error {
 	dbctx := db.MustCtx(ctx)
 
 	_, err := dbctx.ExecContext(ctx,

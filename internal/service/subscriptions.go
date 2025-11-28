@@ -91,7 +91,7 @@ func (s *SubscriptionsSrv) ReplaceSubscriptions( //nolint:cyclop
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		changes := make([]repository.PodcastDB, 0, len(cmd.Subscriptions))
+		changes := make([]model.Podcast, 0, len(cmd.Subscriptions))
 		// remove subscriptions found in db but not in currentSubs
 		for _, sub := range subscribed {
 			if sub.Subscribed && !slices.Contains(cmd.Subscriptions, sub.URL) {
@@ -104,7 +104,7 @@ func (s *SubscriptionsSrv) ReplaceSubscriptions( //nolint:cyclop
 		for _, sub := range cmd.Subscriptions {
 			podcast, ok := subscribed.FindPodcastByURL(sub)
 			if !ok {
-				podcast = repository.PodcastDB{UserID: user.ID, URL: sub, CreatedAt: cmd.Timestamp}
+				podcast = model.Podcast{User: model.User{ID: user.ID}, URL: sub}
 			}
 
 			if podcast.SetSubscribed(cmd.Timestamp) {
@@ -151,7 +151,7 @@ func (s *SubscriptionsSrv) ChangeSubscriptions( //nolint:cyclop,gocognit
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		podchanges := make([]repository.PodcastDB, 0, len(cmd.Add)+len(cmd.Remove))
+		podchanges := make([]model.Podcast, 0, len(cmd.Add)+len(cmd.Remove))
 
 		// removed
 		for _, sub := range cmd.Remove {
@@ -165,7 +165,7 @@ func (s *SubscriptionsSrv) ChangeSubscriptions( //nolint:cyclop,gocognit
 		for _, sub := range cmd.Add {
 			podcast, ok := subscribed.FindPodcastByURL(sub)
 			if !ok { // new
-				podcast = repository.PodcastDB{UserID: user.ID, URL: sub, CreatedAt: cmd.Timestamp}
+				podcast = model.Podcast{User: model.User{ID: user.ID}, URL: sub}
 			}
 
 			if podcast.SetSubscribed(cmd.Timestamp) {
@@ -303,10 +303,10 @@ func (s *SubscriptionsSrv) getPodcasts(
 	username, devicename string,
 	since time.Time,
 ) (
-	[]repository.PodcastDB, error,
+	[]model.Podcast, error,
 ) {
 	//nolint:wrapcheck
-	return db.InConnectionR(ctx, s.db, func(ctx context.Context) ([]repository.PodcastDB, error) {
+	return db.InConnectionR(ctx, s.db, func(ctx context.Context) ([]model.Podcast, error) {
 		user, err := s.getUser(ctx, username)
 		if err != nil {
 			return nil, err

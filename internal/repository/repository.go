@@ -45,14 +45,14 @@ type EpisodesRepository interface {
 }
 
 type PodcastsRepository interface {
-	ListSubscribedPodcasts(ctx context.Context, userid int64, since time.Time) (PodcastsDB, error)
-	ListPodcasts(ctx context.Context, userid int64, since time.Time) (PodcastsDB, error)
-	GetPodcast(ctx context.Context, userid int64, podcasturl string) (PodcastDB, error)
-	GetPodcastByID(ctx context.Context, userid, podcastid int64) (PodcastDB, error)
-	SavePodcast(ctx context.Context, podcast *PodcastDB) (int64, error)
+	ListSubscribedPodcasts(ctx context.Context, userid int64, since time.Time) (model.Podcasts, error)
+	ListPodcasts(ctx context.Context, userid int64, since time.Time) (model.Podcasts, error)
+	GetPodcast(ctx context.Context, userid int64, podcasturl string) (*model.Podcast, error)
+	GetPodcastByID(ctx context.Context, userid, podcastid int64) (*model.Podcast, error)
+	SavePodcast(ctx context.Context, podcast *model.Podcast) (int64, error)
 	// ListPodcastsToUpdate return list of url-s podcasts that need update (load title etc).
 	ListPodcastsToUpdate(ctx context.Context, since time.Time) ([]string, error)
-	UpdatePodcastsInfo(ctx context.Context, podcast *PodcastMetaUpdateDB) error
+	UpdatePodcastsInfo(ctx context.Context, podcast *model.PodcastMetaUpdate) error
 }
 
 type SettingsRepository interface {
