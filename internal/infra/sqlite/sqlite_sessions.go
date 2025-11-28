@@ -18,6 +18,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/db"
+	"gitlab.com/kabes/go-gpo/internal/model"
 )
 
 var ErrDuplicatedSID = errors.New("sid already exists")
@@ -139,7 +140,7 @@ func (s SqliteRepository) CleanSessions(
 	return nil
 }
 
-func (s SqliteRepository) ReadOrCreate(ctx context.Context, sid string) (SessionDB, error) {
+func (s SqliteRepository) ReadOrCreate(ctx context.Context, sid string) (*model.Session, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Str("sid", sid).Msg("read or create session")
 
@@ -154,13 +155,19 @@ func (s SqliteRepository) ReadOrCreate(ctx context.Context, sid string) (Session
 		// create empty session
 		_, err := dbctx.ExecContext(ctx, "INSERT INTO sessions(key, created_at) VALUES(?, ?)", sid, session.CreatedAt)
 		if err != nil {
-			return session, aerr.Wrapf(err, "insert session failed").WithMeta("sid", sid)
+			return nil, aerr.Wrapf(err, "insert session failed").WithMeta("sid", sid)
 		}
 	} else if err != nil {
-		return session, aerr.Wrapf(err, "select session failed").WithMeta("sid", sid)
+		return nil, aerr.Wrapf(err, "select session failed").WithMeta("sid", sid)
 	}
 
-	return session, nil
+	ses := &model.Session{
+		SID:       session.SID,
+		CreatedAt: session.CreatedAt,
+		Data:      session.Data,
+	}
+
+	return ses, nil
 }
 
 func (s SqliteRepository) SessionExists(ctx context.Context, sid string) (bool, error) {

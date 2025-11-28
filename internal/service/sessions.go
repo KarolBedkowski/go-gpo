@@ -21,6 +21,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/db"
+	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
@@ -145,10 +146,10 @@ func (p *SessionProvider) Init(gclifetime int64, config string) error {
 func (p *SessionProvider) Read(sid string) (session.RawStore, error) { //nolint:ireturn
 	ctx := p.logger.WithContext(context.Background())
 
-	storedSession, err := db.InTransactionR(ctx, p.db, func(ctx context.Context) (repository.SessionDB, error) {
+	storedSession, err := db.InTransactionR(ctx, p.db, func(ctx context.Context) (*model.Session, error) {
 		stored, err := p.repo.ReadOrCreate(ctx, sid)
 		if err != nil {
-			return stored, fmt.Errorf("read or create session %q from db error: %w", sid, err)
+			return nil, fmt.Errorf("read or create session %q from db error: %w", sid, err)
 		}
 
 		return stored, nil
@@ -199,9 +200,9 @@ func (p *SessionProvider) Regenerate(oldsid, sid string) (session.RawStore, erro
 
 	ctx := p.logger.WithContext(context.Background())
 
-	storedSession, err := db.InTransactionR(ctx, p.db, func(ctx context.Context) (repository.SessionDB, error) {
+	session, err := db.InTransactionR(ctx, p.db, func(ctx context.Context) (*model.Session, error) {
 		if err := p.repo.RegenerateSession(ctx, oldsid, sid); err != nil {
-			return repository.SessionDB{}, fmt.Errorf("regenerate session error: %w", err)
+			return nil, fmt.Errorf("regenerate session error: %w", err)
 		}
 
 		stored, err := p.repo.ReadOrCreate(ctx, sid)
@@ -215,7 +216,7 @@ func (p *SessionProvider) Regenerate(oldsid, sid string) (session.RawStore, erro
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
-	store, err := p.decodeSession(ctx, storedSession)
+	store, err := p.decodeSession(ctx, session)
 	if err != nil {
 		return nil, err
 	}
@@ -251,10 +252,7 @@ func (p *SessionProvider) GC() {
 	}
 }
 
-func (p *SessionProvider) decodeSession(
-	ctx context.Context,
-	dbsession repository.SessionDB,
-) (session.RawStore, error) {
+func (p *SessionProvider) decodeSession(ctx context.Context, dbsession *model.Session) (session.RawStore, error) {
 	_ = ctx
 
 	var sessiondata map[any]any

@@ -14,9 +14,9 @@ import (
 )
 
 var Package = do.Package(
-	// do.Lazy(func(_ do.Injector) (repository.SessionRepository, error) {
-	// 	return &sqlite.SqliteRepository{}, nil
-	// }),
+	do.Lazy(func(_ do.Injector) (repository.SessionRepository, error) {
+		return &sqlite.SqliteRepository{}, nil
+	}),
 	// do.Lazy(func(_ do.Injector) (repository.UsersRepository, error) {
 	// 	return &sqlite.SqliteRepository{}, nil
 	// }),

@@ -70,7 +70,7 @@ type SessionRepository interface {
 	RegenerateSession(ctx context.Context, oldsid, newsid string) error
 	CountSessions(ctx context.Context) (int, error)
 	CleanSessions(ctx context.Context, maxLifeTime, maxLifeTimeForEmpty time.Duration) error
-	ReadOrCreate(ctx context.Context, sid string) (session SessionDB, err error)
+	ReadOrCreate(ctx context.Context, sid string) (session *model.Session, err error)
 	SessionExists(ctx context.Context, sid string) (bool, error)
 }
 
