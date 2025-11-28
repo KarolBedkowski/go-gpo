@@ -23,7 +23,6 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/infra"
 	"gitlab.com/kabes/go-gpo/internal/model"
-	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
 func prepareTests(t *testing.T) (context.Context, *do.RootScope) {
@@ -35,7 +34,7 @@ func prepareTests(t *testing.T) (context.Context, *do.RootScope) {
 	stdlog.SetOutput(log.Logger)
 
 	ctx := log.Logger.WithContext(context.Background())
-	i := do.New(Package, db.Package, repository.Package, infra.Package)
+	i := do.New(Package, db.Package, infra.Package)
 
 	db := do.MustInvoke[*db.Database](i)
 	if err := db.Connect(ctx, "sqlite3", ":memory:"); err != nil {

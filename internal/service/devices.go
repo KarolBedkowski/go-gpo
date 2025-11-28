@@ -130,14 +130,3 @@ func (d *DevicesSrv) DeleteDevice(ctx context.Context, cmd *command.DeleteDevice
 		return nil
 	})
 }
-
-func NewDeviceFromDeviceDB(d *repository.DeviceDB) model.Device {
-	return model.Device{
-		Name:          d.Name,
-		DevType:       d.DevType,
-		Caption:       d.Caption,
-		Subscriptions: d.Subscriptions,
-		UpdatedAt:     d.UpdatedAt,
-		LastSeenAt:    d.LastSeenAt,
-	}
-}

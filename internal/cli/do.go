@@ -16,7 +16,6 @@ import (
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/infra"
-	"gitlab.com/kabes/go-gpo/internal/repository"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
@@ -34,7 +33,6 @@ func createInjector(ctx context.Context) *do.RootScope {
 		},
 		service.Package,
 		db.Package,
-		repository.Package,
 		infra.Package,
 	)
 

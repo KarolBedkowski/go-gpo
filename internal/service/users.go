@@ -227,13 +227,3 @@ func (BCryptPasswordHasher) CheckPassword(password, hash string) bool {
 }
 
 //-------------------------------------------------------------
-
-func NewUserFromUserDB(u *repository.UserDB) model.User {
-	return model.User{
-		UserName: u.UserName,
-		Password: u.Password,
-		Email:    u.Email,
-		Name:     u.Name,
-		Locked:   u.Password == model.UserLockedPassword,
-	}
-}
