@@ -3,7 +3,7 @@ module gitlab.com/kabes/go-gpo
 go 1.25.1
 
 require (
-	gitea.com/go-chi/session v0.0.0-20250926004215-636cadd82e15
+	gitea.com/go-chi/session v0.0.0-20251124165456-68e0254e989e
 	github.com/Merovius/systemd v0.0.0-20140203230105-93296c743739
 	github.com/go-chi/chi/v5 v5.2.3
 	github.com/go-chi/render v1.0.3
@@ -13,7 +13,7 @@ require (
 	github.com/pressly/goose/v3 v3.26.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/rs/zerolog v1.34.0
-	github.com/samber/do/http/chi/v2 v2.0.0-20251118210046-5eb1787bed23
+	github.com/samber/do/http/chi/v2 v2.0.0-20251127170228-90ee55d9714d
 	github.com/samber/do/v2 v2.0.0
 	github.com/urfave/cli/v3 v3.6.1
 	golang.org/x/crypto v0.45.0
@@ -41,7 +41,6 @@ require (
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/samber/go-type-to-string v1.8.0 // indirect
 	github.com/sethvargo/go-retry v0.3.0 // indirect
-	github.com/unknwon/com v1.0.1 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	golang.org/x/net v0.47.0 // indirect
