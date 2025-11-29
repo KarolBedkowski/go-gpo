@@ -128,7 +128,6 @@ func (e *EpisodesSrv) AddAction(ctx context.Context, cmd *command.AddActionCmd) 
 				return err
 			}
 
-			// devicecache handle nil for empty Device
 			if act.Device != nil {
 				did, err := devicescache.GetOrCreate(act.Device.Name)
 				if err != nil {

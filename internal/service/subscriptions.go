@@ -78,7 +78,7 @@ func (s *SubscriptionsSrv) ReplaceSubscriptions( //nolint:cyclop
 		// check dev
 		_, err = s.getUserDevice(ctx, user.ID, cmd.DeviceName)
 		if errors.Is(err, common.ErrUnknownDevice) {
-			_, err = s.createUserDevice(ctx, user.ID, cmd.DeviceName)
+			_, err = s.createUserDevice(ctx, user, cmd.DeviceName)
 		}
 
 		if err != nil {
@@ -104,7 +104,7 @@ func (s *SubscriptionsSrv) ReplaceSubscriptions( //nolint:cyclop
 		for _, sub := range cmd.Subscriptions {
 			podcast, ok := subscribed.FindPodcastByURL(sub)
 			if !ok {
-				podcast = model.Podcast{User: model.User{ID: user.ID}, URL: sub}
+				podcast = model.Podcast{User: *user, URL: sub}
 			}
 
 			if podcast.SetSubscribed(cmd.Timestamp) {
@@ -165,7 +165,7 @@ func (s *SubscriptionsSrv) ChangeSubscriptions( //nolint:cyclop,gocognit
 		for _, sub := range cmd.Add {
 			podcast, ok := subscribed.FindPodcastByURL(sub)
 			if !ok { // new
-				podcast = model.Podcast{User: model.User{ID: user.ID}, URL: sub}
+				podcast = model.Podcast{User: *user, URL: sub}
 			}
 
 			if podcast.SetSubscribed(cmd.Timestamp) {
@@ -203,16 +203,10 @@ func (s *SubscriptionsSrv) GetSubscriptionChanges(ctx context.Context, query *qu
 	}
 
 	for _, p := range podcasts {
-		podcast := model.Podcast{
-			Title:       p.Title,
-			URL:         p.URL,
-			Description: p.Description,
-			Website:     p.Website,
-		}
 		if p.Subscribed {
-			state.Added = append(state.Added, podcast)
+			state.Added = append(state.Added, p)
 		} else {
-			state.Removed = append(state.Removed, podcast)
+			state.Removed = append(state.Removed, p)
 		}
 	}
 
@@ -282,12 +276,12 @@ func (s *SubscriptionsSrv) getUserDevice(
 
 func (s *SubscriptionsSrv) createUserDevice(
 	ctx context.Context,
-	username int64,
+	user *model.User,
 	devicename string,
 ) (*model.Device, error) {
 	device := model.Device{
 		Name: devicename,
-		User: &model.User{ID: username},
+		User: user,
 	}
 
 	_, err := s.devicesRepo.SaveDevice(ctx, &device)
@@ -295,7 +289,7 @@ func (s *SubscriptionsSrv) createUserDevice(
 		return nil, aerr.ApplyFor(ErrRepositoryError, err, "save device failed")
 	}
 
-	return s.getUserDevice(ctx, username, devicename)
+	return s.getUserDevice(ctx, user.ID, devicename)
 }
 
 func (s *SubscriptionsSrv) getPodcasts(

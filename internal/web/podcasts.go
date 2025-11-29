@@ -117,15 +117,15 @@ func (p podcastPages) addPodcast(ctx context.Context, w http.ResponseWriter, r *
 }
 
 func (p podcastPages) podcastGet(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
-	podcast, ok, status := p.podcastFromURLParam(ctx, r, logger)
-	if !ok {
+	podcast, status := p.podcastFromURLParam(ctx, r, logger)
+	if status > 0 {
 		srvsupport.WriteError(w, r, status, "")
 
 		return
 	}
 
 	data := struct {
-		Podcast model.Podcast
+		Podcast *model.Podcast
 	}{Podcast: podcast}
 
 	if err := p.template.executeTemplate(w, "podcast.tmpl", &data); err != nil {
@@ -140,8 +140,8 @@ func (p podcastPages) podcastUnsubscribe(
 	r *http.Request,
 	logger *zerolog.Logger,
 ) {
-	podcast, ok, status := p.podcastFromURLParam(ctx, r, logger)
-	if !ok {
+	podcast, status := p.podcastFromURLParam(ctx, r, logger)
+	if status > 0 {
 		srvsupport.WriteError(w, r, status, "")
 
 		return
@@ -170,8 +170,8 @@ func (p podcastPages) podcastResubscribe(
 	r *http.Request,
 	logger *zerolog.Logger,
 ) {
-	podcast, ok, status := p.podcastFromURLParam(ctx, r, logger)
-	if !ok {
+	podcast, status := p.podcastFromURLParam(ctx, r, logger)
+	if status > 0 {
 		srvsupport.WriteError(w, r, status, "")
 
 		return
@@ -195,27 +195,27 @@ func (p podcastPages) podcastResubscribe(
 }
 
 func (p podcastPages) podcastFromURLParam(ctx context.Context, r *http.Request, logger *zerolog.Logger,
-) (model.Podcast, bool, int) {
+) (*model.Podcast, int) {
 	podcastidS := chi.URLParam(r, "podcastid")
 	if podcastidS == "" {
-		return model.Podcast{}, false, http.StatusBadRequest
+		return nil, http.StatusBadRequest
 	}
 
 	podcastid, err := strconv.ParseInt(podcastidS, 10, 64)
 	if err != nil {
-		return model.Podcast{}, false, http.StatusBadRequest
+		return nil, http.StatusBadRequest
 	}
 
 	user := common.ContextUser(ctx)
 
 	podcast, err := p.podcastsSrv.GetPodcast(ctx, user, podcastid)
 	if errors.Is(err, common.ErrNoData) {
-		return model.Podcast{}, false, http.StatusNotFound
+		return nil, http.StatusNotFound
 	} else if err != nil {
 		logger.Error().Err(err).Int64("podcast_id", podcastid).Msg("get podcast failed")
 
-		return model.Podcast{}, false, http.StatusNotFound
+		return nil, http.StatusNotFound
 	}
 
-	return podcast, true, 0
+	return podcast, 0
 }

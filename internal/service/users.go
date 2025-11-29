@@ -34,13 +34,13 @@ func NewUsersSrv(i do.Injector) (*UsersSrv, error) {
 	return &UsersSrv{db, repo, BCryptPasswordHasher{}}, nil
 }
 
-func (u *UsersSrv) LoginUser(ctx context.Context, username, password string) (model.User, error) {
+func (u *UsersSrv) LoginUser(ctx context.Context, username, password string) (*model.User, error) {
 	if username == "" {
-		return model.User{}, common.ErrEmptyUsername
+		return nil, common.ErrEmptyUsername
 	}
 
 	if password == "" {
-		return model.User{}, aerr.ErrValidation.WithMsg("password can't be empty")
+		return nil, aerr.ErrValidation.WithMsg("password can't be empty")
 	}
 
 	user, err := db.InConnectionR(ctx, u.db, func(ctx context.Context) (*model.User, error) {
@@ -48,20 +48,20 @@ func (u *UsersSrv) LoginUser(ctx context.Context, username, password string) (mo
 	})
 
 	if errors.Is(err, common.ErrNoData) {
-		return model.User{}, common.ErrUnknownUser
+		return nil, common.ErrUnknownUser
 	} else if err != nil {
-		return model.User{}, aerr.ApplyFor(ErrRepositoryError, err)
+		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
 	if user.Password == model.UserLockedPassword {
-		return model.User{}, common.ErrUserAccountLocked
+		return nil, common.ErrUserAccountLocked
 	}
 
 	if !u.passHasher.CheckPassword(password, user.Password) {
-		return model.User{}, common.ErrUnauthorized
+		return nil, common.ErrUnauthorized
 	}
 
-	return *user, nil
+	return user, nil
 }
 
 func (u *UsersSrv) AddUser(ctx context.Context, cmd *command.NewUserCmd) (command.NewUserCmdResult, error) {
