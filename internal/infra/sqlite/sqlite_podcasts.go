@@ -15,6 +15,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
 )
@@ -78,9 +79,9 @@ func (s Repository) GetPodcastByID(
 			"WHERE p.user_id=? AND p.id = ?", userid, podcastid)
 	switch {
 	case err == nil:
-		return podcast.ToModel(), nil
+		return podcast.toModel(), nil
 	case errors.Is(err, sql.ErrNoRows):
-		return nil, ErrNoData
+		return nil, common.ErrNoData
 	default:
 		return nil, aerr.Wrapf(err, "query podcast failed").WithMeta("podcastid", podcastid)
 	}
@@ -104,9 +105,9 @@ func (s Repository) GetPodcast(
 			"WHERE p.user_id=? AND p.url = ?", userid, podcasturl)
 	switch {
 	case err == nil:
-		return podcast.ToModel(), nil
+		return podcast.toModel(), nil
 	case errors.Is(err, sql.ErrNoRows):
-		return nil, ErrNoData
+		return nil, common.ErrNoData
 	default:
 		return nil, aerr.Wrapf(err, "query podcast failed").WithMeta("podcasturl", podcasturl)
 	}

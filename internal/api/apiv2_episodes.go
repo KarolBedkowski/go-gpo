@@ -169,9 +169,9 @@ type episode struct {
 	Device    string  `json:"device,omitempty"`
 	Action    string  `json:"action"`
 	Timestamp any     `json:"timestamp"`
-	Started   *int    `json:"started,omitempty"`
-	Position  *int    `json:"position,omitempty"`
-	Total     *int    `json:"total,omitempty"`
+	Started   *int32  `json:"started,omitempty"`
+	Position  *int32  `json:"position,omitempty"`
+	Total     *int32  `json:"total,omitempty"`
 	GUID      *string `json:"guid,omitempty"`
 
 	ts time.Time `json:"-"`
@@ -240,7 +240,7 @@ func (e *episode) validate() error {
 
 func (e *episode) toModel() model.Episode {
 	return model.Episode{
-		Podcast:   model.Podcast{URL: e.Podcast},
+		Podcast:   &model.Podcast{URL: e.Podcast},
 		URL:       e.Episode,
 		Device:    &model.Device{Name: e.Device},
 		Action:    e.Action,

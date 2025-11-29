@@ -9,8 +9,6 @@ package sqlite
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 
 	"github.com/rs/zerolog/log"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
@@ -18,22 +16,20 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/model"
 )
 
-func (s Repository) ListSettings(ctx context.Context,
-	userid int64, podcastid, episodeid, deviceid *int64, scope string,
-) (model.Settings, error) {
+func (s Repository) GetSettings(ctx context.Context, key *model.SettingsKey) (model.Settings, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Int64("user_id", userid).Str("settings_scope", scope).
-		Any("podcast_id", podcastid).Any("episode_id", episodeid).Any("device_id", deviceid).
-		Msg("get settings")
+	logger.Debug().Object("key", key).Msg("get settings")
 
 	res := []SettingsDB{}
 	dbctx := db.MustCtx(ctx)
 
-	query := "SELECT user_id, podcast_id, episode_id, device_id, scope, key, value " +
-		"FROM settings WHERE user_id=? AND scope=? AND podcast_id IS ? AND episode_id IS ? and device_id IS ? "
-	args := []any{userid, scope, podcastid, episodeid, deviceid}
+	query := `
+		SELECT user_id, podcast_id, episode_id, device_id, scope, key, value
+		FROM settings WHERE user_id=? AND scope=? AND podcast_id IS ? AND episode_id IS ? and device_id IS ?`
 
-	if err := dbctx.SelectContext(ctx, &res, query, args...); err != nil {
+	err := dbctx.SelectContext(ctx, &res, query,
+		key.UserID, key.Scope, key.PodcastID, key.EpisodeID, key.DeviceID)
+	if err != nil {
 		return nil, aerr.Wrapf(err, "select settings failed")
 	}
 
@@ -45,69 +41,19 @@ func (s Repository) ListSettings(ctx context.Context,
 	return settings, nil
 }
 
-// GetSettings return setting for user, scope and key. Create empty SettingsDB object when no data found in db.
-func (s Repository) GetSettings(ctx context.Context,
-	userid int64, podcastid, episodeid, deviceid *int64, scope, key string,
-) (SettingsDB, error) {
-	logger := log.Ctx(ctx)
-	logger.Debug().Int64("user_id", userid).Str("settings_scope", scope).Str("key", key).
-		Any("podcast_id", podcastid).Any("episode_id", episodeid).Any("device_id", deviceid).
-		Msg("get settings")
-
-	dbctx := db.MustCtx(ctx)
-	res := SettingsDB{}
-
-	query := "SELECT user_id, podcast_id, episode_id, device_id, scope, key, value " +
-		"FROM settings WHERE user_id=? AND scope=? and key=?"
-	args := []any{userid, scope, key}
-
-	if podcastid != nil {
-		query += " AND podcast_id=?"
-		args = append(args, *podcastid) //nolint:wsl_v5
-	}
-
-	if episodeid != nil {
-		query += " AND episode_id=?"
-		args = append(args, *episodeid) //nolint:wsl_v5
-	}
-
-	if deviceid != nil {
-		query += " AND device_id=?"
-		args = append(args, *deviceid) //nolint:wsl_v5
-	}
-
-	err := dbctx.GetContext(ctx, &res, query, args...)
-
-	if errors.Is(err, sql.ErrNoRows) {
-		res.Scope = scope
-		res.Key = key
-		res.UserID = userid
-		res.EpisodeID = episodeid
-		res.PodcastID = podcastid
-		res.DeviceID = deviceid
-	} else if err != nil {
-		return res, aerr.Wrapf(err, "select settings failed")
-	}
-
-	return res, nil
-}
-
 // SaveSettings insert or update setting.
-func (s Repository) SaveSettings(ctx context.Context,
-	userid int64, podcastid, episodeid, deviceid *int64, scope, key, value string,
+func (s Repository) SaveSettings(ctx context.Context, key *model.SettingsKey, value string,
 ) error {
 	logger := log.Ctx(ctx)
-	logger.Debug().Int64("user_id", userid).Any("podcast_id", podcastid).Any("episode_id", episodeid).
-		Any("device_id", deviceid).Str("scope", scope).Str("key", key).Str("value", value).
-		Msg("save settings")
+	logger.Debug().Object("key", key).Str("value", value).Msg("save settings")
 
 	dbctx := db.MustCtx(ctx)
 
 	_, err := dbctx.ExecContext(
-		ctx,
-		"DELETE from settings "+
-			"WHERE user_id=? AND podcast_id IS ? AND episode_id IS ? AND device_id IS ? AND scope=? and key=?;",
-		userid, podcastid, episodeid, deviceid, scope, key,
+		ctx, `
+		DELETE from settings
+		WHERE user_id=? AND scope=? AND podcast_id IS ? AND episode_id IS ? AND device_id IS ? AND key=?`,
+		key.UserID, key.Scope, key.PodcastID, key.EpisodeID, key.DeviceID, key.Key,
 	)
 	if err != nil {
 		return aerr.Wrapf(err, "delete settings error")
@@ -119,10 +65,10 @@ func (s Repository) SaveSettings(ctx context.Context,
 
 	// upsert not work well with null columns
 	_, err = dbctx.ExecContext(
-		ctx,
-		"INSERT INTO settings (user_id, podcast_id, episode_id, device_id, scope, key, value) "+
-			"VALUES(?, ?, ?, ?, ?, ?, ?)",
-		userid, podcastid, episodeid, deviceid, scope, key, value,
+		ctx, `
+		INSERT INTO settings (user_id, scope, podcast_id, episode_id, device_id, key, value)
+		VALUES(?, ?, ?, ?, ?, ?, ?)`,
+		key.UserID, key.Scope, key.PodcastID, key.EpisodeID, key.DeviceID, key.Key, value,
 	)
 	if err != nil {
 		return aerr.Wrapf(err, "insert settings error")

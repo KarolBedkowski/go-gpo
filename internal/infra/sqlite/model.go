@@ -10,11 +10,8 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
-	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/model"
 )
-
-var ErrNoData = common.ErrNoData
 
 //----------------------------------------
 
@@ -91,19 +88,6 @@ type PodcastDB struct {
 	MetaUpdatedAt sql.NullTime `db:"metadata_updated_at"`
 }
 
-func (p *PodcastDB) ToModel() *model.Podcast {
-	return &model.Podcast{
-		ID:          p.ID,
-		Title:       p.Title,
-		URL:         p.URL,
-		Description: p.Description,
-		Website:     p.Website,
-		UpdatedAt:   p.UpdatedAt,
-		Subscribed:  p.Subscribed,
-		User:        model.User{ID: p.UserID},
-	}
-}
-
 func (p *PodcastDB) MarshalZerologObject(event *zerolog.Event) {
 	event.Int64("id", p.ID).
 		Int64("user_id", p.UserID).
@@ -117,10 +101,23 @@ func (p *PodcastDB) MarshalZerologObject(event *zerolog.Event) {
 		Time("metadata_updated_at", p.MetaUpdatedAt.Time)
 }
 
+func (p *PodcastDB) toModel() *model.Podcast {
+	return &model.Podcast{
+		ID:          p.ID,
+		Title:       p.Title,
+		URL:         p.URL,
+		Description: p.Description,
+		Website:     p.Website,
+		UpdatedAt:   p.UpdatedAt,
+		Subscribed:  p.Subscribed,
+		User:        model.User{ID: p.UserID},
+	}
+}
+
 func podcastsFromDb(podcasts []PodcastDB) []model.Podcast {
 	res := make([]model.Podcast, len(podcasts))
 	for i, r := range podcasts {
-		res[i] = *r.ToModel()
+		res[i] = *r.toModel()
 	}
 
 	return res
@@ -193,18 +190,18 @@ func podcastsFromDb(podcasts []PodcastDB) []model.Podcast {
 //------------------------------------------------------------------------------
 
 type EpisodeDB struct {
-	ID        int64         `db:"id"`
-	PodcastID int64         `db:"podcast_id"`
-	DeviceID  sql.NullInt64 `db:"device_id"`
-	Title     string        `db:"title"`
-	URL       string        `db:"url"`
-	Action    string        `db:"action"`
-	Started   *int          `db:"started"`
-	Position  *int          `db:"position"`
-	Total     *int          `db:"total"`
-	CreatedAt time.Time     `db:"created_at"`
-	UpdatedAt time.Time     `db:"updated_at"`
-	GUID      *string       `db:"guid"`
+	ID        int64          `db:"id"`
+	PodcastID int64          `db:"podcast_id"`
+	DeviceID  sql.NullInt64  `db:"device_id"`
+	Title     string         `db:"title"`
+	URL       string         `db:"url"`
+	Action    string         `db:"action"`
+	Started   sql.NullInt32  `db:"started"`
+	Position  sql.NullInt32  `db:"position"`
+	Total     sql.NullInt32  `db:"total"`
+	CreatedAt time.Time      `db:"created_at"`
+	UpdatedAt time.Time      `db:"updated_at"`
+	GUID      sql.NullString `db:"guid"`
 
 	PodcastURL   string         `db:"podcast_url"`
 	PodcastTitle string         `db:"podcast_title"`
@@ -241,7 +238,7 @@ func (e *EpisodeDB) toModel() *model.Episode {
 
 	episode := &model.Episode{
 		ID: e.ID,
-		Podcast: model.Podcast{
+		Podcast: &model.Podcast{
 			ID:  e.PodcastID,
 			URL: e.PodcastURL,
 		},
@@ -249,15 +246,19 @@ func (e *EpisodeDB) toModel() *model.Episode {
 		URL:       e.URL,
 		Action:    e.Action,
 		Timestamp: e.UpdatedAt,
-		GUID:      e.GUID,
 		Started:   nil,
 		Position:  nil,
 		Total:     nil,
 	}
+
+	if e.GUID.Valid {
+		episode.GUID = &e.GUID.String
+	}
+
 	if e.Action == "play" {
-		episode.Started = e.Started
-		episode.Position = e.Position
-		episode.Total = e.Total
+		episode.Started = &e.Started.Int32
+		episode.Position = &e.Position.Int32
+		episode.Total = &e.Total.Int32
 	}
 
 	return episode
@@ -286,17 +287,6 @@ type UserDB struct {
 	UpdatedAt time.Time `db:"updated_at"`
 }
 
-func (u *UserDB) ToModel() *model.User {
-	return &model.User{
-		ID:       u.ID,
-		UserName: u.UserName,
-		Password: u.Password,
-		Email:    u.Email,
-		Name:     u.Name,
-		Locked:   u.Password == model.UserLockedPassword,
-	}
-}
-
 func (u *UserDB) MarshalZerologObject(event *zerolog.Event) {
 	pass := ""
 	if u.Password != "" {
@@ -312,12 +302,23 @@ func (u *UserDB) MarshalZerologObject(event *zerolog.Event) {
 		Time("updated_at", u.UpdatedAt)
 }
 
+func (u *UserDB) toModel() *model.User {
+	return &model.User{
+		ID:       u.ID,
+		UserName: u.UserName,
+		Password: u.Password,
+		Email:    u.Email,
+		Name:     u.Name,
+		Locked:   u.Password == model.UserLockedPassword,
+	}
+}
+
 //------------------------------------------------------------------------------
 
 func usersFromDb(users []UserDB) []model.User {
 	res := make([]model.User, len(users))
 	for i, r := range users {
-		res[i] = *r.ToModel()
+		res[i] = *r.toModel()
 	}
 
 	return res
@@ -326,13 +327,13 @@ func usersFromDb(users []UserDB) []model.User {
 // ------------------------------------------------------------------------------
 
 type SettingsDB struct {
-	UserID    int64  `db:"user_id"`
-	PodcastID *int64 `db:"podcast_id"`
-	EpisodeID *int64 `db:"episode_id"`
-	DeviceID  *int64 `db:"device_id"`
-	Scope     string `db:"scope"`
-	Key       string `db:"key"`
-	Value     string `db:"value"`
+	UserID    int64         `db:"user_id"`
+	PodcastID sql.NullInt64 `db:"podcast_id"`
+	EpisodeID sql.NullInt64 `db:"episode_id"`
+	DeviceID  sql.NullInt64 `db:"device_id"`
+	Scope     string        `db:"scope"`
+	Key       string        `db:"key"`
+	Value     string        `db:"value"`
 }
 
 func (s SettingsDB) MarshalZerologObject(event *zerolog.Event) {
@@ -344,3 +345,5 @@ func (s SettingsDB) MarshalZerologObject(event *zerolog.Event) {
 		Str("key", s.Key).
 		Str("value", s.Value)
 }
+
+//------------------------------------------------------------------------------

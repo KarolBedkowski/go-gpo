@@ -25,14 +25,14 @@ type Episode struct {
 	ID        int64
 	Action    string
 	Timestamp time.Time
-	Started   *int
-	Position  *int
-	Total     *int
+	Started   *int32
+	Position  *int32
+	Total     *int32
 	GUID      *string
 	Title     string
 	URL       string
 
-	Podcast Podcast
+	Podcast *Podcast
 	Device  *Device
 }
 
@@ -135,9 +135,9 @@ type EpisodeLastAction struct {
 	Device       string
 	Action       string
 	Timestamp    time.Time
-	Started      *int
-	Position     *int
-	Total        *int
+	Started      *int32
+	Position     *int32
+	Total        *int32
 }
 
 func NewEpisodeLastAction(episodedb *Episode) EpisodeLastAction {

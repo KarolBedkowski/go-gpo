@@ -393,7 +393,7 @@ func TestEpisodesServiceNewDevPodcast(t *testing.T) {
 	)
 
 	action := model.Episode{
-		Podcast:   model.Podcast{URL: "http://example.com/p2"},
+		Podcast:   &model.Podcast{URL: "http://example.com/p2"},
 		URL:       "http://example.com/p2/ep1",
 		Device:    &model.Device{Name: "dev3"}, // new device
 		Action:    "delete",
@@ -416,18 +416,18 @@ func TestEpisodesServiceNewDevPodcast(t *testing.T) {
 }
 
 func prepareEpisodes() []model.Episode {
-	started, position, total := 10, 20, 300
+	var started, position, total int32 = 10, 20, 300
 
 	return []model.Episode{
 		{
-			Podcast:   model.Podcast{URL: "http://example.com/p1"},
+			Podcast:   &model.Podcast{URL: "http://example.com/p1"},
 			URL:       "http://example.com/p1/ep1",
 			Device:    &model.Device{Name: "dev1"},
 			Action:    "download",
 			Timestamp: time.Date(2025, 1, 2, 3, 4, 5, 0, time.UTC),
 		},
 		{
-			Podcast:   model.Podcast{URL: "http://example.com/p1"},
+			Podcast:   &model.Podcast{URL: "http://example.com/p1"},
 			URL:       "http://example.com/p1/ep1",
 			Device:    &model.Device{Name: "dev1"},
 			Timestamp: time.Date(2025, 1, 3, 3, 4, 5, 0, time.UTC),
@@ -437,14 +437,14 @@ func prepareEpisodes() []model.Episode {
 			Total:     &total,
 		},
 		{
-			Podcast:   model.Podcast{URL: "http://example.com/p1"},
+			Podcast:   &model.Podcast{URL: "http://example.com/p1"},
 			URL:       "http://example.com/p1/ep2",
 			Device:    &model.Device{Name: "dev1"},
 			Action:    "download",
 			Timestamp: time.Date(2025, 1, 4, 3, 4, 5, 0, time.UTC),
 		},
 		{
-			Podcast:   model.Podcast{URL: "http://example.com/p2"},
+			Podcast:   &model.Podcast{URL: "http://example.com/p2"},
 			URL:       "http://example.com/p2/ep1",
 			Device:    &model.Device{Name: "dev2"},
 			Action:    "delete",

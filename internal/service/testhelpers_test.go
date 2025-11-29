@@ -109,7 +109,7 @@ func prepareTestEpisode(ctx context.Context, t *testing.T, i do.Injector,
 
 	for _, ep := range episode {
 		action := model.Episode{
-			Podcast:   model.Podcast{URL: podcast},
+			Podcast:   &model.Podcast{URL: podcast},
 			URL:       ep,
 			Device:    &model.Device{Name: devicename},
 			Action:    "download",

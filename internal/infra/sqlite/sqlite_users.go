@@ -15,6 +15,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
 )
@@ -33,9 +34,9 @@ func (s Repository) GetUser(ctx context.Context, username string) (*model.User, 
 
 	switch {
 	case err == nil:
-		return user.ToModel(), nil
+		return user.toModel(), nil
 	case errors.Is(err, sql.ErrNoRows):
-		return nil, ErrNoData
+		return nil, common.ErrNoData
 	default:
 		return nil, aerr.Wrapf(err, "select user failed").WithTag(aerr.InternalError)
 	}

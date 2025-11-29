@@ -51,16 +51,14 @@ func (s SettingsSrv) GetSettings(ctx context.Context, query *query.SettingsQuery
 		return nil, aerr.Wrapf(err, "validate query failed")
 	}
 
-	setkey := newSettingsKeysFromQuery(query)
-
 	//nolint:wrapcheck
 	return db.InConnectionR(ctx, s.db, func(ctx context.Context) (model.Settings, error) {
-		if err := s.load(ctx, &setkey); err != nil {
+		key, err := s.load(ctx, query.UserName, query.Scope, query.DeviceName, query.Podcast, query.Episode)
+		if err != nil {
 			return nil, err
 		}
 
-		settings, err := s.settRepo.ListSettings(ctx, setkey.userid, setkey.podcastid, setkey.episodeid,
-			setkey.deviceid, query.Scope)
+		settings, err := s.settRepo.GetSettings(ctx, &key)
 		if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err, "failed get list settings")
 		}
@@ -77,24 +75,19 @@ func (s SettingsSrv) SaveSettings(ctx context.Context, cmd *command.ChangeSettin
 		return aerr.Wrapf(err, "validate settings key to save failed")
 	}
 
-	setkey := newSettingsKeysFromCmd(cmd)
 	settings := cmd.CombinedSetting()
 
 	//nolint:wrapcheck
 	return db.InTransaction(ctx, s.db, func(ctx context.Context) error {
-		if err := s.load(ctx, &setkey); err != nil {
+		key, err := s.load(ctx, cmd.UserName, cmd.Scope, cmd.DeviceName, cmd.Podcast, cmd.Episode)
+		if err != nil {
 			return err
 		}
 
-		for key, value := range settings {
-			if err := s.settRepo.SaveSettings(ctx,
-				setkey.userid,
-				setkey.podcastid,
-				setkey.episodeid,
-				setkey.deviceid,
-				setkey.scope,
-				key, value,
-			); err != nil {
+		for skey, value := range settings {
+			key.Key = skey
+
+			if err := s.settRepo.SaveSettings(ctx, &key, value); err != nil {
 				return aerr.ApplyFor(ErrRepositoryError, err)
 			}
 		}
@@ -105,96 +98,65 @@ func (s SettingsSrv) SaveSettings(ctx context.Context, cmd *command.ChangeSettin
 
 func (s SettingsSrv) load( //nolint:cyclop
 	ctx context.Context,
-	key *settingsKeys,
-) error {
-	user, err := s.usersRepo.GetUser(ctx, key.username)
+	username, scope, devicename, podcast, episode string,
+) (model.SettingsKey, error) {
+	skey := model.SettingsKey{Scope: scope}
+
+	user, err := s.usersRepo.GetUser(ctx, username)
 	if errors.Is(err, common.ErrNoData) {
-		return common.ErrUnknownUser
+		return skey, common.ErrUnknownUser
 	} else if err != nil {
-		return aerr.ApplyFor(ErrRepositoryError, err)
+		return skey, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
-	key.userid = user.ID
+	skey.UserID = user.ID
 
-	switch key.scope {
+	switch scope {
 	case "device":
-		device, err := s.devicesRepo.GetDevice(ctx, user.ID, key.devicename)
+		device, err := s.devicesRepo.GetDevice(ctx, user.ID, devicename)
 		if errors.Is(err, common.ErrNoData) {
-			return common.ErrUnknownDevice
+			return skey, common.ErrUnknownDevice
 		} else if err != nil {
-			return aerr.ApplyFor(ErrRepositoryError, err)
+			return skey, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		key.deviceid = &device.ID
+		skey.DeviceID = &device.ID
 
 	case "podcast":
-		p, err := s.podcastsRepo.GetPodcast(ctx, user.ID, key.podcast)
+		p, err := s.podcastsRepo.GetPodcast(ctx, user.ID, podcast)
 		if errors.Is(err, common.ErrNoData) {
-			return common.ErrUnknownPodcast
+			return skey, common.ErrUnknownPodcast
 		} else if err != nil {
-			return aerr.ApplyFor(ErrRepositoryError, err)
+			return skey, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		key.podcastid = &p.ID
+		skey.PodcastID = &p.ID
 
 	case "episode":
-		p, err := s.podcastsRepo.GetPodcast(ctx, user.ID, key.podcast)
+		p, err := s.podcastsRepo.GetPodcast(ctx, user.ID, podcast)
 		if errors.Is(err, common.ErrNoData) {
-			return common.ErrUnknownEpisode
+			return skey, common.ErrUnknownEpisode
 		} else if err != nil {
-			return aerr.ApplyFor(ErrRepositoryError, err)
+			return skey, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		key.podcastid = &p.ID
+		skey.PodcastID = &p.ID
 
-		e, err := s.episodesRepo.GetEpisode(ctx, user.ID, p.ID, key.episode)
+		e, err := s.episodesRepo.GetEpisode(ctx, user.ID, p.ID, episode)
 		if errors.Is(err, common.ErrNoData) {
-			return common.ErrUnknownPodcast
+			return skey, common.ErrUnknownPodcast
 		} else if err != nil {
-			return aerr.ApplyFor(ErrRepositoryError, err)
+			return skey, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		key.episodeid = &e.ID
+		skey.EpisodeID = &e.ID
 	case "account":
 		// no extra data
 	default:
-		return aerr.New("unknown scope").WithTag(aerr.ValidationError)
+		return skey, aerr.New("unknown scope").WithTag(aerr.ValidationError)
 	}
 
-	return nil
+	return skey, nil
 }
 
 //------------------------------------------------------------------------------
-
-type settingsKeys struct {
-	username   string
-	scope      string
-	devicename string
-	episode    string
-	podcast    string
-
-	userid    int64
-	podcastid *int64
-	deviceid  *int64
-	episodeid *int64
-}
-
-func newSettingsKeysFromCmd(c *command.ChangeSettingsCmd) settingsKeys {
-	return settingsKeys{
-		username:   c.UserName,
-		scope:      c.Scope,
-		devicename: c.DeviceName,
-		podcast:    c.Podcast,
-		episode:    c.Episode,
-	}
-}
-
-func newSettingsKeysFromQuery(q *query.SettingsQuery) settingsKeys {
-	return settingsKeys{
-		username:   q.UserName,
-		scope:      q.Scope,
-		devicename: q.DeviceName,
-		podcast:    q.Podcast,
-		episode:    q.Episode,
-	}
-}

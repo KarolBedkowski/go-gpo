@@ -14,6 +14,7 @@ import (
 
 type Device struct {
 	ID            int64
+	UserName      string
 	Name          string
 	DevType       string
 	Caption       string
@@ -26,6 +27,7 @@ type Device struct {
 
 func (d *Device) MarshalZerologObject(event *zerolog.Event) {
 	event.Int64("id", d.ID).
+		Str("user_name", d.UserName).
 		Str("name", d.Name).
 		Str("type", d.DevType).
 		Str("caption", d.Caption).
