@@ -23,13 +23,13 @@ import (
 
 type UsersSrv struct {
 	db         *db.Database
-	usersRepo  repository.UsersRepository
+	usersRepo  repository.Users
 	passHasher PasswordHasher
 }
 
 func NewUsersSrv(i do.Injector) (*UsersSrv, error) {
 	db := do.MustInvoke[*db.Database](i)
-	repo := do.MustInvoke[repository.UsersRepository](i)
+	repo := do.MustInvoke[repository.Users](i)
 
 	return &UsersSrv{db, repo, BCryptPasswordHasher{}}, nil
 }

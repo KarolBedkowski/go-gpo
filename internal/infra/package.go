@@ -14,25 +14,25 @@ import (
 )
 
 var Package = do.Package(
-	do.Lazy(func(_ do.Injector) (repository.SessionRepository, error) {
+	do.Lazy(func(_ do.Injector) (repository.Sessions, error) {
 		return &sqlite.Repository{}, nil
 	}),
-	do.Lazy(func(_ do.Injector) (repository.UsersRepository, error) {
+	do.Lazy(func(_ do.Injector) (repository.Users, error) {
 		return &sqlite.Repository{}, nil
 	}),
-	do.Lazy(func(_ do.Injector) (repository.PodcastsRepository, error) {
+	do.Lazy(func(_ do.Injector) (repository.Podcasts, error) {
 		return &sqlite.Repository{}, nil
 	}),
-	do.Lazy(func(_ do.Injector) (repository.DevicesRepository, error) {
+	do.Lazy(func(_ do.Injector) (repository.Devices, error) {
 		return &sqlite.Repository{}, nil
 	}),
-	do.Lazy(func(_ do.Injector) (repository.EpisodesRepository, error) {
+	do.Lazy(func(_ do.Injector) (repository.Episodes, error) {
 		return &sqlite.Repository{}, nil
 	}),
-	do.Lazy(func(_ do.Injector) (repository.SettingsRepository, error) {
+	do.Lazy(func(_ do.Injector) (repository.Settings, error) {
 		return &sqlite.Repository{}, nil
 	}),
-	do.Lazy(func(_ do.Injector) (repository.MaintenanceRepository, error) {
+	do.Lazy(func(_ do.Injector) (repository.Maintenance, error) {
 		return &sqlite.Repository{}, nil
 	}),
 )

@@ -25,17 +25,17 @@ import (
 
 type PodcastsSrv struct {
 	db           *db.Database
-	usersRepo    repository.UsersRepository
-	podcastsRepo repository.PodcastsRepository
-	episodesRepo repository.EpisodesRepository
+	usersRepo    repository.Users
+	podcastsRepo repository.Podcasts
+	episodesRepo repository.Episodes
 }
 
 func NewPodcastsSrv(i do.Injector) (*PodcastsSrv, error) {
 	return &PodcastsSrv{
 		db:           do.MustInvoke[*db.Database](i),
-		usersRepo:    do.MustInvoke[repository.UsersRepository](i),
-		podcastsRepo: do.MustInvoke[repository.PodcastsRepository](i),
-		episodesRepo: do.MustInvoke[repository.EpisodesRepository](i),
+		usersRepo:    do.MustInvoke[repository.Users](i),
+		podcastsRepo: do.MustInvoke[repository.Podcasts](i),
+		episodesRepo: do.MustInvoke[repository.Episodes](i),
 	}, nil
 }
 

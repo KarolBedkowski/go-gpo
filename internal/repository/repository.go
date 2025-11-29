@@ -18,21 +18,21 @@ import (
 
 // ------------------------------------------------------
 
-type DevicesRepository interface {
+type Devices interface {
 	GetDevice(ctx context.Context, userid int64, devicename string) (*model.Device, error)
 	SaveDevice(ctx context.Context, device *model.Device) (int64, error)
 	ListDevices(ctx context.Context, userid int64) ([]model.Device, error)
 	DeleteDevice(ctx context.Context, deviceid int64) error
 }
 
-type UsersRepository interface {
+type Users interface {
 	GetUser(ctx context.Context, username string) (*model.User, error)
 	SaveUser(ctx context.Context, user *model.User) (int64, error)
 	ListUsers(ctx context.Context, activeOnly bool) ([]model.User, error)
 	DeleteUser(ctx context.Context, userid int64) error
 }
 
-type EpisodesRepository interface {
+type Episodes interface {
 	// GetEpisode from repository. episode can be episode url or guid.
 	GetEpisode(ctx context.Context, userid, podcastid int64, episode string) (*model.Episode, error)
 	ListEpisodeActions(
@@ -45,7 +45,7 @@ type EpisodesRepository interface {
 		userid, podcastid int64, excludeDelete bool) (*model.Episode, error)
 }
 
-type PodcastsRepository interface {
+type Podcasts interface {
 	ListSubscribedPodcasts(ctx context.Context, userid int64, since time.Time) (model.Podcasts, error)
 	ListPodcasts(ctx context.Context, userid int64, since time.Time) (model.Podcasts, error)
 	GetPodcast(ctx context.Context, userid int64, podcasturl string) (*model.Podcast, error)
@@ -56,13 +56,13 @@ type PodcastsRepository interface {
 	UpdatePodcastsInfo(ctx context.Context, podcast *model.PodcastMetaUpdate) error
 }
 
-type SettingsRepository interface {
+type Settings interface {
 	GetSettings(ctx context.Context, key *model.SettingsKey) (model.Settings, error)
 	// save (insert or update) or delete settings
 	SaveSettings(ctx context.Context, key *model.SettingsKey, value string) error
 }
 
-type SessionRepository interface {
+type Sessions interface {
 	DeleteSession(ctx context.Context, sid string) error
 	SaveSession(ctx context.Context, sid string, data map[any]any) error
 	RegenerateSession(ctx context.Context, oldsid, newsid string) error
@@ -73,15 +73,15 @@ type SessionRepository interface {
 }
 
 type Repository interface {
-	DevicesRepository
-	UsersRepository
-	EpisodesRepository
-	PodcastsRepository
-	SettingsRepository
-	SessionRepository
+	Devices
+	Users
+	Episodes
+	Podcasts
+	Settings
+	Sessions
 }
 
-type MaintenanceRepository interface {
+type Maintenance interface {
 	Maintenance(ctx context.Context) error
 	Migrate(ctx context.Context, db *sql.DB) error
 	OnOpenConn(ctx context.Context, db sqlx.ExecerContext) error

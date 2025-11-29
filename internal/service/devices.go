@@ -23,15 +23,15 @@ import (
 
 type DevicesSrv struct {
 	db          *db.Database
-	usersRepo   repository.UsersRepository
-	devicesRepo repository.DevicesRepository
+	usersRepo   repository.Users
+	devicesRepo repository.Devices
 }
 
 func NewDevicesSrv(i do.Injector) (*DevicesSrv, error) {
 	return &DevicesSrv{
 		db:          do.MustInvoke[*db.Database](i),
-		usersRepo:   do.MustInvoke[repository.UsersRepository](i),
-		devicesRepo: do.MustInvoke[repository.DevicesRepository](i),
+		usersRepo:   do.MustInvoke[repository.Users](i),
+		devicesRepo: do.MustInvoke[repository.Devices](i),
 	}, nil
 }
 

@@ -20,7 +20,7 @@ import (
 func TestSessionsService(t *testing.T) {
 	_, i := prepareTests(t)
 	db := do.MustInvoke[*db.Database](i)
-	repo := do.MustInvoke[repository.SessionRepository](i)
+	repo := do.MustInvoke[repository.Sessions](i)
 
 	sessProvider := NewSessionProvider(db, repo, 60*time.Second)
 
@@ -69,7 +69,7 @@ func TestSessionsService(t *testing.T) {
 func TestSessionsServiceRegenerate(t *testing.T) {
 	_, i := prepareTests(t)
 	db := do.MustInvoke[*db.Database](i)
-	repo := do.MustInvoke[repository.SessionRepository](i)
+	repo := do.MustInvoke[repository.Sessions](i)
 
 	sessProvider := NewSessionProvider(db, repo, 60*time.Second)
 

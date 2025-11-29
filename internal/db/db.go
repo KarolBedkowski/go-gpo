@@ -26,14 +26,14 @@ import (
 
 type Database struct {
 	db        *sqlx.DB
-	maintRepo repository.MaintenanceRepository
+	maintRepo repository.Maintenance
 
 	queryDuration *prometheus.HistogramVec
 }
 
 func NewDatabaseI(i do.Injector) (*Database, error) {
 	return &Database{
-		maintRepo: do.MustInvoke[repository.MaintenanceRepository](i),
+		maintRepo: do.MustInvoke[repository.Maintenance](i),
 	}, nil
 }
 

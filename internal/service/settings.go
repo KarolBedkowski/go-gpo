@@ -25,21 +25,21 @@ import (
 
 type SettingsSrv struct {
 	db           *db.Database
-	settRepo     repository.SettingsRepository
-	usersRepo    repository.UsersRepository
-	episodesRepo repository.EpisodesRepository
-	devicesRepo  repository.DevicesRepository
-	podcastsRepo repository.PodcastsRepository
+	settRepo     repository.Settings
+	usersRepo    repository.Users
+	episodesRepo repository.Episodes
+	devicesRepo  repository.Devices
+	podcastsRepo repository.Podcasts
 }
 
 func NewSettingsSrv(i do.Injector) (*SettingsSrv, error) {
 	return &SettingsSrv{
 		db:           do.MustInvoke[*db.Database](i),
-		settRepo:     do.MustInvoke[repository.SettingsRepository](i),
-		usersRepo:    do.MustInvoke[repository.UsersRepository](i),
-		episodesRepo: do.MustInvoke[repository.EpisodesRepository](i),
-		devicesRepo:  do.MustInvoke[repository.DevicesRepository](i),
-		podcastsRepo: do.MustInvoke[repository.PodcastsRepository](i),
+		settRepo:     do.MustInvoke[repository.Settings](i),
+		usersRepo:    do.MustInvoke[repository.Users](i),
+		episodesRepo: do.MustInvoke[repository.Episodes](i),
+		devicesRepo:  do.MustInvoke[repository.Devices](i),
+		podcastsRepo: do.MustInvoke[repository.Podcasts](i),
 	}, nil
 }
 

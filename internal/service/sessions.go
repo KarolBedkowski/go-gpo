@@ -27,7 +27,7 @@ import (
 // SessionStore represents a postgres session store implementation.
 type SessionStore struct {
 	db   *db.Database
-	repo repository.SessionRepository
+	repo repository.Sessions
 	lock sync.RWMutex
 	data map[any]any
 	sid  string
@@ -100,14 +100,14 @@ func (s *SessionStore) Flush() error {
 // SessionProvider represents a postgres session provider implementation.
 type SessionProvider struct {
 	db          *db.Database
-	repo        repository.SessionRepository
+	repo        repository.Sessions
 	maxlifetime time.Duration
 	logger      zerolog.Logger
 }
 
 func NewSessionProvider(
 	db *db.Database,
-	repo repository.SessionRepository,
+	repo repository.Sessions,
 	maxlifetime time.Duration,
 ) *SessionProvider {
 	return &SessionProvider{

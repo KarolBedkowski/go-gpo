@@ -18,13 +18,13 @@ import (
 
 type MaintenanceSrv struct {
 	db        *db.Database
-	maintRepo repository.MaintenanceRepository
+	maintRepo repository.Maintenance
 }
 
 func NewMaintenanceSrv(i do.Injector) (*MaintenanceSrv, error) {
 	return &MaintenanceSrv{
 		db:        do.MustInvoke[*db.Database](i),
-		maintRepo: do.MustInvoke[repository.MaintenanceRepository](i),
+		maintRepo: do.MustInvoke[repository.Maintenance](i),
 	}, nil
 }
 

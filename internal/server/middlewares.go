@@ -303,7 +303,7 @@ type sessionMiddleware func(http.Handler) http.Handler
 
 func newSessionMiddleware(i do.Injector) (sessionMiddleware, error) {
 	db := do.MustInvoke[*db.Database](i)
-	repo := do.MustInvoke[repository.SessionRepository](i)
+	repo := do.MustInvoke[repository.Sessions](i)
 	cfg := do.MustInvoke[*Configuration](i)
 
 	session.RegisterFn("db", func() session.Provider {
