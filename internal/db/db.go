@@ -9,34 +9,32 @@ package db
 
 import (
 	"context"
-	"embed"
 	"errors"
 	"fmt"
-	"io/fs"
 	"net/url"
 	"runtime"
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/pressly/goose/v3"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
-//go:embed "migrations/*.sql"
-var embedMigrations embed.FS
-
 type Database struct {
-	db *sqlx.DB
+	db        *sqlx.DB
+	maintRepo repository.MaintenanceRepository
 
 	queryDuration *prometheus.HistogramVec
 }
 
-func NewDatabaseI(_ do.Injector) (*Database, error) {
-	return &Database{}, nil
+func NewDatabaseI(i do.Injector) (*Database, error) {
+	return &Database{
+		maintRepo: do.MustInvoke[repository.MaintenanceRepository](i),
+	}, nil
 }
 
 func (r *Database) Connect(ctx context.Context, driver, connstr string) error {
@@ -106,54 +104,16 @@ func (r *Database) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (r *Database) Migrate(ctx context.Context, driver string) error { //nolint:cyclop
-	if driver != "sqlite3" {
-		panic("only sqlite3")
-	}
-
+func (r *Database) Migrate(ctx context.Context) error {
 	logger := log.Ctx(ctx)
+	logger.Debug().Msg("migration start")
 
-	migdir, err := fs.Sub(embedMigrations, "migrations")
+	err := r.maintRepo.Migrate(ctx, r.db.DB)
 	if err != nil {
-		panic(fmt.Errorf("prepare migration fs failed: %w", err))
+		return aerr.ApplyFor(aerr.ErrDatabase, err, "migration error")
 	}
 
-	provider, err := goose.NewProvider(goose.DialectSQLite3, r.db.DB, migdir)
-	if err != nil {
-		panic(fmt.Errorf("create goose provider failed: %w", err))
-	}
-
-	ver, err := provider.GetDBVersion(ctx)
-	if err != nil {
-		return aerr.ApplyFor(aerr.ErrDatabase, err, "", "failed to check current database version")
-	}
-
-	logger.Info().Msgf("current database version: %d", ver)
-
-	for {
-		res, err := provider.UpByOne(ctx)
-		if res != nil {
-			logger.Debug().Msgf("migration: %s", res)
-		}
-
-		if errors.Is(err, goose.ErrNoNextVersion) {
-			break
-		} else if err != nil {
-			return aerr.ApplyFor(aerr.ErrDatabase, err, "", "migrate database up failed")
-		}
-	}
-
-	ver, err = provider.GetDBVersion(ctx)
-	if err != nil {
-		return aerr.ApplyFor(aerr.ErrDatabase, err, "", "failed to check current database version")
-	}
-
-	logger.Info().Msgf("migrated database version: %d", ver)
-
-	_, err = r.db.ExecContext(ctx, "PRAGMA optimize")
-	if err != nil {
-		return aerr.ApplyFor(aerr.ErrDatabase, err, "execute optimize script failed")
-	}
+	logger.Debug().Msg("migration finished")
 
 	return nil
 }
@@ -182,9 +142,7 @@ func (r *Database) CloseConnection(ctx context.Context, conn *sqlx.Conn) {
 }
 
 func (r *Database) onConnect(ctx context.Context, db sqlx.ExecerContext) error {
-	_, err := db.ExecContext(ctx,
-		"PRAGMA temp_store = MEMORY;",
-	)
+	err := r.maintRepo.OnOpenConn(ctx, db)
 	if err != nil {
 		return aerr.ApplyFor(aerr.ErrDatabase, err, "execute onConnect script failed")
 	}
@@ -193,9 +151,7 @@ func (r *Database) onConnect(ctx context.Context, db sqlx.ExecerContext) error {
 }
 
 func (r *Database) onClose(ctx context.Context, db sqlx.ExecerContext) error {
-	_, err := db.ExecContext(ctx,
-		"PRAGMA optimize",
-	)
+	err := r.maintRepo.OnCloseConn(ctx, db)
 	if err != nil {
 		return aerr.ApplyFor(aerr.ErrDatabase, err, "execute onClose script failed")
 	}

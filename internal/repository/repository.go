@@ -9,8 +9,10 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	"gitlab.com/kabes/go-gpo/internal/model"
 )
 
@@ -81,4 +83,7 @@ type Repository interface {
 
 type MaintenanceRepository interface {
 	Maintenance(ctx context.Context) error
+	Migrate(ctx context.Context, db *sql.DB) error
+	OnOpenConn(ctx context.Context, db sqlx.ExecerContext) error
+	OnCloseConn(ctx context.Context, db sqlx.ExecerContext) error
 }

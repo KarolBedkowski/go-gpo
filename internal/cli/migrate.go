@@ -27,7 +27,7 @@ func newMigrateCmd() *cli.Command {
 func migrateCmd(ctx context.Context, _ *cli.Command, injector do.Injector) error {
 	db := do.MustInvoke[*db.Database](injector)
 
-	err := db.Migrate(ctx, "sqlite3")
+	err := db.Migrate(ctx)
 	if err != nil {
 		return fmt.Errorf("migrate error: %w", err)
 	}

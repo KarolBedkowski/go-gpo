@@ -67,7 +67,6 @@ func (d devicePages) list(ctx context.Context, w http.ResponseWriter, r *http.Re
 	}
 }
 
-//nolint:revive
 func (d devicePages) deleteGet(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
 	devicename := chi.URLParam(r, "devicename")
 	if devicename == "" {

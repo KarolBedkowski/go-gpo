@@ -1,4 +1,5 @@
-package common //nolint:revive
+package common
+
 //
 // mod.go
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>

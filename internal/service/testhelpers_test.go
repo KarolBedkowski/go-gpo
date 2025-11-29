@@ -41,7 +41,7 @@ func prepareTests(t *testing.T) (context.Context, *do.RootScope) {
 		t.Fatalf("connect to db error: %#+v", err)
 	}
 
-	if err := db.Migrate(ctx, "sqlite3"); err != nil {
+	if err := db.Migrate(ctx); err != nil {
 		t.Fatalf("prepare db error: %#+v", err)
 	}
 
