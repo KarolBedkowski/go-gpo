@@ -75,6 +75,7 @@ func (u updatesResource) getUpdates(
 		UserName:       user,
 		Since:          since,
 		IncludeActions: includeActions,
+		DeviceName:     "", // device is ignored; all devices have the same subscriptions
 	}
 
 	updates, err := u.episodesSrv.GetUpdates(ctx, &query)

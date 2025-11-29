@@ -144,12 +144,6 @@ func (e *EpisodesSrv) AddAction(ctx context.Context, cmd *command.AddActionCmd) 
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		for _, deviceid := range devicescache.GetUsedValues() {
-			if err := e.devicesRepo.MarkSeen(ctx, time.Now().UTC(), *deviceid); err != nil {
-				return aerr.ApplyFor(ErrRepositoryError, err)
-			}
-		}
-
 		return nil
 	})
 }
@@ -244,7 +238,7 @@ func (e *EpisodesSrv) getEpisodes(
 	}
 
 	// check device
-	_, err = e.getDeviceID(ctx, user.ID, devicename)
+	deviceid, err := e.getDeviceID(ctx, user.ID, devicename)
 	if err != nil {
 		return nil, err
 	}
@@ -254,7 +248,7 @@ func (e *EpisodesSrv) getEpisodes(
 		return nil, err
 	}
 
-	episodes, err := e.episodesRepo.ListEpisodeActions(ctx, user.ID, nil, podcastid, since, aggregated,
+	episodes, err := e.episodesRepo.ListEpisodeActions(ctx, user.ID, deviceid, podcastid, since, aggregated,
 		limit)
 	if err != nil {
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)
@@ -331,10 +325,6 @@ func (e *EpisodesSrv) getDeviceID(
 	if errors.Is(err, common.ErrNoData) {
 		return nil, common.ErrUnknownDevice
 	} else if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err)
-	}
-
-	if err := e.devicesRepo.MarkSeen(ctx, time.Now().UTC(), device.ID); err != nil {
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 

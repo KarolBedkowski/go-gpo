@@ -247,7 +247,6 @@ func TestEpisodesServiceUpdates(t *testing.T) {
 	assert.Equal(t, updates[1].Status, episodeActions[3].Action)
 	compareEpisodes(t, *updates[1].Episode, episodeActions[3])
 
-	// with device (should return all actions), include action
 	q = query.GetEpisodeUpdatesQuery{
 		UserName:       "user1",
 		DeviceName:     "dev2",
@@ -256,7 +255,7 @@ func TestEpisodesServiceUpdates(t *testing.T) {
 	}
 	updates, err = episodesSrv.GetUpdates(ctx, &q)
 	assert.NoErr(t, err)
-	assert.Equal(t, len(updates), 3)
+	assert.Equal(t, len(updates), 2)
 	assert.Equal(t, updates[0].URL, episodeActions[1].URL)
 	assert.Equal(t, updates[0].PodcastURL, episodeActions[1].Podcast.URL)
 	assert.Equal(t, updates[0].Status, episodeActions[1].Action)
@@ -265,10 +264,6 @@ func TestEpisodesServiceUpdates(t *testing.T) {
 	assert.Equal(t, updates[1].PodcastURL, episodeActions[2].Podcast.URL)
 	assert.Equal(t, updates[1].Status, episodeActions[2].Action)
 	compareEpisodes(t, *updates[1].Episode, episodeActions[2])
-	assert.Equal(t, updates[2].URL, episodeActions[3].URL)
-	assert.Equal(t, updates[2].PodcastURL, episodeActions[3].Podcast.URL)
-	assert.Equal(t, updates[2].Status, episodeActions[3].Action)
-	compareEpisodes(t, *updates[2].Episode, episodeActions[3])
 }
 
 func TestEpisodesServiceLastEpisodes(t *testing.T) {
