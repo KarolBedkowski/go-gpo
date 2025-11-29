@@ -66,11 +66,11 @@ type SettingsRepository interface {
 
 type SessionRepository interface {
 	DeleteSession(ctx context.Context, sid string) error
-	SaveSession(ctx context.Context, sid string, data []byte) error
+	SaveSession(ctx context.Context, sid string, data map[any]any) error
 	RegenerateSession(ctx context.Context, oldsid, newsid string) error
 	CountSessions(ctx context.Context) (int, error)
 	CleanSessions(ctx context.Context, maxLifeTime, maxLifeTimeForEmpty time.Duration) error
-	ReadOrCreate(ctx context.Context, sid string) (session *model.Session, err error)
+	ReadOrCreate(ctx context.Context, sid string, maxLifeTime time.Duration) (*model.Session, error)
 	SessionExists(ctx context.Context, sid string) (bool, error)
 }
 

@@ -13,8 +13,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
+	"gitea.com/go-chi/session"
 	"github.com/rs/zerolog/log"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/db"
@@ -37,15 +39,20 @@ func (s SqliteRepository) DeleteSession(ctx context.Context, sid string) error {
 	return nil
 }
 
-func (s SqliteRepository) SaveSession(ctx context.Context, sid string, data []byte) error {
+func (s SqliteRepository) SaveSession(ctx context.Context, sid string, data map[any]any) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Str("sid", sid).Msg("save session")
 
 	dbctx := db.MustCtx(ctx)
 
-	_, err := dbctx.ExecContext(ctx,
+	encoded, err := encodeSession(data)
+	if err != nil {
+		return err
+	}
+
+	_, err = dbctx.ExecContext(ctx,
 		"UPDATE sessions SET data=?, created_at=? WHERE key=?",
-		data, time.Now().UTC(), sid)
+		encoded, time.Now().UTC(), sid)
 	if err != nil {
 		return aerr.Wrapf(err, "update session failed").WithMeta("sid", sid)
 	}
@@ -59,7 +66,8 @@ func (s SqliteRepository) RegenerateSession(ctx context.Context, oldsid, newsid 
 
 	dbctx := db.MustCtx(ctx)
 
-	res, err := dbctx.ExecContext(ctx, "UPDATE sessions SET key=? WHERE key=?", newsid, oldsid)
+	res, err := dbctx.ExecContext(ctx, "UPDATE sessions SET key=?, created_at=? WHERE key=?",
+		newsid, time.Now().UTC(), oldsid)
 	if err != nil {
 		return aerr.Wrapf(err, "update session key failed").WithMeta("oldsid", oldsid, "newsid", newsid)
 	}
@@ -140,16 +148,24 @@ func (s SqliteRepository) CleanSessions(
 	return nil
 }
 
-func (s SqliteRepository) ReadOrCreate(ctx context.Context, sid string) (*model.Session, error) {
+func (s SqliteRepository) ReadOrCreate(
+	ctx context.Context,
+	sid string,
+	maxLifeTime time.Duration,
+) (*model.Session, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Str("sid", sid).Msg("read or create session")
 
-	session := SessionDB{
+	session := model.Session{
 		SID:       sid,
 		CreatedAt: time.Now().UTC(),
 	}
+
+	var data []byte
+
 	dbctx := db.MustCtx(ctx)
-	err := dbctx.GetContext(ctx, &session, "SELECT key, data, created_at FROM sessions WHERE key=?", sid)
+	err := dbctx.QueryRowxContext(ctx, "SELECT key, data, created_at FROM sessions WHERE key=?", sid).
+		Scan(&session.SID, &data, &session.CreatedAt)
 
 	if errors.Is(err, sql.ErrNoRows) {
 		// create empty session
@@ -161,7 +177,18 @@ func (s SqliteRepository) ReadOrCreate(ctx context.Context, sid string) (*model.
 		return nil, aerr.Wrapf(err, "select session failed").WithMeta("sid", sid)
 	}
 
-	return session.toModel(), nil
+	if session.IsValid(maxLifeTime) {
+		session.Data, err = decodeSession(data)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		logger.Debug().Str("sid", sid).Object("session", &session).Msg("session expired")
+
+		session.Data = make(map[any]any)
+	}
+
+	return &session, nil
 }
 
 func (s SqliteRepository) SessionExists(ctx context.Context, sid string) (bool, error) {
@@ -180,4 +207,30 @@ func (s SqliteRepository) SessionExists(ctx context.Context, sid string) (bool, 
 	}
 
 	return true, nil
+}
+
+func decodeSession(data []byte) (map[any]any, error) {
+	if len(data) == 0 {
+		return make(map[any]any), nil
+	}
+
+	sessiondata, err := session.DecodeGob(data)
+	if err != nil {
+		return nil, fmt.Errorf("decode session error: %w", err)
+	}
+
+	return sessiondata, nil
+}
+
+func encodeSession(data map[any]any) ([]byte, error) {
+	if len(data) == 0 {
+		return []byte{}, nil
+	}
+
+	encoded, err := session.EncodeGob(data)
+	if err != nil {
+		return nil, fmt.Errorf("session encode error: %w", err)
+	}
+
+	return encoded, nil
 }

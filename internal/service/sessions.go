@@ -73,23 +73,10 @@ func (s *SessionStore) ID() string {
 func (s *SessionStore) Release() error {
 	log.Logger.Debug().Msgf("session release: %+v", &s.data)
 
-	var (
-		data []byte
-		err  error
-	)
-
-	// Skip encoding if the data is empty
-	if len(s.data) > 0 {
-		data, err = session.EncodeGob(s.data)
-		if err != nil {
-			return fmt.Errorf("session encode error: %w", err)
-		}
-	}
-
 	ctx := log.Logger.WithContext(context.Background())
 
-	err = db.InTransaction(ctx, s.db, func(ctx context.Context) error {
-		return s.repo.SaveSession(ctx, s.sid, data)
+	err := db.InTransaction(ctx, s.db, func(ctx context.Context) error {
+		return s.repo.SaveSession(ctx, s.sid, s.data)
 	})
 	if err != nil {
 		return fmt.Errorf("put session into db error: %w", err)
@@ -144,7 +131,7 @@ func (p *SessionProvider) Read(sid string) (session.RawStore, error) { //nolint:
 	ctx := p.logger.WithContext(context.Background())
 
 	storedSession, err := db.InTransactionR(ctx, p.db, func(ctx context.Context) (*model.Session, error) {
-		stored, err := p.repo.ReadOrCreate(ctx, sid)
+		stored, err := p.repo.ReadOrCreate(ctx, sid, p.maxlifetime)
 		if err != nil {
 			return nil, fmt.Errorf("read or create session %q from db error: %w", sid, err)
 		}
@@ -155,12 +142,12 @@ func (p *SessionProvider) Read(sid string) (session.RawStore, error) { //nolint:
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
-	store, err := p.decodeSession(ctx, storedSession)
-	if err != nil {
-		return nil, err
-	}
-
-	return store, nil
+	return &SessionStore{
+		db:   p.db,
+		repo: p.repo,
+		sid:  storedSession.SID,
+		data: storedSession.Data,
+	}, nil
 }
 
 // Exist returns true if session with given ID exists.
@@ -202,7 +189,7 @@ func (p *SessionProvider) Regenerate(oldsid, sid string) (session.RawStore, erro
 			return nil, fmt.Errorf("regenerate session error: %w", err)
 		}
 
-		stored, err := p.repo.ReadOrCreate(ctx, sid)
+		stored, err := p.repo.ReadOrCreate(ctx, sid, p.maxlifetime)
 		if err != nil {
 			return stored, fmt.Errorf("read or create session %q from db error: %w", sid, err)
 		}
@@ -213,12 +200,12 @@ func (p *SessionProvider) Regenerate(oldsid, sid string) (session.RawStore, erro
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
-	store, err := p.decodeSession(ctx, session)
-	if err != nil {
-		return nil, err
-	}
-
-	return store, nil
+	return &SessionStore{
+		db:   p.db,
+		repo: p.repo,
+		sid:  session.SID,
+		data: session.Data,
+	}, nil
 }
 
 // Count counts and returns number of sessions.
@@ -247,28 +234,4 @@ func (p *SessionProvider) GC() {
 	if err != nil {
 		p.logger.Error().Err(err).Msg("gc sessions error")
 	}
-}
-
-func (p *SessionProvider) decodeSession(ctx context.Context, dbsession *model.Session) (session.RawStore, error) {
-	_ = ctx
-
-	var sessiondata map[any]any
-
-	if len(dbsession.Data) == 0 || dbsession.CreatedAt.Add(p.maxlifetime).Before(time.Now().UTC()) {
-		sessiondata = make(map[any]any)
-	} else {
-		var err error
-
-		sessiondata, err = session.DecodeGob(dbsession.Data)
-		if err != nil {
-			return nil, fmt.Errorf("decode session error: %w", err)
-		}
-	}
-
-	return &SessionStore{
-		db:   p.db,
-		repo: p.repo,
-		sid:  dbsession.SID,
-		data: sessiondata,
-	}, nil
 }
