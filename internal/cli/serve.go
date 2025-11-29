@@ -130,7 +130,7 @@ func (s *Server) start(ctx context.Context, injector do.Injector, cfg *server.Co
 	ctx, cancel := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGINT)
 	defer cancel()
 
-	srv := do.MustInvoke[server.Server](injector)
+	srv := do.MustInvoke[*server.Server](injector)
 	if err := srv.Start(ctx); err != nil {
 		return aerr.Wrapf(err, "start server failed")
 	}
@@ -148,7 +148,6 @@ func (s *Server) start(ctx context.Context, injector do.Injector, cfg *server.Co
 	<-ctx.Done()
 
 	systemd.NotifyStatus("stopped") //nolint:errcheck
-	logger.Info().Msg("server stopped")
 
 	return nil
 }

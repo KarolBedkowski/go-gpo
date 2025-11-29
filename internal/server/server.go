@@ -44,7 +44,7 @@ type Server struct {
 	s   *http.Server
 }
 
-func New(injector do.Injector) (Server, error) {
+func New(injector do.Injector) (*Server, error) {
 	cfg := do.MustInvoke[*Configuration](injector)
 	authMW := do.MustInvoke[authenticator](injector)
 	api := do.MustInvoke[gpoapi.API](injector)
@@ -90,7 +90,7 @@ func New(injector do.Injector) (Server, error) {
 		router.Method("GET", cfg.WebRoot+"/metrics", newMetricsHandler())
 	}
 
-	return Server{
+	return &Server{
 		router: router,
 		cfg:    cfg,
 		s: &http.Server{
