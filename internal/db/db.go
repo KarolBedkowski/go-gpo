@@ -132,7 +132,7 @@ func (r *Database) GetConnection(ctx context.Context) (*sqlx.Conn, error) {
 }
 
 func (r *Database) CloseConnection(ctx context.Context, conn *sqlx.Conn) {
-	if err := r.onClose(ctx, conn); err != nil {
+	if err := r.maintRepo.OnCloseConn(ctx, conn); err != nil {
 		log.Logger.Error().Err(err).Msg("run scripts onClose failed")
 	}
 
@@ -142,18 +142,8 @@ func (r *Database) CloseConnection(ctx context.Context, conn *sqlx.Conn) {
 }
 
 func (r *Database) onConnect(ctx context.Context, db sqlx.ExecerContext) error {
-	err := r.maintRepo.OnOpenConn(ctx, db)
-	if err != nil {
+	if err := r.maintRepo.OnOpenConn(ctx, db); err != nil {
 		return aerr.ApplyFor(aerr.ErrDatabase, err, "execute onConnect script failed")
-	}
-
-	return nil
-}
-
-func (r *Database) onClose(ctx context.Context, db sqlx.ExecerContext) error {
-	err := r.maintRepo.OnCloseConn(ctx, db)
-	if err != nil {
-		return aerr.ApplyFor(aerr.ErrDatabase, err, "execute onClose script failed")
 	}
 
 	return nil
