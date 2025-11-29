@@ -29,18 +29,9 @@ type DeviceDB struct {
 	LastSeenAt time.Time `db:"last_seen_at"`
 
 	Subscriptions int `db:"subscriptions"`
-}
 
-func (d *DeviceDB) ToModel() *model.Device {
-	return &model.Device{
-		ID:            d.ID,
-		Name:          d.Name,
-		DevType:       d.DevType,
-		Caption:       d.Caption,
-		Subscriptions: d.Subscriptions,
-		UpdatedAt:     d.UpdatedAt,
-		LastSeenAt:    d.LastSeenAt,
-	}
+	UserName     string `db:"user_name"`
+	UserUserName string `db:"user_username"`
 }
 
 func (d *DeviceDB) MarshalZerologObject(event *zerolog.Event) {
@@ -51,30 +42,38 @@ func (d *DeviceDB) MarshalZerologObject(event *zerolog.Event) {
 		Str("caption", d.Caption).
 		Time("created_at", d.CreatedAt).
 		Time("updated_at", d.UpdatedAt).
-		Int("subscriptions", d.Subscriptions)
+		Int("subscriptions", d.Subscriptions).
+		Str("user_name", d.UserName).
+		Str("user_username", d.UserUserName)
 }
 
-// type DevicesDB []*DeviceDB
+func (d *DeviceDB) toModel() *model.Device {
+	return &model.Device{
+		ID:            d.ID,
+		Name:          d.Name,
+		DevType:       d.DevType,
+		Caption:       d.Caption,
+		Subscriptions: d.Subscriptions,
+		UpdatedAt:     d.UpdatedAt,
+		LastSeenAt:    d.LastSeenAt,
+		User: &model.User{
+			ID:       d.UserID,
+			Name:     d.UserName,
+			UserName: d.UserUserName,
+		},
+	}
+}
 
-// func (d DevicesDB) ToMap() map[string]*DeviceDB {
-// 	devices := make(map[string]*DeviceDB)
+//------------------------------------------------------------------------------
 
-// 	for _, dev := range d {
-// 		devices[dev.Name] = dev
-// 	}
+func devicesFromDb(devices []DeviceDB) []model.Device {
+	res := make([]model.Device, len(devices))
+	for i, r := range devices {
+		res[i] = *r.toModel()
+	}
 
-// 	return devices
-// }
-
-// func (d DevicesDB) ToIDsMap() map[string]int64 {
-// 	devices := make(map[string]int64)
-
-// 	for _, dev := range d {
-// 		devices[dev.Name] = dev.ID
-// 	}
-
-// 	return devices
-// }
+	return res
+}
 
 //------------------------------------------------------------------------------
 
@@ -212,7 +211,7 @@ type EpisodeDB struct {
 	DeviceName   sql.NullString `db:"device_name"`
 }
 
-func (e EpisodeDB) MarshalZerologObject(event *zerolog.Event) {
+func (e *EpisodeDB) MarshalZerologObject(event *zerolog.Event) {
 	event.Int64("id", e.ID).
 		Int64("podcast_id", e.PodcastID).
 		Any("device_id", e.DeviceID).
@@ -231,34 +230,34 @@ func (e EpisodeDB) MarshalZerologObject(event *zerolog.Event) {
 		Any("device", e.DeviceName)
 }
 
-func NewEpisodeFromDBModel(episodedb *EpisodeDB) model.Episode {
+func (e *EpisodeDB) toModel() *model.Episode {
 	var device *model.Device
-	if episodedb.DeviceID.Valid {
+	if e.DeviceID.Valid {
 		device = &model.Device{
-			ID:   episodedb.DeviceID.Int64,
-			Name: episodedb.DeviceName.String,
+			ID:   e.DeviceID.Int64,
+			Name: e.DeviceName.String,
 		}
 	}
 
-	episode := model.Episode{
-		ID: episodedb.ID,
+	episode := &model.Episode{
+		ID: e.ID,
 		Podcast: model.Podcast{
-			ID:  episodedb.PodcastID,
-			URL: episodedb.PodcastURL,
+			ID:  e.PodcastID,
+			URL: e.PodcastURL,
 		},
 		Device:    device,
-		URL:       episodedb.URL,
-		Action:    episodedb.Action,
-		Timestamp: episodedb.UpdatedAt,
-		GUID:      episodedb.GUID,
+		URL:       e.URL,
+		Action:    e.Action,
+		Timestamp: e.UpdatedAt,
+		GUID:      e.GUID,
 		Started:   nil,
 		Position:  nil,
 		Total:     nil,
 	}
-	if episodedb.Action == "play" {
-		episode.Started = episodedb.Started
-		episode.Position = episodedb.Position
-		episode.Total = episodedb.Total
+	if e.Action == "play" {
+		episode.Started = e.Started
+		episode.Position = e.Position
+		episode.Total = e.Total
 	}
 
 	return episode
@@ -269,7 +268,7 @@ func NewEpisodeFromDBModel(episodedb *EpisodeDB) model.Episode {
 func episodesFromDb(episodes []EpisodeDB) []model.Episode {
 	res := make([]model.Episode, len(episodes))
 	for i, r := range episodes {
-		res[i] = NewEpisodeFromDBModel(&r)
+		res[i] = *r.toModel()
 	}
 
 	return res
@@ -325,6 +324,7 @@ func usersFromDb(users []UserDB) []model.User {
 }
 
 // ------------------------------------------------------------------------------
+
 type SettingsDB struct {
 	UserID    int64  `db:"user_id"`
 	PodcastID *int64 `db:"podcast_id"`
@@ -345,8 +345,18 @@ func (s SettingsDB) MarshalZerologObject(event *zerolog.Event) {
 		Str("value", s.Value)
 }
 
+// ------------------------------------------------------------------------------
+
 type SessionDB struct {
 	SID       string    `db:"key"`
 	Data      []byte    `db:"data"`
 	CreatedAt time.Time `db:"created_at"`
+}
+
+func (s *SessionDB) toModel() *model.Session {
+	return &model.Session{
+		SID:       s.SID,
+		CreatedAt: s.CreatedAt,
+		Data:      s.Data,
+	}
 }

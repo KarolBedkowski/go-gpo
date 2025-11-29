@@ -51,9 +51,7 @@ func (s SqliteRepository) GetEpisode(
 		return nil, aerr.Wrapf(err, "query episode failed").WithTag(aerr.InternalError)
 	}
 
-	ep := NewEpisodeFromDBModel(&res)
-
-	return &ep, nil
+	return res.toModel(), nil
 }
 
 // ListEpisodeActions for user, and optionally for device and podcastid.
@@ -182,9 +180,7 @@ func (s SqliteRepository) GetLastEpisodeAction(ctx context.Context,
 		return nil, aerr.Wrapf(err, "query episode failed").WithTag(aerr.InternalError)
 	}
 
-	ep := NewEpisodeFromDBModel(&res)
-
-	return &ep, nil
+	return res.toModel(), nil
 }
 
 func (s SqliteRepository) SaveEpisode(ctx context.Context, userid int64, episode ...model.Episode) error {

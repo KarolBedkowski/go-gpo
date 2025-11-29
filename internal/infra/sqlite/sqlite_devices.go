@@ -32,8 +32,13 @@ func (s SqliteRepository) GetDevice(
 
 	device := DeviceDB{}
 	err := dbctx.GetContext(ctx, &device,
-		"SELECT id, user_id, name, dev_type, caption, created_at, updated_at "+
-			"FROM devices WHERE user_id=? and name=?",
+		`
+		SELECT d.id, d.user_id, d.name, d.dev_type, d.caption, d.created_at, d.updated_at,
+				u.name as user_name, u.username as user_username
+		FROM devices d
+		JOIN users u ON u.ID = d.user_id
+		WHERE d.user_id=? and d.name=?
+		`,
 		userid, devicename)
 
 	if errors.Is(err, sql.ErrNoRows) {
@@ -54,7 +59,7 @@ func (s SqliteRepository) GetDevice(
 
 	logger.Debug().Int("subs", device.Subscriptions).Msg("count subscriptions finished")
 
-	return device.ToModel(), nil
+	return device.toModel(), nil
 }
 
 func (s SqliteRepository) SaveDevice(ctx context.Context, device *model.Device) (int64, error) {
@@ -98,7 +103,7 @@ func (s SqliteRepository) SaveDevice(ctx context.Context, device *model.Device) 
 	return device.ID, nil
 }
 
-func (s SqliteRepository) ListDevices(ctx context.Context, userid int64) ([]*model.Device, error) {
+func (s SqliteRepository) ListDevices(ctx context.Context, userid int64) ([]model.Device, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Msg("list devices - count subscriptions")
 
@@ -118,21 +123,20 @@ func (s SqliteRepository) ListDevices(ctx context.Context, userid int64) ([]*mod
 
 	devices := []DeviceDB{}
 
-	err = dbctx.SelectContext(ctx, &devices,
-		"SELECT id, user_id, name, dev_type, caption, ? as subscriptions, created_at, updated_at, last_seen_at "+
-			"FROM devices WHERE user_id=? "+
-			"ORDER BY name",
+	err = dbctx.SelectContext(ctx, &devices, `
+			SELECT d.id, d.user_id, d.name, d.dev_type, d.caption, ? as subscriptions,
+				d.created_at, d.updated_at, d.last_seen_at,
+				u.name as user_name, u.username as user_username
+			FROM devices d
+			JOIN users u ON u.id = d.user_id
+			WHERE user_id=?
+			ORDER BY d.name`,
 		subscriptions, userid)
 	if err != nil {
 		return nil, aerr.Wrapf(err, "select device failed").WithMeta("user_id", userid)
 	}
 
-	res := make([]*model.Device, len(devices))
-	for i, d := range devices {
-		res[i] = d.ToModel()
-	}
-
-	return res, nil
+	return devicesFromDb(devices), nil
 }
 
 func (s SqliteRepository) DeleteDevice(ctx context.Context, deviceid int64) error {

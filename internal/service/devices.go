@@ -60,6 +60,7 @@ func (d *DevicesSrv) UpdateDevice(ctx context.Context, cmd *command.UpdateDevice
 
 		device.Caption = cmd.Caption
 		device.DevType = cmd.DeviceType
+		device.User = user
 
 		_, err = d.devicesRepo.SaveDevice(ctx, device)
 		if err != nil {
@@ -76,7 +77,7 @@ func (d *DevicesSrv) ListDevices(ctx context.Context, query *query.GetDevicesQue
 		return nil, aerr.Wrapf(err, "validate query failed")
 	}
 
-	devices, err := db.InConnectionR(ctx, d.db, func(ctx context.Context) ([]*model.Device, error) {
+	devices, err := db.InConnectionR(ctx, d.db, func(ctx context.Context) ([]model.Device, error) {
 		user, err := d.usersRepo.GetUser(ctx, query.UserName)
 		if errors.Is(err, common.ErrNoData) {
 			return nil, common.ErrUnknownUser
@@ -93,10 +94,6 @@ func (d *DevicesSrv) ListDevices(ctx context.Context, query *query.GetDevicesQue
 	})
 	if err != nil {
 		return nil, err //nolint:wrapcheck
-	}
-
-	for _, d := range devices {
-		d.UserName = query.UserName
 	}
 
 	return devices, nil

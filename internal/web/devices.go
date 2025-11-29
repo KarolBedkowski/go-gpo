@@ -56,7 +56,7 @@ func (d devicePages) list(ctx context.Context, w http.ResponseWriter, r *http.Re
 	}
 
 	data := struct {
-		Devices []*model.Device
+		Devices []model.Device
 	}{
 		Devices: devices,
 	}

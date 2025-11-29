@@ -161,18 +161,12 @@ func (s SqliteRepository) ReadOrCreate(ctx context.Context, sid string) (*model.
 		return nil, aerr.Wrapf(err, "select session failed").WithMeta("sid", sid)
 	}
 
-	ses := &model.Session{
-		SID:       session.SID,
-		CreatedAt: session.CreatedAt,
-		Data:      session.Data,
-	}
-
-	return ses, nil
+	return session.toModel(), nil
 }
 
 func (s SqliteRepository) SessionExists(ctx context.Context, sid string) (bool, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Msg("count sessions")
+	logger.Debug().Str("sid", sid).Msg("check session exists")
 
 	dbctx := db.MustCtx(ctx)
 

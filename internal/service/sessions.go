@@ -11,7 +11,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -24,8 +23,6 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
-
-var ErrDuplicatedSID = errors.New("sid already exists")
 
 // SessionStore represents a postgres session store implementation.
 type SessionStore struct {
