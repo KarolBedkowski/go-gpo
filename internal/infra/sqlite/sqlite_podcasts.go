@@ -19,7 +19,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/model"
 )
 
-func (s SqliteRepository) ListSubscribedPodcasts(ctx context.Context, userid int64, since time.Time,
+func (s Repository) ListSubscribedPodcasts(ctx context.Context, userid int64, since time.Time,
 ) (model.Podcasts, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Msgf("get subscribed podcasts since %s", since)
@@ -41,7 +41,7 @@ func (s SqliteRepository) ListSubscribedPodcasts(ctx context.Context, userid int
 	return podcastsFromDb(res), nil
 }
 
-func (s SqliteRepository) ListPodcasts(ctx context.Context, userid int64, since time.Time,
+func (s Repository) ListPodcasts(ctx context.Context, userid int64, since time.Time,
 ) (model.Podcasts, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Msgf("get podcasts since %s", since)
@@ -61,7 +61,7 @@ func (s SqliteRepository) ListPodcasts(ctx context.Context, userid int64, since 
 	return podcastsFromDb(res), nil
 }
 
-func (s SqliteRepository) GetPodcastByID(
+func (s Repository) GetPodcastByID(
 	ctx context.Context,
 	userid, podcastid int64,
 ) (*model.Podcast, error) {
@@ -86,7 +86,7 @@ func (s SqliteRepository) GetPodcastByID(
 	}
 }
 
-func (s SqliteRepository) GetPodcast(
+func (s Repository) GetPodcast(
 	ctx context.Context,
 	userid int64,
 	podcasturl string,
@@ -112,7 +112,7 @@ func (s SqliteRepository) GetPodcast(
 	}
 }
 
-func (s SqliteRepository) SavePodcast(ctx context.Context, podcast *model.Podcast) (int64, error) {
+func (s Repository) SavePodcast(ctx context.Context, podcast *model.Podcast) (int64, error) {
 	logger := log.Ctx(ctx)
 	dbctx := db.MustCtx(ctx)
 
@@ -167,7 +167,7 @@ func (s SqliteRepository) SavePodcast(ctx context.Context, podcast *model.Podcas
 	return podcast.ID, nil
 }
 
-func (s SqliteRepository) ListPodcastsToUpdate(ctx context.Context, since time.Time) ([]string, error) {
+func (s Repository) ListPodcastsToUpdate(ctx context.Context, since time.Time) ([]string, error) {
 	dbctx := db.MustCtx(ctx)
 
 	var res []string
@@ -183,7 +183,7 @@ func (s SqliteRepository) ListPodcastsToUpdate(ctx context.Context, since time.T
 	return res, nil
 }
 
-func (s SqliteRepository) UpdatePodcastsInfo(ctx context.Context, update *model.PodcastMetaUpdate) error {
+func (s Repository) UpdatePodcastsInfo(ctx context.Context, update *model.PodcastMetaUpdate) error {
 	dbctx := db.MustCtx(ctx)
 
 	_, err := dbctx.ExecContext(ctx,

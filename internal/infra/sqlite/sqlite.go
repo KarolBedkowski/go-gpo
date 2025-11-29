@@ -15,9 +15,9 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/db"
 )
 
-type SqliteRepository struct{} //nolint:revive
+type Repository struct{}
 
-func (SqliteRepository) Maintenance(ctx context.Context) error {
+func (Repository) Maintenance(ctx context.Context) error {
 	logger := log.Ctx(ctx)
 	dbi := db.MustCtx(ctx)
 

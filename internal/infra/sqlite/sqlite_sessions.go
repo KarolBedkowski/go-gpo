@@ -25,7 +25,7 @@ import (
 
 var ErrDuplicatedSID = errors.New("sid already exists")
 
-func (s SqliteRepository) DeleteSession(ctx context.Context, sid string) error {
+func (s Repository) DeleteSession(ctx context.Context, sid string) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Str("sid", sid).Msg("delete session")
 
@@ -39,7 +39,7 @@ func (s SqliteRepository) DeleteSession(ctx context.Context, sid string) error {
 	return nil
 }
 
-func (s SqliteRepository) SaveSession(ctx context.Context, sid string, data map[any]any) error {
+func (s Repository) SaveSession(ctx context.Context, sid string, data map[any]any) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Str("sid", sid).Msg("save session")
 
@@ -60,7 +60,7 @@ func (s SqliteRepository) SaveSession(ctx context.Context, sid string, data map[
 	return nil
 }
 
-func (s SqliteRepository) RegenerateSession(ctx context.Context, oldsid, newsid string) error {
+func (s Repository) RegenerateSession(ctx context.Context, oldsid, newsid string) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Str("sid", newsid).Str("old_sid", oldsid).Msg("regenerate session")
 
@@ -93,7 +93,7 @@ func (s SqliteRepository) RegenerateSession(ctx context.Context, oldsid, newsid 
 	return nil
 }
 
-func (s SqliteRepository) CountSessions(ctx context.Context) (int, error) {
+func (s Repository) CountSessions(ctx context.Context) (int, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msg("count sessions")
 
@@ -108,7 +108,7 @@ func (s SqliteRepository) CountSessions(ctx context.Context) (int, error) {
 	return total, nil
 }
 
-func (s SqliteRepository) CleanSessions(
+func (s Repository) CleanSessions(
 	ctx context.Context,
 	maxLifeTime, maxLifeTimeForEmpty time.Duration,
 ) error {
@@ -148,7 +148,7 @@ func (s SqliteRepository) CleanSessions(
 	return nil
 }
 
-func (s SqliteRepository) ReadOrCreate(
+func (s Repository) ReadOrCreate(
 	ctx context.Context,
 	sid string,
 	maxLifeTime time.Duration,
@@ -191,7 +191,7 @@ func (s SqliteRepository) ReadOrCreate(
 	return &session, nil
 }
 
-func (s SqliteRepository) SessionExists(ctx context.Context, sid string) (bool, error) {
+func (s Repository) SessionExists(ctx context.Context, sid string) (bool, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Str("sid", sid).Msg("check session exists")
 

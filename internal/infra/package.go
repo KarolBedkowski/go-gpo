@@ -15,24 +15,24 @@ import (
 
 var Package = do.Package(
 	do.Lazy(func(_ do.Injector) (repository.SessionRepository, error) {
-		return &sqlite.SqliteRepository{}, nil
+		return &sqlite.Repository{}, nil
 	}),
 	do.Lazy(func(_ do.Injector) (repository.UsersRepository, error) {
-		return &sqlite.SqliteRepository{}, nil
+		return &sqlite.Repository{}, nil
 	}),
 	do.Lazy(func(_ do.Injector) (repository.PodcastsRepository, error) {
-		return &sqlite.SqliteRepository{}, nil
+		return &sqlite.Repository{}, nil
 	}),
 	do.Lazy(func(_ do.Injector) (repository.DevicesRepository, error) {
-		return &sqlite.SqliteRepository{}, nil
+		return &sqlite.Repository{}, nil
 	}),
 	do.Lazy(func(_ do.Injector) (repository.EpisodesRepository, error) {
-		return &sqlite.SqliteRepository{}, nil
+		return &sqlite.Repository{}, nil
 	}),
 	do.Lazy(func(_ do.Injector) (repository.SettingsRepository, error) {
-		return &sqlite.SqliteRepository{}, nil
+		return &sqlite.Repository{}, nil
 	}),
 	do.Lazy(func(_ do.Injector) (repository.MaintenanceRepository, error) {
-		return &sqlite.SqliteRepository{}, nil
+		return &sqlite.Repository{}, nil
 	}),
 )

@@ -21,7 +21,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/model"
 )
 
-func (s SqliteRepository) GetEpisode(
+func (s Repository) GetEpisode(
 	ctx context.Context,
 	userid, podcastid int64,
 	episode string,
@@ -58,7 +58,7 @@ func (s SqliteRepository) GetEpisode(
 // If deviceid is given, return actions from OTHER than given devices.
 // Episodes are sorted by updated_at asc.
 // When aggregate get only last action for each episode.
-func (s SqliteRepository) ListEpisodeActions(
+func (s Repository) ListEpisodeActions(
 	ctx context.Context,
 	userid int64, deviceid, podcastid *int64,
 	since time.Time,
@@ -121,7 +121,7 @@ func (s SqliteRepository) ListEpisodeActions(
 	return episodesFromDb(res), nil
 }
 
-func (s SqliteRepository) ListFavorites(ctx context.Context, userid int64) ([]model.Episode, error) {
+func (s Repository) ListFavorites(ctx context.Context, userid int64) ([]model.Episode, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Msg("get favorites")
 
@@ -145,7 +145,7 @@ func (s SqliteRepository) ListFavorites(ctx context.Context, userid int64) ([]mo
 	return episodesFromDb(res), nil
 }
 
-func (s SqliteRepository) GetLastEpisodeAction(ctx context.Context,
+func (s Repository) GetLastEpisodeAction(ctx context.Context,
 	userid, podcastid int64, excludeDelete bool,
 ) (*model.Episode, error) {
 	logger := log.Ctx(ctx)
@@ -183,7 +183,7 @@ func (s SqliteRepository) GetLastEpisodeAction(ctx context.Context,
 	return res.toModel(), nil
 }
 
-func (s SqliteRepository) SaveEpisode(ctx context.Context, userid int64, episode ...model.Episode) error {
+func (s Repository) SaveEpisode(ctx context.Context, userid int64, episode ...model.Episode) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Msg("save episode")
 
@@ -198,7 +198,7 @@ func (s SqliteRepository) SaveEpisode(ctx context.Context, userid int64, episode
 	return nil
 }
 
-func (s SqliteRepository) saveEpisode(ctx context.Context, episode *model.Episode) error {
+func (s Repository) saveEpisode(ctx context.Context, episode *model.Episode) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Object("episode", episode).Msg("save episode")
 

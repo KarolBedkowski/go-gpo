@@ -19,7 +19,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/model"
 )
 
-func (s SqliteRepository) GetUser(ctx context.Context, username string) (*model.User, error) {
+func (s Repository) GetUser(ctx context.Context, username string) (*model.User, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Str("user_name", username).Msg("get user")
 
@@ -41,7 +41,7 @@ func (s SqliteRepository) GetUser(ctx context.Context, username string) (*model.
 	}
 }
 
-func (s SqliteRepository) SaveUser(ctx context.Context, user *model.User) (int64, error) {
+func (s Repository) SaveUser(ctx context.Context, user *model.User) (int64, error) {
 	logger := log.Ctx(ctx)
 	dbctx := db.MustCtx(ctx)
 
@@ -78,7 +78,7 @@ func (s SqliteRepository) SaveUser(ctx context.Context, user *model.User) (int64
 }
 
 // ListUsers get all users from database.
-func (s SqliteRepository) ListUsers(ctx context.Context, activeOnly bool) ([]model.User, error) {
+func (s Repository) ListUsers(ctx context.Context, activeOnly bool) ([]model.User, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msgf("list users, active_only=%v", activeOnly)
 
@@ -102,7 +102,7 @@ func (s SqliteRepository) ListUsers(ctx context.Context, activeOnly bool) ([]mod
 }
 
 // DeleteUser and all related objects.
-func (s SqliteRepository) DeleteUser(ctx context.Context, userid int64) error {
+func (s Repository) DeleteUser(ctx context.Context, userid int64) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Msg("delete user")
 

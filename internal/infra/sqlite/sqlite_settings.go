@@ -18,7 +18,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/model"
 )
 
-func (s SqliteRepository) ListSettings(ctx context.Context,
+func (s Repository) ListSettings(ctx context.Context,
 	userid int64, podcastid, episodeid, deviceid *int64, scope string,
 ) (model.Settings, error) {
 	logger := log.Ctx(ctx)
@@ -46,7 +46,7 @@ func (s SqliteRepository) ListSettings(ctx context.Context,
 }
 
 // GetSettings return setting for user, scope and key. Create empty SettingsDB object when no data found in db.
-func (s SqliteRepository) GetSettings(ctx context.Context,
+func (s Repository) GetSettings(ctx context.Context,
 	userid int64, podcastid, episodeid, deviceid *int64, scope, key string,
 ) (SettingsDB, error) {
 	logger := log.Ctx(ctx)
@@ -93,7 +93,7 @@ func (s SqliteRepository) GetSettings(ctx context.Context,
 }
 
 // SaveSettings insert or update setting.
-func (s SqliteRepository) SaveSettings(ctx context.Context,
+func (s Repository) SaveSettings(ctx context.Context,
 	userid int64, podcastid, episodeid, deviceid *int64, scope, key, value string,
 ) error {
 	logger := log.Ctx(ctx)

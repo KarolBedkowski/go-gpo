@@ -20,7 +20,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/model"
 )
 
-func (s SqliteRepository) GetDevice(
+func (s Repository) GetDevice(
 	ctx context.Context,
 	userid int64,
 	devicename string,
@@ -62,7 +62,7 @@ func (s SqliteRepository) GetDevice(
 	return device.toModel(), nil
 }
 
-func (s SqliteRepository) SaveDevice(ctx context.Context, device *model.Device) (int64, error) {
+func (s Repository) SaveDevice(ctx context.Context, device *model.Device) (int64, error) {
 	logger := log.Ctx(ctx)
 	dbctx := db.MustCtx(ctx)
 
@@ -103,7 +103,7 @@ func (s SqliteRepository) SaveDevice(ctx context.Context, device *model.Device) 
 	return device.ID, nil
 }
 
-func (s SqliteRepository) ListDevices(ctx context.Context, userid int64) ([]model.Device, error) {
+func (s Repository) ListDevices(ctx context.Context, userid int64) ([]model.Device, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Msg("list devices - count subscriptions")
 
@@ -139,7 +139,7 @@ func (s SqliteRepository) ListDevices(ctx context.Context, userid int64) ([]mode
 	return devicesFromDb(devices), nil
 }
 
-func (s SqliteRepository) DeleteDevice(ctx context.Context, deviceid int64) error {
+func (s Repository) DeleteDevice(ctx context.Context, deviceid int64) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("device_id", deviceid).Msg("delete device")
 
@@ -158,7 +158,7 @@ func (s SqliteRepository) DeleteDevice(ctx context.Context, deviceid int64) erro
 	return nil
 }
 
-func (s SqliteRepository) MarkSeen(ctx context.Context, ts time.Time, deviceid ...int64) error {
+func (s Repository) MarkSeen(ctx context.Context, ts time.Time, deviceid ...int64) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Ints64("device_id", deviceid).Msgf("mark device seen at: %s", ts)
 
