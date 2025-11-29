@@ -13,7 +13,8 @@ import (
 	"github.com/samber/do/v2"
 
 	"gitlab.com/kabes/go-gpo/internal/assert"
-	"gitlab.com/kabes/go-gpo/internal/model"
+	"gitlab.com/kabes/go-gpo/internal/command"
+	"gitlab.com/kabes/go-gpo/internal/common"
 )
 
 func TestUsers(t *testing.T) {
@@ -21,62 +22,73 @@ func TestUsers(t *testing.T) {
 	usersSrv := do.MustInvoke[*UsersSrv](i)
 
 	_, err := usersSrv.LoginUser(ctx, "test", "test123")
-	assert.ErrSpec(t, err, ErrUnknownUser)
+	assert.ErrSpec(t, err, common.ErrUnknownUser)
 
-	newuser := model.NewNewUser("test", "test123", "test@example.com", "test user 1")
-	uid, err := usersSrv.AddUser(ctx, &newuser)
+	newuser := command.NewUserCmd{UserName: "test", Password: "test123", Email: "test@example.com", Name: "test user 1"}
+	res, err := usersSrv.AddUser(ctx, &newuser)
 	assert.NoErr(t, err)
-	assert.True(t, uid > 0)
+	assert.True(t, res.UserID > 0)
 
 	user, err := usersSrv.LoginUser(ctx, "test", "test123")
 	assert.NoErr(t, err)
 	assert.Equal(t, user.Name, newuser.Name)
-	assert.Equal(t, user.Username, newuser.Username)
+	assert.Equal(t, user.UserName, newuser.UserName)
 	assert.Equal(t, user.Email, newuser.Email)
 
 	_, err = usersSrv.LoginUser(ctx, "test", "test1233")
-	assert.ErrSpec(t, err, ErrUnauthorized)
+	assert.ErrSpec(t, err, common.ErrUnauthorized)
 
 	// lock account and try login
-	err = usersSrv.LockAccount(ctx, model.LockAccount{Username: "test"})
+	err = usersSrv.LockAccount(ctx, command.LockAccountCmd{UserName: "test"})
 	assert.NoErr(t, err)
 	user, err = usersSrv.LoginUser(ctx, "test", "test123")
-	assert.ErrSpec(t, err, ErrUserAccountLocked)
+	assert.ErrSpec(t, err, common.ErrUserAccountLocked)
 
 	// change pass and unlock
-	err = usersSrv.ChangePassword(ctx, &model.UserPassword{Username: "test", Password: "123123"})
+	chpasscmd := command.ChangeUserPasswordCmd{
+		UserName:         "test",
+		Password:         "123123",
+		CurrentPassword:  "",
+		CheckCurrentPass: false,
+	}
+	err = usersSrv.ChangePassword(ctx, &chpasscmd)
 	assert.NoErr(t, err)
 
 	user, err = usersSrv.LoginUser(ctx, "test", "123123")
 	assert.NoErr(t, err)
 
 	// try double user
-	newuser2 := model.NewNewUser("test", "test123", "test2@example.com", "test user 2")
+	newuser2 := command.NewUserCmd{
+		UserName: "test",
+		Password: "test123",
+		Email:    "test2@example.com",
+		Name:     "test user 2",
+	}
 	_, err = usersSrv.AddUser(ctx, &newuser2)
-	assert.ErrSpec(t, err, ErrUserExists)
+	assert.ErrSpec(t, err, common.ErrUserExists)
 
-	newuser2.Username = "test2"
-	uid2, err := usersSrv.AddUser(ctx, &newuser2)
+	newuser2.UserName = "test2"
+	res2, err := usersSrv.AddUser(ctx, &newuser2)
 	assert.NoErr(t, err)
-	assert.True(t, uid2 > 0)
-	assert.True(t, uid != uid2)
+	assert.True(t, res2.UserID > 0)
+	assert.True(t, res.UserID != res2.UserID)
 
 	// get all users
 	users, err := usersSrv.GetUsers(ctx, false)
 	assert.NoErr(t, err)
 	assert.Equal(t, len(users), 2)
-	assert.Equal(t, users[0].Username, "test")
-	assert.Equal(t, users[1].Username, "test2")
+	assert.Equal(t, users[0].UserName, "test")
+	assert.Equal(t, users[1].UserName, "test2")
 
 	// lock test2
-	err = usersSrv.LockAccount(ctx, model.LockAccount{Username: "test2"})
+	err = usersSrv.LockAccount(ctx, command.LockAccountCmd{UserName: "test2"})
 	assert.NoErr(t, err)
 
 	// get active users
 	users, err = usersSrv.GetUsers(ctx, true)
 	assert.NoErr(t, err)
 	assert.Equal(t, len(users), 1)
-	assert.Equal(t, users[0].Username, "test")
+	assert.Equal(t, users[0].UserName, "test")
 }
 
 func TestDeleteUser(t *testing.T) {
@@ -96,19 +108,19 @@ func TestDeleteUser(t *testing.T) {
 		"user1", "dev1", "http://example.com/p2", "http://example.com/p2/e1", "http://example.com/p2/e2",
 	)
 
-	err := usersSrv.DeleteUser(ctx, "user3")
-	assert.ErrSpec(t, err, ErrUnknownUser)
+	err := usersSrv.DeleteUser(ctx, &command.DeleteUserCmd{UserName: "user3"})
+	assert.ErrSpec(t, err, common.ErrUnknownUser)
 
-	err = usersSrv.DeleteUser(ctx, "user2")
+	err = usersSrv.DeleteUser(ctx, &command.DeleteUserCmd{UserName: "user2"})
 	assert.NoErr(t, err)
 
 	// get active users
 	users, err := usersSrv.GetUsers(ctx, true)
 	assert.NoErr(t, err)
 	assert.Equal(t, len(users), 1)
-	assert.Equal(t, users[0].Username, "user1")
+	assert.Equal(t, users[0].UserName, "user1")
 
-	err = usersSrv.DeleteUser(ctx, "user1")
+	err = usersSrv.DeleteUser(ctx, &command.DeleteUserCmd{UserName: "user1"})
 	assert.NoErr(t, err)
 
 	// get active users

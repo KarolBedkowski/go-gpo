@@ -10,13 +10,16 @@ package web
 import (
 	"context"
 	"net/http"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 	"github.com/samber/do/v2"
-	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/model"
+	"gitlab.com/kabes/go-gpo/internal/query"
+	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
@@ -34,25 +37,39 @@ func newEpisodePages(i do.Injector) (episodePages, error) {
 
 func (e episodePages) Routes() *chi.Mux {
 	r := chi.NewRouter()
-	r.Get(`/`, internal.Wrap(e.list))
+	r.Get(`/`, srvsupport.Wrap(e.list))
 
 	return r
 }
 
 func (e episodePages) list(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
-	user := internal.ContextUser(ctx)
+	user := common.ContextUser(ctx)
 
 	podcast := r.URL.Query().Get("podcast")
 	if podcast == "" {
-		logger.Debug().Msgf("empty podcast")
+		logger.Debug().Msg("empty podcast")
 		w.WriteHeader(http.StatusBadRequest)
 
 		return
 	}
 
-	episodes, err := e.episodeSrv.GetEpisodes(ctx, user, "", podcast)
+	podcastid, err := strconv.ParseInt(podcast, 10, 64)
 	if err != nil {
-		internal.CheckAndWriteError(w, r, err)
+		logger.Debug().Err(err).Msg("invalid podcast id")
+		w.WriteHeader(http.StatusBadRequest)
+
+		return
+	}
+
+	query := query.GetEpisodesByPodcastQuery{
+		UserName:   user,
+		PodcastID:  podcastid,
+		Aggregated: true,
+	}
+
+	episodes, err := e.episodeSrv.GetEpisodesByPodcast(ctx, &query)
+	if err != nil {
+		srvsupport.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get podcast episodes error")
 
 		return
@@ -66,6 +83,6 @@ func (e episodePages) list(ctx context.Context, w http.ResponseWriter, r *http.R
 
 	if err := e.template.executeTemplate(w, "episodes.tmpl", &data); err != nil {
 		logger.Error().Err(err).Msg("execute template error")
-		internal.WriteError(w, r, http.StatusInternalServerError, "")
+		srvsupport.WriteError(w, r, http.StatusInternalServerError, "")
 	}
 }

@@ -24,10 +24,11 @@ import (
 	"github.com/rs/zerolog/hlog"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/do/v2"
-	"gitlab.com/kabes/go-gpo/internal"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/config"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/repository"
+	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
@@ -35,12 +36,12 @@ func AuthenticatedOnly(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		logger := hlog.FromRequest(r)
 		sess := session.GetSession(r)
-		user := internal.SessionUser(sess)
+		user := srvsupport.SessionUser(sess)
 
 		logger.Debug().Str("session_user", user).Msg("authenticated only check")
 
 		if user != "" {
-			ctx := internal.ContextWithUser(r.Context(), user)
+			ctx := common.ContextWithUser(r.Context(), user)
 			next.ServeHTTP(w, r.WithContext(ctx))
 
 			return
@@ -75,7 +76,7 @@ func (a authenticator) handle(next http.Handler) http.Handler {
 			sess := session.GetSession(r)
 
 			_, err := a.usersSrv.LoginUser(ctx, username, password)
-			if errors.Is(err, service.ErrUnauthorized) || errors.Is(err, service.ErrUnknownUser) {
+			if errors.Is(err, common.ErrUnauthorized) || errors.Is(err, common.ErrUnknownUser) {
 				logger.Warn().Err(err).Str("user_name", username).Msg("auth failed")
 				w.Header().Add("WWW-Authenticate", "Basic realm=\"go-gpo\"")
 
@@ -95,9 +96,9 @@ func (a authenticator) handle(next http.Handler) http.Handler {
 			lloger := logger.With().Str("user_name", username).Logger()
 			ctx = lloger.WithContext(ctx)
 
-			lloger.Info().Msgf("user authenticated")
+			lloger.Info().Msg("user authenticated")
 
-			r = r.WithContext(internal.ContextWithUser(ctx, username))
+			r = r.WithContext(common.ContextWithUser(ctx, username))
 			_ = sess.Set("user", username)
 		}
 
@@ -303,6 +304,7 @@ type sessionMiddleware func(http.Handler) http.Handler
 func newSessionMiddleware(i do.Injector) (sessionMiddleware, error) {
 	db := do.MustInvoke[*db.Database](i)
 	repo := do.MustInvoke[repository.SessionRepository](i)
+	cfg := do.MustInvoke[*Configuration](i)
 
 	session.RegisterFn("db", func() session.Provider {
 		return service.NewSessionProvider(db, repo, sessionMaxLifetime)
@@ -314,7 +316,8 @@ func newSessionMiddleware(i do.Injector) (sessionMiddleware, error) {
 		CookieName:     "sessionid",
 		SameSite:       http.SameSiteLaxMode,
 		Maxlifetime:    int64(sessionMaxLifetime.Seconds()),
-		// Secure:         true,
+		Secure:         cfg.useSecureCookie(),
+		CookiePath:     cfg.WebRoot,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("start session manager error: %w", err)

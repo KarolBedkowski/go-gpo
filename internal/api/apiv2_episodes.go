@@ -9,13 +9,16 @@ package api
 import (
 	"context"
 	"net/http"
-	"slices"
 	"time"
 
-	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/command"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/model"
+	"gitlab.com/kabes/go-gpo/internal/query"
+	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
+	"gitlab.com/kabes/go-gpo/internal/validators"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
@@ -38,9 +41,9 @@ func (er episodesResource) Routes() *chi.Mux {
 	r := chi.NewRouter()
 
 	r.With(checkUserMiddleware).
-		Post(`/{user:[\w+.-]+}.json`, internal.Wrap(er.uploadEpisodeActions))
+		Post(`/{user:[\w+.-]+}.json`, srvsupport.Wrap(er.uploadEpisodeActions))
 	r.With(checkUserMiddleware).
-		Get(`/{user:[\w+.-]+}.json`, internal.Wrap(er.getEpisodeActions))
+		Get(`/{user:[\w+.-]+}.json`, srvsupport.Wrap(er.getEpisodeActions))
 
 	return r
 }
@@ -54,7 +57,7 @@ func (er episodesResource) uploadEpisodeActions(
 	var reqData []episode
 
 	if err := render.DecodeJSON(r.Body, &reqData); err != nil {
-		logger.Debug().Err(err).Msgf("parse json error")
+		logger.Debug().Err(err).Msg("parse json error")
 		http.Error(w, "invalid reqData data", http.StatusBadRequest)
 
 		return
@@ -70,13 +73,13 @@ func (er episodesResource) uploadEpisodeActions(
 
 		// skip invalid (non http*) podcasts)
 		if reqEpisode.Podcast == "" {
-			logger.Debug().Interface("req", reqEpisode).Msgf("skipped episode")
+			logger.Debug().Interface("req", reqEpisode).Msg("skipped episode")
 
 			continue
 		}
 
 		if err := reqEpisode.validate(); err != nil {
-			logger.Debug().Err(err).Interface("req", reqEpisode).Msgf("validate error")
+			logger.Debug().Err(err).Interface("req", reqEpisode).Msg("validate error")
 			http.Error(w, "validate reqData data failed", http.StatusBadRequest)
 
 			return
@@ -85,10 +88,14 @@ func (er episodesResource) uploadEpisodeActions(
 		actions = append(actions, reqEpisode.toModel())
 	}
 
-	user := internal.ContextUser(ctx)
+	logger.Debug().Msgf("uploadEpisodeActions: count=%d, changedurls=%d", len(actions), len(changedurls))
 
-	if err := er.episodesSrv.AddAction(ctx, user, actions...); err != nil {
-		internal.CheckAndWriteError(w, r, err)
+	cmd := command.AddActionCmd{
+		UserName: common.ContextUser(ctx),
+		Actions:  actions,
+	}
+	if err := er.episodesSrv.AddAction(ctx, &cmd); err != nil {
+		checkAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).
 			Err(err).Msg("save episodes error")
 
@@ -111,22 +118,30 @@ func (er episodesResource) getEpisodeActions(
 	r *http.Request,
 	logger *zerolog.Logger,
 ) {
-	user := internal.ContextUser(ctx)
+	user := common.ContextUser(ctx)
 	podcast := r.URL.Query().Get("podcast")
 	device := r.URL.Query().Get("device")
 	aggregated := r.URL.Query().Get("aggregated") == "true"
 
 	since, err := getSinceParameter(r)
 	if err != nil {
-		logger.Debug().Err(err).Msgf("parse since parameter to time error")
-		internal.WriteError(w, r, http.StatusBadRequest, "")
+		logger.Debug().Err(err).Msg("parse since parameter to time error")
+		writeError(w, r, http.StatusBadRequest)
 
 		return
 	}
 
-	res, err := er.episodesSrv.GetActions(ctx, user, podcast, device, since, aggregated)
+	query := query.GetEpisodesQuery{
+		UserName:   user,
+		Podcast:    podcast,
+		DeviceName: device,
+		Since:      since,
+		Aggregated: aggregated,
+	}
+
+	res, err := er.episodesSrv.GetEpisodes(ctx, &query)
 	if err != nil {
-		internal.CheckAndWriteError(w, r, err)
+		checkAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get episodes actions error")
 
 		return
@@ -136,9 +151,11 @@ func (er episodesResource) getEpisodeActions(
 		Actions   []episode `json:"actions"`
 		Timestamp int64     `json:"timestamp"`
 	}{
-		Actions:   model.Map(res, newEpisodesFromModel),
+		Actions:   common.Map(res, newEpisodesFromModel),
 		Timestamp: time.Now().UTC().Unix(),
 	}
+
+	logger.Debug().Msgf("getEpisodeActions: count=%d", len(resp.Actions))
 
 	render.JSON(w, r, &resp)
 }
@@ -152,9 +169,9 @@ type episode struct {
 	Device    string  `json:"device,omitempty"`
 	Action    string  `json:"action"`
 	Timestamp any     `json:"timestamp"`
-	Started   *int    `json:"started,omitempty"`
-	Position  *int    `json:"position,omitempty"`
-	Total     *int    `json:"total,omitempty"`
+	Started   *int32  `json:"started,omitempty"`
+	Position  *int32  `json:"position,omitempty"`
+	Total     *int32  `json:"total,omitempty"`
 	GUID      *string `json:"guid,omitempty"`
 
 	ts time.Time `json:"-"`
@@ -162,9 +179,9 @@ type episode struct {
 
 func newEpisodesFromModel(e *model.Episode) episode {
 	return episode{
-		Podcast:   e.Podcast,
-		Episode:   e.Episode,
-		Device:    e.Device,
+		Podcast:   e.Podcast.URL,
+		Episode:   e.URL,
+		Device:    e.DeviceName(),
 		Action:    e.Action,
 		Timestamp: e.Timestamp.Format("2006-01-02T15:04:05"),
 		Started:   e.Started,
@@ -179,7 +196,7 @@ func newEpisodesFromModel(e *model.Episode) episode {
 func (e *episode) sanitize() [][]string {
 	var changes [][]string
 
-	spodcast := model.SanitizeURL(e.Podcast)
+	spodcast := validators.SanitizeURL(e.Podcast)
 	if spodcast != e.Podcast {
 		e.Podcast = spodcast
 		if spodcast != "" {
@@ -187,7 +204,7 @@ func (e *episode) sanitize() [][]string {
 		}
 	}
 
-	sepisode := model.SanitizeURL(e.Episode)
+	sepisode := validators.SanitizeURL(e.Episode)
 	if sepisode != e.Episode {
 		e.Episode = sepisode
 		if spodcast != "" {
@@ -200,15 +217,15 @@ func (e *episode) sanitize() [][]string {
 
 func (e *episode) validate() error {
 	if e.Podcast == "" {
-		return aerr.NewSimple("empty `podcast`").WithTag(aerr.DataError)
+		return aerr.New("empty `podcast`").WithTag(aerr.ValidationError)
 	}
 
 	if e.Episode == "" {
-		return aerr.NewSimple("empty `episode`").WithTag(aerr.DataError)
+		return aerr.New("empty `episode`").WithTag(aerr.ValidationError)
 	}
 
-	if !slices.Contains(model.ValidActions, e.Action) {
-		return aerr.NewSimple("invalid `action`").WithTag(aerr.DataError)
+	if !validators.IsValidEpisodeAction(e.Action) {
+		return aerr.New("invalid `action`").WithTag(aerr.ValidationError)
 	}
 
 	var err error
@@ -223,9 +240,9 @@ func (e *episode) validate() error {
 
 func (e *episode) toModel() model.Episode {
 	return model.Episode{
-		Podcast:   e.Podcast,
-		Episode:   e.Episode,
-		Device:    e.Device,
+		Podcast:   &model.Podcast{URL: e.Podcast},
+		URL:       e.Episode,
+		Device:    &model.Device{Name: e.Device},
 		Action:    e.Action,
 		Timestamp: e.ts,
 		Started:   e.Started,

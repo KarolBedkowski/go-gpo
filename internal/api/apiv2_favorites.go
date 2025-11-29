@@ -12,9 +12,10 @@ import (
 	"net/http"
 	"time"
 
-	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/model"
+	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
 
 	"github.com/go-chi/chi/v5"
@@ -37,7 +38,7 @@ func (u favoritesResource) Routes() *chi.Mux {
 	r := chi.NewRouter()
 
 	r.With(checkUserMiddleware).
-		Get(`/{user:[\w+.-]+}.json`, internal.Wrap(u.getFafovites))
+		Get(`/{user:[\w+.-]+}.json`, srvsupport.Wrap(u.getFafovites))
 
 	return r
 }
@@ -48,17 +49,17 @@ func (u favoritesResource) getFafovites(
 	r *http.Request,
 	logger *zerolog.Logger,
 ) {
-	user := internal.ContextUser(ctx)
+	user := common.ContextUser(ctx)
 
 	favorites, err := u.episodesSrv.GetFavorites(ctx, user)
 	if err != nil {
-		internal.CheckAndWriteError(w, r, err)
+		checkAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get episodes updates error")
 
 		return
 	}
 
-	resfavs := model.Map(favorites, newFavoriteFromModel)
+	resfavs := common.Map(favorites, newFavoriteFromModel)
 	render.JSON(w, r, resfavs)
 }
 

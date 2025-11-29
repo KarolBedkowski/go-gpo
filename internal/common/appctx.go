@@ -1,0 +1,37 @@
+package common
+
+import (
+	"context"
+)
+
+var ctxUserKey = any("ctxUserKey")
+
+func ContextUser(ctx context.Context) string {
+	suser, ok := ctx.Value(ctxUserKey).(string)
+	if ok {
+		return suser
+	}
+
+	return ""
+}
+
+func ContextWithUser(ctx context.Context, username string) context.Context {
+	return context.WithValue(ctx, ctxUserKey, username)
+}
+
+// ------------------------------------------------------
+
+var ctxDeviceKey = any("ctxDeviceKey")
+
+func ContextDevice(ctx context.Context) string {
+	value, ok := ctx.Value(ctxDeviceKey).(string)
+	if ok {
+		return value
+	}
+
+	return ""
+}
+
+func ContextWithDevice(ctx context.Context, devicename string) context.Context {
+	return context.WithValue(ctx, ctxDeviceKey, devicename)
+}

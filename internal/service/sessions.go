@@ -11,7 +11,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -21,10 +20,9 @@ import (
 	"github.com/rs/zerolog/log"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/db"
+	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
-
-var ErrDuplicatedSID = errors.New("sid already exists")
 
 // SessionStore represents a postgres session store implementation.
 type SessionStore struct {
@@ -40,7 +38,7 @@ func (s *SessionStore) Set(key, value any) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	log.Logger.Debug().Msgf("set session: %v=%v", key, value)
+	log.Logger.Debug().Msgf("set session: %v=%v", key, &value)
 
 	s.data[key] = value
 
@@ -73,25 +71,12 @@ func (s *SessionStore) ID() string {
 // save postgres session values to database.
 // must call this method to save values to database.
 func (s *SessionStore) Release() error {
-	log.Logger.Debug().Msgf("session release: %+v", s.data)
-
-	var (
-		data []byte
-		err  error
-	)
-
-	// Skip encoding if the data is empty
-	if len(s.data) > 0 {
-		data, err = session.EncodeGob(s.data)
-		if err != nil {
-			return fmt.Errorf("session encode error: %w", err)
-		}
-	}
+	log.Logger.Debug().Msgf("session release: %+v", &s.data)
 
 	ctx := log.Logger.WithContext(context.Background())
 
-	err = db.InTransaction(ctx, s.db, func(tx repository.DBContext) error {
-		return s.repo.SaveSession(ctx, tx, s.sid, data)
+	err := db.InTransaction(ctx, s.db, func(ctx context.Context) error {
+		return s.repo.SaveSession(ctx, s.sid, s.data)
 	})
 	if err != nil {
 		return fmt.Errorf("put session into db error: %w", err)
@@ -145,10 +130,10 @@ func (p *SessionProvider) Init(gclifetime int64, config string) error {
 func (p *SessionProvider) Read(sid string) (session.RawStore, error) { //nolint:ireturn
 	ctx := p.logger.WithContext(context.Background())
 
-	storedSession, err := db.InTransactionR(ctx, p.db, func(dbctx repository.DBContext) (repository.SessionDB, error) {
-		stored, err := p.repo.ReadOrCreate(ctx, dbctx, sid)
+	storedSession, err := db.InTransactionR(ctx, p.db, func(ctx context.Context) (*model.Session, error) {
+		stored, err := p.repo.ReadOrCreate(ctx, sid, p.maxlifetime)
 		if err != nil {
-			return stored, fmt.Errorf("read or create session %q from db error: %w", sid, err)
+			return nil, fmt.Errorf("read or create session %q from db error: %w", sid, err)
 		}
 
 		return stored, nil
@@ -157,26 +142,21 @@ func (p *SessionProvider) Read(sid string) (session.RawStore, error) { //nolint:
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
-	store, err := p.decodeSession(ctx, storedSession)
-	if err != nil {
-		return nil, err
-	}
-
-	return store, nil
+	return &SessionStore{
+		db:   p.db,
+		repo: p.repo,
+		sid:  storedSession.SID,
+		data: storedSession.Data,
+	}, nil
 }
 
 // Exist returns true if session with given ID exists.
 func (p *SessionProvider) Exist(sid string) (bool, error) {
 	ctx := p.logger.WithContext(context.Background())
 
-	conn, err := p.db.GetConnection(ctx)
-	if err != nil {
-		return false, fmt.Errorf("get db connection error: %w", err)
-	}
-
-	defer conn.Close()
-
-	exists, err := p.repo.SessionExists(ctx, conn, sid)
+	exists, err := db.InConnectionR(ctx, p.db, func(ctx context.Context) (bool, error) {
+		return p.repo.SessionExists(ctx, sid)
+	})
 	if err != nil {
 		return false, fmt.Errorf("check session %q exists error: %w", sid, err)
 	}
@@ -188,8 +168,8 @@ func (p *SessionProvider) Exist(sid string) (bool, error) {
 func (p *SessionProvider) Destroy(sid string) error {
 	ctx := p.logger.WithContext(context.Background())
 
-	err := db.InTransaction(ctx, p.db, func(tx repository.DBContext) error {
-		return p.repo.DeleteSession(ctx, tx, sid)
+	err := db.InTransaction(ctx, p.db, func(ctx context.Context) error {
+		return p.repo.DeleteSession(ctx, sid)
 	})
 	if err != nil {
 		return fmt.Errorf("delete session %q error: %w", sid, err)
@@ -204,12 +184,12 @@ func (p *SessionProvider) Regenerate(oldsid, sid string) (session.RawStore, erro
 
 	ctx := p.logger.WithContext(context.Background())
 
-	storedSession, err := db.InTransactionR(ctx, p.db, func(dbctx repository.DBContext) (repository.SessionDB, error) {
-		if err := p.repo.RegenerateSession(ctx, dbctx, oldsid, sid); err != nil {
-			return repository.SessionDB{}, fmt.Errorf("regenerate session error: %w", err)
+	session, err := db.InTransactionR(ctx, p.db, func(ctx context.Context) (*model.Session, error) {
+		if err := p.repo.RegenerateSession(ctx, oldsid, sid); err != nil {
+			return nil, fmt.Errorf("regenerate session error: %w", err)
 		}
 
-		stored, err := p.repo.ReadOrCreate(ctx, dbctx, sid)
+		stored, err := p.repo.ReadOrCreate(ctx, sid, p.maxlifetime)
 		if err != nil {
 			return stored, fmt.Errorf("read or create session %q from db error: %w", sid, err)
 		}
@@ -220,26 +200,21 @@ func (p *SessionProvider) Regenerate(oldsid, sid string) (session.RawStore, erro
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
-	store, err := p.decodeSession(ctx, storedSession)
-	if err != nil {
-		return nil, err
-	}
-
-	return store, nil
+	return &SessionStore{
+		db:   p.db,
+		repo: p.repo,
+		sid:  session.SID,
+		data: session.Data,
+	}, nil
 }
 
 // Count counts and returns number of sessions.
 func (p *SessionProvider) Count() (int, error) {
 	ctx := p.logger.WithContext(context.Background())
 
-	conn, err := p.db.GetConnection(ctx)
-	if err != nil {
-		return 0, fmt.Errorf("get db connection error: %w", err)
-	}
-
-	defer conn.Close()
-
-	total, err := p.repo.CountSessions(ctx, conn)
+	total, err := db.InConnectionR(ctx, p.db, func(ctx context.Context) (int, error) {
+		return p.repo.CountSessions(ctx)
+	})
 	if err != nil {
 		return 0, fmt.Errorf("error counting records: %w", err)
 	}
@@ -253,37 +228,10 @@ func (p *SessionProvider) GC() {
 
 	ctx := p.logger.WithContext(context.Background())
 
-	err := db.InTransaction(ctx, p.db, func(dbctx repository.DBContext) error {
-		return p.repo.CleanSessions(ctx, dbctx, p.maxlifetime, 2*time.Hour) //nolint:mnd
+	err := db.InTransaction(ctx, p.db, func(ctx context.Context) error {
+		return p.repo.CleanSessions(ctx, p.maxlifetime, 2*time.Hour) //nolint:mnd
 	})
 	if err != nil {
 		p.logger.Error().Err(err).Msg("gc sessions error")
 	}
-}
-
-func (p *SessionProvider) decodeSession(
-	ctx context.Context,
-	dbsession repository.SessionDB,
-) (session.RawStore, error) {
-	_ = ctx
-
-	var sessiondata map[any]any
-
-	if len(dbsession.Data) == 0 || dbsession.CreatedAt.Add(p.maxlifetime).Before(time.Now().UTC()) {
-		sessiondata = make(map[any]any)
-	} else {
-		var err error
-
-		sessiondata, err = session.DecodeGob(dbsession.Data)
-		if err != nil {
-			return nil, fmt.Errorf("decode session error: %w", err)
-		}
-	}
-
-	return &SessionStore{
-		db:   p.db,
-		repo: p.repo,
-		sid:  dbsession.SID,
-		data: sessiondata,
-	}, nil
 }

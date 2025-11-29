@@ -5,68 +5,61 @@
 package model
 
 import (
-	"slices"
 	"time"
 
-	"gitlab.com/kabes/go-gpo/internal/aerr"
-	"gitlab.com/kabes/go-gpo/internal/repository"
+	"github.com/rs/zerolog"
 )
-
-var ValidDevTypes = []string{"desktop", "laptop", "mobile", "server", "other"}
 
 //------------------------------------------------------------------------------
 
 type Device struct {
-	User          string
+	ID            int64
+	UserName      string
 	Name          string
 	DevType       string
 	Caption       string
 	Subscriptions int
 	UpdatedAt     time.Time
 	LastSeenAt    time.Time
+
+	User *User
 }
 
-func NewDeviceFromDeviceDB(d *repository.DeviceDB) Device {
-	return Device{
-		Name:          d.Name,
-		DevType:       d.DevType,
-		Caption:       d.Caption,
-		Subscriptions: d.Subscriptions,
-		UpdatedAt:     d.UpdatedAt,
-		LastSeenAt:    d.LastSeenAt,
+func (d *Device) MarshalZerologObject(event *zerolog.Event) {
+	event.Int64("id", d.ID).
+		Str("user_name", d.UserName).
+		Str("name", d.Name).
+		Str("type", d.DevType).
+		Str("caption", d.Caption).
+		Time("updated_at", d.UpdatedAt).
+		Time("last_seen_at", d.LastSeenAt).
+		Int("subscriptions", d.Subscriptions)
+
+	if d.User != nil {
+		event.Object("user", d.User)
 	}
 }
 
 //------------------------------------------------------------------------------
 
-type UpdatedDevice struct {
-	UserName   string
-	DeviceName string
-	DeviceType string
-	Caption    string
+type Devices []Device
+
+func (d Devices) ToMap() map[string]Device {
+	devices := make(map[string]Device)
+
+	for _, dev := range d {
+		devices[dev.Name] = dev
+	}
+
+	return devices
 }
 
-func NewUpdatedDevice(username, devicename, devicetype, caption string) UpdatedDevice {
-	return UpdatedDevice{
-		UserName:   username,
-		DeviceName: devicename,
-		DeviceType: devicetype,
-		Caption:    caption,
-	}
-}
+func (d Devices) ToIDsMap() map[string]int64 {
+	devices := make(map[string]int64)
 
-func (u *UpdatedDevice) Validate() error {
-	if u.DeviceName == "" {
-		return aerr.ErrValidation.WithMsg("device name can't be empty")
+	for _, dev := range d {
+		devices[dev.Name] = dev.ID
 	}
 
-	if u.DeviceType == "" {
-		return aerr.ErrValidation.WithMsg("device type can't be empty")
-	}
-
-	if !slices.Contains(ValidDevTypes, u.DeviceType) {
-		return aerr.ErrValidation.WithMsg("invalid device type %q", u.DeviceType)
-	}
-
-	return nil
+	return devices
 }

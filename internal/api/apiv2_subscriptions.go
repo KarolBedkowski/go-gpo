@@ -8,15 +8,16 @@ package api
 import (
 	"context"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/samber/do/v2"
-	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
-	"gitlab.com/kabes/go-gpo/internal/model"
+	"gitlab.com/kabes/go-gpo/internal/command"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/opml"
+	"gitlab.com/kabes/go-gpo/internal/query"
+	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
 
 	"github.com/go-chi/chi/v5"
@@ -37,11 +38,11 @@ func (sr subscriptionsResource) Routes() *chi.Mux {
 	router := chi.NewRouter()
 
 	router.With(checkUserMiddleware).
-		Get(`/{user:[\w+.-]+}.opml`, internal.Wrap(sr.userSubscriptions))
+		Get(`/{user:[\w+.-]+}.opml`, srvsupport.Wrap(sr.userSubscriptions))
 	router.With(checkUserMiddleware, checkDeviceMiddleware).
-		Get(`/{user:[\w+.-]+}/{deviceid:[\w.-]+}.json`, internal.Wrap(sr.devSubscriptions))
+		Get(`/{user:[\w+.-]+}/{devicename:[\w.-]+}.json`, srvsupport.Wrap(sr.devSubscriptions))
 	router.With(checkUserMiddleware, checkDeviceMiddleware).
-		Post(`/{user:[\w+.-]+}/{deviceid:[\w.-]+}.json`, internal.Wrap(sr.uploadSubscriptionChanges))
+		Post(`/{user:[\w+.-]+}/{devicename:[\w.-]+}.json`, srvsupport.Wrap(sr.uploadSubscriptionChanges))
 
 	return router
 }
@@ -52,24 +53,22 @@ func (sr subscriptionsResource) devSubscriptions(
 	r *http.Request,
 	logger *zerolog.Logger,
 ) {
-	user := internal.ContextUser(ctx)
-	deviceid := internal.ContextDevice(ctx)
+	user := common.ContextUser(ctx)
+	devicename := common.ContextDevice(ctx)
 
-	var sinceTS time.Time
+	sinceTS, err := getSinceParameter(r)
+	if err != nil {
+		logger.Debug().Err(err).Msg("parse since failed")
+		w.WriteHeader(http.StatusBadRequest)
 
-	if since := r.URL.Query().Get("since"); since != "" {
-		ts, err := strconv.ParseInt(since, 10, 64)
-		if err != nil {
-			logger.Debug().Err(err).Msgf("parse since=%q error", since)
-			w.WriteHeader(http.StatusBadRequest)
-		}
-
-		sinceTS = time.Unix(ts, 0)
+		return
 	}
 
-	state, err := sr.subsSrv.GetSubscriptionChanges(ctx, user, deviceid, sinceTS)
+	q := query.GetSubscriptionChangesQuery{UserName: user, DeviceName: devicename, Since: sinceTS}
+
+	state, err := sr.subsSrv.GetSubscriptionChanges(ctx, &q)
 	if err != nil {
-		internal.CheckAndWriteError(w, r, err)
+		checkAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get device subscriptions changes error")
 
 		return
@@ -85,6 +84,9 @@ func (sr subscriptionsResource) devSubscriptions(
 		Timestamp: time.Now().UTC().Unix(),
 	}
 
+	logger.Debug().Msgf("dev subscriptions result: added=%d, removed=%d, ts=%d",
+		len(res.Add), len(res.Remove), res.Timestamp)
+
 	w.WriteHeader(http.StatusOK)
 	render.JSON(w, r, &res)
 }
@@ -96,11 +98,11 @@ func (sr subscriptionsResource) userSubscriptions(
 	logger *zerolog.Logger,
 ) {
 	_ = r
-	user := internal.ContextUser(ctx)
+	user := common.ContextUser(ctx)
 
-	subs, err := sr.subsSrv.GetUserSubscriptions(ctx, user, time.Time{})
+	subs, err := sr.subsSrv.GetUserSubscriptions(ctx, &query.GetUserSubscriptionsQuery{UserName: user})
 	if err != nil {
-		internal.CheckAndWriteError(w, r, err)
+		checkAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get user subscriptions error")
 
 		return
@@ -112,10 +114,12 @@ func (sr subscriptionsResource) userSubscriptions(
 	result, err := o.XML()
 	if err != nil {
 		logger.Warn().Err(err).Msg("get opml xml error")
-		internal.WriteError(w, r, http.StatusInternalServerError, "")
+		writeError(w, r, http.StatusInternalServerError)
 
 		return
 	}
+
+	logger.Debug().Msgf("userSubscriptions: count=%d", len(subs))
 
 	w.WriteHeader(http.StatusOK)
 	w.Write(result)
@@ -127,28 +131,34 @@ func (sr subscriptionsResource) uploadSubscriptionChanges(
 	r *http.Request,
 	logger *zerolog.Logger,
 ) {
-	user := internal.ContextUser(ctx)
-	deviceid := internal.ContextDevice(ctx)
+	user := common.ContextUser(ctx)
+	devicename := common.ContextDevice(ctx)
 
-	changes := subscriptionChangesRequest{}
+	changes := struct {
+		Add    []string `json:"add"`
+		Remove []string `json:"remove"`
+	}{}
+
 	if err := render.DecodeJSON(r.Body, &changes); err != nil {
 		logger.Debug().Err(err).Msgf("parse json error")
-		internal.WriteError(w, r, http.StatusBadRequest, "")
+		writeError(w, r, http.StatusBadRequest)
 
 		return
 	}
 
-	subChanges := model.NewSubscriptionChanges(changes.Add, changes.Remove)
-
-	if err := subChanges.Validate(); err != nil {
-		logger.Debug().Err(err).Msg("validate request error")
-		internal.WriteError(w, r, http.StatusBadRequest, "")
-
-		return
+	cmd := command.ChangeSubscriptionsCmd{
+		UserName:   user,
+		DeviceName: devicename,
+		Add:        changes.Add,
+		Remove:     changes.Remove,
+		Timestamp:  time.Now().UTC(),
 	}
 
-	if err := sr.subsSrv.ApplySubscriptionChanges(ctx, user, deviceid, &subChanges, time.Now().UTC()); err != nil {
-		internal.CheckAndWriteError(w, r, err)
+	logger.Debug().Msgf("uploadSubscription: add=%d, remove=%d", len(cmd.Add), len(cmd.Remove))
+
+	res, err := sr.subsSrv.ChangeSubscriptions(ctx, &cmd)
+	if err != nil {
+		checkAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("update device subscription changes error")
 
 		return
@@ -159,15 +169,10 @@ func (sr subscriptionsResource) uploadSubscriptionChanges(
 		UpdatedURLs [][]string `json:"update_urls"`
 	}{
 		Timestamp:   time.Now().UTC().Unix(),
-		UpdatedURLs: subChanges.ChangedURLs,
+		UpdatedURLs: res.ChangedURLs,
 	}
 
 	render.JSON(w, r, &resp)
 }
 
 // -----------------------------
-
-type subscriptionChangesRequest struct {
-	Add    []string `json:"add"`
-	Remove []string `json:"remove"`
-}

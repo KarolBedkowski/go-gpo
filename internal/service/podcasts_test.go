@@ -11,6 +11,7 @@ import (
 
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/assert"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/model"
 )
 
@@ -35,7 +36,7 @@ func TestPodcastsServiceUserPodcasts(t *testing.T) {
 	assert.Equal(t, len(podcasts), 0)
 
 	podcasts, err = podcastsSrv.GetPodcasts(ctx, "user3")
-	assert.ErrSpec(t, err, ErrUnknownUser)
+	assert.ErrSpec(t, err, common.ErrUnknownUser)
 }
 
 func TestPodcastsServiceUserPodcastsExt(t *testing.T) {
@@ -49,7 +50,7 @@ func TestPodcastsServiceUserPodcastsExt(t *testing.T) {
 
 	prepareTestSub(ctx, t, i, "user1", "dev1", subscribed...)
 
-	podcasts, err := podcastsSrv.GetPodcastsWithLastEpisode(ctx, "user1")
+	podcasts, err := podcastsSrv.GetPodcastsWithLastEpisode(ctx, "user1", true)
 	assert.NoErr(t, err)
 	assert.Equal(t, len(podcasts), 3)
 	assert.Equal(t, podcasts[0].URL, "http://example.com/p1")
@@ -58,6 +59,6 @@ func TestPodcastsServiceUserPodcastsExt(t *testing.T) {
 
 	// TODO: check episode
 
-	_, err = podcastsSrv.GetPodcastsWithLastEpisode(ctx, "user3")
-	assert.ErrSpec(t, err, ErrUnknownUser)
+	_, err = podcastsSrv.GetPodcastsWithLastEpisode(ctx, "user3", true)
+	assert.ErrSpec(t, err, common.ErrUnknownUser)
 }

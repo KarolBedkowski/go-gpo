@@ -15,9 +15,9 @@ const (
 )
 
 var (
-	ErrValidation  = NewSimple("validation error").WithTag(ValidationError)
-	ErrInvalidConf = NewSimple("invalid configuration").WithTag(ConfigurationError)
-	ErrDatabase    = NewSimple("database error").WithTag(InternalError).WithUserMsg("database error")
+	ErrValidation  = New("validation error").WithTag(ValidationError)
+	ErrInvalidConf = New("invalid configuration").WithTag(ConfigurationError)
+	ErrDatabase    = New("database error").WithTag(InternalError).WithUserMsg("database error")
 )
 
 func IsSerious(err error) bool {

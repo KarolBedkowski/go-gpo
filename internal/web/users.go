@@ -9,13 +9,15 @@ package web
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 	"github.com/samber/do/v2"
-	"gitlab.com/kabes/go-gpo/internal"
-	"gitlab.com/kabes/go-gpo/internal/model"
+	"gitlab.com/kabes/go-gpo/internal/command"
+	"gitlab.com/kabes/go-gpo/internal/common"
+	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
@@ -33,8 +35,8 @@ func newUserPages(i do.Injector) (userPages, error) {
 
 func (u userPages) Routes() *chi.Mux {
 	r := chi.NewRouter()
-	r.Get(`/password`, internal.Wrap(u.changePassword))
-	r.Post(`/password`, internal.Wrap(u.changePassword))
+	r.Get(`/password`, srvsupport.Wrap(u.changePassword))
+	r.Post(`/password`, srvsupport.Wrap(u.changePassword))
 
 	return r
 }
@@ -54,7 +56,7 @@ func (u userPages) changePassword(
 	if r.Method == http.MethodPost {
 		if err := r.ParseForm(); err != nil {
 			logger.Info().Err(err).Msg("parse form error")
-			internal.WriteError(w, r, http.StatusBadRequest, "")
+			srvsupport.WriteError(w, r, http.StatusBadRequest, "")
 
 			return
 		}
@@ -64,7 +66,7 @@ func (u userPages) changePassword(
 
 	if err := u.template.executeTemplate(w, "users_change_password.tmpl", &data); err != nil {
 		logger.Error().Err(err).Msg("execute template error")
-		internal.WriteError(w, r, http.StatusInternalServerError, "")
+		srvsupport.WriteError(w, r, http.StatusInternalServerError, "")
 	}
 }
 
@@ -74,17 +76,15 @@ func (u userPages) doChangePassword(ctx context.Context, r *http.Request, logger
 		return "Error: " + msg
 	}
 
-	username := internal.ContextUser(ctx)
-
-	_, err := u.usersSrv.LoginUser(ctx, username, cpass)
-	if err != nil {
-		logger.Info().Err(err).Msg("check current user password for password change failed")
-
-		return "Error: invalid current password"
+	username := common.ContextUser(ctx)
+	up := command.ChangeUserPasswordCmd{
+		UserName: username, Password: npass, CurrentPassword: cpass, CheckCurrentPass: true,
 	}
 
-	up := model.NewUserPassword(username, npass)
-	if err := u.usersSrv.ChangePassword(ctx, &up); err != nil {
+	err := u.usersSrv.ChangePassword(ctx, &up)
+	if errors.Is(err, command.ErrChangePasswordOldNotMatch) {
+		return "Error: invalid current password"
+	} else if err != nil {
 		logger.Info().Err(err).Str("user_name", username).Msg("change user password failed")
 
 		return "Error: change password failed"

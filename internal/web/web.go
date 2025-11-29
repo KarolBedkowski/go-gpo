@@ -17,6 +17,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/do/v2"
+	"gitlab.com/kabes/go-gpo/internal/aerr"
 )
 
 //go:embed templates/*.tmpl
@@ -96,7 +97,12 @@ func newTemplatesI(i do.Injector) (templates, error) {
 }
 
 func (t templates) executeTemplate(wr io.Writer, name string, data any) error {
-	err := t[name].ExecuteTemplate(wr, name, data)
+	tmpl, ok := t[name]
+	if !ok {
+		return aerr.Newf("execute template %q error: template not found", name)
+	}
+
+	err := tmpl.ExecuteTemplate(wr, name, data)
 	if err != nil {
 		return fmt.Errorf("execute template %q error: %w", name, err)
 	}

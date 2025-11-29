@@ -9,8 +9,10 @@ package server
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -21,17 +23,11 @@ import (
 	"github.com/rs/zerolog/log"
 	dochi "github.com/samber/do/http/chi/v2"
 	"github.com/samber/do/v2"
+	"gitlab.com/kabes/go-gpo/internal/aerr"
 	gpoapi "gitlab.com/kabes/go-gpo/internal/api"
 	"gitlab.com/kabes/go-gpo/internal/config"
 	gpoweb "gitlab.com/kabes/go-gpo/internal/web"
 )
-
-type Configuration struct {
-	Listen        string
-	WebRoot       string
-	DebugFlags    config.DebugFlags
-	EnableMetrics bool
-}
 
 const (
 	sessionMaxLifetime    = (24 * 60 * 60) * time.Second //nolint:mnd
@@ -107,7 +103,7 @@ func New(injector do.Injector) (Server, error) {
 	}, nil
 }
 
-func (s *Server) Start(ctx context.Context) error {
+func (s *Server) Run(ctx context.Context) error {
 	if s.cfg.DebugFlags.HasFlag(config.DebugRouter) {
 		logRoutes(ctx, s.router)
 	}
@@ -115,6 +111,29 @@ func (s *Server) Start(ctx context.Context) error {
 	if err := s.s.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("listen error: %w", err)
 	}
+
+	return nil
+}
+
+func (s *Server) Start(ctx context.Context) error {
+	logger := log.Logger
+
+	if s.cfg.DebugFlags.HasFlag(config.DebugRouter) {
+		logRoutes(ctx, s.router)
+	}
+
+	listener, err := s.newListener(ctx)
+	if err != nil {
+		return aerr.Wrapf(err, "start listen error")
+	}
+
+	logger.Log().Msgf("Listen on %s (https=%v)...", s.cfg.Listen, s.cfg.tlsEnabled())
+
+	go func() {
+		if err := s.s.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			logger.Log().Err(err).Msg("serve error")
+		}
+	}()
 
 	return nil
 }
@@ -132,6 +151,19 @@ func (s *Server) Stop(_ error) {
 	}
 }
 
+func (s *Server) Shutdown(ctx context.Context) error {
+	logger := log.Ctx(ctx)
+	logger.Debug().Msg("server stopping...")
+
+	if err := s.s.Shutdown(ctx); err != nil {
+		return aerr.Wrapf(err, "shutdown server failed")
+	}
+
+	logger.Debug().Msg("server stopped")
+
+	return nil
+}
+
 func logRoutes(ctx context.Context, r chi.Routes) {
 	logger := log.Ctx(ctx)
 
@@ -147,4 +179,35 @@ func logRoutes(ctx context.Context, r chi.Routes) {
 	if err := chi.Walk(r, walkFunc); err != nil {
 		logger.Error().Err(err).Msg("routers walk error")
 	}
+}
+
+func (s *Server) newListener(ctx context.Context) (net.Listener, error) {
+	if s.cfg.TLSKey == "" || s.cfg.TLSCert == "" {
+		lc := net.ListenConfig{}
+
+		l, err := lc.Listen(ctx, "tcp", s.cfg.Listen)
+		if err != nil {
+			return nil, aerr.Wrapf(err, "listen failed").WithMeta("address", s.cfg.Listen)
+		}
+
+		return l, nil
+	}
+
+	cert, err := tls.LoadX509KeyPair(s.cfg.TLSCert, s.cfg.TLSKey)
+	if err != nil {
+		return nil, aerr.Wrapf(err, "load certificates failed").
+			WithMeta("cert", s.cfg.TLSCert, "key", s.cfg.TLSKey)
+	}
+
+	cfg := tls.Config{
+		Certificates: []tls.Certificate{cert},
+		MinVersion:   tls.VersionTLS12,
+	}
+
+	l, err := tls.Listen("tcp", s.cfg.Listen, &cfg)
+	if err != nil {
+		return nil, aerr.Wrapf(err, "tls listen failed").WithMeta("address", s.cfg.Listen)
+	}
+
+	return l, nil
 }

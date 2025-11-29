@@ -9,16 +9,13 @@ package db
 
 import (
 	"context"
-	"embed"
 	"errors"
 	"fmt"
-	"io/fs"
 	"net/url"
 	"runtime"
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/pressly/goose/v3"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/rs/zerolog/log"
@@ -27,17 +24,17 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
-//go:embed "migrations/*.sql"
-var embedMigrations embed.FS
-
 type Database struct {
-	db *sqlx.DB
+	db        *sqlx.DB
+	maintRepo repository.MaintenanceRepository
 
 	queryDuration *prometheus.HistogramVec
 }
 
-func NewDatabaseI(_ do.Injector) (*Database, error) {
-	return &Database{}, nil
+func NewDatabaseI(i do.Injector) (*Database, error) {
+	return &Database{
+		maintRepo: do.MustInvoke[repository.MaintenanceRepository](i),
+	}, nil
 }
 
 func (r *Database) Connect(ctx context.Context, driver, connstr string) error {
@@ -81,7 +78,7 @@ func (r *Database) RegisterMetrics(queryTime bool) {
 		r.queryDuration = prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
 				Name:    "database_query_duration_seconds",
-				Help:    "Tracks the latencies for database queries.",
+				Help:    "Tracks the latencies for database query.",
 				Buckets: []float64{0.1, 0.2, 0.5, 1, 2, 5},
 			},
 			[]string{"caller"},
@@ -107,54 +104,16 @@ func (r *Database) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (r *Database) Migrate(ctx context.Context, driver string) error { //nolint:cyclop
-	if driver != "sqlite3" {
-		panic("only sqlite3")
-	}
-
+func (r *Database) Migrate(ctx context.Context) error {
 	logger := log.Ctx(ctx)
+	logger.Debug().Msg("migration start")
 
-	migdir, err := fs.Sub(embedMigrations, "migrations")
+	err := r.maintRepo.Migrate(ctx, r.db.DB)
 	if err != nil {
-		panic(fmt.Errorf("prepare migration fs failed: %w", err))
+		return aerr.ApplyFor(aerr.ErrDatabase, err, "migration error")
 	}
 
-	provider, err := goose.NewProvider(goose.DialectSQLite3, r.db.DB, migdir)
-	if err != nil {
-		panic(fmt.Errorf("create goose provider failed: %w", err))
-	}
-
-	ver, err := provider.GetDBVersion(ctx)
-	if err != nil {
-		return aerr.ApplyFor(aerr.ErrDatabase, err, "", "failed to check current database version")
-	}
-
-	logger.Info().Msgf("current database version: %d", ver)
-
-	for {
-		res, err := provider.UpByOne(ctx)
-		if res != nil {
-			logger.Debug().Msgf("migration: %s", res)
-		}
-
-		if errors.Is(err, goose.ErrNoNextVersion) {
-			break
-		} else if err != nil {
-			return aerr.ApplyFor(aerr.ErrDatabase, err, "", "migrate database up failed")
-		}
-	}
-
-	ver, err = provider.GetDBVersion(ctx)
-	if err != nil {
-		return aerr.ApplyFor(aerr.ErrDatabase, err, "", "failed to check current database version")
-	}
-
-	logger.Info().Msgf("migrated database version: %d", ver)
-
-	_, err = r.db.ExecContext(ctx, "PRAGMA optimize")
-	if err != nil {
-		return aerr.ApplyFor(aerr.ErrDatabase, err, "execute optimize script failed")
-	}
+	logger.Debug().Msg("migration finished")
 
 	return nil
 }
@@ -182,73 +141,8 @@ func (r *Database) CloseConnection(ctx context.Context, conn *sqlx.Conn) {
 	}
 }
 
-func (r *Database) Maintenance(ctx context.Context) error {
-	logger := log.Ctx(ctx)
-
-	for idx, sql := range maintScripts {
-		logger.Debug().Msgf("run maintenance script[%d]: %q", idx, sql)
-
-		res, err := r.db.ExecContext(ctx, sql)
-		if err != nil {
-			return aerr.ApplyFor(aerr.ErrDatabase, err, "execute maintenance script failed").
-				WithMeta("sql", sql)
-		}
-
-		rowsaffected, err := res.RowsAffected()
-		if err != nil {
-			return aerr.ApplyFor(aerr.ErrDatabase, err, "execute maintenance script - failed get rows affected").
-				WithMeta("sql", sql)
-		}
-
-		logger.Debug().Msgf("run maintenance script[%d] finished; row affected: %d", idx, rowsaffected)
-	}
-
-	// print some stats
-	var numEpisodes, numPodcasts int
-	if err := r.db.GetContext(ctx, &numEpisodes, "SELECT count(*) FROM episodes"); err != nil {
-		return aerr.ApplyFor(aerr.ErrDatabase, err, "execute maintenance - count episodes failed")
-	}
-
-	if err := r.db.GetContext(ctx, &numPodcasts, "SELECT count(*) FROM podcasts"); err != nil {
-		return aerr.ApplyFor(aerr.ErrDatabase, err, "execute maintenance - count podcasts failed")
-	}
-
-	logger.Info().Msgf("database maintenance finished; podcasts: %d; episodes: %d", numPodcasts, numEpisodes)
-
-	return nil
-}
-
-func (r *Database) StartBackgroundMaintenance(ctx context.Context) error {
-	const startHour = 4
-
-	logger := log.Ctx(ctx)
-	logger.Info().Msg("start background maintenance task")
-
-	for {
-		now := time.Now().UTC()
-		nextRun := time.Date(now.Year(), now.Month(), now.Day(), startHour, 0, 0, 0, time.UTC)
-
-		if nextRun.Before(now) {
-			nextRun = nextRun.Add(time.Duration(60*60*24) * time.Second) //nolint:mnd
-		}
-
-		wait := nextRun.Sub(now)
-
-		logger.Debug().Msgf("maintenance task - next run %s wait %s", nextRun, wait)
-
-		select {
-		case <-ctx.Done():
-			return nil
-		case <-time.After(wait):
-			r.Maintenance(ctx)
-		}
-	}
-}
-
 func (r *Database) onConnect(ctx context.Context, db sqlx.ExecerContext) error {
-	_, err := db.ExecContext(ctx,
-		"PRAGMA temp_store = MEMORY;",
-	)
+	err := r.maintRepo.OnOpenConn(ctx, db)
 	if err != nil {
 		return aerr.ApplyFor(aerr.ErrDatabase, err, "execute onConnect script failed")
 	}
@@ -257,9 +151,7 @@ func (r *Database) onConnect(ctx context.Context, db sqlx.ExecerContext) error {
 }
 
 func (r *Database) onClose(ctx context.Context, db sqlx.ExecerContext) error {
-	_, err := db.ExecContext(ctx,
-		"PRAGMA optimize",
-	)
+	err := r.maintRepo.OnCloseConn(ctx, db)
 	if err != nil {
 		return aerr.ApplyFor(aerr.ErrDatabase, err, "execute onClose script failed")
 	}
@@ -322,7 +214,7 @@ func prepareSqliteConnstr(connstr string) (string, error) {
 
 // InConnectionR run `fun` in database context. Open/close connection. Return `fun` result and error.
 func InConnectionR[T any](ctx context.Context, r *Database,
-	fun func(repository.DBContext) (T, error),
+	fun func(context.Context) (T, error),
 ) (T, error) {
 	start := time.Now()
 	defer r.observeQueryDuration(start)
@@ -334,7 +226,9 @@ func InConnectionR[T any](ctx context.Context, r *Database,
 
 	defer r.CloseConnection(ctx, conn)
 
-	res, err := fun(conn)
+	ctx = WithCtx(ctx, conn)
+
+	res, err := fun(ctx)
 	if err != nil {
 		return res, err
 	}
@@ -342,7 +236,7 @@ func InConnectionR[T any](ctx context.Context, r *Database,
 	return res, nil
 }
 
-func InTransaction(ctx context.Context, r *Database, fun func(repository.DBContext) error) error {
+func InTransaction(ctx context.Context, r *Database, fun func(context.Context) error) error {
 	start := time.Now()
 	defer r.observeQueryDuration(start)
 
@@ -358,7 +252,9 @@ func InTransaction(ctx context.Context, r *Database, fun func(repository.DBConte
 		return aerr.ApplyFor(aerr.ErrDatabase, err, "begin tx failed")
 	}
 
-	err = fun(tx)
+	ctx = WithCtx(ctx, tx)
+
+	err = fun(ctx)
 	if err != nil {
 		if err := tx.Rollback(); err != nil {
 			merr := errors.Join(err, fmt.Errorf("commit error: %w", err))
@@ -378,7 +274,7 @@ func InTransaction(ctx context.Context, r *Database, fun func(repository.DBConte
 
 // InTransactionR run `fun` in db transactions; return `fun` result and error.
 func InTransactionR[T any](ctx context.Context, r *Database,
-	fun func(repository.DBContext) (T, error),
+	fun func(context.Context) (T, error),
 ) (T, error) {
 	start := time.Now()
 	defer r.observeQueryDuration(start)
@@ -395,7 +291,9 @@ func InTransactionR[T any](ctx context.Context, r *Database,
 		return *new(T), aerr.ApplyFor(aerr.ErrDatabase, err, "begin tx failed")
 	}
 
-	res, err := fun(tx)
+	ctx = WithCtx(ctx, tx)
+
+	res, err := fun(ctx)
 	if err != nil {
 		if err := tx.Rollback(); err != nil {
 			merr := errors.Join(err, fmt.Errorf("commit error: %w", err))
@@ -413,26 +311,4 @@ func InTransactionR[T any](ctx context.Context, r *Database,
 	return res, nil
 }
 
-//------------------------------------------------------------------------------
-
-var maintScripts = []string{
-	// delete actions for episode if given episode has been deleted
-	"DELETE FROM episodes AS e " +
-		"WHERE action != 'delete' " +
-		"AND updated_at < datetime('now','-1 month') " +
-		"AND EXISTS (" +
-		" SELECT NULL FROM episodes AS ed " +
-		" WHERE ed.url = e.url AND ed.action = 'delete' AND ed.updated_at > e.updated_at);",
-	// delete play actions when for given episode never play action exists
-	"DELETE FROM episodes AS e " +
-		"WHERE action = 'play' " +
-		"AND updated_at < datetime('now','-14 day') " +
-		"AND EXISTS (" +
-		" SELECT NULL FROM episodes AS ed " +
-		" WHERE ed.url = e.url AND ed.action = 'play' AND ed.updated_at > e.updated_at);",
-	"VACUUM;",
-	"ANALYZE;",
-	"PRAGMA optimize;",
-}
-
-//------------------------------------------------------------------------------
+// ------------------------------------------------------

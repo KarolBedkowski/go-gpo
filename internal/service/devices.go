@@ -13,8 +13,11 @@ import (
 
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/command"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
+	"gitlab.com/kabes/go-gpo/internal/query"
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
@@ -33,36 +36,33 @@ func NewDevicesSrv(i do.Injector) (*DevicesSrv, error) {
 }
 
 // UpdateDevice update or create device.
-func (d *DevicesSrv) UpdateDevice(ctx context.Context, updateddev *model.UpdatedDevice) error {
-	if updateddev == nil {
-		panic("updateddev is nil")
-	}
-
-	if err := updateddev.Validate(); err != nil {
+func (d *DevicesSrv) UpdateDevice(ctx context.Context, cmd *command.UpdateDeviceCmd) error {
+	if err := cmd.Validate(); err != nil {
 		return aerr.Wrapf(err, "validate dev to update failed")
 	}
 
 	//nolint:wrapcheck
-	return db.InTransaction(ctx, d.db, func(tx repository.DBContext) error {
-		user, err := d.usersRepo.GetUser(ctx, tx, updateddev.UserName)
-		if errors.Is(err, repository.ErrNoData) {
-			return ErrUnknownUser
+	return db.InTransaction(ctx, d.db, func(ctx context.Context) error {
+		user, err := d.usersRepo.GetUser(ctx, cmd.UserName)
+		if errors.Is(err, common.ErrNoData) {
+			return common.ErrUnknownUser
 		} else if err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		device, err := d.devicesRepo.GetDevice(ctx, tx, user.ID, updateddev.DeviceName)
-		if errors.Is(err, repository.ErrNoData) {
+		device, err := d.devicesRepo.GetDevice(ctx, user.ID, cmd.DeviceName)
+		if errors.Is(err, common.ErrNoData) {
 			// new device
-			device = repository.DeviceDB{UserID: user.ID, Name: updateddev.DeviceName}
+			device = &model.Device{Name: cmd.DeviceName, User: &model.User{ID: user.ID}}
 		} else if err != nil {
 			return aerr.Wrapf(err, "get device from repo failed")
 		}
 
-		device.Caption = updateddev.Caption
-		device.DevType = updateddev.DeviceType
+		device.Caption = cmd.Caption
+		device.DevType = cmd.DeviceType
+		device.User = user
 
-		_, err = d.devicesRepo.SaveDevice(ctx, tx, &device)
+		_, err = d.devicesRepo.SaveDevice(ctx, device)
 		if err != nil {
 			return aerr.Wrapf(err, "save device failed")
 		}
@@ -72,20 +72,20 @@ func (d *DevicesSrv) UpdateDevice(ctx context.Context, updateddev *model.Updated
 }
 
 // ListDevices return list of user's devices.
-func (d *DevicesSrv) ListDevices(ctx context.Context, username string) ([]model.Device, error) {
-	if username == "" {
-		return nil, ErrEmptyUsername
+func (d *DevicesSrv) ListDevices(ctx context.Context, query *query.GetDevicesQuery) (model.Devices, error) {
+	if err := query.Validate(); err != nil {
+		return nil, aerr.Wrapf(err, "validate query failed")
 	}
 
-	devices, err := db.InConnectionR(ctx, d.db, func(conn repository.DBContext) (repository.DevicesDB, error) {
-		user, err := d.usersRepo.GetUser(ctx, conn, username)
-		if errors.Is(err, repository.ErrNoData) {
-			return nil, ErrUnknownUser
+	devices, err := db.InConnectionR(ctx, d.db, func(ctx context.Context) ([]model.Device, error) {
+		user, err := d.usersRepo.GetUser(ctx, query.UserName)
+		if errors.Is(err, common.ErrNoData) {
+			return nil, common.ErrUnknownUser
 		} else if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		devices, err := d.devicesRepo.ListDevices(ctx, conn, user.ID)
+		devices, err := d.devicesRepo.ListDevices(ctx, user.ID)
 		if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err, "get devices from db failed")
 		}
@@ -96,42 +96,31 @@ func (d *DevicesSrv) ListDevices(ctx context.Context, username string) ([]model.
 		return nil, err //nolint:wrapcheck
 	}
 
-	res := make([]model.Device, len(devices))
-	for i, d := range devices {
-		dev := model.NewDeviceFromDeviceDB(d)
-		dev.User = username
-		res[i] = dev
-	}
-
-	return res, nil
+	return devices, nil
 }
 
-func (d *DevicesSrv) DeleteDevice(ctx context.Context, username, devicename string) error {
-	if username == "" {
-		return ErrEmptyUsername
-	}
-
-	if devicename == "" {
-		return aerr.ErrValidation.WithMsg("device can't be empty")
+func (d *DevicesSrv) DeleteDevice(ctx context.Context, cmd *command.DeleteDeviceCmd) error {
+	if err := cmd.Validate(); err != nil {
+		return aerr.Wrapf(err, "validate cmd failed")
 	}
 
 	//nolint:wrapcheck
-	return db.InTransaction(ctx, d.db, func(tx repository.DBContext) error {
-		user, err := d.usersRepo.GetUser(ctx, tx, username)
-		if errors.Is(err, repository.ErrNoData) {
-			return ErrUnknownUser
+	return db.InTransaction(ctx, d.db, func(ctx context.Context) error {
+		user, err := d.usersRepo.GetUser(ctx, cmd.UserName)
+		if errors.Is(err, common.ErrNoData) {
+			return common.ErrUnknownUser
 		} else if err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		device, err := d.devicesRepo.GetDevice(ctx, tx, user.ID, devicename)
-		if errors.Is(err, repository.ErrNoData) {
-			return ErrUnknownDevice
+		device, err := d.devicesRepo.GetDevice(ctx, user.ID, cmd.DeviceName)
+		if errors.Is(err, common.ErrNoData) {
+			return common.ErrUnknownDevice
 		} else if err != nil {
 			return aerr.Wrapf(err, "get device from repo failed")
 		}
 
-		if err = d.devicesRepo.DeleteDevice(ctx, tx, device.ID); err != nil {
+		if err = d.devicesRepo.DeleteDevice(ctx, device.ID); err != nil {
 			return aerr.Wrapf(err, "save device failed")
 		}
 

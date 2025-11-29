@@ -38,6 +38,7 @@ linters:
         - tr trace.Trace
         - w http.ResponseWriter
         - r *http.Request
+        - db *sql.DB
     wrapcheck:
       ignore-sigs:
         - .Errorf(
@@ -60,6 +61,13 @@ linters:
         extended-rules:
           json:
             case: snake
+    revive:
+      rules:
+        - name: var-naming
+          arguments:
+            - []
+            - []
+            - - skip-package-name-checks: true
   exclusions:
     generated: lax
     presets:
@@ -74,9 +82,7 @@ linters:
       - examples$
 formatters:
   enable:
-#    - gofmt
     - gofumpt
-#    - goimports
     - golines
   exclusions:
     generated: lax

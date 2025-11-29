@@ -9,9 +9,11 @@ import (
 	"net/http"
 	"time"
 
-	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/model"
+	"gitlab.com/kabes/go-gpo/internal/query"
+	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
 
 	"github.com/go-chi/chi/v5"
@@ -36,7 +38,7 @@ func (u updatesResource) Routes() *chi.Mux {
 	r := chi.NewRouter()
 
 	r.With(checkUserMiddleware, checkDeviceMiddleware).
-		Get(`/{user:[\w+.-]+}/{deviceid:[\w.-]+}.json`, internal.Wrap(u.getUpdates))
+		Get(`/{user:[\w+.-]+}/{devicename:[\w.-]+}.json`, srvsupport.Wrap(u.getUpdates))
 
 	return r
 }
@@ -47,29 +49,38 @@ func (u updatesResource) getUpdates(
 	r *http.Request,
 	logger *zerolog.Logger,
 ) {
-	user := internal.ContextUser(ctx)
-	deviceid := internal.ContextDevice(ctx)
+	user := common.ContextUser(ctx)
+	devicename := common.ContextDevice(ctx)
 	includeActions := r.URL.Query().Get("include_actions") == "true"
 
 	since, err := getSinceParameter(r)
 	if err != nil {
-		logger.Debug().Err(err).Msgf("parse since error")
-		internal.WriteError(w, r, http.StatusBadRequest, "")
+		logger.Debug().Err(err).Msg("parse since error")
+		writeError(w, r, http.StatusBadRequest)
 
 		return
 	}
 
-	state, err := u.subsSrv.GetSubscriptionChanges(ctx, user, deviceid, since)
+	q := query.GetSubscriptionChangesQuery{UserName: user, DeviceName: devicename, Since: since}
+
+	state, err := u.subsSrv.GetSubscriptionChanges(ctx, &q)
 	if err != nil {
-		internal.CheckAndWriteError(w, r, err)
+		checkAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get subscription changes error")
 
 		return
 	}
 
-	updates, err := u.episodesSrv.GetUpdates(ctx, user, "", since, includeActions)
+	query := query.GetEpisodeUpdatesQuery{
+		UserName:       user,
+		Since:          since,
+		IncludeActions: includeActions,
+		DeviceName:     "", // device is ignored; all devices have the same subscriptions
+	}
+
+	updates, err := u.episodesSrv.GetUpdates(ctx, &query)
 	if err != nil {
-		internal.CheckAndWriteError(w, r, err)
+		checkAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get episodes updates error")
 
 		return
@@ -82,9 +93,9 @@ func (u updatesResource) getUpdates(
 		Updates    []episodeUpdate `json:"updates"`
 		Timestamps int64           `json:"timestamp"`
 	}{
-		Add:        model.Map(state.Added, newPodcastFromModel),
+		Add:        common.Map(state.Added, newPodcastFromModel),
 		Remove:     state.RemovedURLs(),
-		Updates:    model.Map(updates, newEpisodeUpdateFromModel),
+		Updates:    common.Map(updates, newEpisodeUpdateFromModel),
 		Timestamps: time.Now().UTC().Unix(),
 	}
 

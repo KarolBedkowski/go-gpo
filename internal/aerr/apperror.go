@@ -22,14 +22,14 @@ type AppError struct {
 	stack   []string
 }
 
-func New(msg string, args ...any) AppError {
+func NewWStack(msg string, args ...any) AppError {
 	return AppError{
 		stack: getStack(),
 		msg:   fmt.Sprintf(msg, args...),
 	}
 }
 
-func NewSimple(msg string, args ...any) AppError {
+func New(msg string, args ...any) AppError {
 	return AppError{
 		msg: fmt.Sprintf(msg, args...),
 	}
@@ -338,7 +338,11 @@ func CollectErrors(err error) []string {
 		}
 
 		errmsg := apperr.Error()
-		errmsg += " [" + apperr.stack[0] + "]"
+
+		if len(apperr.stack) > 0 {
+			errmsg += " [" + apperr.stack[0] + "]"
+		}
+
 		errmsg += fmt.Sprintf("%v/%v", apperr.tags, apperr.meta)
 
 		errs = append(errs, errmsg)

@@ -13,7 +13,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 	"github.com/samber/do/v2"
-	"gitlab.com/kabes/go-gpo/internal"
+	"gitlab.com/kabes/go-gpo/internal/common"
+	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 )
 
 type authResource struct{}
@@ -24,17 +25,17 @@ func newAuthResource(_ do.Injector) (authResource, error) {
 
 func (ar authResource) Routes() *chi.Mux {
 	r := chi.NewRouter()
-	r.Post(`/{user:[\w.+-]}/login.json`, internal.Wrap(ar.login))
-	r.Post(`/{user:[\w.+-]}/logout.json`, internal.Wrap(ar.logout))
+	r.Post(`/{user:[\w.+-]}/login.json`, srvsupport.Wrap(ar.login))
+	r.Post(`/{user:[\w.+-]}/logout.json`, srvsupport.Wrap(ar.logout))
 
 	return r
 }
 
 func (ar authResource) login(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
 	sess := session.GetSession(r)
-	user := internal.ContextUser(ctx)
+	user := common.ContextUser(ctx)
 
-	switch u := internal.SessionUser(sess); u {
+	switch u := srvsupport.SessionUser(sess); u {
 	case "":
 		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 	case user:
@@ -47,14 +48,14 @@ func (ar authResource) login(ctx context.Context, w http.ResponseWriter, r *http
 
 func (ar authResource) logout(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
 	sess := session.GetSession(r)
-	user := internal.ContextUser(ctx)
-	username := internal.SessionUser(sess)
+	user := common.ContextUser(ctx)
+	username := srvsupport.SessionUser(sess)
 
 	logger.Info().Str("user", user).Msg("logout user")
 
 	if username != "" && user != username {
 		logger.Info().Str("user", user).Msgf("logout user error; session user %q not match user", username)
-		internal.WriteError(w, r, http.StatusBadRequest, "")
+		writeError(w, r, http.StatusBadRequest)
 
 		return
 	}

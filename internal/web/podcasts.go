@@ -1,4 +1,4 @@
-package web //nolint:dupl
+package web
 
 //
 // podcasts.go
@@ -9,55 +9,213 @@ package web //nolint:dupl
 
 import (
 	"context"
+	"errors"
 	"net/http"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 	"github.com/samber/do/v2"
-	"gitlab.com/kabes/go-gpo/internal"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/command"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/model"
+	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
 type podcastPages struct {
-	podcastsSrv *service.PodcastsSrv
-	template    templates
+	podcastsSrv      *service.PodcastsSrv
+	subscriptionsSrv *service.SubscriptionsSrv
+	template         templates
+	webroot          string
 }
 
 func newPodcastPages(i do.Injector) (podcastPages, error) {
 	return podcastPages{
-		podcastsSrv: do.MustInvoke[*service.PodcastsSrv](i),
-		template:    do.MustInvoke[templates](i),
+		podcastsSrv:      do.MustInvoke[*service.PodcastsSrv](i),
+		subscriptionsSrv: do.MustInvoke[*service.SubscriptionsSrv](i),
+		template:         do.MustInvoke[templates](i),
+		webroot:          do.MustInvokeNamed[string](i, "server.webroot"),
 	}, nil
 }
 
 func (p podcastPages) Routes() *chi.Mux {
 	r := chi.NewRouter()
-	r.Get(`/`, internal.Wrap(p.list))
+	r.Get(`/`, srvsupport.Wrap(p.list))
+	r.Post(`/`, srvsupport.Wrap(p.addPodcast))
+	r.Get(`/{podcastid:[0-9]+}/`, srvsupport.Wrap(p.podcastGet))
+	r.Post(`/{podcastid:[0-9]+}/unsubscribe`, srvsupport.Wrap(p.podcastUnsubscribe))
+	r.Post(`/{podcastid:[0-9]+}/resubscribe`, srvsupport.Wrap(p.podcastResubscribe))
 
 	return r
 }
 
 func (p podcastPages) list(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
-	user := internal.ContextUser(ctx)
+	user := common.ContextUser(ctx)
 
-	podcasts, err := p.podcastsSrv.GetPodcastsWithLastEpisode(ctx, user)
+	subscribedOnly := !r.URL.Query().Has("showall")
+
+	logger.Debug().Interface("showall", r.URL.Query().Get("showall")).Msg("args")
+
+	podcasts, err := p.podcastsSrv.GetPodcastsWithLastEpisode(ctx, user, subscribedOnly)
 	if err != nil {
-		internal.CheckAndWriteError(w, r, err)
+		srvsupport.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get user podcasts error")
 
 		return
 	}
 
 	data := struct {
-		Podcasts []model.PodcastWithLastEpisode
+		Podcasts       []model.PodcastWithLastEpisode
+		SubscribedOnly bool
 	}{
-		Podcasts: podcasts,
+		Podcasts:       podcasts,
+		SubscribedOnly: subscribedOnly,
 	}
 
 	if err := p.template.executeTemplate(w, "podcasts.tmpl", &data); err != nil {
 		logger.Error().Err(err).Msg("execute template error")
-		internal.WriteError(w, r, http.StatusInternalServerError, "")
+		srvsupport.WriteError(w, r, http.StatusInternalServerError, "")
 	}
+}
+
+func (p podcastPages) addPodcast(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
+	if err := r.ParseForm(); err != nil {
+		logger.Error().Err(err).Msg("parse form error")
+		srvsupport.WriteError(w, r, http.StatusBadRequest, "")
+	}
+
+	var podcast string
+	if podcasts, ok := r.Form["url"]; ok && len(podcasts) == 1 {
+		podcast = strings.TrimSpace(podcasts[0])
+	}
+
+	if podcast == "" {
+		p.list(ctx, w, r, logger)
+
+		return
+	}
+
+	cmd := command.ChangeSubscriptionsCmd{
+		UserName:   common.ContextUser(ctx),
+		DeviceName: "",
+		Add:        []string{podcast},
+		Timestamp:  time.Now(),
+	}
+
+	if _, err := p.subscriptionsSrv.ChangeSubscriptions(ctx, &cmd); err != nil {
+		srvsupport.CheckAndWriteError(w, r, err)
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("add podcast error")
+
+		return
+	}
+
+	http.Redirect(w, r, p.webroot+"/web/podcast/", http.StatusFound)
+}
+
+func (p podcastPages) podcastGet(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
+	podcast, status := p.podcastFromURLParam(ctx, r, logger)
+	if status > 0 {
+		srvsupport.WriteError(w, r, status, "")
+
+		return
+	}
+
+	data := struct {
+		Podcast *model.Podcast
+	}{Podcast: podcast}
+
+	if err := p.template.executeTemplate(w, "podcast.tmpl", &data); err != nil {
+		logger.Error().Err(err).Msg("execute template error")
+		srvsupport.WriteError(w, r, http.StatusInternalServerError, "")
+	}
+}
+
+func (p podcastPages) podcastUnsubscribe(
+	ctx context.Context,
+	w http.ResponseWriter,
+	r *http.Request,
+	logger *zerolog.Logger,
+) {
+	podcast, status := p.podcastFromURLParam(ctx, r, logger)
+	if status > 0 {
+		srvsupport.WriteError(w, r, status, "")
+
+		return
+	}
+
+	cmd := command.ChangeSubscriptionsCmd{
+		UserName:   common.ContextUser(ctx),
+		DeviceName: "",
+		Remove:     []string{podcast.URL},
+		Timestamp:  time.Now(),
+	}
+
+	if _, err := p.subscriptionsSrv.ChangeSubscriptions(ctx, &cmd); err != nil {
+		srvsupport.CheckAndWriteError(w, r, err)
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("add podcast error")
+
+		return
+	}
+
+	http.Redirect(w, r, p.webroot+"/web/podcast/", http.StatusFound)
+}
+
+func (p podcastPages) podcastResubscribe(
+	ctx context.Context,
+	w http.ResponseWriter,
+	r *http.Request,
+	logger *zerolog.Logger,
+) {
+	podcast, status := p.podcastFromURLParam(ctx, r, logger)
+	if status > 0 {
+		srvsupport.WriteError(w, r, status, "")
+
+		return
+	}
+
+	cmd := command.ChangeSubscriptionsCmd{
+		UserName:   common.ContextUser(ctx),
+		DeviceName: "",
+		Add:        []string{podcast.URL},
+		Timestamp:  time.Now(),
+	}
+
+	if _, err := p.subscriptionsSrv.ChangeSubscriptions(ctx, &cmd); err != nil {
+		srvsupport.CheckAndWriteError(w, r, err)
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("add podcast error")
+
+		return
+	}
+
+	http.Redirect(w, r, p.webroot+"/web/podcast/", http.StatusFound)
+}
+
+func (p podcastPages) podcastFromURLParam(ctx context.Context, r *http.Request, logger *zerolog.Logger,
+) (*model.Podcast, int) {
+	podcastidS := chi.URLParam(r, "podcastid")
+	if podcastidS == "" {
+		return nil, http.StatusBadRequest
+	}
+
+	podcastid, err := strconv.ParseInt(podcastidS, 10, 64)
+	if err != nil {
+		return nil, http.StatusBadRequest
+	}
+
+	user := common.ContextUser(ctx)
+
+	podcast, err := p.podcastsSrv.GetPodcast(ctx, user, podcastid)
+	if errors.Is(err, common.ErrNoData) {
+		return nil, http.StatusNotFound
+	} else if err != nil {
+		logger.Error().Err(err).Int64("podcast_id", podcastid).Msg("get podcast failed")
+
+		return nil, http.StatusNotFound
+	}
+
+	return podcast, 0
 }

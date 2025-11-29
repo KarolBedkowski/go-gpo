@@ -8,55 +8,48 @@ package model
 //
 
 import (
-	"slices"
 	"time"
 
 	"github.com/rs/zerolog"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
-	"gitlab.com/kabes/go-gpo/internal/repository"
+	"gitlab.com/kabes/go-gpo/internal/common"
+	"gitlab.com/kabes/go-gpo/internal/validators"
 )
 
-var ValidActions = []string{"download", "delete", "play", "new", "flattr", ""}
+const (
+	ActionPlay string = "play"
+	ActionNew  string = "new"
+)
 
 type Episode struct {
-	Podcast   string
-	Episode   string
-	Device    string
+	ID        int64
 	Action    string
 	Timestamp time.Time
-	Started   *int
-	Position  *int
-	Total     *int
+	Started   *int32
+	Position  *int32
+	Total     *int32
 	GUID      *string
+	Title     string
+	URL       string
+
+	Podcast *Podcast
+	Device  *Device
 }
 
-func NewEpisodeFromDBModel(episodedb *repository.EpisodeDB) Episode {
-	episode := Episode{
-		Podcast:   episodedb.PodcastURL,
-		Device:    NVL(episodedb.Device, ""),
-		Episode:   episodedb.URL,
-		Action:    episodedb.Action,
-		Timestamp: episodedb.UpdatedAt,
-		GUID:      episodedb.GUID,
-		Started:   nil,
-		Position:  nil,
-		Total:     nil,
-	}
-	if episodedb.Action == "play" { //nolint:goconst
-		episode.Started = episodedb.Started
-		episode.Position = episodedb.Position
-		episode.Total = episodedb.Total
+func (e *Episode) DeviceName() string {
+	if e.Device == nil {
+		return ""
 	}
 
-	return episode
+	return e.Device.Name
 }
 
 func (e *Episode) Validate() error {
-	if !slices.Contains(ValidActions, e.Action) {
+	if !validators.IsValidEpisodeAction(e.Action) {
 		return aerr.ErrValidation.WithUserMsg("invalid action")
 	}
 
-	if e.Action != "play" {
+	if e.Action != ActionPlay {
 		if e.Started != nil || e.Position != nil || e.Total != nil {
 			return aerr.ErrValidation.
 				WithUserMsg("for action other than 'play' - started, position and total should be not set")
@@ -66,25 +59,10 @@ func (e *Episode) Validate() error {
 	return nil
 }
 
-func (e *Episode) ToDBModel() repository.EpisodeDB {
-	return repository.EpisodeDB{ //nolint:exhaustruct
-		URL:        e.Episode,
-		Device:     NilIf(e.Device, ""),
-		Action:     e.Action,
-		UpdatedAt:  e.Timestamp,
-		CreatedAt:  e.Timestamp,
-		Started:    e.Started,
-		Position:   e.Position,
-		Total:      e.Total,
-		PodcastURL: e.Podcast,
-		GUID:       e.GUID,
-	}
-}
-
 func (e *Episode) MarshalZerologObject(event *zerolog.Event) {
-	event.Str("podcast", e.Podcast).
-		Str("episode", e.Episode).
-		Str("device", e.Device).
+	event.Interface("podcast", e.Podcast).
+		Str("url", e.URL).
+		Object("device", e.Device).
 		Str("action", e.Action).
 		Time("timestamp", e.Timestamp).
 		Any("guid", e.GUID).
@@ -105,15 +83,15 @@ type Favorite struct {
 	Released     time.Time
 }
 
-func NewFavoriteFromDBModel(episodedb *repository.EpisodeDB) Favorite {
+func NewFavoriteFromModel(episodedb *Episode) Favorite {
 	return Favorite{
-		Title:        Coalesce(episodedb.Title, episodedb.URL),
+		Title:        common.Coalesce(episodedb.Title, episodedb.URL),
 		URL:          episodedb.URL,
-		PodcastTitle: Coalesce(episodedb.PodcastTitle, episodedb.PodcastURL),
-		PodcastURL:   episodedb.PodcastURL,
+		PodcastTitle: common.Coalesce(episodedb.Podcast.Title, episodedb.Podcast.URL),
+		PodcastURL:   episodedb.Podcast.URL,
 		Website:      "",
 		MygpoLink:    "",
-		Released:     episodedb.CreatedAt, // FIXME: this is not release date...
+		Released:     episodedb.Timestamp, // FIXME: this is not release date...
 	}
 }
 
@@ -132,50 +110,90 @@ type EpisodeUpdate struct {
 	Episode *Episode
 }
 
-// NewEpisodeUpdateFromDBModel create new EpisodeUpdate WITHOUT Episode.
-func NewEpisodeUpdateFromDBModel(episodedb *repository.EpisodeDB) EpisodeUpdate {
+// NewUpisodeUpdateFromModel create new EpisodeUpdate WITHOUT Episode.
+func NewEpisodeUpdate(episodedb *Episode) EpisodeUpdate {
 	return EpisodeUpdate{
 		Title:        episodedb.Title,
 		URL:          episodedb.URL,
-		PodcastTitle: episodedb.PodcastTitle,
-		PodcastURL:   episodedb.PodcastURL,
+		PodcastTitle: episodedb.Podcast.Title,
+		PodcastURL:   episodedb.Podcast.URL,
 		Status:       episodedb.Action,
 		// do not tracking released time; use updated time
-		Released:  episodedb.UpdatedAt,
+		Released:  episodedb.Timestamp,
 		Episode:   nil,
 		Website:   "",
 		MygpoLink: "",
 	}
 }
 
-// NewEpisodeUpdateWithEpisodeFromDBModel create new EpisodeUpdate WITH Episode.
-func NewEpisodeUpdateWithEpisodeFromDBModel(episodedb *repository.EpisodeDB) EpisodeUpdate {
+// ------------------------------------------------------
+
+type EpisodeLastAction struct {
+	PodcastTitle string
+	PodcastURL   string
+	Episode      string
+	Device       string
+	Action       string
+	Timestamp    time.Time
+	Started      *int32
+	Position     *int32
+	Total        *int32
+}
+
+func NewEpisodeLastAction(episodedb *Episode) EpisodeLastAction {
+	dev := ""
+	if episodedb.Device != nil {
+		dev = episodedb.Device.Name
+	}
+
+	episode := EpisodeLastAction{
+		PodcastURL:   episodedb.Podcast.URL,
+		PodcastTitle: episodedb.Podcast.Title,
+		Device:       dev,
+		Episode:      episodedb.URL,
+		Action:       episodedb.Action,
+		Timestamp:    episodedb.Timestamp,
+		Started:      nil,
+		Position:     nil,
+		Total:        nil,
+	}
+	if episodedb.Action == ActionPlay {
+		episode.Started = episodedb.Started
+		episode.Position = episodedb.Position
+		episode.Total = episodedb.Total
+	}
+
+	return episode
+}
+
+// NewEpisodeUpdateWithEpisode create new EpisodeUpdate WITH Episode.
+func NewEpisodeUpdateWithEpisode(episodedb *Episode) EpisodeUpdate {
 	episodeUpdate := EpisodeUpdate{
 		Title:        episodedb.Title,
 		URL:          episodedb.URL,
-		PodcastTitle: episodedb.PodcastTitle,
-		PodcastURL:   episodedb.PodcastURL,
+		PodcastTitle: episodedb.Podcast.Title,
+		PodcastURL:   episodedb.Podcast.URL,
 		Status:       episodedb.Action,
 		// do not tracking released time; use updated time
-		Released:  episodedb.UpdatedAt,
+		Released:  episodedb.Timestamp,
 		Episode:   nil,
 		Website:   "",
 		MygpoLink: "",
 	}
 
-	if episodedb.Action != "new" {
+	if episodedb.Action != ActionNew {
 		episodeUpdate.Episode = &Episode{
-			Podcast:   Coalesce(episodedb.PodcastTitle, episodedb.PodcastURL),
-			Episode:   Coalesce(episodedb.Title, episodedb.URL),
-			Device:    NVL(episodedb.Device, ""),
+			Podcast:   episodedb.Podcast,
+			URL:       common.Coalesce(episodedb.Title, episodedb.URL),
+			Device:    episodedb.Device,
 			Action:    episodedb.Action,
-			Timestamp: episodedb.UpdatedAt,
+			Timestamp: episodedb.Timestamp,
 			GUID:      episodedb.GUID,
 			Started:   nil,
 			Position:  nil,
 			Total:     nil,
 		}
-		if episodedb.Action == "play" {
+		if episodedb.Action == ActionPlay {
 			episodeUpdate.Episode.Started = episodedb.Started
 			episodeUpdate.Episode.Position = episodedb.Position
 			episodeUpdate.Episode.Total = episodedb.Total
