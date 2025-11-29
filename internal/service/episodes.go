@@ -109,12 +109,12 @@ func (e *EpisodesSrv) AddAction(ctx context.Context, cmd *command.AddActionCmd) 
 		}
 
 		// cache devices and podcasts
-		podcastscache, err := e.createPodcastsCache(ctx, user.ID)
+		podcastscache, err := e.createPodcastsCache(ctx, user)
 		if err != nil {
 			return err
 		}
 
-		devicescache, err := e.createDevicesCache(ctx, user.ID)
+		devicescache, err := e.createDevicesCache(ctx, user)
 		if err != nil {
 			return err
 		}
@@ -174,9 +174,9 @@ func (e *EpisodesSrv) GetUpdates(ctx context.Context, query *query.GetEpisodeUpd
 		return nil, err //nolint:wrapcheck
 	}
 
-	createFunc := NewEpisodeUpdateFromDBModel
+	createFunc := model.NewEpisodeUpdate
 	if query.IncludeActions {
-		createFunc = NewEpisodeUpdateWithEpisodeFromDBModel
+		createFunc = model.NewEpisodeUpdateWithEpisode
 	}
 
 	return common.Map(episodes, createFunc), nil
@@ -198,7 +198,7 @@ func (e *EpisodesSrv) GetLastActions(ctx context.Context, query *query.GetLastEp
 		return nil, err //nolint:wrapcheck
 	}
 
-	return common.Map(episodes, NewEpisodeLastActionFromDBModel), nil
+	return common.Map(episodes, model.NewEpisodeLastAction), nil
 }
 
 func (e *EpisodesSrv) GetFavorites(ctx context.Context, username string) ([]model.Favorite, error) {
@@ -225,19 +225,7 @@ func (e *EpisodesSrv) GetFavorites(ctx context.Context, username string) ([]mode
 		return nil, err //nolint: wrapcheck
 	}
 
-	return common.Map(episodes, NewFavoriteFromDBModel), nil
-}
-
-func NewFavoriteFromDBModel(episodedb *model.Episode) model.Favorite {
-	return model.Favorite{
-		Title:        common.Coalesce(episodedb.Title, episodedb.URL),
-		URL:          episodedb.URL,
-		PodcastTitle: common.Coalesce(episodedb.Podcast.Title, episodedb.Podcast.URL),
-		PodcastURL:   episodedb.Podcast.URL,
-		Website:      "",
-		MygpoLink:    "",
-		Released:     episodedb.Timestamp, // FIXME: this is not release date...
-	}
+	return common.Map(episodes, model.NewFavoriteFromModel), nil
 }
 
 // ------------------------------------------------------
@@ -276,20 +264,20 @@ func (e *EpisodesSrv) getEpisodes(
 	return episodes, nil
 }
 
-func (e *EpisodesSrv) createPodcastsCache(ctx context.Context, userid int64) (DynamicCache[string, int64], error) {
-	podcasts, err := e.podcastsRepo.ListSubscribedPodcasts(ctx, userid, time.Time{})
+func (e *EpisodesSrv) createPodcastsCache(ctx context.Context, user *model.User) (DynamicCache[string, int64], error) {
+	podcasts, err := e.podcastsRepo.ListSubscribedPodcasts(ctx, user.ID, time.Time{})
 	if err != nil {
 		return DynamicCache[string, int64]{}, aerr.Wrapf(err, "load podcasts into cache failed").
-			WithMeta("user_id", userid)
+			WithMeta("user_id", user.ID)
 	}
 
 	podcastscache := DynamicCache[string, int64]{
 		items: podcasts.ToIDsMap(),
 		creator: func(key string) (int64, error) {
 			id, err := e.podcastsRepo.SavePodcast(ctx,
-				&model.Podcast{User: model.User{ID: userid}, URL: key, Subscribed: true})
+				&model.Podcast{User: *user, URL: key, Subscribed: true})
 			if err != nil {
-				return 0, aerr.Wrapf(err, "create new podcast failed").WithMeta("podcast_url", key, "user_id", userid)
+				return 0, aerr.Wrapf(err, "create new podcast failed").WithMeta("podcast_url", key, "user_id", user.ID)
 			}
 
 			return id, nil
@@ -299,11 +287,11 @@ func (e *EpisodesSrv) createPodcastsCache(ctx context.Context, userid int64) (Dy
 	return podcastscache, nil
 }
 
-func (e *EpisodesSrv) createDevicesCache(ctx context.Context, userid int64) (DynamicCache[string, *int64], error) {
-	devices, err := e.devicesRepo.ListDevices(ctx, userid)
+func (e *EpisodesSrv) createDevicesCache(ctx context.Context, user *model.User) (DynamicCache[string, *int64], error) {
+	devices, err := e.devicesRepo.ListDevices(ctx, user.ID)
 	if err != nil {
 		return DynamicCache[string, *int64]{}, aerr.Wrapf(err, "load devices into cache failed").
-			WithMeta("user_id", userid)
+			WithMeta("user_id", user.ID)
 	}
 
 	items := make(map[string]*int64, len(devices))
@@ -319,9 +307,9 @@ func (e *EpisodesSrv) createDevicesCache(ctx context.Context, userid int64) (Dyn
 			}
 
 			did, err := e.devicesRepo.SaveDevice(ctx,
-				&model.Device{User: &model.User{ID: userid}, Name: key, DevType: "other"})
+				&model.Device{User: user, Name: key, DevType: "other"})
 			if err != nil {
-				return nil, aerr.Wrapf(err, "create new device failed").WithMeta("device_name", key, "user_id", userid)
+				return nil, aerr.Wrapf(err, "create new device failed").WithMeta("device_name", key, "user_id", user.ID)
 			}
 
 			return &did, nil
@@ -371,83 +359,4 @@ func (e *EpisodesSrv) getPodcastID(
 	}
 
 	return &p.ID, nil
-}
-
-// NewEpisodeUpdateWithEpisodeFromDBModel create new EpisodeUpdate WITH Episode.
-func NewEpisodeUpdateWithEpisodeFromDBModel(episodedb *model.Episode) model.EpisodeUpdate {
-	episodeUpdate := model.EpisodeUpdate{
-		Title:        episodedb.Title,
-		URL:          episodedb.URL,
-		PodcastTitle: episodedb.Podcast.Title,
-		PodcastURL:   episodedb.Podcast.URL,
-		Status:       episodedb.Action,
-		// do not tracking released time; use updated time
-		Released:  episodedb.Timestamp,
-		Episode:   nil,
-		Website:   "",
-		MygpoLink: "",
-	}
-
-	if episodedb.Action != "new" {
-		episodeUpdate.Episode = &model.Episode{
-			Podcast:   episodedb.Podcast,
-			URL:       common.Coalesce(episodedb.Title, episodedb.URL),
-			Device:    episodedb.Device,
-			Action:    episodedb.Action,
-			Timestamp: episodedb.Timestamp,
-			GUID:      episodedb.GUID,
-			Started:   nil,
-			Position:  nil,
-			Total:     nil,
-		}
-		if episodedb.Action == "play" {
-			episodeUpdate.Episode.Started = episodedb.Started
-			episodeUpdate.Episode.Position = episodedb.Position
-			episodeUpdate.Episode.Total = episodedb.Total
-		}
-	}
-
-	return episodeUpdate
-}
-
-func NewEpisodeLastActionFromDBModel(episodedb *model.Episode) model.EpisodeLastAction {
-	dev := ""
-	if episodedb.Device != nil {
-		dev = episodedb.Device.Name
-	}
-
-	episode := model.EpisodeLastAction{
-		PodcastURL:   episodedb.Podcast.URL,
-		PodcastTitle: episodedb.Podcast.Title,
-		Device:       dev,
-		Episode:      episodedb.URL,
-		Action:       episodedb.Action,
-		Timestamp:    episodedb.Timestamp,
-		Started:      nil,
-		Position:     nil,
-		Total:        nil,
-	}
-	if episodedb.Action == "play" {
-		episode.Started = episodedb.Started
-		episode.Position = episodedb.Position
-		episode.Total = episodedb.Total
-	}
-
-	return episode
-}
-
-// NewEpisodeUpdateFromDBModel create new EpisodeUpdate WITHOUT Episode.
-func NewEpisodeUpdateFromDBModel(episodedb *model.Episode) model.EpisodeUpdate {
-	return model.EpisodeUpdate{
-		Title:        episodedb.Title,
-		URL:          episodedb.URL,
-		PodcastTitle: episodedb.Podcast.Title,
-		PodcastURL:   episodedb.Podcast.URL,
-		Status:       episodedb.Action,
-		// do not tracking released time; use updated time
-		Released:  episodedb.Timestamp,
-		Episode:   nil,
-		Website:   "",
-		MygpoLink: "",
-	}
 }

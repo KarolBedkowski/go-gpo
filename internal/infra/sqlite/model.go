@@ -54,27 +54,27 @@ func (d *DeviceDB) MarshalZerologObject(event *zerolog.Event) {
 		Int("subscriptions", d.Subscriptions)
 }
 
-type DevicesDB []*DeviceDB
+// type DevicesDB []*DeviceDB
 
-func (d DevicesDB) ToMap() map[string]*DeviceDB {
-	devices := make(map[string]*DeviceDB)
+// func (d DevicesDB) ToMap() map[string]*DeviceDB {
+// 	devices := make(map[string]*DeviceDB)
 
-	for _, dev := range d {
-		devices[dev.Name] = dev
-	}
+// 	for _, dev := range d {
+// 		devices[dev.Name] = dev
+// 	}
 
-	return devices
-}
+// 	return devices
+// }
 
-func (d DevicesDB) ToIDsMap() map[string]int64 {
-	devices := make(map[string]int64)
+// func (d DevicesDB) ToIDsMap() map[string]int64 {
+// 	devices := make(map[string]int64)
 
-	for _, dev := range d {
-		devices[dev.Name] = dev.ID
-	}
+// 	for _, dev := range d {
+// 		devices[dev.Name] = dev.ID
+// 	}
 
-	return devices
-}
+// 	return devices
+// }
 
 //------------------------------------------------------------------------------
 
@@ -129,67 +129,67 @@ func podcastsFromDb(podcasts []PodcastDB) []model.Podcast {
 
 //------------------------------------------------------------------------------
 
-type PodcastMetaUpdateDB struct {
-	Title       string `db:"title"`
-	URL         string `db:"url"`
-	Description string `db:"description"`
-	Website     string `db:"website"`
+// type PodcastMetaUpdateDB struct {
+// 	Title       string `db:"title"`
+// 	URL         string `db:"url"`
+// 	Description string `db:"description"`
+// 	Website     string `db:"website"`
 
-	MetaUpdatedAt time.Time `db:"metadata_updated_at"`
-}
+// 	MetaUpdatedAt time.Time `db:"metadata_updated_at"`
+// }
 
 //------------------------------------------------------------------------------
 
-type PodcastsDB []PodcastDB
+// type PodcastsDB []PodcastDB
 
-func (s PodcastsDB) FindSubscribedPodcastByURL(url string) (PodcastDB, bool) {
-	for _, sp := range s {
-		if sp.URL == url && sp.Subscribed {
-			return sp, true
-		}
-	}
+// func (s PodcastsDB) FindSubscribedPodcastByURL(url string) (PodcastDB, bool) {
+// 	for _, sp := range s {
+// 		if sp.URL == url && sp.Subscribed {
+// 			return sp, true
+// 		}
+// 	}
 
-	return PodcastDB{}, false
-}
+// 	return PodcastDB{}, false
+// }
 
-func (s PodcastsDB) FindPodcastByURL(url string) (PodcastDB, bool) {
-	for _, sp := range s {
-		if sp.URL == url {
-			return sp, true
-		}
-	}
+// func (s PodcastsDB) FindPodcastByURL(url string) (PodcastDB, bool) {
+// 	for _, sp := range s {
+// 		if sp.URL == url {
+// 			return sp, true
+// 		}
+// 	}
 
-	return PodcastDB{}, false
-}
+// 	return PodcastDB{}, false
+// }
 
-func (s PodcastsDB) ToURLs() []string {
-	res := make([]string, 0, len(s))
-	for _, p := range s {
-		res = append(res, p.URL)
-	}
+// func (s PodcastsDB) ToURLs() []string {
+// 	res := make([]string, 0, len(s))
+// 	for _, p := range s {
+// 		res = append(res, p.URL)
+// 	}
 
-	return res
-}
+// 	return res
+// }
 
-func (s PodcastsDB) ToMap() map[string]PodcastDB {
-	res := make(map[string]PodcastDB)
+// func (s PodcastsDB) ToMap() map[string]PodcastDB {
+// 	res := make(map[string]PodcastDB)
 
-	for _, p := range s {
-		res[p.URL] = p
-	}
+// 	for _, p := range s {
+// 		res[p.URL] = p
+// 	}
 
-	return res
-}
+// 	return res
+// }
 
-func (s PodcastsDB) ToIDsMap() map[string]int64 {
-	res := make(map[string]int64)
+// func (s PodcastsDB) ToIDsMap() map[string]int64 {
+// 	res := make(map[string]int64)
 
-	for _, p := range s {
-		res[p.URL] = p.ID
-	}
+// 	for _, p := range s {
+// 		res[p.URL] = p.ID
+// 	}
 
-	return res
-}
+// 	return res
+// }
 
 //------------------------------------------------------------------------------
 
@@ -262,44 +262,6 @@ func NewEpisodeFromDBModel(episodedb *EpisodeDB) model.Episode {
 	}
 
 	return episode
-}
-
-func EpisodeToDBModel(episode *model.Episode) EpisodeDB {
-	edb := EpisodeDB{ //nolint:exhaustruct
-		URL:        episode.URL,
-		Action:     episode.Action,
-		UpdatedAt:  episode.Timestamp,
-		CreatedAt:  episode.Timestamp,
-		Started:    episode.Started,
-		Position:   episode.Position,
-		Total:      episode.Total,
-		PodcastURL: episode.Podcast.URL,
-		PodcastID:  episode.Podcast.ID,
-		GUID:       episode.GUID,
-	}
-
-	if episode.Device != nil {
-		edb.DeviceID = sql.NullInt64{Int64: episode.Device.ID, Valid: true}
-		edb.DeviceName = sql.NullString{String: episode.Device.Name, Valid: true}
-	}
-
-	return edb
-}
-
-// NewEpisodeUpdateFromDBModel create new EpisodeUpdate WITHOUT Episode.
-func NewEpisodeUpdateFromDBModel(episodedb *EpisodeDB) model.EpisodeUpdate {
-	return model.EpisodeUpdate{
-		Title:        episodedb.Title,
-		URL:          episodedb.URL,
-		PodcastTitle: episodedb.PodcastTitle,
-		PodcastURL:   episodedb.PodcastURL,
-		Status:       episodedb.Action,
-		// do not tracking released time; use updated time
-		Released:  episodedb.UpdatedAt,
-		Episode:   nil,
-		Website:   "",
-		MygpoLink: "",
-	}
 }
 
 //------------------------------------------------------------------------------
