@@ -7,6 +7,7 @@ package api
 // Distributed under terms of the GPLv3 license.
 //
 import (
+	"bytes"
 	"fmt"
 	"testing"
 	"time"
@@ -77,4 +78,41 @@ func TestParseTimestamp(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestParseOPML(t *testing.T) {
+	data := bytes.NewBufferString(
+		`<?xml version='1.0' encoding='UTF-8' standalone='no' ?>
+<opml version="2.0">
+  <head>
+    <title>AntennaPod Subscriptions</title>
+    <dateCreated>19 Oct 25 17:27:06 +0200</dateCreated>
+  </head>
+  <body>
+    <outline text="yyy" title="title yyy" type="rss" xmlUrl="http://www.example.com/podcast1/podcast.xml" htmlUrl="http://podcast1.example.com" />
+    <outline text="xxx" title="title xxx" type="rss" xmlUrl="http://www.example.com/podcast2/podcast.xml" htmlUrl="http://podcast2.example.com" />
+    <outline text="zzz" title="title zzz" type="rss" xmlUrl="http://www.example.com/podcast3/podcast.xml" htmlUrl="http://podcast3.example.com" />
+  </body>
+</opml>`)
+
+	urls, err := parseOPML(data)
+	assert.NoErr(t, err)
+	assert.EqualSorted(t, urls, []string{
+		"http://www.example.com/podcast1/podcast.xml",
+		"http://www.example.com/podcast2/podcast.xml",
+		"http://www.example.com/podcast3/podcast.xml",
+	})
+}
+
+func TestParseTextSubs(t *testing.T) {
+	data := bytes.NewBufferString(`http://www.example.com/podcast1/podcast.xml
+http://www.example.com/podcast2/podcast.xml
+http://www.example.com/podcast3/podcast.xml`)
+	urls, err := parseTextSubs(data)
+	assert.NoErr(t, err)
+	assert.EqualSorted(t, urls, []string{
+		"http://www.example.com/podcast1/podcast.xml",
+		"http://www.example.com/podcast2/podcast.xml",
+		"http://www.example.com/podcast3/podcast.xml",
+	})
 }

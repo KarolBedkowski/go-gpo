@@ -25,7 +25,7 @@ type Body struct {
 }
 
 type Outline struct {
-	Text   string `xml:"text,attr"`
+	Text   string `xml:"text,attr,omitempty"`
 	Type   string `xml:"type,attr,omitempty"`
 	XMLURL string `xml:"xmlUrl,attr,omitempty"`
 }
@@ -33,6 +33,7 @@ type Outline struct {
 // NewOPML creates a new OPML structure from a slice of bytes.
 func NewOPML(title string) OPML {
 	return OPML{
+		Version: "2.0",
 		Head: Head{
 			Title: title,
 		},

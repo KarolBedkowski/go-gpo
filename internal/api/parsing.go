@@ -11,9 +11,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"slices"
 	"strconv"
-	"strings"
 	"time"
 
 	"gitlab.com/kabes/go-gpo/internal/aerr"
@@ -78,10 +76,9 @@ func parseTimestamp(timestamp any) (time.Time, error) {
 }
 
 func parseOPML(r io.Reader) ([]string, error) {
-	// TODO need tests
 	var buf bytes.Buffer
 
-	count, err := io.Copy(&buf, r)
+	count, err := buf.ReadFrom(r)
 	if err != nil {
 		return nil, fmt.Errorf("parse opml read error: %w", err)
 	}
@@ -106,5 +103,14 @@ func parseTextSubs(r io.Reader) ([]string, error) {
 		return nil, aerr.Wrapf(err, "read request body failed")
 	}
 
-	return slices.Collect(strings.Lines(string(body))), nil
+	urls := make([]string, 0)
+
+	for line := range bytes.Lines(body) {
+		line = bytes.TrimSpace(line)
+		if len(line) > 0 {
+			urls = append(urls, string(line))
+		}
+	}
+
+	return urls, nil
 }
