@@ -1,8 +1,11 @@
 # go-gpo
 
-Reimplementatin (simpilfed) [mygpo](https://github.com/gpodder/mygpo) and [gpodder2go](https://github.com/oxtyped/gpodder2go).
+Simple, self-hosted webserver that can handle podcast subscriptions for clients that use gpodder protocol.
+Replacement and based on [mygpo](https://github.com/gpodder/mygpo) and [gpodder2go](https://github.com/oxtyped/gpodder2go).
 
-Features:
+Implement most useful api's and tested with gPodder and AntennaPod.
+
+## Features:
 
 * synchronize all user devices (no device synchronization api)
 * support (partial) simple api and v2 api
@@ -13,7 +16,7 @@ Features:
 
 Missing features from mygpo:
 
-* simple api: toplist, suggestions, searching for podcast
+* simple api: toplist, suggestions, searching for podcast, podcasts lists (see below)
 * advanced api
 * device synchronization api (all user devices are synchronized)
 * advanced & user-friendly webgui
@@ -113,6 +116,14 @@ For other options / commands:
 
 * [-] Get Sync Status `GET /api/2/sync-devices/(username).json`
 * [-] Start / Stop Sync `POST /api/2/sync-devices/(username).json`
+
+#### Podcast Lists API
+* [-] Create Podcast List `/api/2/lists/{username}/create.{format}`
+* [-] Get User’s Lists `/api/2/lists/{username}.json`
+* [-] Get a Podcast List `/api/2/lists/{username}/list/{listname}.{format}`
+* [-] Update a Podcast List `/api/2/lists/{username}/list/{listname}.{format}`
+* [-] Delete a Podcast List `/api/2/lists/{username}/list/{listname}.{format}`
+
 
 All devices for one account are always synchronized.
 
