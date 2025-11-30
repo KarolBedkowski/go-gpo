@@ -60,6 +60,11 @@ func (o *OPML) XML() ([]byte, error) {
 	return append([]byte(xml.Header), b...), nil
 }
 
+func (o *OPML) AddRSS(url, title, text string) {
+	outline := Outline{Type: "rss", XMLURL: url, Title: title, Text: text}
+	o.Body.Outlines = append(o.Body.Outlines, outline)
+}
+
 func (o *OPML) AddURL(url ...string) {
 	for _, u := range url {
 		outline := Outline{Type: "rss", XMLURL: u}

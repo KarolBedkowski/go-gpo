@@ -111,7 +111,9 @@ func (sr subscriptionsResource) userSubscriptions(
 	logger.Debug().Msgf("userSubscriptions: count=%d", len(subs))
 
 	o := formats.NewOPML("go-gpo")
-	o.AddURL(subs.ToURLs()...)
+	for _, s := range subs {
+		o.AddRSS(s.URL, s.Title, s.Title)
+	}
 
 	w.WriteHeader(http.StatusOK)
 	render.XML(w, r, &o)
