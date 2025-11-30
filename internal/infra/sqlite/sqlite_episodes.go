@@ -179,52 +179,49 @@ func (s Repository) GetLastEpisodeAction(ctx context.Context,
 	return res.toModel(), nil
 }
 
-func (s Repository) SaveEpisode(ctx context.Context, userid int64, episode ...model.Episode) error {
+func (s Repository) SaveEpisode(ctx context.Context, userid int64, episodes ...model.Episode) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Msg("save episode")
 
-	for _, eps := range episode {
-		logger.Debug().Object("episode", &eps).Msg("update episode")
-
-		if err := s.saveEpisode(ctx, &eps); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (s Repository) saveEpisode(ctx context.Context, episode *model.Episode) error {
-	logger := log.Ctx(ctx)
-	logger.Debug().Object("episode", episode).Msg("save episode")
-
 	dbctx := db.MustCtx(ctx)
 
-	deviceid := sql.NullInt64{}
-	if episode.Device != nil {
-		deviceid = sql.NullInt64{Valid: true, Int64: episode.Device.ID}
-	}
-
-	_, err := dbctx.ExecContext(
-		ctx,
+	stmt, err := dbctx.PrepareContext(ctx,
 		"INSERT INTO episodes (podcast_id, device_id, title, url, action, started, position, total, guid, "+
 			"created_at, updated_at) "+
 			"VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		episode.Podcast.ID,
-		deviceid,
-		episode.Title,
-		episode.URL,
-		episode.Action,
-		episode.Started,
-		episode.Position,
-		episode.Total,
-		episode.GUID,
-		episode.Timestamp,
-		episode.Timestamp,
 	)
 	if err != nil {
-		return aerr.Wrapf(err, "insert episode failed").WithTag(aerr.InternalError).
-			WithMeta("podcast_id", episode.Podcast.ID, "episode_url", episode.URL)
+		return aerr.Wrapf(err, "prepare insert episode stmt failed").WithTag(aerr.InternalError)
+	}
+
+	defer stmt.Close()
+
+	for _, episode := range episodes {
+		logger.Debug().Object("episode", &episode).Msg("save episode")
+
+		deviceid := sql.NullInt64{}
+		if episode.Device != nil {
+			deviceid = sql.NullInt64{Valid: true, Int64: episode.Device.ID}
+		}
+
+		_, err := stmt.ExecContext(
+			ctx,
+			episode.Podcast.ID,
+			deviceid,
+			episode.Title,
+			episode.URL,
+			episode.Action,
+			episode.Started,
+			episode.Position,
+			episode.Total,
+			episode.GUID,
+			episode.Timestamp,
+			episode.Timestamp,
+		)
+		if err != nil {
+			return aerr.Wrapf(err, "insert episode failed").WithTag(aerr.InternalError).
+				WithMeta("podcast_id", episode.Podcast.ID, "episode_url", episode.URL)
+		}
 	}
 
 	return nil
