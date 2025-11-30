@@ -15,10 +15,8 @@ Missing features from mygpo:
 
 * simple api: toplist, suggestions, searching for podcast
 * advanced api
-* favorites api
 * device synchronization api (all user devices are synchronized)
-* webgui
-* not supported formats: jsonp, xml
+* advanced & user-friendly webgui
 
 
 ## Building and running
@@ -42,7 +40,7 @@ or
 
 Create/update database
 
-    ./go-gpo migrate
+    ./go-gpo database migrate
 
 Run
 
@@ -50,14 +48,14 @@ Run
 
 Configure database file:
 
-	./go-gpo --database='/some/path/database.sqlite?_fk=1&_journal_mode=WAL&_synchronous=NORMAL' ...
+    ./go-gpo --database='/some/path/database.sqlite?_fk=1&_journal_mode=WAL&_synchronous=NORMAL' ...
 
 For other options / commands:
 
     ./go-gpo --help
 
 
-##   Implemented APIs
+## Implemented APIs
 
 ### Simple API
 
@@ -92,18 +90,10 @@ For other options / commands:
 #### Subscriptions API
 
 * [x] Get Subscriptions of Device `GET /subscriptions/(username)/(deviceid).(format)`
-
- * josnp parameter is not supported.
-
 * [x] Get All Subscriptions `GET /subscriptions/(username).(format)`
-
- * josnp parameter is not supported.
-
 * [x] Upload Subscriptions of Device `PUT /subscriptions/(username)/(deviceid).(format)`
 * [x] Upload Subscription Changes `POST /api/2/subscriptions/(username)/(deviceid).json`
 * [x] Get Subscription Changes `GET /api/2/subscriptions/(username)/(deviceid).json`
-
-
 
 #### Episode Actions API
 

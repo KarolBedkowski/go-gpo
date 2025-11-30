@@ -1,9 +1,10 @@
+package api
+
 // simple.go
 // /subscriptions/
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
 //
 // Distributed under terms of the GPLv3 license.
-package api
 
 import (
 	"context"
@@ -81,7 +82,7 @@ func (s *simpleResource) downloadUserSubscriptions(
 		w.Write(result)
 	case "json": //nolint:goconst
 		w.WriteHeader(http.StatusOK)
-		render.JSON(w, r, subs)
+		render.JSON(newJSONPWriter(r, w), r, subs)
 	case "txt": //nolint:goconst
 		w.WriteHeader(http.StatusOK)
 		render.PlainText(w, r, strings.Join(subs, "\n"))
@@ -122,7 +123,7 @@ func (s *simpleResource) downloadDevSubscriptions(
 		w.Write(result)
 	case "json":
 		w.WriteHeader(http.StatusOK)
-		render.JSON(w, r, subs)
+		render.JSON(newJSONPWriter(r, w), r, subs)
 	case "txt":
 		w.WriteHeader(http.StatusOK)
 		render.PlainText(w, r, strings.Join(subs, "\n"))

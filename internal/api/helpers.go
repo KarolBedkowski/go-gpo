@@ -79,3 +79,38 @@ func writeError(w http.ResponseWriter, r *http.Request, status int) {
 
 	http.Error(w, msg, status)
 }
+
+// jsonpWriter wrap response with jsonp function when this function name is given in `jsonp` url parameter.
+type jsonpWriter struct {
+	http.ResponseWriter
+
+	jsonp string
+}
+
+func newJSONPWriter(r *http.Request, w http.ResponseWriter) jsonpWriter {
+	return jsonpWriter{w, r.URL.Query().Get("jsonp")}
+}
+
+//nolint:wrapcheck
+func (j jsonpWriter) Write(buf []byte) (int, error) {
+	if j.jsonp == "" {
+		return j.ResponseWriter.Write(buf)
+	}
+
+	count1, err := j.ResponseWriter.Write([]byte(j.jsonp + "("))
+	if err != nil {
+		return 0, err
+	}
+
+	count2, err := j.ResponseWriter.Write(buf)
+	if err != nil {
+		return 0, err
+	}
+
+	count3, err := j.ResponseWriter.Write([]byte(")"))
+	if err != nil {
+		return 0, err
+	}
+
+	return count1 + count2 + count3, nil
+}
