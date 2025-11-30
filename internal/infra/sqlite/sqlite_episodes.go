@@ -107,7 +107,7 @@ func (s Repository) ListEpisodeActions(
 	logger.Debug().Msgf("get episodes - found %d episodes", len(res))
 
 	if aggregated {
-		// TODO: refactor; load only last entries for each podcast from db
+		// aggregation is rarely use so it's ok to get all episodes and aggregate it outside db.
 		res = aggregateEpisodes(res)
 
 		logger.Debug().Msgf("get episodes - aggregate %d episodes", len(res))
