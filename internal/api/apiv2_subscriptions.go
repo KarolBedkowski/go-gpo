@@ -15,7 +15,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/common"
-	"gitlab.com/kabes/go-gpo/internal/opml"
+	"gitlab.com/kabes/go-gpo/internal/formats"
 	"gitlab.com/kabes/go-gpo/internal/query"
 	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
@@ -108,21 +108,13 @@ func (sr subscriptionsResource) userSubscriptions(
 		return
 	}
 
-	o := opml.NewOPML("go-gpo")
-	o.AddURL(subs...)
-
-	result, err := o.XML()
-	if err != nil {
-		logger.Warn().Err(err).Msg("get opml xml error")
-		writeError(w, r, http.StatusInternalServerError)
-
-		return
-	}
-
 	logger.Debug().Msgf("userSubscriptions: count=%d", len(subs))
 
+	o := formats.NewOPML("go-gpo")
+	o.AddURL(subs.ToURLs()...)
+
 	w.WriteHeader(http.StatusOK)
-	w.Write(result)
+	render.XML(w, r, &o)
 }
 
 func (sr subscriptionsResource) uploadSubscriptionChanges(

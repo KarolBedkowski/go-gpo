@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"gitlab.com/kabes/go-gpo/internal/aerr"
-	"gitlab.com/kabes/go-gpo/internal/opml"
+	"gitlab.com/kabes/go-gpo/internal/formats"
 )
 
 // ---------------------------------------
@@ -87,7 +87,7 @@ func parseOPML(r io.Reader) ([]string, error) {
 		return []string{}, nil
 	}
 
-	o, err := opml.NewOPMLFromBytes(buf.Bytes())
+	o, err := formats.NewOPMLFromBytes(buf.Bytes())
 	if err != nil {
 		return nil, fmt.Errorf("parse opml error: %w", err)
 	}

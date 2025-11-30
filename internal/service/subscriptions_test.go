@@ -42,7 +42,7 @@ func TestSubsServiceUser(t *testing.T) {
 	// getsubs
 	q := query.GetUserSubscriptionsQuery{UserName: "user1"}
 	subs, err := subsSrv.GetUserSubscriptions(ctx, &q)
-	assert.Equal(t, subs, newSubscribed)
+	assert.Equal(t, subs.ToURLs(), newSubscribed)
 
 	// replace
 	newSubscribed2 := []string{
@@ -63,7 +63,7 @@ func TestSubsServiceUser(t *testing.T) {
 	// getsubs
 	q = query.GetUserSubscriptionsQuery{UserName: "user1"}
 	subs, err = subsSrv.GetUserSubscriptions(ctx, &q)
-	assert.Equal(t, subs, newSubscribed2)
+	assert.Equal(t, subs.ToURLs(), newSubscribed2)
 }
 
 func TestSubsServiceDevice(t *testing.T) {
@@ -112,18 +112,18 @@ func TestSubsServiceDevice(t *testing.T) {
 	// getsubs
 	qu := query.GetUserSubscriptionsQuery{UserName: "user1"}
 	subs, err := subsSrv.GetUserSubscriptions(ctx, &qu)
-	assert.Equal(t, subs, newSubscribed2)
+	assert.Equal(t, subs.ToURLs(), newSubscribed2)
 
 	// all devices should have the same subscriptions list
 	q := query.GetSubscriptionsQuery{UserName: "user1", DeviceName: "dev1"}
 	subs, err = subsSrv.GetSubscriptions(ctx, &q)
 	assert.NoErr(t, err)
-	assert.Equal(t, subs, newSubscribed2)
+	assert.Equal(t, subs.ToURLs(), newSubscribed2)
 
 	q = query.GetSubscriptionsQuery{UserName: "user1", DeviceName: "dev2"}
 	subs, err = subsSrv.GetSubscriptions(ctx, &q)
 	assert.NoErr(t, err)
-	assert.Equal(t, subs, newSubscribed2)
+	assert.Equal(t, subs.ToURLs(), newSubscribed2)
 }
 
 func TestSubsServiceChanges(t *testing.T) {

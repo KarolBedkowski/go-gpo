@@ -1,4 +1,4 @@
-package opml
+package formats
 
 // opml.go
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
@@ -25,6 +25,7 @@ type Body struct {
 }
 
 type Outline struct {
+	Title  string `xml:"title,attr,omitempty"`
 	Text   string `xml:"text,attr,omitempty"`
 	Type   string `xml:"type,attr,omitempty"`
 	XMLURL string `xml:"xmlUrl,attr,omitempty"`

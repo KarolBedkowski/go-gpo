@@ -41,7 +41,7 @@ func NewSubscriptionsSrv(i do.Injector) (*SubscriptionsSrv, error) {
 
 // GetUserSubscriptions is simple api.
 func (s *SubscriptionsSrv) GetUserSubscriptions(ctx context.Context, query *query.GetUserSubscriptionsQuery,
-) ([]string, error) {
+) (model.Podcasts, error) {
 	if err := query.Validate(); err != nil {
 		return nil, aerr.Wrapf(err, "validation query failed")
 	}
@@ -51,7 +51,7 @@ func (s *SubscriptionsSrv) GetUserSubscriptions(ctx context.Context, query *quer
 
 // GetSubscriptions is simple api.
 func (s *SubscriptionsSrv) GetSubscriptions(ctx context.Context, query *query.GetSubscriptionsQuery,
-) ([]string, error) {
+) (model.Podcasts, error) {
 	if err := query.Validate(); err != nil {
 		return nil, aerr.Wrapf(err, "validation query failed")
 	}
@@ -216,9 +216,9 @@ func (s *SubscriptionsSrv) GetSubscriptionChanges(ctx context.Context, query *qu
 // ------------------------------------------------------
 
 func (s *SubscriptionsSrv) getSubsctiptions(ctx context.Context, username, devicename string, since time.Time,
-) ([]string, error) {
+) (model.Podcasts, error) {
 	//nolint:wrapcheck
-	return db.InConnectionR(ctx, s.db, func(ctx context.Context) ([]string, error) {
+	return db.InConnectionR(ctx, s.db, func(ctx context.Context) (model.Podcasts, error) {
 		user, err := s.usersRepo.GetUser(ctx, username)
 		if errors.Is(err, common.ErrNoData) {
 			return nil, common.ErrUnknownUser
@@ -239,7 +239,7 @@ func (s *SubscriptionsSrv) getSubsctiptions(ctx context.Context, username, devic
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		return podcasts.ToURLs(), nil
+		return podcasts, nil
 	})
 }
 

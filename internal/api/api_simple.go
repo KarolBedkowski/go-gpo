@@ -8,7 +8,6 @@ package api
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -20,7 +19,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/common"
-	"gitlab.com/kabes/go-gpo/internal/opml"
+	"gitlab.com/kabes/go-gpo/internal/formats"
 	"gitlab.com/kabes/go-gpo/internal/query"
 	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
@@ -67,28 +66,25 @@ func (s *simpleResource) downloadUserSubscriptions(
 
 	switch format := chi.URLParam(r, "format"); format {
 	case "opml": //nolint:goconst
-		o := opml.NewOPML("go-gpo")
-		o.AddURL(subs...)
-
-		result, err := o.XML()
-		if err != nil {
-			logger.Warn().Err(err).Msg("get opml xml error")
-			writeError(w, r, http.StatusBadRequest)
-
-			return
-		}
+		o := formats.NewOPML("go-gpo")
+		o.AddURL(subs.ToURLs()...)
 
 		w.WriteHeader(http.StatusOK)
-		w.Write(result)
+		render.XML(w, r, &o)
 	case "json": //nolint:goconst
 		w.WriteHeader(http.StatusOK)
-		render.JSON(w, r, subs)
+		render.JSON(w, r, subs.ToURLs())
 	case "jsonp": //nolint:goconst
 		w.WriteHeader(http.StatusOK)
-		render.JSON(newJSONPWriter(r, w), r, subs)
+		render.JSON(newJSONPWriter(r, w), r, subs.ToURLs())
 	case "txt": //nolint:goconst
 		w.WriteHeader(http.StatusOK)
-		render.PlainText(w, r, strings.Join(subs, "\n"))
+		render.PlainText(w, r, strings.Join(subs.ToURLs(), "\n"))
+	case "xml":
+		xmlsubs := formats.NewXMLPodcasts(subs)
+
+		w.WriteHeader(http.StatusOK)
+		render.XML(w, r, &xmlsubs)
 	default:
 		logger.Info().Msgf("unknown format %q", format)
 		writeError(w, r, http.StatusNotFound)
@@ -114,25 +110,25 @@ func (s *simpleResource) downloadDevSubscriptions(
 
 	switch format := chi.URLParam(r, "format"); format {
 	case "opml":
-		result, err := formatOMPL(subs)
-		if err != nil {
-			logger.Warn().Err(err).Msg("build opml error")
-			writeError(w, r, http.StatusInternalServerError)
-
-			return
-		}
+		o := formats.NewOPML("go-gpo")
+		o.AddURL(subs.ToURLs()...)
 
 		w.WriteHeader(http.StatusOK)
-		w.Write(result)
+		render.XML(w, r, &o)
 	case "json":
 		w.WriteHeader(http.StatusOK)
-		render.JSON(w, r, subs)
+		render.JSON(w, r, subs.ToURLs())
 	case "jsonp":
 		w.WriteHeader(http.StatusOK)
-		render.JSON(newJSONPWriter(r, w), r, subs)
+		render.JSON(newJSONPWriter(r, w), r, subs.ToURLs())
+	case "xml":
+		xmlsubs := formats.NewXMLPodcasts(subs)
+
+		w.WriteHeader(http.StatusOK)
+		render.XML(w, r, &xmlsubs)
 	case "txt":
 		w.WriteHeader(http.StatusOK)
-		render.PlainText(w, r, strings.Join(subs, "\n"))
+		render.PlainText(w, r, strings.Join(subs.ToURLs(), "\n"))
 	default:
 		logger.Info().Msgf("unknown format %q", format)
 		writeError(w, r, http.StatusNotFound)
@@ -189,14 +185,4 @@ func (s *simpleResource) uploadSubscriptions(
 	}
 }
 
-func formatOMPL(subs []string) ([]byte, error) {
-	o := opml.NewOPML("go-gpo")
-	o.AddURL(subs...)
-
-	result, err := o.XML()
-	if err != nil {
-		return nil, fmt.Errorf("build opml error: %w", err)
-	}
-
-	return result, nil
-}
+// ------------------------------------------------------
