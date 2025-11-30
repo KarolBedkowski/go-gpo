@@ -87,8 +87,7 @@ func (u updatesResource) getUpdates(
 	}
 
 	result := struct {
-		Add []podcast `json:"add"`
-		// FIXME: mygpo return this tag as `rem` but documentation say this should be `remove`.
+		Add        []podcast       `json:"add"`
 		Remove     []string        `json:"remove"`
 		Updates    []episodeUpdate `json:"updates"`
 		Timestamps int64           `json:"timestamp"`

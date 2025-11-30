@@ -247,7 +247,7 @@ func InTransaction(ctx context.Context, r *Database, fun func(context.Context) e
 	err = fun(ctx)
 	if err != nil {
 		if err := tx.Rollback(); err != nil {
-			merr := errors.Join(err, fmt.Errorf("commit error: %w", err))
+			merr := errors.Join(err, fmt.Errorf("rollback error: %w", err))
 
 			return aerr.ApplyFor(aerr.ErrDatabase, merr, "execute func in trans and rollback error")
 		}

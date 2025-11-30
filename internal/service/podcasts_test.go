@@ -11,6 +11,7 @@ import (
 
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/assert"
+	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/model"
 )
@@ -42,6 +43,7 @@ func TestPodcastsServiceUserPodcasts(t *testing.T) {
 func TestPodcastsServiceUserPodcastsExt(t *testing.T) {
 	ctx, i := prepareTests(t)
 	podcastsSrv := do.MustInvoke[*PodcastsSrv](i)
+	episodesSrv := do.MustInvoke[*EpisodesSrv](i)
 	_ = prepareTestUser(ctx, t, i, "user1")
 	_ = prepareTestUser(ctx, t, i, "user2")
 	prepareTestDevice(ctx, t, i, "user1", "dev1")
@@ -50,6 +52,9 @@ func TestPodcastsServiceUserPodcastsExt(t *testing.T) {
 
 	prepareTestSub(ctx, t, i, "user1", "dev1", subscribed...)
 
+	episodeActions := prepareEpisodes()
+	err := episodesSrv.AddAction(ctx, &command.AddActionCmd{UserName: "user1", Actions: episodeActions})
+
 	podcasts, err := podcastsSrv.GetPodcastsWithLastEpisode(ctx, "user1", true)
 	assert.NoErr(t, err)
 	assert.Equal(t, len(podcasts), 3)
@@ -57,7 +62,7 @@ func TestPodcastsServiceUserPodcastsExt(t *testing.T) {
 	assert.Equal(t, podcasts[1].URL, "http://example.com/p2")
 	assert.Equal(t, podcasts[2].URL, "http://example.com/p3")
 
-	// TODO: check episode
+	assert.Equal(t, podcasts[0].LastEpisode.URL, "http://example.com/p1/ep2")
 
 	_, err = podcastsSrv.GetPodcastsWithLastEpisode(ctx, "user3", true)
 	assert.ErrSpec(t, err, common.ErrUnknownUser)

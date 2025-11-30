@@ -91,7 +91,8 @@ func NewFavoriteFromModel(episodedb *Episode) Favorite {
 		PodcastURL:   episodedb.Podcast.URL,
 		Website:      "",
 		MygpoLink:    "",
-		Released:     episodedb.Timestamp, // FIXME: this is not release date...
+		// Release is date of update, so this is not release date...
+		Released: episodedb.Timestamp,
 	}
 }
 

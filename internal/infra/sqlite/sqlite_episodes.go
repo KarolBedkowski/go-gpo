@@ -31,8 +31,6 @@ func (s Repository) GetEpisode(
 	logger.Debug().Int64("user_id", userid).Int64("podcast_id", podcastid).Str("episode", episode).
 		Msgf("get episode")
 
-	// FIXME: or in where
-
 	query := `
 		SELECT e.id, e.podcast_id, e.url, e.title, e.action, e.started, e.position, e.total,
 			e.created_at, e.updated_at, p.url as podcast_url, p.title as podcast_title,
@@ -44,7 +42,6 @@ func (s Repository) GetEpisode(
 	`
 
 	res := EpisodeDB{}
-
 	dbctx := db.MustCtx(ctx)
 
 	err := dbctx.GetContext(ctx, &res, query, userid, podcastid, episode, episode)
@@ -152,8 +149,6 @@ func (s Repository) GetLastEpisodeAction(ctx context.Context,
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Int64("podcast_id", podcastid).
 		Msgf("get last episode action excludeDelete=%v", excludeDelete)
-
-		// FIXME: or in where
 
 	query := `
 		SELECT e.id, e.podcast_id, e.url, e.title, e.action, e.started, e.position, e.total,
