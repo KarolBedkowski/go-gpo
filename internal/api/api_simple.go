@@ -82,6 +82,9 @@ func (s *simpleResource) downloadUserSubscriptions(
 		w.Write(result)
 	case "json": //nolint:goconst
 		w.WriteHeader(http.StatusOK)
+		render.JSON(w, r, subs)
+	case "jsonp": //nolint:goconst
+		w.WriteHeader(http.StatusOK)
 		render.JSON(newJSONPWriter(r, w), r, subs)
 	case "txt": //nolint:goconst
 		w.WriteHeader(http.StatusOK)
@@ -123,6 +126,9 @@ func (s *simpleResource) downloadDevSubscriptions(
 		w.Write(result)
 	case "json":
 		w.WriteHeader(http.StatusOK)
+		render.JSON(w, r, subs)
+	case "jsonp":
+		w.WriteHeader(http.StatusOK)
 		render.JSON(newJSONPWriter(r, w), r, subs)
 	case "txt":
 		w.WriteHeader(http.StatusOK)
@@ -151,7 +157,7 @@ func (s *simpleResource) uploadSubscriptions(
 	switch format {
 	case "opml":
 		subs, err = parseOPML(r.Body)
-	case "json":
+	case "json", "jsonp":
 		err = render.DecodeJSON(r.Body, &subs)
 	case "txt":
 		subs, err = parseTextSubs(r.Body)
