@@ -64,13 +64,13 @@ func (u favoritesResource) getFafovites(
 }
 
 type favorite struct {
+	Released     time.Time `json:"released"`
 	Title        string    `json:"title"`
 	URL          string    `json:"url"`
 	PodcastTitle string    `json:"podcast_title"`
 	PodcastURL   string    `json:"podcast_url"`
 	Website      string    `json:"website"`
 	MygpoLink    string    `json:"mygpo_link"`
-	Released     time.Time `json:"released"`
 }
 
 func newFavoriteFromModel(f *model.Favorite) favorite {

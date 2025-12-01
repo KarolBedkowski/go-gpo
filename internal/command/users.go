@@ -33,7 +33,7 @@ func (n *NewUserCmd) Validate() error {
 }
 
 type NewUserCmdResult struct {
-	UserID int64
+	UserID int32
 }
 
 //---------------------------------------------------------------------

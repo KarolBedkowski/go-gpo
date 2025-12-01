@@ -16,24 +16,22 @@ import (
 //----------------------------------------
 
 type DeviceDB struct {
-	ID         int64     `db:"id"`
-	UserID     int64     `db:"user_id"`
-	Name       string    `db:"name"`
-	DevType    string    `db:"dev_type"`
-	Caption    string    `db:"caption"`
-	CreatedAt  time.Time `db:"created_at"`
-	UpdatedAt  time.Time `db:"updated_at"`
-	LastSeenAt time.Time `db:"last_seen_at"`
-
-	Subscriptions int `db:"subscriptions"`
-
-	UserName     string `db:"user_name"`
-	UserUserName string `db:"user_username"`
+	CreatedAt     time.Time `db:"created_at"`
+	UpdatedAt     time.Time `db:"updated_at"`
+	LastSeenAt    time.Time `db:"last_seen_at"`
+	Name          string    `db:"name"`
+	DevType       string    `db:"dev_type"`
+	Caption       string    `db:"caption"`
+	UserName      string    `db:"user_name"`
+	UserUserName  string    `db:"user_username"`
+	ID            int32     `db:"id"`
+	UserID        int32     `db:"user_id"`
+	Subscriptions int       `db:"subscriptions"`
 }
 
 func (d *DeviceDB) MarshalZerologObject(event *zerolog.Event) {
-	event.Int64("id", d.ID).
-		Int64("user_id", d.UserID).
+	event.Int32("id", d.ID).
+		Int32("user_id", d.UserID).
 		Str("name", d.Name).
 		Str("type", d.DevType).
 		Str("caption", d.Caption).
@@ -75,22 +73,22 @@ func devicesFromDb(devices []DeviceDB) []model.Device {
 //------------------------------------------------------------------------------
 
 type PodcastDB struct {
-	ID          int64  `db:"id"`
-	UserID      int64  `db:"user_id"`
-	Title       string `db:"title"`
-	URL         string `db:"url"`
-	Subscribed  bool   `db:"subscribed"`
-	Description string `db:"description"`
-	Website     string `db:"website"`
-
 	CreatedAt     time.Time    `db:"created_at"`
 	UpdatedAt     time.Time    `db:"updated_at"`
 	MetaUpdatedAt sql.NullTime `db:"metadata_updated_at"`
+	Title         string       `db:"title"`
+	URL           string       `db:"url"`
+	Description   string       `db:"description"`
+	Website       string       `db:"website"`
+
+	ID         int32 `db:"id"`
+	UserID     int32 `db:"user_id"`
+	Subscribed bool  `db:"subscribed"`
 }
 
 func (p *PodcastDB) MarshalZerologObject(event *zerolog.Event) {
-	event.Int64("id", p.ID).
-		Int64("user_id", p.UserID).
+	event.Int32("id", p.ID).
+		Int32("user_id", p.UserID).
 		Str("title", p.Title).
 		Str("url", p.URL).
 		Str("website", p.Website).
@@ -177,8 +175,8 @@ func podcastsFromDb(podcasts []PodcastDB) []model.Podcast {
 // 	return res
 // }
 
-// func (s PodcastsDB) ToIDsMap() map[string]int64 {
-// 	res := make(map[string]int64)
+// func (s PodcastsDB) ToIDsMap() map[string]int32 {
+// 	res := make(map[string]int32 )
 
 // 	for _, p := range s {
 // 		res[p.URL] = p.ID
@@ -190,27 +188,28 @@ func podcastsFromDb(podcasts []PodcastDB) []model.Podcast {
 //------------------------------------------------------------------------------
 
 type EpisodeDB struct {
-	ID        int64          `db:"id"`
-	PodcastID int64          `db:"podcast_id"`
-	DeviceID  sql.NullInt64  `db:"device_id"`
-	Title     string         `db:"title"`
-	URL       string         `db:"url"`
-	Action    string         `db:"action"`
-	Started   sql.NullInt32  `db:"started"`
-	Position  sql.NullInt32  `db:"position"`
-	Total     sql.NullInt32  `db:"total"`
-	CreatedAt time.Time      `db:"created_at"`
-	UpdatedAt time.Time      `db:"updated_at"`
-	GUID      sql.NullString `db:"guid"`
+	CreatedAt time.Time `db:"created_at"`
+	UpdatedAt time.Time `db:"updated_at"`
+	Title     string    `db:"title"`
+	URL       string    `db:"url"`
+	Action    string    `db:"action"`
 
 	PodcastURL   string         `db:"podcast_url"`
 	PodcastTitle string         `db:"podcast_title"`
-	DeviceName   sql.NullString `db:"device_name"`
+	GUID         sql.NullString `db:"guid"`
+
+	DeviceName sql.NullString `db:"device_name"`
+	DeviceID   sql.NullInt32  `db:"device_id"`
+	ID         int32          `db:"id"`
+	PodcastID  int32          `db:"podcast_id"`
+	Started    sql.NullInt32  `db:"started"`
+	Position   sql.NullInt32  `db:"position"`
+	Total      sql.NullInt32  `db:"total"`
 }
 
 func (e *EpisodeDB) MarshalZerologObject(event *zerolog.Event) {
-	event.Int64("id", e.ID).
-		Int64("podcast_id", e.PodcastID).
+	event.Int32("id", e.ID).
+		Int32("podcast_id", e.PodcastID).
 		Any("device_id", e.DeviceID).
 		Str("title", e.Title).
 		Str("url", e.URL).
@@ -231,7 +230,7 @@ func (e *EpisodeDB) toModel() *model.Episode {
 	var device *model.Device
 	if e.DeviceID.Valid {
 		device = &model.Device{
-			ID:   e.DeviceID.Int64,
+			ID:   e.DeviceID.Int32,
 			Name: e.DeviceName.String,
 		}
 	}
@@ -278,13 +277,13 @@ func episodesFromDb(episodes []EpisodeDB) []model.Episode {
 //------------------------------------------------------------------------------
 
 type UserDB struct {
-	ID        int64     `db:"id"`
+	CreatedAt time.Time `db:"created_at"`
+	UpdatedAt time.Time `db:"updated_at"`
 	UserName  string    `db:"username"`
 	Password  string    `db:"password"`
 	Email     string    `db:"email"`
 	Name      string    `db:"name"`
-	CreatedAt time.Time `db:"created_at"`
-	UpdatedAt time.Time `db:"updated_at"`
+	ID        int32     `db:"id"`
 }
 
 func (u *UserDB) MarshalZerologObject(event *zerolog.Event) {
@@ -293,7 +292,7 @@ func (u *UserDB) MarshalZerologObject(event *zerolog.Event) {
 		pass = "***"
 	}
 
-	event.Int64("id", u.ID).
+	event.Int32("id", u.ID).
 		Str("user_name", u.UserName).
 		Str("Password", pass).
 		Str("email", u.Email).
@@ -327,17 +326,17 @@ func usersFromDb(users []UserDB) []model.User {
 // ------------------------------------------------------------------------------
 
 type SettingsDB struct {
-	UserID    int64         `db:"user_id"`
-	PodcastID sql.NullInt64 `db:"podcast_id"`
-	EpisodeID sql.NullInt64 `db:"episode_id"`
-	DeviceID  sql.NullInt64 `db:"device_id"`
 	Scope     string        `db:"scope"`
 	Key       string        `db:"key"`
 	Value     string        `db:"value"`
+	PodcastID sql.NullInt32 `db:"podcast_id"`
+	EpisodeID sql.NullInt32 `db:"episode_id"`
+	DeviceID  sql.NullInt32 `db:"device_id"`
+	UserID    int32         `db:"user_id"`
 }
 
 func (s SettingsDB) MarshalZerologObject(event *zerolog.Event) {
-	event.Int64("user_id", s.UserID).
+	event.Int32("user_id", s.UserID).
 		Any("podcast_id", s.PodcastID).
 		Any("episode_id", s.EpisodeID).
 		Any("device_id", s.DeviceID).

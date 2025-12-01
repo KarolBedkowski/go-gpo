@@ -53,7 +53,7 @@ func (e episodePages) list(ctx context.Context, w http.ResponseWriter, r *http.R
 		return
 	}
 
-	podcastid, err := strconv.ParseInt(podcast, 10, 64)
+	podcastid, err := strconv.ParseInt(podcast, 10, 32)
 	if err != nil {
 		logger.Debug().Err(err).Msg("invalid podcast id")
 		w.WriteHeader(http.StatusBadRequest)
@@ -63,7 +63,7 @@ func (e episodePages) list(ctx context.Context, w http.ResponseWriter, r *http.R
 
 	query := query.GetEpisodesByPodcastQuery{
 		UserName:   user,
-		PodcastID:  podcastid,
+		PodcastID:  int32(podcastid),
 		Aggregated: true,
 	}
 

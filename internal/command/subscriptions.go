@@ -17,11 +17,11 @@ import (
 )
 
 type ChangeSubscriptionsCmd struct {
+	Timestamp  time.Time
 	UserName   string
 	DeviceName string
 	Add        []string
 	Remove     []string
-	Timestamp  time.Time
 }
 
 func (s *ChangeSubscriptionsCmd) Sanitize() [][]string {
@@ -58,10 +58,10 @@ type ChangeSubscriptionsCmdResult struct {
 //---------------------------------------------------------------------
 
 type ReplaceSubscriptionsCmd struct {
+	Timestamp     time.Time
 	UserName      string
 	DeviceName    string
 	Subscriptions []string
-	Timestamp     time.Time
 }
 
 func (r *ReplaceSubscriptionsCmd) Validate() error {

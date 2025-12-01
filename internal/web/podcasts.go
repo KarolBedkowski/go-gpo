@@ -201,14 +201,14 @@ func (p podcastPages) podcastFromURLParam(ctx context.Context, r *http.Request, 
 		return nil, http.StatusBadRequest
 	}
 
-	podcastid, err := strconv.ParseInt(podcastidS, 10, 64)
+	podcastid, err := strconv.ParseInt(podcastidS, 10, 32)
 	if err != nil {
 		return nil, http.StatusBadRequest
 	}
 
 	user := common.ContextUser(ctx)
 
-	podcast, err := p.podcastsSrv.GetPodcast(ctx, user, podcastid)
+	podcast, err := p.podcastsSrv.GetPodcast(ctx, user, int32(podcastid))
 	if errors.Is(err, common.ErrNoData) {
 		return nil, http.StatusNotFound
 	} else if err != nil {

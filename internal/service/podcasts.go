@@ -39,7 +39,7 @@ func NewPodcastsSrv(i do.Injector) (*PodcastsSrv, error) {
 	}, nil
 }
 
-func (p *PodcastsSrv) GetPodcast(ctx context.Context, username string, podcastid int64) (*model.Podcast, error) {
+func (p *PodcastsSrv) GetPodcast(ctx context.Context, username string, podcastid int32) (*model.Podcast, error) {
 	if username == "" {
 		return nil, common.ErrEmptyUsername
 	}

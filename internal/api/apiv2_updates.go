@@ -104,16 +104,15 @@ func (u updatesResource) getUpdates(
 //------------------------------------------------------------------------------
 
 type episodeUpdate struct {
+	Released     time.Time `json:"released"`
+	Episode      *episode  `json:"episode,omitempty"`
 	Title        string    `json:"title"`
 	URL          string    `json:"url"`
 	PodcastTitle string    `json:"podcast_title"`
 	PodcastURL   string    `json:"podcast_url"`
 	Website      string    `json:"website"`
 	MygpoLink    string    `json:"mygpo_link"`
-	Released     time.Time `json:"released"`
 	Status       string    `json:"status"`
-
-	Episode *episode `json:"episode,omitempty"`
 }
 
 func newEpisodeUpdateFromModel(eup *model.EpisodeUpdate) episodeUpdate {
@@ -141,10 +140,10 @@ type podcast struct {
 	Title       string `json:"title"`
 	URL         string `json:"url"`
 	Description string `json:"description"`
-	Subscribers int    `json:"subscribers"`
 	LogoURL     string `json:"logo_url"`
 	Website     string `json:"website"`
 	MygpoLink   string `json:"mygpo_link"`
+	Subscribers int    `json:"subscribers"`
 }
 
 func newPodcastFromModel(p *model.Podcast) podcast {

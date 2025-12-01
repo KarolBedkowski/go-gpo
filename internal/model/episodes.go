@@ -22,18 +22,19 @@ const (
 )
 
 type Episode struct {
-	ID        int64
-	Action    string
 	Timestamp time.Time
 	Started   *int32
 	Position  *int32
 	Total     *int32
 	GUID      *string
-	Title     string
-	URL       string
 
 	Podcast *Podcast
 	Device  *Device
+	Action  string
+	Title   string
+	URL     string
+
+	ID int32
 }
 
 func (e *Episode) DeviceName() string {
@@ -74,13 +75,13 @@ func (e *Episode) MarshalZerologObject(event *zerolog.Event) {
 // ------------------------------------------------------
 
 type Favorite struct {
+	Released     time.Time
 	Title        string
 	URL          string
 	PodcastTitle string
 	PodcastURL   string
 	Website      string
 	MygpoLink    string
-	Released     time.Time
 }
 
 func NewFavoriteFromModel(episodedb *Episode) Favorite {
@@ -99,16 +100,15 @@ func NewFavoriteFromModel(episodedb *Episode) Favorite {
 // ------------------------------------------------------
 
 type EpisodeUpdate struct {
+	Released     time.Time
+	Episode      *Episode
 	Title        string
 	URL          string
 	PodcastTitle string
 	PodcastURL   string
 	Website      string
 	MygpoLink    string
-	Released     time.Time
 	Status       string
-
-	Episode *Episode
 }
 
 // NewUpisodeUpdateFromModel create new EpisodeUpdate WITHOUT Episode.
@@ -130,15 +130,15 @@ func NewEpisodeUpdate(episodedb *Episode) EpisodeUpdate {
 // ------------------------------------------------------
 
 type EpisodeLastAction struct {
+	Timestamp    time.Time
+	Started      *int32
+	Position     *int32
+	Total        *int32
 	PodcastTitle string
 	PodcastURL   string
 	Episode      string
 	Device       string
 	Action       string
-	Timestamp    time.Time
-	Started      *int32
-	Position     *int32
-	Total        *int32
 }
 
 func NewEpisodeLastAction(episodedb *Episode) EpisodeLastAction {

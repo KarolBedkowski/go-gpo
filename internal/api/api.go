@@ -13,8 +13,8 @@ import (
 )
 
 type Configuration struct {
-	NoAuth  bool
 	Listen  string
+	NoAuth  bool
 	LogBody bool
 }
 

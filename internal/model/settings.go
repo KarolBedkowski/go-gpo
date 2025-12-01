@@ -14,16 +14,16 @@ import "github.com/rs/zerolog"
 type Settings map[string]string
 
 type SettingsKey struct {
-	UserID    int64
-	PodcastID *int64
-	EpisodeID *int64
-	DeviceID  *int64
+	PodcastID *int32
+	EpisodeID *int32
+	DeviceID  *int32
 	Scope     string
 	Key       string
+	UserID    int32
 }
 
 func (s *SettingsKey) MarshalZerologObject(event *zerolog.Event) {
-	event.Int64("user_id", s.UserID).
+	event.Int32("user_id", s.UserID).
 		Any("podcast_id", s.PodcastID).
 		Any("episode_id", s.EpisodeID).
 		Any("device_id", s.DeviceID).

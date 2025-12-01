@@ -26,9 +26,9 @@ type xmlPodcast struct {
 	MygpoLink     string `xml:"mygpo_link"`
 	Author        string `xml:"author"`
 	Description   string `xml:"description"`
-	Subscribers   int    `xml:"subscribers"`
 	LogoURL       string `xml:"logo_url"`
 	ScaledLogoURL string `xml:"scaled_logo_url"`
+	Subscribers   int    `xml:"subscribers"`
 }
 
 func NewXMLPodcasts(podcasts []model.Podcast) XMLPodcasts {

@@ -48,7 +48,7 @@ func prepareTests(t *testing.T) (context.Context, *do.RootScope) {
 	return ctx, i
 }
 
-func prepareTestUser(ctx context.Context, t *testing.T, i do.Injector, name string) int64 {
+func prepareTestUser(ctx context.Context, t *testing.T, i do.Injector, name string) int32 {
 	t.Helper()
 
 	newuser := command.NewUserCmd{

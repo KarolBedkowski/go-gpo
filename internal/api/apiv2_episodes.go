@@ -49,10 +49,7 @@ func (er episodesResource) Routes() *chi.Mux {
 }
 
 func (er episodesResource) uploadEpisodeActions(
-	ctx context.Context,
-	w http.ResponseWriter,
-	r *http.Request,
-	logger *zerolog.Logger,
+	ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger,
 ) {
 	var reqData []episode
 
@@ -103,10 +100,11 @@ func (er episodesResource) uploadEpisodeActions(
 	}
 
 	res := struct {
-		Timestamp   int64      `json:"timestamp"`
 		UpdatedURLs [][]string `json:"update_urls"`
+		Timestamp   int64      `json:"timestamp"`
 	}{
-		time.Now().UTC().Unix(), changedurls,
+		Timestamp:   time.Now().UTC().Unix(),
+		UpdatedURLs: changedurls,
 	}
 
 	render.JSON(w, r, &res)
@@ -163,18 +161,16 @@ func (er episodesResource) getEpisodeActions(
 // -----------------------------
 
 type episode struct {
-	Podcast string `json:"podcast"`
-	Episode string `json:"episode"`
-	// Device is optional
-	Device    string  `json:"device,omitempty"`
-	Action    string  `json:"action"`
-	Timestamp any     `json:"timestamp"`
-	Started   *int32  `json:"started,omitempty"`
-	Position  *int32  `json:"position,omitempty"`
-	Total     *int32  `json:"total,omitempty"`
-	GUID      *string `json:"guid,omitempty"`
-
-	ts time.Time `json:"-"`
+	ts        time.Time `json:"-"`
+	Timestamp any       `json:"timestamp"`
+	Started   *int32    `json:"started,omitempty"`
+	Position  *int32    `json:"position,omitempty"`
+	Total     *int32    `json:"total,omitempty"`
+	GUID      *string   `json:"guid,omitempty"`
+	Podcast   string    `json:"podcast"`
+	Episode   string    `json:"episode"`
+	Device    string    `json:"device,omitempty"` // Device is optional
+	Action    string    `json:"action"`
 }
 
 func newEpisodesFromModel(e *model.Episode) episode {

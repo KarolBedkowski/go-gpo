@@ -24,11 +24,11 @@ import (
 
 func (s Repository) GetEpisode(
 	ctx context.Context,
-	userid, podcastid int64,
+	userid, podcastid int32,
 	episode string,
 ) (*model.Episode, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Int64("user_id", userid).Int64("podcast_id", podcastid).Str("episode", episode).
+	logger.Debug().Int32("user_id", userid).Int32("podcast_id", podcastid).Str("episode", episode).
 		Msgf("get episode")
 
 	query := `
@@ -58,13 +58,13 @@ func (s Repository) GetEpisode(
 // When aggregate get only last action for each episode.
 func (s Repository) ListEpisodeActions(
 	ctx context.Context,
-	userid int64, deviceid, podcastid *int64,
+	userid int32, deviceid, podcastid *int32,
 	since time.Time,
 	aggregated bool,
 	lastelements uint,
 ) ([]model.Episode, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Int64("user_id", userid).Any("podcast_id", podcastid).Any("device_id", deviceid).
+	logger.Debug().Int32("user_id", userid).Any("podcast_id", podcastid).Any("device_id", deviceid).
 		Msgf("get episodes since=%s aggregated=%v", since, aggregated)
 
 	query := `
@@ -119,9 +119,9 @@ func (s Repository) ListEpisodeActions(
 	return episodesFromDb(res), nil
 }
 
-func (s Repository) ListFavorites(ctx context.Context, userid int64) ([]model.Episode, error) {
+func (s Repository) ListFavorites(ctx context.Context, userid int32) ([]model.Episode, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Int64("user_id", userid).Msg("get favorites")
+	logger.Debug().Int32("user_id", userid).Msg("get favorites")
 
 	query := `
 		SELECT e.id, e.podcast_id, e.url, e.title, e.guid,
@@ -144,10 +144,10 @@ func (s Repository) ListFavorites(ctx context.Context, userid int64) ([]model.Ep
 }
 
 func (s Repository) GetLastEpisodeAction(ctx context.Context,
-	userid, podcastid int64, excludeDelete bool,
+	userid, podcastid int32, excludeDelete bool,
 ) (*model.Episode, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Int64("user_id", userid).Int64("podcast_id", podcastid).
+	logger.Debug().Int32("user_id", userid).Int32("podcast_id", podcastid).
 		Msgf("get last episode action excludeDelete=%v", excludeDelete)
 
 	query := `
@@ -179,9 +179,9 @@ func (s Repository) GetLastEpisodeAction(ctx context.Context,
 	return res.toModel(), nil
 }
 
-func (s Repository) SaveEpisode(ctx context.Context, userid int64, episodes ...model.Episode) error {
+func (s Repository) SaveEpisode(ctx context.Context, userid int32, episodes ...model.Episode) error {
 	logger := log.Ctx(ctx)
-	logger.Debug().Int64("user_id", userid).Msg("save episode")
+	logger.Debug().Int32("user_id", userid).Msg("save episode")
 
 	dbctx := db.MustCtx(ctx)
 
@@ -199,9 +199,9 @@ func (s Repository) SaveEpisode(ctx context.Context, userid int64, episodes ...m
 	for _, episode := range episodes {
 		logger.Debug().Object("episode", &episode).Msg("save episode")
 
-		deviceid := sql.NullInt64{}
+		deviceid := sql.NullInt32{}
 		if episode.Device != nil {
-			deviceid = sql.NullInt64{Valid: true, Int64: episode.Device.ID}
+			deviceid = sql.NullInt32{Valid: true, Int32: episode.Device.ID}
 		}
 
 		_, err := stmt.ExecContext(

@@ -14,9 +14,9 @@ import (
 )
 
 type Session struct {
-	SID       string
-	Data      map[any]any
 	CreatedAt time.Time
+	Data      map[any]any
+	SID       string
 }
 
 func (s *Session) IsValid(maxlifetime time.Duration) bool {

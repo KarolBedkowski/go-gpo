@@ -257,7 +257,7 @@ func (s *SubscriptionsSrv) getUser(ctx context.Context, username string) (*model
 // getUserDevice return device from database and mark last_seen.
 func (s *SubscriptionsSrv) getUserDevice(
 	ctx context.Context,
-	userid int64,
+	userid int32,
 	devicename string,
 ) (*model.Device, error) {
 	device, err := s.devicesRepo.GetDevice(ctx, userid, devicename)

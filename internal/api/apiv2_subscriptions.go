@@ -159,8 +159,8 @@ func (sr subscriptionsResource) uploadSubscriptionChanges(
 	}
 
 	resp := struct {
-		Timestamp   int64      `json:"timestamp"`
 		UpdatedURLs [][]string `json:"update_urls"`
+		Timestamp   int64      `json:"timestamp"`
 	}{
 		Timestamp:   time.Now().UTC().Unix(),
 		UpdatedURLs: res.ChangedURLs,

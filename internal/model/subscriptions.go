@@ -14,10 +14,10 @@ import (
 // ------------------------------------------------------
 
 type Subscription struct {
+	UpdatedAt time.Time
 	Device    string
 	Podcast   string
 	Action    string
-	UpdatedAt time.Time
 }
 
 // ------------------------------------------------------

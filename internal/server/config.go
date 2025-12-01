@@ -15,10 +15,10 @@ import (
 type Configuration struct {
 	Listen        string
 	WebRoot       string
-	DebugFlags    config.DebugFlags
-	EnableMetrics bool
 	TLSKey        string
 	TLSCert       string
+	DebugFlags    config.DebugFlags
+	EnableMetrics bool
 	CookieSecure  bool
 }
 

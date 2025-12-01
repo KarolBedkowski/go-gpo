@@ -14,8 +14,8 @@ import (
 )
 
 type GetUserSubscriptionsQuery struct {
-	UserName string
 	Since    time.Time
+	UserName string
 }
 
 func (q *GetUserSubscriptionsQuery) Validate() error {
@@ -34,9 +34,9 @@ func (q *GetUserSubscriptionsQuery) MarshalZerologObject(event *zerolog.Event) {
 //------------------------------------------------------------------------------
 
 type GetSubscriptionsQuery struct {
+	Since      time.Time
 	UserName   string
 	DeviceName string
-	Since      time.Time
 }
 
 func (q *GetSubscriptionsQuery) Validate() error {
@@ -60,9 +60,9 @@ func (q *GetSubscriptionsQuery) MarshalZerologObject(event *zerolog.Event) {
 //------------------------------------------------------------------------------
 
 type GetSubscriptionChangesQuery struct {
+	Since      time.Time
 	UserName   string
 	DeviceName string
-	Since      time.Time
 }
 
 func (q *GetSubscriptionChangesQuery) Validate() error {

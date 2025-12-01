@@ -13,20 +13,19 @@ import (
 //------------------------------------------------------------------------------
 
 type Device struct {
-	ID            int64
+	UpdatedAt     time.Time
+	LastSeenAt    time.Time
+	User          *User
 	UserName      string
 	Name          string
 	DevType       string
 	Caption       string
+	ID            int32
 	Subscriptions int
-	UpdatedAt     time.Time
-	LastSeenAt    time.Time
-
-	User *User
 }
 
 func (d *Device) MarshalZerologObject(event *zerolog.Event) {
-	event.Int64("id", d.ID).
+	event.Int32("id", d.ID).
 		Str("user_name", d.UserName).
 		Str("name", d.Name).
 		Str("type", d.DevType).
@@ -54,8 +53,8 @@ func (d Devices) ToMap() map[string]Device {
 	return devices
 }
 
-func (d Devices) ToIDsMap() map[string]int64 {
-	devices := make(map[string]int64)
+func (d Devices) ToIDsMap() map[string]int32 {
+	devices := make(map[string]int32)
 
 	for _, dev := range d {
 		devices[dev.Name] = dev.ID
