@@ -201,7 +201,8 @@ func (s Repository) SaveEpisode(ctx context.Context, userid int32, episodes ...m
 
 		deviceid := sql.NullInt32{}
 		if episode.Device != nil {
-			deviceid = sql.NullInt32{Valid: true, Int32: episode.Device.ID}
+			deviceid.Valid = true
+			deviceid.Int32 = episode.Device.ID
 		}
 
 		_, err := stmt.ExecContext(

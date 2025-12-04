@@ -79,7 +79,7 @@ func (r *Database) RegisterMetrics(queryTime bool) {
 			prometheus.HistogramOpts{
 				Name:    "database_query_duration_seconds",
 				Help:    "Tracks the latencies for database query.",
-				Buckets: []float64{0.1, 0.2, 0.5, 1, 2, 5},
+				Buckets: []float64{0.05, 0.1, 0.2, 0.5, 1, 2, 5},
 			},
 			[]string{"caller"},
 		)

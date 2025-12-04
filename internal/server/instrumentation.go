@@ -38,7 +38,7 @@ func (m *promMiddleware) Handler(next http.Handler) http.Handler {
 // New returns a Middleware interface.
 func newPromMiddleware(name string, buckets []float64) *promMiddleware {
 	if buckets == nil {
-		buckets = []float64{0.1, 0.5, 1, 2, 5, 10}
+		buckets = []float64{0.05, 0.1, 0.5, 1, 2, 5}
 	}
 
 	reg := prometheus.WrapRegistererWith(prometheus.Labels{"handler": name}, prometheus.DefaultRegisterer)
