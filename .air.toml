@@ -3,8 +3,9 @@ testdata_dir = "testdata"
 tmp_dir = "tmp"
 
 [build]
-  bin = "./go-gpo --log.level=debug --debug=querymetrics --database='database.sqlite?_fk=1&_journal_mode=WAL&_synchronous=NORMAL' serve --enable-metrics"
-  cmd = "go build -o ./go-gpo ./cli/"
+  bin = "./go-gpo"
+  args_bin = ["--log.level=debug", "--debug=querymetrics", "--database='database.sqlite?_fk=1&_journal_mode=WAL&_synchronous=NORMAL'", "serve", "--enable-metrics"]
+  cmd = "make build"
   delay = 1000
   exclude_dir = ["assets", "tmp", "vendor", "testdata"]
   exclude_file = []
