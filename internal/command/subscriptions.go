@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"gitlab.com/kabes/go-gpo/internal/aerr"
-	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/validators"
 )
 
@@ -38,8 +37,8 @@ func (s *ChangeSubscriptionsCmd) Sanitize() [][]string {
 }
 
 func (s *ChangeSubscriptionsCmd) Validate() error {
-	if s.UserName == "" {
-		return common.ErrEmptyUsername
+	if !validators.IsValidUserName(s.UserName) {
+		return aerr.ErrValidation.WithUserMsg("invalid username")
 	}
 
 	for _, i := range s.Add {
@@ -65,8 +64,8 @@ type ReplaceSubscriptionsCmd struct {
 }
 
 func (r *ReplaceSubscriptionsCmd) Validate() error {
-	if r.UserName == "" {
-		return common.ErrEmptyUsername
+	if !validators.IsValidUserName(r.UserName) {
+		return aerr.ErrValidation.WithUserMsg("invalid username")
 	}
 
 	return nil

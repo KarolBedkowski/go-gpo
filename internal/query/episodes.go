@@ -11,6 +11,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/validators"
 )
 
 type GetEpisodesQuery struct {
@@ -23,8 +24,8 @@ type GetEpisodesQuery struct {
 }
 
 func (q *GetEpisodesQuery) Validate() error {
-	if q.UserName == "" {
-		return aerr.ErrValidation.WithMsg("user name can't be empty")
+	if !validators.IsValidUserName(q.UserName) {
+		return aerr.ErrValidation.WithUserMsg("invalid username")
 	}
 
 	return nil
@@ -50,8 +51,8 @@ type GetEpisodesByPodcastQuery struct {
 }
 
 func (q *GetEpisodesByPodcastQuery) Validate() error {
-	if q.UserName == "" {
-		return aerr.ErrValidation.WithMsg("user name can't be empty")
+	if !validators.IsValidUserName(q.UserName) {
+		return aerr.ErrValidation.WithUserMsg("invalid username")
 	}
 
 	if q.PodcastID < 0 {
@@ -79,8 +80,12 @@ type GetEpisodeUpdatesQuery struct {
 }
 
 func (q *GetEpisodeUpdatesQuery) Validate() error {
-	if q.UserName == "" {
-		return aerr.ErrValidation.WithMsg("user name can't be empty")
+	if !validators.IsValidUserName(q.UserName) {
+		return aerr.ErrValidation.WithUserMsg("invalid username")
+	}
+
+	if q.DeviceName != "" && !validators.IsValidDevName(q.DeviceName) {
+		return aerr.ErrValidation.WithUserMsg("invalid username")
 	}
 
 	return nil
@@ -101,8 +106,8 @@ type GetLastEpisodesActionsQuery struct {
 }
 
 func (q *GetLastEpisodesActionsQuery) Validate() error {
-	if q.UserName == "" {
-		return aerr.ErrValidation.WithMsg("user name can't be empty")
+	if !validators.IsValidUserName(q.UserName) {
+		return aerr.ErrValidation.WithUserMsg("invalid username")
 	}
 
 	return nil

@@ -10,6 +10,7 @@ package query
 import (
 	"github.com/rs/zerolog"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/validators"
 )
 
 type SettingsQuery struct {
@@ -21,16 +22,16 @@ type SettingsQuery struct {
 }
 
 func (s *SettingsQuery) Validate() error {
-	if s.UserName == "" {
-		return aerr.ErrValidation.WithMsg("username can't be empty")
+	if !validators.IsValidUserName(s.UserName) {
+		return aerr.ErrValidation.WithUserMsg("invalid username")
 	}
 
 	switch s.Scope {
 	case "account":
 		// no extra check
 	case "device":
-		if s.DeviceName == "" {
-			return aerr.ErrValidation.WithMsg("device can't be empty")
+		if !validators.IsValidDevName(s.DeviceName) {
+			return aerr.ErrValidation.WithMsg("invalid device name")
 		}
 	case "episode":
 		if s.Episode == "" {

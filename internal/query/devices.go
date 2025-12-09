@@ -6,15 +6,18 @@ package query
 //
 // Distributed under terms of the GPLv3 license.
 //
-import "gitlab.com/kabes/go-gpo/internal/aerr"
+import (
+	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/validators"
+)
 
 type GetDevicesQuery struct {
 	UserName string
 }
 
 func (q *GetDevicesQuery) Validate() error {
-	if q.UserName == "" {
-		return aerr.ErrValidation.WithMsg("user name can't be empty")
+	if !validators.IsValidUserName(q.UserName) {
+		return aerr.ErrValidation.WithUserMsg("invalid username")
 	}
 
 	return nil
