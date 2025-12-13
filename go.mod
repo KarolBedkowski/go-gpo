@@ -16,6 +16,7 @@ require (
 	github.com/samber/do/http/chi/v2 v2.0.0-20251210170211-0b30a3644849
 	github.com/samber/do/v2 v2.0.0
 	github.com/urfave/cli/v3 v3.6.1
+	github.com/valyala/quicktemplate v1.8.0
 	golang.org/x/crypto v0.46.0
 	golang.org/x/term v0.38.0
 )
@@ -41,6 +42,7 @@ require (
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/samber/go-type-to-string v1.8.0 // indirect
 	github.com/sethvargo/go-retry v0.3.0 // indirect
+	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	golang.org/x/net v0.48.0 // indirect

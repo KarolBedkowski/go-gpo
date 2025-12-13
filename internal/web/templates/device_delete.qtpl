@@ -1,0 +1,19 @@
+{% code
+type DeviceDeletePage struct {
+	DeviceName string
+}
+%}
+
+{% func (p *DeviceDeletePage) Title() %}Device - delete{% endfunc %}
+
+{% func (p *DeviceDeletePage) Body(webroot string) %}
+<section>
+	<h1>Delete device</h1>
+
+	<form method="POST">
+		<p>Delete device <em>{%s p.DeviceName %}</em>?</p>
+		<a href="{%s webroot %}/web/device/">Back</a> <button type="submit">Delete</button>
+	</form>
+{% endfunc %}
+
+# vim:ft=mako:ts=4:

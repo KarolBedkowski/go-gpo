@@ -24,12 +24,12 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
+	nt "gitlab.com/kabes/go-gpo/internal/web/templates"
 )
 
 type podcastPages struct {
 	podcastsSrv      *service.PodcastsSrv
 	subscriptionsSrv *service.SubscriptionsSrv
-	template         templates
 	webroot          string
 }
 
@@ -37,7 +37,6 @@ func newPodcastPages(i do.Injector) (podcastPages, error) {
 	return podcastPages{
 		podcastsSrv:      do.MustInvoke[*service.PodcastsSrv](i),
 		subscriptionsSrv: do.MustInvoke[*service.SubscriptionsSrv](i),
-		template:         do.MustInvoke[templates](i),
 		webroot:          do.MustInvokeNamed[string](i, "server.webroot"),
 	}, nil
 }
@@ -68,18 +67,7 @@ func (p podcastPages) list(ctx context.Context, w http.ResponseWriter, r *http.R
 		return
 	}
 
-	data := struct {
-		Podcasts       []model.PodcastWithLastEpisode
-		SubscribedOnly bool
-	}{
-		Podcasts:       podcasts,
-		SubscribedOnly: subscribedOnly,
-	}
-
-	if err := p.template.executeTemplate(w, "podcasts.tmpl", &data); err != nil {
-		logger.Error().Err(err).Msg("execute template error")
-		srvsupport.WriteError(w, r, http.StatusInternalServerError, "")
-	}
+	nt.WritePageTemplate(w, &nt.PodcastsPage{Podcasts: podcasts, SubscribedOnly: subscribedOnly}, p.webroot)
 }
 
 func (p podcastPages) addPodcast(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
@@ -124,14 +112,7 @@ func (p podcastPages) podcastGet(ctx context.Context, w http.ResponseWriter, r *
 		return
 	}
 
-	data := struct {
-		Podcast *model.Podcast
-	}{Podcast: podcast}
-
-	if err := p.template.executeTemplate(w, "podcast.tmpl", &data); err != nil {
-		logger.Error().Err(err).Msg("execute template error")
-		srvsupport.WriteError(w, r, http.StatusInternalServerError, "")
-	}
+	nt.WritePageTemplate(w, &nt.PodcastPage{Podcast: podcast}, p.webroot)
 }
 
 func (p podcastPages) podcastUnsubscribe(

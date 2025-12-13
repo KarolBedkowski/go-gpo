@@ -1,0 +1,38 @@
+{% import "gitlab.com/kabes/go-gpo/internal/model" %}
+
+{% code
+type PodcastPage struct {
+	Podcast *model.Podcast
+}
+%}
+
+{% func (p *PodcastPage) Title() %}Podcasts{% endfunc %}
+
+{% func (p *PodcastPage) Body(webroot string) %}
+<section>
+	<h1>Podcast</h1>
+
+	{% if p.Podcast != nil %}
+	<dl>
+		<dt>Title<dt><dd>{%s p.Podcast.Title %}</dd>
+		<dt>URL<dt><dd>{%s p.Podcast.URL %}</dd>
+		<dt>Description<dt><dd>{%s p.Podcast.Description %}</dd>
+		<dt>Website<dt><dd>{%s p.Podcast.Website %}</dd>
+	</dl>
+	{% endif %}
+
+	{% if p.Podcast.Subscribed %}
+	<form method="POST" action="unsubscribe">
+		<button type="submit">Unsubscribe</button>
+	</form>
+	{% else %} 
+	<form method="POST" action="resubscribe">
+		<button type="submit">Subscribe again</button>
+	</form>
+	{% endif %}
+</section>
+
+
+{% endfunc %}
+
+# vim:ft=mako:ts=4: 

@@ -11,7 +11,6 @@ import "github.com/samber/do/v2"
 
 var Package = do.Package(
 	do.Lazy(New),
-	do.Lazy(newTemplatesI),
 	do.Lazy(newDevicePages),
 	do.Lazy(newEpisodePages),
 	do.Lazy(newPodcastPages),

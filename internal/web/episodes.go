@@ -17,21 +17,21 @@ import (
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/common"
-	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/query"
 	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
+	nt "gitlab.com/kabes/go-gpo/internal/web/templates"
 )
 
 type episodePages struct {
 	episodeSrv *service.EpisodesSrv
-	template   templates
+	webroot    string
 }
 
 func newEpisodePages(i do.Injector) (episodePages, error) {
 	return episodePages{
 		episodeSrv: do.MustInvoke[*service.EpisodesSrv](i),
-		template:   do.MustInvoke[templates](i),
+		webroot:    do.MustInvokeNamed[string](i, "server.webroot"),
 	}, nil
 }
 
@@ -75,14 +75,5 @@ func (e episodePages) list(ctx context.Context, w http.ResponseWriter, r *http.R
 		return
 	}
 
-	data := struct {
-		Episodes []model.Episode
-	}{
-		Episodes: episodes,
-	}
-
-	if err := e.template.executeTemplate(w, "episodes.tmpl", &data); err != nil {
-		logger.Error().Err(err).Msg("execute template error")
-		srvsupport.WriteError(w, r, http.StatusInternalServerError, "")
-	}
+	nt.WritePageTemplate(w, &nt.EpisodesPage{Episodes: episodes}, e.webroot)
 }

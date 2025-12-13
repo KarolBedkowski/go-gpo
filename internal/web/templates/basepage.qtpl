@@ -1,0 +1,45 @@
+
+{% interface
+Page {
+	Title()
+	Body(webroot string)
+}
+%}
+
+{% func PageTemplate(p Page, webroot string) %}
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" href="/web/static/main.css" type="text/css">
+	{% code t := p.Title() %}
+	{% if t != "" %}
+	<title>go-gpo - {%s t %}</title>
+	{% else %}
+	<title>go-gpo</title>
+	{% endif %}
+</head>
+<body>
+	<header>
+		<a href="{%s webroot %}/web/"><big><big>go-gpo</big></big></a>
+		&emsp;
+		<a href="{%s webroot %}/web/device/">Devices</a> |
+		<a href="{%s webroot %}/web/podcast/">Podcasts</a>
+	</header>
+	<br/>
+	<content>
+	{%= p.Body(webroot) %}
+	</content>
+</body>
+</html>
+{% endfunc %}
+
+
+{% code type BasePage struct {} %}
+{% func (p *BasePage) Title() %}{% endfunc %}
+{% func (p *BasePage) Body(webroot string) %}body{% endfunc %}
+
+
+
+# vim:ft=mako:
