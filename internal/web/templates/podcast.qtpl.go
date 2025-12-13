@@ -70,86 +70,107 @@ func (p *PodcastPage) StreamBody(qw422016 *qt422016.Writer, webroot string) {
 	if p.Podcast != nil {
 //line internal/web/templates/podcast.qtpl:15
 		qw422016.N().S(`
-	<dl>
-		<dt>Title<dt><dd>`)
+		<dl>
+			<dt>Title<dt><dd>`)
 //line internal/web/templates/podcast.qtpl:17
 		qw422016.E().S(p.Podcast.Title)
 //line internal/web/templates/podcast.qtpl:17
 		qw422016.N().S(`</dd>
-		<dt>URL<dt><dd>`)
+			<dt>URL<dt><dd><a href="`)
 //line internal/web/templates/podcast.qtpl:18
 		qw422016.E().S(p.Podcast.URL)
 //line internal/web/templates/podcast.qtpl:18
-		qw422016.N().S(`</dd>
-		<dt>Description<dt><dd>`)
+		qw422016.N().S(`">`)
+//line internal/web/templates/podcast.qtpl:18
+		qw422016.E().S(p.Podcast.URL)
+//line internal/web/templates/podcast.qtpl:18
+		qw422016.N().S(`</a></dd>
+			<dt>Description<dt><dd>`)
 //line internal/web/templates/podcast.qtpl:19
 		qw422016.E().S(p.Podcast.Description)
 //line internal/web/templates/podcast.qtpl:19
 		qw422016.N().S(`</dd>
-		<dt>Website<dt><dd>`)
-//line internal/web/templates/podcast.qtpl:20
-		qw422016.E().S(p.Podcast.Website)
-//line internal/web/templates/podcast.qtpl:20
-		qw422016.N().S(`</dd>
-	</dl>
+			<dt>Website<dt>
+			<dd>
+				`)
+//line internal/web/templates/podcast.qtpl:22
+		if p.Podcast.Website != "" {
+//line internal/web/templates/podcast.qtpl:22
+			qw422016.N().S(`
+					<a href="`)
+//line internal/web/templates/podcast.qtpl:23
+			qw422016.E().S(p.Podcast.Website)
+//line internal/web/templates/podcast.qtpl:23
+			qw422016.N().S(`">`)
+//line internal/web/templates/podcast.qtpl:23
+			qw422016.E().S(p.Podcast.Website)
+//line internal/web/templates/podcast.qtpl:23
+			qw422016.N().S(`</a>
+				`)
+//line internal/web/templates/podcast.qtpl:24
+		}
+//line internal/web/templates/podcast.qtpl:24
+		qw422016.N().S(`
+			</dd>
+		</dl>
 	`)
-//line internal/web/templates/podcast.qtpl:22
+//line internal/web/templates/podcast.qtpl:27
 	}
-//line internal/web/templates/podcast.qtpl:22
+//line internal/web/templates/podcast.qtpl:27
 	qw422016.N().S(`
 
 	`)
-//line internal/web/templates/podcast.qtpl:24
+//line internal/web/templates/podcast.qtpl:29
 	if p.Podcast.Subscribed {
-//line internal/web/templates/podcast.qtpl:24
+//line internal/web/templates/podcast.qtpl:29
 		qw422016.N().S(`
-	<form method="POST" action="unsubscribe">
-		<button type="submit">Unsubscribe</button>
-	</form>
+		<form method="POST" action="unsubscribe">
+			<button type="submit">Unsubscribe</button>
+		</form>
 	`)
-//line internal/web/templates/podcast.qtpl:28
+//line internal/web/templates/podcast.qtpl:33
 	} else {
-//line internal/web/templates/podcast.qtpl:28
-		qw422016.N().S(` 
-	<form method="POST" action="resubscribe">
-		<button type="submit">Subscribe again</button>
-	</form>
+//line internal/web/templates/podcast.qtpl:33
+		qw422016.N().S(`
+		<form method="POST" action="resubscribe">
+			<button type="submit">Subscribe again</button>
+		</form>
 	`)
-//line internal/web/templates/podcast.qtpl:32
+//line internal/web/templates/podcast.qtpl:37
 	}
-//line internal/web/templates/podcast.qtpl:32
+//line internal/web/templates/podcast.qtpl:37
 	qw422016.N().S(`
 </section>
 
 
 `)
-//line internal/web/templates/podcast.qtpl:36
+//line internal/web/templates/podcast.qtpl:41
 }
 
-//line internal/web/templates/podcast.qtpl:36
+//line internal/web/templates/podcast.qtpl:41
 func (p *PodcastPage) WriteBody(qq422016 qtio422016.Writer, webroot string) {
-//line internal/web/templates/podcast.qtpl:36
+//line internal/web/templates/podcast.qtpl:41
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line internal/web/templates/podcast.qtpl:36
+//line internal/web/templates/podcast.qtpl:41
 	p.StreamBody(qw422016, webroot)
-//line internal/web/templates/podcast.qtpl:36
+//line internal/web/templates/podcast.qtpl:41
 	qt422016.ReleaseWriter(qw422016)
-//line internal/web/templates/podcast.qtpl:36
+//line internal/web/templates/podcast.qtpl:41
 }
 
-//line internal/web/templates/podcast.qtpl:36
+//line internal/web/templates/podcast.qtpl:41
 func (p *PodcastPage) Body(webroot string) string {
-//line internal/web/templates/podcast.qtpl:36
+//line internal/web/templates/podcast.qtpl:41
 	qb422016 := qt422016.AcquireByteBuffer()
-//line internal/web/templates/podcast.qtpl:36
+//line internal/web/templates/podcast.qtpl:41
 	p.WriteBody(qb422016, webroot)
-//line internal/web/templates/podcast.qtpl:36
+//line internal/web/templates/podcast.qtpl:41
 	qs422016 := string(qb422016.B)
-//line internal/web/templates/podcast.qtpl:36
+//line internal/web/templates/podcast.qtpl:41
 	qt422016.ReleaseByteBuffer(qb422016)
-//line internal/web/templates/podcast.qtpl:36
+//line internal/web/templates/podcast.qtpl:41
 	return qs422016
-//line internal/web/templates/podcast.qtpl:36
+//line internal/web/templates/podcast.qtpl:41
 }
 
 // # vim:ft=mako:ts=4:

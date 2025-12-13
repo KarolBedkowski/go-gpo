@@ -36,13 +36,13 @@ type IndexPage struct {
 		{% for _, a := range p.LastActions %}
 			<tr>
 				<td>{%s formatDateTime(a.Timestamp) %}</td>
-				<td>{%s a.PodcastTitle %}<br/><small>{%s a.PodcastURL %}</small></td>
+				<td>{% if a.PodcastTitle != "" %}{%s a.PodcastTitle %}{% else %}<small>{%s a.PodcastURL %}</small>{% endif %}</td>
 				<td>{%s a.Episode %}</td>
 				<td>{%s a.Device %}</td>
 				<td>{%s a.Action %}</td>
 				<td>
 				{% if a.Action == "play" %}
-					{%s formatPInt32AsDuration(a.Started) %}<br/> 
+					{%s formatPInt32AsDuration(a.Started) %}<br/>
 					{%s formatPInt32AsDuration(a.Position) %}<br/>
 					{%s formatPInt32AsDuration(a.Total) %}
 				{% endif %}
@@ -50,11 +50,8 @@ type IndexPage struct {
 			</tr>
 		{% endfor %}
 		</tbody>
-  </table>
-
+	</table>
 </section>
 
 
 {% endfunc %}
-
-# vim:ft=mako:

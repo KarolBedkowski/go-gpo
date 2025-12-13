@@ -197,5 +197,3 @@ func (p *BasePage) Body(webroot string) string {
 	return qs422016
 //line internal/web/templates/basepage.qtpl:41
 }
-
-// # vim:ft=mako:

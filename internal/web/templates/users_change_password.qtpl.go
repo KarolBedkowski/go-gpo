@@ -78,42 +78,42 @@ func (p *UsersChangePassPage) StreamBody(qw422016 *qt422016.Writer, webroot stri
 	qw422016.N().S(`
 
 	<form method="post">
-		<p><label>Current password: <input name="cpass" type="password"></label></p>
-		<p><label>New password: <input name="npass1" type="password"></label></p>
-		<p><label>New password again: <input name="npass2" type="password"></label></p>
+		<fieldset>
+		<p><label>Current password:</label> <input name="cpass" type="password"></p>
+		<p><label>New password:</label> <input name="npass1" type="password"></p>
+		<p><label>New password again:</label> <input name="npass2" type="password"></p>
 		<p><button type="submit">Change</button></p>
+		</fieldset>
 	</form>
 </section>
 
 
 `)
-//line internal/web/templates/users_change_password.qtpl:25
+//line internal/web/templates/users_change_password.qtpl:27
 }
 
-//line internal/web/templates/users_change_password.qtpl:25
+//line internal/web/templates/users_change_password.qtpl:27
 func (p *UsersChangePassPage) WriteBody(qq422016 qtio422016.Writer, webroot string) {
-//line internal/web/templates/users_change_password.qtpl:25
+//line internal/web/templates/users_change_password.qtpl:27
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line internal/web/templates/users_change_password.qtpl:25
+//line internal/web/templates/users_change_password.qtpl:27
 	p.StreamBody(qw422016, webroot)
-//line internal/web/templates/users_change_password.qtpl:25
+//line internal/web/templates/users_change_password.qtpl:27
 	qt422016.ReleaseWriter(qw422016)
-//line internal/web/templates/users_change_password.qtpl:25
+//line internal/web/templates/users_change_password.qtpl:27
 }
 
-//line internal/web/templates/users_change_password.qtpl:25
+//line internal/web/templates/users_change_password.qtpl:27
 func (p *UsersChangePassPage) Body(webroot string) string {
-//line internal/web/templates/users_change_password.qtpl:25
+//line internal/web/templates/users_change_password.qtpl:27
 	qb422016 := qt422016.AcquireByteBuffer()
-//line internal/web/templates/users_change_password.qtpl:25
+//line internal/web/templates/users_change_password.qtpl:27
 	p.WriteBody(qb422016, webroot)
-//line internal/web/templates/users_change_password.qtpl:25
+//line internal/web/templates/users_change_password.qtpl:27
 	qs422016 := string(qb422016.B)
-//line internal/web/templates/users_change_password.qtpl:25
+//line internal/web/templates/users_change_password.qtpl:27
 	qt422016.ReleaseByteBuffer(qb422016)
-//line internal/web/templates/users_change_password.qtpl:25
+//line internal/web/templates/users_change_password.qtpl:27
 	return qs422016
-//line internal/web/templates/users_change_password.qtpl:25
+//line internal/web/templates/users_change_password.qtpl:27
 }
-
-// # vim:ft=mako:ts=4:

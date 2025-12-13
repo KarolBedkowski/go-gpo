@@ -31,5 +31,3 @@ type EpisodesPage struct {
 </section>
 
 {% endfunc %}
-
-# vim:ft=mako:ts=4: 

@@ -144,5 +144,3 @@ func (p *DevicesPage) Body(webroot string) string {
 	return qs422016
 //line internal/web/templates/devices.qtpl:37
 }
-
-// # vim:ft=mako:ts=4:

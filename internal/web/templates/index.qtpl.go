@@ -103,13 +103,21 @@ func (p *IndexPage) StreamBody(qw422016 *qt422016.Writer, webroot string) {
 		qw422016.N().S(`</td>
 				<td>`)
 //line internal/web/templates/index.qtpl:39
-		qw422016.E().S(a.PodcastTitle)
+		if a.PodcastTitle != "" {
 //line internal/web/templates/index.qtpl:39
-		qw422016.N().S(`<br/><small>`)
+			qw422016.E().S(a.PodcastTitle)
 //line internal/web/templates/index.qtpl:39
-		qw422016.E().S(a.PodcastURL)
+		} else {
 //line internal/web/templates/index.qtpl:39
-		qw422016.N().S(`</small></td>
+			qw422016.N().S(`<small>`)
+//line internal/web/templates/index.qtpl:39
+			qw422016.E().S(a.PodcastURL)
+//line internal/web/templates/index.qtpl:39
+			qw422016.N().S(`</small>`)
+//line internal/web/templates/index.qtpl:39
+		}
+//line internal/web/templates/index.qtpl:39
+		qw422016.N().S(`</td>
 				<td>`)
 //line internal/web/templates/index.qtpl:40
 		qw422016.E().S(a.Episode)
@@ -135,7 +143,7 @@ func (p *IndexPage) StreamBody(qw422016 *qt422016.Writer, webroot string) {
 //line internal/web/templates/index.qtpl:45
 			qw422016.E().S(formatPInt32AsDuration(a.Started))
 //line internal/web/templates/index.qtpl:45
-			qw422016.N().S(`<br/> 
+			qw422016.N().S(`<br/>
 					`)
 //line internal/web/templates/index.qtpl:46
 			qw422016.E().S(formatPInt32AsDuration(a.Position))
@@ -159,39 +167,36 @@ func (p *IndexPage) StreamBody(qw422016 *qt422016.Writer, webroot string) {
 //line internal/web/templates/index.qtpl:51
 	qw422016.N().S(`
 		</tbody>
-  </table>
-
+	</table>
 </section>
 
 
 `)
-//line internal/web/templates/index.qtpl:58
+//line internal/web/templates/index.qtpl:57
 }
 
-//line internal/web/templates/index.qtpl:58
+//line internal/web/templates/index.qtpl:57
 func (p *IndexPage) WriteBody(qq422016 qtio422016.Writer, webroot string) {
-//line internal/web/templates/index.qtpl:58
+//line internal/web/templates/index.qtpl:57
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line internal/web/templates/index.qtpl:58
+//line internal/web/templates/index.qtpl:57
 	p.StreamBody(qw422016, webroot)
-//line internal/web/templates/index.qtpl:58
+//line internal/web/templates/index.qtpl:57
 	qt422016.ReleaseWriter(qw422016)
-//line internal/web/templates/index.qtpl:58
+//line internal/web/templates/index.qtpl:57
 }
 
-//line internal/web/templates/index.qtpl:58
+//line internal/web/templates/index.qtpl:57
 func (p *IndexPage) Body(webroot string) string {
-//line internal/web/templates/index.qtpl:58
+//line internal/web/templates/index.qtpl:57
 	qb422016 := qt422016.AcquireByteBuffer()
-//line internal/web/templates/index.qtpl:58
+//line internal/web/templates/index.qtpl:57
 	p.WriteBody(qb422016, webroot)
-//line internal/web/templates/index.qtpl:58
+//line internal/web/templates/index.qtpl:57
 	qs422016 := string(qb422016.B)
-//line internal/web/templates/index.qtpl:58
+//line internal/web/templates/index.qtpl:57
 	qt422016.ReleaseByteBuffer(qb422016)
-//line internal/web/templates/index.qtpl:58
+//line internal/web/templates/index.qtpl:57
 	return qs422016
-//line internal/web/templates/index.qtpl:58
+//line internal/web/templates/index.qtpl:57
 }
-
-// # vim:ft=mako:

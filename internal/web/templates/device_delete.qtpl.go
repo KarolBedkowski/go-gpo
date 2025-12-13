@@ -103,5 +103,3 @@ func (p *DeviceDeletePage) Body(webroot string) string {
 	return qs422016
 //line internal/web/templates/device_delete.qtpl:17
 }
-
-// # vim:ft=mako:ts=4:

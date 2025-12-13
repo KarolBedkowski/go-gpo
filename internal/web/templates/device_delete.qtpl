@@ -15,5 +15,3 @@ type DeviceDeletePage struct {
 		<a href="{%s webroot %}/web/device/">Back</a> <button type="submit">Delete</button>
 	</form>
 {% endfunc %}
-
-# vim:ft=mako:ts=4:

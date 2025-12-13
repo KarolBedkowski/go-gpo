@@ -39,7 +39,3 @@ Page {
 {% code type BasePage struct {} %}
 {% func (p *BasePage) Title() %}{% endfunc %}
 {% func (p *BasePage) Body(webroot string) %}body{% endfunc %}
-
-
-
-# vim:ft=mako:

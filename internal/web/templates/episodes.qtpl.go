@@ -140,5 +140,3 @@ func (p *EpisodesPage) Body(webroot string) string {
 	return qs422016
 //line internal/web/templates/episodes.qtpl:33
 }
-
-// # vim:ft=mako:ts=4:

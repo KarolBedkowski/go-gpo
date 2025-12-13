@@ -2,8 +2,8 @@
 
 {% code
 type PodcastsPage struct {
-	Podcasts       []model.PodcastWithLastEpisode
-	SubscribedOnly bool
+    Podcasts       []model.PodcastWithLastEpisode
+    SubscribedOnly bool
 }
 %}
 
@@ -11,51 +11,57 @@ type PodcastsPage struct {
 
 {% func (p *PodcastsPage) Body(webroot string) %}
 <section>
-  <h1>Add podcast</h1>
-  <form method="POST">
-    <label>URL:</label> <input type="text" name="url" /><button type="submit">Add</button>
-  </form>
+	<h1>Add podcast</h1>
+	<form method="POST">
+		<label>URL:</label> <input type="text" name="url" /><button type="submit">Add</button>
+	</form>
 </section>
 
 <section>
-  {% if p.SubscribedOnly %}
-  <h1>Subscribed podcasts</h1>
-  <a href="{%s webroot %}/web/podcast/?showall">All podcasts</a>
-  {% else %}
-  <h1>All user podcasts</h1>
-  <a href="{%s webroot %}/web/podcast/">Subscribed only</a>
-  {% endif %}
+	{% if p.SubscribedOnly %}
+		<h1>Subscribed podcasts</h1>
+		<a href="{%s webroot %}/web/podcast/?showall">Show all podcasts</a>
+	{% else %}
+		<h1>All user podcasts</h1>
+		<a href="{%s webroot %}/web/podcast/">Show subscribed only</a>
+	{% endif %}
 
-
-  <table>
-    <thead>
-      <tr>
-        <th>Title<br/><small>URL</small></th>
-        <th>Description</th>
-        <th>Website</th>
-        <th>Last action date</th>
-        <th>&nbsp;</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for _, po := range p.Podcasts %}
-      <tr>
-        <td><a href="{%s webroot %}/web/podcast/{%d int(po.PodcastID)  %}/">{%s po.Title %}<br/><small>{%s po.URL %}</small></a></td>
-        <td>{% if !po.Subscribed  %}<small><b>Not subscribed</b></small><br/>{% endif %}{%s po.Description  %}
-        </td>
-        <td>{% if po.Website != "" %}<a href="{%s po.Website  %}">Website</a>{% endif %}</td>
-        <td>{% if po.LastEpisode != nil %}{%s formatDateTime(po.LastEpisode.Timestamp) %} ({%s po.LastEpisode.Action %}){% endif %}</td>
-        <td>
-          <a href="{%s webroot %}/web/episode/?podcast={%d int(po.PodcastID)  %}">Episodes</a>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-
+	<table>
+		<thead>
+			<tr>
+				<th>Title</th>
+				<th>Description</th>
+				<th>Last action date</th>
+				<th>&nbsp;</th>
+			</tr>
+		</thead>
+		<tbody>
+			{% for _, po := range p.Podcasts %}
+				<tr>
+					<td>
+						<a href="{%s webroot %}/web/podcast/{%d int(po.PodcastID)  %}/">
+							{% if po.Title != "" %}{%s po.Title %}{% else %}{%s po.URL %}{% endif %}
+						</a>
+					</td>
+					<td>
+						{% if !po.Subscribed  %}<small><b>Not subscribed</b></small><br/>{% endif %}
+						{%s po.Description  %}
+					</td>
+					<td>
+						{% if po.LastEpisode != nil %}
+							{%s formatDateTime(po.LastEpisode.Timestamp) %}
+							({%s po.LastEpisode.Action %})
+						{% endif %}
+					</td>
+					<td>
+						{% if po.Website != "" %}<a href="{%s po.Website  %}">Website</a><br/>{% endif %}
+						<a href="{%s webroot %}/web/episode/?podcast={%d int(po.PodcastID)  %}">Episodes</a>
+					</td>
+				</tr>
+			{% endfor %}
+		</tbody>
+	</table>
 </section>
 
 
 {% endfunc %}
-
-# vim:ft=mako:ts=4: 

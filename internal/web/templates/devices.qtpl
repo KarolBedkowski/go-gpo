@@ -35,5 +35,3 @@ type DevicesPage struct {
 
 
 {% endfunc %}
-
-# vim:ft=mako:ts=4:
