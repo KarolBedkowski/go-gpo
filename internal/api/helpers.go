@@ -17,15 +17,6 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/common"
 )
 
-// ensureList create empty list if `inp` is null or return `inp` otherwise.
-// func ensureList[T any](inp []T) []T {
-// 	if inp == nil {
-// 		return make([]T, 0)
-// 	}
-
-// 	return inp
-// }
-
 // getSinceParameter from request url query.
 func getSinceParameter(r *http.Request) (time.Time, error) {
 	since := time.Time{}
@@ -51,7 +42,6 @@ func checkAndWriteError(w http.ResponseWriter, r *http.Request, err error) {
 		status = http.StatusNotFound
 
 	case aerr.HasTag(err, aerr.InternalError):
-		// write message if is defined in error
 		status = http.StatusInternalServerError
 
 	case aerr.HasTag(err, aerr.ValidationError):

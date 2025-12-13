@@ -8,6 +8,7 @@ import (
 	"errors"
 
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/validators"
 )
 
@@ -23,7 +24,7 @@ type NewUserCmd struct {
 
 func (n *NewUserCmd) Validate() error {
 	if !validators.IsValidUserName(n.UserName) {
-		return aerr.ErrValidation.WithUserMsg("invalid username")
+		return common.ErrInvalidUser.WithUserMsg("invalid username")
 	}
 
 	if n.Password == "" {
@@ -51,7 +52,7 @@ type ChangeUserPasswordCmd struct {
 
 func (c *ChangeUserPasswordCmd) Validate() error {
 	if !validators.IsValidUserName(c.UserName) {
-		return aerr.ErrValidation.WithUserMsg("invalid username")
+		return common.ErrInvalidUser.WithUserMsg("invalid username")
 	}
 
 	if c.Password == "" {
@@ -74,7 +75,7 @@ type LockAccountCmd struct {
 
 func (l *LockAccountCmd) Validate() error {
 	if !validators.IsValidUserName(l.UserName) {
-		return aerr.ErrValidation.WithUserMsg("invalid username")
+		return common.ErrInvalidUser.WithUserMsg("invalid username")
 	}
 
 	return nil
@@ -89,7 +90,7 @@ type DeleteUserCmd struct {
 
 func (d *DeleteUserCmd) Validate() error {
 	if !validators.IsValidUserName(d.UserName) {
-		return aerr.ErrValidation.WithUserMsg("invalid username")
+		return common.ErrInvalidUser.WithUserMsg("invalid username")
 	}
 
 	return nil

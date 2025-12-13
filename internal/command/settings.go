@@ -10,6 +10,7 @@ package command
 import (
 	"github.com/rs/zerolog"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/validators"
 )
 
@@ -38,7 +39,7 @@ func NewSetFavoriteEpisodeCmd(username, podcast, episode string) ChangeSettingsC
 
 func (c *ChangeSettingsCmd) Validate() error {
 	if !validators.IsValidUserName(c.UserName) {
-		return aerr.ErrValidation.WithUserMsg("invalid username").WithMeta("cmd", c)
+		return common.ErrInvalidUser.WithUserMsg("invalid username").WithMeta("cmd", c)
 	}
 
 	switch c.Scope {
@@ -46,17 +47,17 @@ func (c *ChangeSettingsCmd) Validate() error {
 		// no extra check
 	case "device":
 		if !validators.IsValidDevName(c.DeviceName) {
-			return aerr.ErrValidation.WithMsg("invalid device name").WithMeta("cmd", c)
+			return common.ErrInvalidDevice.WithMeta("cmd", c)
 		}
 	case "episode":
 		if c.Episode == "" {
-			return aerr.ErrValidation.WithMsg("episode can't be empty").WithMeta("cmd", c)
+			return common.ErrInvalidEpisode.WithUserMsg("episode can't be empty").WithMeta("cmd", c)
 		}
 
 		fallthrough
 	case "podcast":
 		if c.Podcast == "" {
-			return aerr.ErrValidation.WithMsg("podcast can't be empty").WithMeta("cmd", c)
+			return common.ErrInvalidPodcast.WithUserMsg("podcast can't be empty").WithMeta("cmd", c)
 		}
 	default:
 		return aerr.ErrValidation.WithMsg("invalid scope").WithMeta("cmd", c)

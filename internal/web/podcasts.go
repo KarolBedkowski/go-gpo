@@ -141,7 +141,7 @@ func (p podcastPages) podcastUnsubscribe(
 	logger *zerolog.Logger,
 ) {
 	podcast, status := p.podcastFromURLParam(ctx, r, logger)
-	if status > 0 {
+	if status > 0 || podcast == nil {
 		srvsupport.WriteError(w, r, status, "")
 
 		return
@@ -171,7 +171,7 @@ func (p podcastPages) podcastResubscribe(
 	logger *zerolog.Logger,
 ) {
 	podcast, status := p.podcastFromURLParam(ctx, r, logger)
-	if status > 0 {
+	if status > 0 || podcast == nil {
 		srvsupport.WriteError(w, r, status, "")
 
 		return

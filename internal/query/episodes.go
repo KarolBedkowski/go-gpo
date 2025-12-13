@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
-	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/validators"
 )
 
@@ -25,7 +25,11 @@ type GetEpisodesQuery struct {
 
 func (q *GetEpisodesQuery) Validate() error {
 	if !validators.IsValidUserName(q.UserName) {
-		return aerr.ErrValidation.WithUserMsg("invalid username")
+		return common.ErrInvalidUser.WithUserMsg("invalid username")
+	}
+
+	if q.DeviceName != "" && !validators.IsValidDevName(q.DeviceName) {
+		return common.ErrInvalidDevice.WithUserMsg("invalid device name")
 	}
 
 	return nil
@@ -52,11 +56,11 @@ type GetEpisodesByPodcastQuery struct {
 
 func (q *GetEpisodesByPodcastQuery) Validate() error {
 	if !validators.IsValidUserName(q.UserName) {
-		return aerr.ErrValidation.WithUserMsg("invalid username")
+		return common.ErrInvalidUser.WithUserMsg("invalid username")
 	}
 
 	if q.PodcastID < 0 {
-		return aerr.ErrValidation.WithMsg("invalid podcast id")
+		return common.ErrInvalidPodcast.WithUserMsg("invalid podcast id")
 	}
 
 	return nil
@@ -81,11 +85,11 @@ type GetEpisodeUpdatesQuery struct {
 
 func (q *GetEpisodeUpdatesQuery) Validate() error {
 	if !validators.IsValidUserName(q.UserName) {
-		return aerr.ErrValidation.WithUserMsg("invalid username")
+		return common.ErrInvalidUser.WithUserMsg("invalid username")
 	}
 
 	if q.DeviceName != "" && !validators.IsValidDevName(q.DeviceName) {
-		return aerr.ErrValidation.WithUserMsg("invalid username")
+		return common.ErrInvalidDevice.WithUserMsg("invalid device name")
 	}
 
 	return nil
@@ -107,7 +111,7 @@ type GetLastEpisodesActionsQuery struct {
 
 func (q *GetLastEpisodesActionsQuery) Validate() error {
 	if !validators.IsValidUserName(q.UserName) {
-		return aerr.ErrValidation.WithUserMsg("invalid username")
+		return common.ErrInvalidUser.WithUserMsg("invalid username")
 	}
 
 	return nil

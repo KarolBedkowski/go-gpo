@@ -8,6 +8,7 @@ package command
 //
 import (
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/validators"
 )
@@ -19,16 +20,28 @@ type AddActionCmd struct {
 
 func (u *AddActionCmd) Validate() error {
 	if !validators.IsValidUserName(u.UserName) {
-		return aerr.ErrValidation.WithUserMsg("invalid username").WithMeta("cmd", u)
+		return common.ErrInvalidUser.WithUserMsg("invalid username").WithMeta("cmd", u)
 	}
 
 	if len(u.Actions) == 0 {
-		return aerr.ErrValidation.WithMsg("no actions to add").WithMeta("cmd", u)
+		return aerr.ErrValidation.WithUserMsg("no actions to add").WithMeta("cmd", u)
 	}
 
-	for _, a := range u.Actions {
-		if !validators.IsValidEpisodeAction(a.Action) {
-			return aerr.ErrValidation.WithMsg("invalid action").WithMeta("action", a.Action, "cmd", u)
+	for _, action := range u.Actions {
+		if action.URL == "" {
+			return aerr.ErrValidation.WithUserMsg("invalid (empty) action episode url").WithMeta("cmd", u)
+		}
+
+		if action.Podcast == nil {
+			return aerr.ErrValidation.WithUserMsg("invalid (empty) podcast in action").WithMeta("cmd", u)
+		}
+
+		if action.Podcast.URL == "" {
+			return common.ErrInvalidPodcast.WithUserMsg("invalid (empty) action podcast url").WithMeta("cmd", u)
+		}
+
+		if !validators.IsValidEpisodeAction(action.Action) {
+			return aerr.ErrValidation.WithUserMsg("invalid action").WithMeta("action", action.Action, "cmd", u)
 		}
 	}
 

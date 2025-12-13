@@ -10,6 +10,7 @@ package query
 import (
 	"github.com/rs/zerolog"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/validators"
 )
 
@@ -23,7 +24,7 @@ type SettingsQuery struct {
 
 func (s *SettingsQuery) Validate() error {
 	if !validators.IsValidUserName(s.UserName) {
-		return aerr.ErrValidation.WithUserMsg("invalid username")
+		return common.ErrInvalidUser.WithUserMsg("invalid username")
 	}
 
 	switch s.Scope {
@@ -31,20 +32,20 @@ func (s *SettingsQuery) Validate() error {
 		// no extra check
 	case "device":
 		if !validators.IsValidDevName(s.DeviceName) {
-			return aerr.ErrValidation.WithMsg("invalid device name")
+			return common.ErrInvalidDevice.WithUserMsg("invalid device name")
 		}
 	case "episode":
 		if s.Episode == "" {
-			return aerr.ErrValidation.WithMsg("episode can't be empty")
+			return common.ErrInvalidEpisode.WithUserMsg("episode can't be empty")
 		}
 
 		fallthrough
 	case "podcast":
 		if s.Podcast == "" {
-			return aerr.ErrValidation.WithMsg("podcast can't be empty")
+			return common.ErrInvalidPodcast.WithUserMsg("podcast can't be empty")
 		}
 	default:
-		return aerr.ErrValidation.WithMsg("invalid scope")
+		return aerr.ErrValidation.WithUserMsg("invalid scope")
 	}
 
 	return nil

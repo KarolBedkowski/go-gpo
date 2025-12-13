@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
-	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/validators"
 )
 
@@ -21,7 +21,7 @@ type GetUserSubscriptionsQuery struct {
 
 func (q *GetUserSubscriptionsQuery) Validate() error {
 	if !validators.IsValidUserName(q.UserName) {
-		return aerr.ErrValidation.WithUserMsg("invalid username")
+		return common.ErrInvalidUser.WithUserMsg("invalid username")
 	}
 
 	return nil
@@ -42,11 +42,11 @@ type GetSubscriptionsQuery struct {
 
 func (q *GetSubscriptionsQuery) Validate() error {
 	if !validators.IsValidUserName(q.UserName) {
-		return aerr.ErrValidation.WithUserMsg("invalid username")
+		return common.ErrInvalidUser.WithUserMsg("invalid username")
 	}
 
 	if !validators.IsValidDevName(q.DeviceName) {
-		return aerr.ErrValidation.WithUserMsg("invalid username")
+		return common.ErrInvalidDevice.WithUserMsg("invalid device name")
 	}
 
 	return nil
@@ -68,7 +68,7 @@ type GetSubscriptionChangesQuery struct {
 
 func (q *GetSubscriptionChangesQuery) Validate() error {
 	if !validators.IsValidUserName(q.UserName) {
-		return aerr.ErrValidation.WithUserMsg("invalid username")
+		return common.ErrInvalidUser.WithUserMsg("invalid username")
 	}
 
 	return nil
