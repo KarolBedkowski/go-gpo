@@ -1,3 +1,4 @@
+//nolint:nilaway
 package aerr
 
 //
@@ -53,6 +54,22 @@ func TestUniqueList(t *testing.T) {
 	assert.Equal(t, ulist[1], "b")
 	assert.Equal(t, ulist[2], "c")
 	assert.Equal(t, ulist[3], "d")
+}
+
+func TestUniqueList2(t *testing.T) {
+	ul := make(uniqueList, 0)
+	ul.append("1")
+	ul.append("2")
+	ul.append("3")
+
+	assert.Equal(t, ul, []string{"1", "2", "3"})
+
+	ul.append("1")
+	ul.append("2")
+	ul.append("4")
+	ul.append("5")
+
+	assert.Equal(t, ul, []string{"1", "2", "3", "4", "5"})
 }
 
 func TestAppErrorWrap(t *testing.T) {

@@ -360,7 +360,7 @@ type uniqueList []string
 func (u *uniqueList) append(value ...string) {
 	for _, v := range value {
 		if !slices.Contains(*u, v) {
-			*u = append(*u, v)
+			*u = append(*u, v) //nolint:nilaway
 		}
 	}
 }
