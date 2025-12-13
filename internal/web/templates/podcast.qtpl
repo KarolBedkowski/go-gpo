@@ -8,7 +8,7 @@ type PodcastPage struct {
 
 {% func (p *PodcastPage) Title() %}Podcasts{% endfunc %}
 
-{% func (p *PodcastPage) Body(webroot string) %}
+{% func (p *PodcastPage) Body(pctx *PageContext) %}
 <section>
 	<h1>Podcast</h1>
 

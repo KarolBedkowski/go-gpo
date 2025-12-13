@@ -25,13 +25,13 @@ import (
 
 type indexPage struct {
 	episodeSrv *service.EpisodesSrv
-	webroot    string
+	renderer   *nt.Renderer
 }
 
 func newIndexPage(i do.Injector) (indexPage, error) {
 	return indexPage{
 		episodeSrv: do.MustInvoke[*service.EpisodesSrv](i),
-		webroot:    do.MustInvokeNamed[string](i, "server.webroot"),
+		renderer:   do.MustInvoke[*nt.Renderer](i),
 	}, nil
 }
 
@@ -62,5 +62,5 @@ func (i indexPage) indexPage(ctx context.Context, writer http.ResponseWriter, r 
 
 	slices.Reverse(lastactions)
 
-	nt.WritePageTemplate(writer, &nt.IndexPage{LastActions: lastactions}, i.webroot)
+	i.renderer.WritePage(writer, &nt.IndexPage{LastActions: lastactions})
 }

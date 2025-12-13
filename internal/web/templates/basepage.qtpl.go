@@ -26,16 +26,16 @@ type Page interface {
 //line internal/web/templates/basepage.qtpl:3
 	WriteTitle(qq422016 qtio422016.Writer)
 //line internal/web/templates/basepage.qtpl:3
-	Body(webroot string) string
+	Body(pctx *PageContext) string
 //line internal/web/templates/basepage.qtpl:3
-	StreamBody(qw422016 *qt422016.Writer, webroot string)
+	StreamBody(qw422016 *qt422016.Writer, pctx *PageContext)
 //line internal/web/templates/basepage.qtpl:3
-	WriteBody(qq422016 qtio422016.Writer, webroot string)
+	WriteBody(qq422016 qtio422016.Writer, pctx *PageContext)
 //line internal/web/templates/basepage.qtpl:3
 }
 
 //line internal/web/templates/basepage.qtpl:9
-func StreamPageTemplate(qw422016 *qt422016.Writer, p Page, webroot string) {
+func StreamPageTemplate(qw422016 *qt422016.Writer, p Page, pctx *PageContext) {
 //line internal/web/templates/basepage.qtpl:9
 	qw422016.N().S(`
 <!doctype html>
@@ -76,18 +76,18 @@ func StreamPageTemplate(qw422016 *qt422016.Writer, p Page, webroot string) {
 	<header>
 		<a href="`)
 //line internal/web/templates/basepage.qtpl:25
-	qw422016.E().S(webroot)
+	qw422016.E().S(pctx.Webroot)
 //line internal/web/templates/basepage.qtpl:25
 	qw422016.N().S(`/web/"><big><big>go-gpo</big></big></a>
 		&emsp;
 		<a href="`)
 //line internal/web/templates/basepage.qtpl:27
-	qw422016.E().S(webroot)
+	qw422016.E().S(pctx.Webroot)
 //line internal/web/templates/basepage.qtpl:27
 	qw422016.N().S(`/web/device/">Devices</a> |
 		<a href="`)
 //line internal/web/templates/basepage.qtpl:28
-	qw422016.E().S(webroot)
+	qw422016.E().S(pctx.Webroot)
 //line internal/web/templates/basepage.qtpl:28
 	qw422016.N().S(`/web/podcast/">Podcasts</a>
 	</header>
@@ -95,7 +95,7 @@ func StreamPageTemplate(qw422016 *qt422016.Writer, p Page, webroot string) {
 	<content>
 	`)
 //line internal/web/templates/basepage.qtpl:32
-	p.StreamBody(qw422016, webroot)
+	p.StreamBody(qw422016, pctx)
 //line internal/web/templates/basepage.qtpl:32
 	qw422016.N().S(`
 	</content>
@@ -106,22 +106,22 @@ func StreamPageTemplate(qw422016 *qt422016.Writer, p Page, webroot string) {
 }
 
 //line internal/web/templates/basepage.qtpl:36
-func WritePageTemplate(qq422016 qtio422016.Writer, p Page, webroot string) {
+func WritePageTemplate(qq422016 qtio422016.Writer, p Page, pctx *PageContext) {
 //line internal/web/templates/basepage.qtpl:36
 	qw422016 := qt422016.AcquireWriter(qq422016)
 //line internal/web/templates/basepage.qtpl:36
-	StreamPageTemplate(qw422016, p, webroot)
+	StreamPageTemplate(qw422016, p, pctx)
 //line internal/web/templates/basepage.qtpl:36
 	qt422016.ReleaseWriter(qw422016)
 //line internal/web/templates/basepage.qtpl:36
 }
 
 //line internal/web/templates/basepage.qtpl:36
-func PageTemplate(p Page, webroot string) string {
+func PageTemplate(p Page, pctx *PageContext) string {
 //line internal/web/templates/basepage.qtpl:36
 	qb422016 := qt422016.AcquireByteBuffer()
 //line internal/web/templates/basepage.qtpl:36
-	WritePageTemplate(qb422016, p, webroot)
+	WritePageTemplate(qb422016, p, pctx)
 //line internal/web/templates/basepage.qtpl:36
 	qs422016 := string(qb422016.B)
 //line internal/web/templates/basepage.qtpl:36
@@ -166,29 +166,29 @@ func (p *BasePage) Title() string {
 }
 
 //line internal/web/templates/basepage.qtpl:41
-func (p *BasePage) StreamBody(qw422016 *qt422016.Writer, webroot string) {
+func (p *BasePage) StreamBody(qw422016 *qt422016.Writer, pctx *PageContext) {
 //line internal/web/templates/basepage.qtpl:41
 	qw422016.N().S(`body`)
 //line internal/web/templates/basepage.qtpl:41
 }
 
 //line internal/web/templates/basepage.qtpl:41
-func (p *BasePage) WriteBody(qq422016 qtio422016.Writer, webroot string) {
+func (p *BasePage) WriteBody(qq422016 qtio422016.Writer, pctx *PageContext) {
 //line internal/web/templates/basepage.qtpl:41
 	qw422016 := qt422016.AcquireWriter(qq422016)
 //line internal/web/templates/basepage.qtpl:41
-	p.StreamBody(qw422016, webroot)
+	p.StreamBody(qw422016, pctx)
 //line internal/web/templates/basepage.qtpl:41
 	qt422016.ReleaseWriter(qw422016)
 //line internal/web/templates/basepage.qtpl:41
 }
 
 //line internal/web/templates/basepage.qtpl:41
-func (p *BasePage) Body(webroot string) string {
+func (p *BasePage) Body(pctx *PageContext) string {
 //line internal/web/templates/basepage.qtpl:41
 	qb422016 := qt422016.AcquireByteBuffer()
 //line internal/web/templates/basepage.qtpl:41
-	p.WriteBody(qb422016, webroot)
+	p.WriteBody(qb422016, pctx)
 //line internal/web/templates/basepage.qtpl:41
 	qs422016 := string(qb422016.B)
 //line internal/web/templates/basepage.qtpl:41

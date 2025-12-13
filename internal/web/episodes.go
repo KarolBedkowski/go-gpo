@@ -25,13 +25,13 @@ import (
 
 type episodePages struct {
 	episodeSrv *service.EpisodesSrv
-	webroot    string
+	renderer   *nt.Renderer
 }
 
 func newEpisodePages(i do.Injector) (episodePages, error) {
 	return episodePages{
 		episodeSrv: do.MustInvoke[*service.EpisodesSrv](i),
-		webroot:    do.MustInvokeNamed[string](i, "server.webroot"),
+		renderer:   do.MustInvoke[*nt.Renderer](i),
 	}, nil
 }
 
@@ -75,5 +75,5 @@ func (e episodePages) list(ctx context.Context, w http.ResponseWriter, r *http.R
 		return
 	}
 
-	nt.WritePageTemplate(w, &nt.EpisodesPage{Episodes: episodes}, e.webroot)
+	e.renderer.WritePage(w, &nt.EpisodesPage{Episodes: episodes})
 }

@@ -25,13 +25,13 @@ import (
 
 type devicePages struct {
 	deviceSrv *service.DevicesSrv
-	webroot   string
+	renderer  *nt.Renderer
 }
 
 func newDevicePages(i do.Injector) (devicePages, error) {
 	return devicePages{
 		deviceSrv: do.MustInvoke[*service.DevicesSrv](i),
-		webroot:   do.MustInvokeNamed[string](i, "server.webroot"),
+		renderer:  do.MustInvoke[*nt.Renderer](i),
 	}, nil
 }
 
@@ -55,7 +55,7 @@ func (d devicePages) list(ctx context.Context, w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	nt.WritePageTemplate(w, &nt.DevicesPage{Devices: devices}, d.webroot)
+	d.renderer.WritePage(w, &nt.DevicesPage{Devices: devices})
 }
 
 func (d devicePages) deleteGet(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
@@ -66,7 +66,7 @@ func (d devicePages) deleteGet(ctx context.Context, w http.ResponseWriter, r *ht
 		return
 	}
 
-	nt.WritePageTemplate(w, &nt.DeviceDeletePage{DeviceName: devicename}, d.webroot)
+	d.renderer.WritePage(w, &nt.DeviceDeletePage{DeviceName: devicename})
 }
 
 func (d devicePages) deletePost(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {

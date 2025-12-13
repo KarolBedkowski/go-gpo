@@ -59,7 +59,7 @@ func (p *DevicesPage) Title() string {
 }
 
 //line internal/web/templates/devices.qtpl:11
-func (p *DevicesPage) StreamBody(qw422016 *qt422016.Writer, webroot string) {
+func (p *DevicesPage) StreamBody(qw422016 *qt422016.Writer, pctx *PageContext) {
 //line internal/web/templates/devices.qtpl:11
 	qw422016.N().S(`
 <section>
@@ -97,7 +97,7 @@ func (p *DevicesPage) StreamBody(qw422016 *qt422016.Writer, webroot string) {
 		qw422016.N().S(`</td>
 				<td><a href="`)
 //line internal/web/templates/devices.qtpl:29
-		qw422016.E().S(webroot)
+		qw422016.E().S(pctx.Webroot)
 //line internal/web/templates/devices.qtpl:29
 		qw422016.N().S(`/web/device/`)
 //line internal/web/templates/devices.qtpl:29
@@ -120,22 +120,22 @@ func (p *DevicesPage) StreamBody(qw422016 *qt422016.Writer, webroot string) {
 }
 
 //line internal/web/templates/devices.qtpl:37
-func (p *DevicesPage) WriteBody(qq422016 qtio422016.Writer, webroot string) {
+func (p *DevicesPage) WriteBody(qq422016 qtio422016.Writer, pctx *PageContext) {
 //line internal/web/templates/devices.qtpl:37
 	qw422016 := qt422016.AcquireWriter(qq422016)
 //line internal/web/templates/devices.qtpl:37
-	p.StreamBody(qw422016, webroot)
+	p.StreamBody(qw422016, pctx)
 //line internal/web/templates/devices.qtpl:37
 	qt422016.ReleaseWriter(qw422016)
 //line internal/web/templates/devices.qtpl:37
 }
 
 //line internal/web/templates/devices.qtpl:37
-func (p *DevicesPage) Body(webroot string) string {
+func (p *DevicesPage) Body(pctx *PageContext) string {
 //line internal/web/templates/devices.qtpl:37
 	qb422016 := qt422016.AcquireByteBuffer()
 //line internal/web/templates/devices.qtpl:37
-	p.WriteBody(qb422016, webroot)
+	p.WriteBody(qb422016, pctx)
 //line internal/web/templates/devices.qtpl:37
 	qs422016 := string(qb422016.B)
 //line internal/web/templates/devices.qtpl:37

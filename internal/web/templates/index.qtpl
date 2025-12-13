@@ -8,12 +8,12 @@ type IndexPage struct {
 
 {% func (p *IndexPage) Title() %}Index{% endfunc %}
 
-{% func (p *IndexPage) Body(webroot string) %}
+{% func (p *IndexPage) Body(pctx *PageContext) %}
 <section>
 	<h2>User</h2>
 
 	<ul>
-		<li><a href="{%s webroot %}/web/user/password">Change user password</a></li>
+		<li><a href="{%s pctx.Webroot %}/web/user/password">Change user password</a></li>
 	</ul>
 </section>
 

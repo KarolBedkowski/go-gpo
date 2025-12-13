@@ -59,7 +59,7 @@ func (p *IndexPage) Title() string {
 }
 
 //line internal/web/templates/index.qtpl:11
-func (p *IndexPage) StreamBody(qw422016 *qt422016.Writer, webroot string) {
+func (p *IndexPage) StreamBody(qw422016 *qt422016.Writer, pctx *PageContext) {
 //line internal/web/templates/index.qtpl:11
 	qw422016.N().S(`
 <section>
@@ -68,7 +68,7 @@ func (p *IndexPage) StreamBody(qw422016 *qt422016.Writer, webroot string) {
 	<ul>
 		<li><a href="`)
 //line internal/web/templates/index.qtpl:16
-	qw422016.E().S(webroot)
+	qw422016.E().S(pctx.Webroot)
 //line internal/web/templates/index.qtpl:16
 	qw422016.N().S(`/web/user/password">Change user password</a></li>
 	</ul>
@@ -176,22 +176,22 @@ func (p *IndexPage) StreamBody(qw422016 *qt422016.Writer, webroot string) {
 }
 
 //line internal/web/templates/index.qtpl:57
-func (p *IndexPage) WriteBody(qq422016 qtio422016.Writer, webroot string) {
+func (p *IndexPage) WriteBody(qq422016 qtio422016.Writer, pctx *PageContext) {
 //line internal/web/templates/index.qtpl:57
 	qw422016 := qt422016.AcquireWriter(qq422016)
 //line internal/web/templates/index.qtpl:57
-	p.StreamBody(qw422016, webroot)
+	p.StreamBody(qw422016, pctx)
 //line internal/web/templates/index.qtpl:57
 	qt422016.ReleaseWriter(qw422016)
 //line internal/web/templates/index.qtpl:57
 }
 
 //line internal/web/templates/index.qtpl:57
-func (p *IndexPage) Body(webroot string) string {
+func (p *IndexPage) Body(pctx *PageContext) string {
 //line internal/web/templates/index.qtpl:57
 	qb422016 := qt422016.AcquireByteBuffer()
 //line internal/web/templates/index.qtpl:57
-	p.WriteBody(qb422016, webroot)
+	p.WriteBody(qb422016, pctx)
 //line internal/web/templates/index.qtpl:57
 	qs422016 := string(qb422016.B)
 //line internal/web/templates/index.qtpl:57

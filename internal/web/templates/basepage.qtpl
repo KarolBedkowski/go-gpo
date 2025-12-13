@@ -2,11 +2,11 @@
 {% interface
 Page {
 	Title()
-	Body(webroot string)
+	Body(pctx *PageContext)
 }
 %}
 
-{% func PageTemplate(p Page, webroot string) %}
+{% func PageTemplate(p Page, pctx *PageContext) %}
 <!doctype html>
 <html lang="en">
 <head>
@@ -22,14 +22,14 @@ Page {
 </head>
 <body>
 	<header>
-		<a href="{%s webroot %}/web/"><big><big>go-gpo</big></big></a>
+		<a href="{%s pctx.Webroot %}/web/"><big><big>go-gpo</big></big></a>
 		&emsp;
-		<a href="{%s webroot %}/web/device/">Devices</a> |
-		<a href="{%s webroot %}/web/podcast/">Podcasts</a>
+		<a href="{%s pctx.Webroot %}/web/device/">Devices</a> |
+		<a href="{%s pctx.Webroot %}/web/podcast/">Podcasts</a>
 	</header>
 	<br/>
 	<content>
-	{%= p.Body(webroot) %}
+	{%= p.Body(pctx) %}
 	</content>
 </body>
 </html>
@@ -38,4 +38,4 @@ Page {
 
 {% code type BasePage struct {} %}
 {% func (p *BasePage) Title() %}{% endfunc %}
-{% func (p *BasePage) Body(webroot string) %}body{% endfunc %}
+{% func (p *BasePage) Body(pctx *PageContext) %}body{% endfunc %}

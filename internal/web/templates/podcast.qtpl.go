@@ -59,7 +59,7 @@ func (p *PodcastPage) Title() string {
 }
 
 //line internal/web/templates/podcast.qtpl:11
-func (p *PodcastPage) StreamBody(qw422016 *qt422016.Writer, webroot string) {
+func (p *PodcastPage) StreamBody(qw422016 *qt422016.Writer, pctx *PageContext) {
 //line internal/web/templates/podcast.qtpl:11
 	qw422016.N().S(`
 <section>
@@ -148,22 +148,22 @@ func (p *PodcastPage) StreamBody(qw422016 *qt422016.Writer, webroot string) {
 }
 
 //line internal/web/templates/podcast.qtpl:41
-func (p *PodcastPage) WriteBody(qq422016 qtio422016.Writer, webroot string) {
+func (p *PodcastPage) WriteBody(qq422016 qtio422016.Writer, pctx *PageContext) {
 //line internal/web/templates/podcast.qtpl:41
 	qw422016 := qt422016.AcquireWriter(qq422016)
 //line internal/web/templates/podcast.qtpl:41
-	p.StreamBody(qw422016, webroot)
+	p.StreamBody(qw422016, pctx)
 //line internal/web/templates/podcast.qtpl:41
 	qt422016.ReleaseWriter(qw422016)
 //line internal/web/templates/podcast.qtpl:41
 }
 
 //line internal/web/templates/podcast.qtpl:41
-func (p *PodcastPage) Body(webroot string) string {
+func (p *PodcastPage) Body(pctx *PageContext) string {
 //line internal/web/templates/podcast.qtpl:41
 	qb422016 := qt422016.AcquireByteBuffer()
 //line internal/web/templates/podcast.qtpl:41
-	p.WriteBody(qb422016, webroot)
+	p.WriteBody(qb422016, pctx)
 //line internal/web/templates/podcast.qtpl:41
 	qs422016 := string(qb422016.B)
 //line internal/web/templates/podcast.qtpl:41

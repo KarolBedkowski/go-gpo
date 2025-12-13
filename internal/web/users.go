@@ -24,13 +24,13 @@ import (
 
 type userPages struct {
 	usersSrv *service.UsersSrv
-	webroot  string
+	renderer *nt.Renderer
 }
 
 func newUserPages(i do.Injector) (userPages, error) {
 	return userPages{
 		usersSrv: do.MustInvoke[*service.UsersSrv](i),
-		webroot:  do.MustInvokeNamed[string](i, "server.webroot"),
+		renderer: do.MustInvoke[*nt.Renderer](i),
 	}, nil
 }
 
@@ -61,7 +61,7 @@ func (u userPages) changePassword(
 		msg = u.doChangePassword(ctx, r, logger)
 	}
 
-	nt.WritePageTemplate(w, &nt.UsersChangePassPage{Msg: msg}, u.webroot)
+	u.renderer.WritePage(w, &nt.UsersChangePassPage{Msg: msg})
 }
 
 func (u userPages) doChangePassword(ctx context.Context, r *http.Request, logger *zerolog.Logger) string {

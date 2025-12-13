@@ -31,6 +31,7 @@ type podcastPages struct {
 	podcastsSrv      *service.PodcastsSrv
 	subscriptionsSrv *service.SubscriptionsSrv
 	webroot          string
+	renderer         *nt.Renderer
 }
 
 func newPodcastPages(i do.Injector) (podcastPages, error) {
@@ -38,6 +39,7 @@ func newPodcastPages(i do.Injector) (podcastPages, error) {
 		podcastsSrv:      do.MustInvoke[*service.PodcastsSrv](i),
 		subscriptionsSrv: do.MustInvoke[*service.SubscriptionsSrv](i),
 		webroot:          do.MustInvokeNamed[string](i, "server.webroot"),
+		renderer:         do.MustInvoke[*nt.Renderer](i),
 	}, nil
 }
 
@@ -67,7 +69,7 @@ func (p podcastPages) list(ctx context.Context, w http.ResponseWriter, r *http.R
 		return
 	}
 
-	nt.WritePageTemplate(w, &nt.PodcastsPage{Podcasts: podcasts, SubscribedOnly: subscribedOnly}, p.webroot)
+	p.renderer.WritePage(w, &nt.PodcastsPage{Podcasts: podcasts, SubscribedOnly: subscribedOnly})
 }
 
 func (p podcastPages) addPodcast(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
@@ -112,7 +114,7 @@ func (p podcastPages) podcastGet(ctx context.Context, w http.ResponseWriter, r *
 		return
 	}
 
-	nt.WritePageTemplate(w, &nt.PodcastPage{Podcast: podcast}, p.webroot)
+	p.renderer.WritePage(w, &nt.PodcastPage{Podcast: podcast})
 }
 
 func (p podcastPages) podcastUnsubscribe(

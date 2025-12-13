@@ -59,7 +59,7 @@ func (p *EpisodesPage) Title() string {
 }
 
 //line internal/web/templates/episodes.qtpl:11
-func (p *EpisodesPage) StreamBody(qw422016 *qt422016.Writer, webroot string) {
+func (p *EpisodesPage) StreamBody(qw422016 *qt422016.Writer, pctx *PageContext) {
 //line internal/web/templates/episodes.qtpl:11
 	qw422016.N().S(`
 <section>
@@ -116,22 +116,22 @@ func (p *EpisodesPage) StreamBody(qw422016 *qt422016.Writer, webroot string) {
 }
 
 //line internal/web/templates/episodes.qtpl:33
-func (p *EpisodesPage) WriteBody(qq422016 qtio422016.Writer, webroot string) {
+func (p *EpisodesPage) WriteBody(qq422016 qtio422016.Writer, pctx *PageContext) {
 //line internal/web/templates/episodes.qtpl:33
 	qw422016 := qt422016.AcquireWriter(qq422016)
 //line internal/web/templates/episodes.qtpl:33
-	p.StreamBody(qw422016, webroot)
+	p.StreamBody(qw422016, pctx)
 //line internal/web/templates/episodes.qtpl:33
 	qt422016.ReleaseWriter(qw422016)
 //line internal/web/templates/episodes.qtpl:33
 }
 
 //line internal/web/templates/episodes.qtpl:33
-func (p *EpisodesPage) Body(webroot string) string {
+func (p *EpisodesPage) Body(pctx *PageContext) string {
 //line internal/web/templates/episodes.qtpl:33
 	qb422016 := qt422016.AcquireByteBuffer()
 //line internal/web/templates/episodes.qtpl:33
-	p.WriteBody(qb422016, webroot)
+	p.WriteBody(qb422016, pctx)
 //line internal/web/templates/episodes.qtpl:33
 	qs422016 := string(qb422016.B)
 //line internal/web/templates/episodes.qtpl:33
