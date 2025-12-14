@@ -1,0 +1,42 @@
+
+{% interface
+Page {
+	Title()
+	Body(pctx *PageContext)
+}
+%}
+
+{% func PageTemplate(p Page, pctx *PageContext) %}
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" href="/web/static/main.css" type="text/css">
+	{% code t := p.Title() %}
+	{% if t != "" %}
+	<title>go-gpo - {%s t %}</title>
+	{% else %}
+	<title>go-gpo</title>
+	{% endif %}
+</head>
+<body>
+	<header>
+		<a href="{%s pctx.Webroot %}/web/"><big><big>go-gpo</big></big></a>
+		&emsp;
+		<a href="{%s pctx.Webroot %}/web/device/">Devices</a> |
+		<a href="{%s pctx.Webroot %}/web/podcast/">Podcasts</a> |
+		<a href="{%s pctx.Webroot %}/web/user/">User</a>
+	</header>
+	<br/>
+	<content>
+	{%= p.Body(pctx) %}
+	</content>
+</body>
+</html>
+{% endfunc %}
+
+
+{% code type BasePage struct {} %}
+{% func (p *BasePage) Title() %}{% endfunc %}
+{% func (p *BasePage) Body(pctx *PageContext) %}body{% endfunc %}

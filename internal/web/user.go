@@ -19,26 +19,37 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
+	nt "gitlab.com/kabes/go-gpo/internal/web/templates"
 )
 
 type userPages struct {
 	usersSrv *service.UsersSrv
-	template templates
+	renderer *nt.Renderer
 }
 
 func newUserPages(i do.Injector) (userPages, error) {
 	return userPages{
 		usersSrv: do.MustInvoke[*service.UsersSrv](i),
-		template: do.MustInvoke[templates](i),
+		renderer: do.MustInvoke[*nt.Renderer](i),
 	}, nil
 }
 
 func (u userPages) Routes() *chi.Mux {
 	r := chi.NewRouter()
+	r.Get(`/`, srvsupport.Wrap(u.userPage))
 	r.Get(`/password`, srvsupport.Wrap(u.changePassword))
 	r.Post(`/password`, srvsupport.Wrap(u.changePassword))
 
 	return r
+}
+
+func (u userPages) userPage(
+	ctx context.Context,
+	w http.ResponseWriter,
+	r *http.Request,
+	logger *zerolog.Logger,
+) {
+	u.renderer.WritePage(w, &nt.UserPage{})
 }
 
 func (u userPages) changePassword(
@@ -47,11 +58,7 @@ func (u userPages) changePassword(
 	r *http.Request,
 	logger *zerolog.Logger,
 ) {
-	data := struct {
-		Msg string
-	}{
-		Msg: "",
-	}
+	var msg string
 
 	if r.Method == http.MethodPost {
 		if err := r.ParseForm(); err != nil {
@@ -61,13 +68,10 @@ func (u userPages) changePassword(
 			return
 		}
 
-		data.Msg = u.doChangePassword(ctx, r, logger)
+		msg = u.doChangePassword(ctx, r, logger)
 	}
 
-	if err := u.template.executeTemplate(w, "users_change_password.tmpl", &data); err != nil {
-		logger.Error().Err(err).Msg("execute template error")
-		srvsupport.WriteError(w, r, http.StatusInternalServerError, "")
-	}
+	u.renderer.WritePage(w, &nt.UserChangePassPage{Msg: msg})
 }
 
 func (u userPages) doChangePassword(ctx context.Context, r *http.Request, logger *zerolog.Logger) string {

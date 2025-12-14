@@ -1,0 +1,70 @@
+{% import "gitlab.com/kabes/go-gpo/internal/model" %}
+
+{% code
+type PodcastsPage struct {
+    Podcasts       []model.PodcastWithLastEpisode
+    SubscribedOnly bool
+}
+%}
+
+{% func (p *PodcastsPage) Title() %}Podcasts{% endfunc %}
+
+{% func (p *PodcastsPage) Body(pctx *PageContext) %}
+<section>
+	<form method="POST">
+		<fieldset>
+			<legend>Add podcast</legend>
+			<label>URL:</label><input type="text" name="url" />
+			<button type="submit">Add</button>
+		</fieldset>
+	</form>
+</section>
+
+<section>
+	{% if p.SubscribedOnly %}
+		<h1>Subscribed podcasts</h1>
+		<a href="{%s pctx.Webroot %}/web/podcast/?showall">Show all podcasts</a>
+	{% else %}
+		<h1>All user podcasts</h1>
+		<a href="{%s pctx.Webroot %}/web/podcast/">Show subscribed only</a>
+	{% endif %}
+
+	<table>
+		<thead>
+			<tr>
+				<th>Title</th>
+				<th>Description</th>
+				<th>Last action date</th>
+				<th>&nbsp;</th>
+			</tr>
+		</thead>
+		<tbody>
+			{% for _, po := range p.Podcasts %}
+				<tr>
+					<td>
+						<a href="{%s pctx.Webroot %}/web/podcast/{%d int(po.PodcastID)  %}/">
+							{% if po.Title != "" %}{%s po.Title %}{% else %}{%s po.URL %}{% endif %}
+						</a>
+					</td>
+					<td>
+						{% if !po.Subscribed  %}<small><b>Not subscribed</b></small><br/>{% endif %}
+						{%s po.Description  %}
+					</td>
+					<td>
+						{% if po.LastEpisode != nil %}
+							{%s formatDateTime(po.LastEpisode.Timestamp) %}
+							({%s po.LastEpisode.Action %})
+						{% endif %}
+					</td>
+					<td>
+						{% if po.Website != "" %}<a href="{%s po.Website  %}">Website</a><br/>{% endif %}
+						<a href="{%s pctx.Webroot %}/web/episode/?podcast={%d int(po.PodcastID)  %}">Episodes</a>
+					</td>
+				</tr>
+			{% endfor %}
+		</tbody>
+	</table>
+</section>
+
+
+{% endfunc %}

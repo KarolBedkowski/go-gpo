@@ -17,21 +17,21 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/common"
-	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/query"
 	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
+	nt "gitlab.com/kabes/go-gpo/internal/web/templates"
 )
 
 type devicePages struct {
 	deviceSrv *service.DevicesSrv
-	template  templates
+	renderer  *nt.Renderer
 }
 
 func newDevicePages(i do.Injector) (devicePages, error) {
 	return devicePages{
 		deviceSrv: do.MustInvoke[*service.DevicesSrv](i),
-		template:  do.MustInvoke[templates](i),
+		renderer:  do.MustInvoke[*nt.Renderer](i),
 	}, nil
 }
 
@@ -55,16 +55,7 @@ func (d devicePages) list(ctx context.Context, w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	data := struct {
-		Devices []model.Device
-	}{
-		Devices: devices,
-	}
-
-	if err := d.template.executeTemplate(w, "devices.tmpl", &data); err != nil {
-		logger.Error().Err(err).Msg("execute template error")
-		srvsupport.WriteError(w, r, http.StatusInternalServerError, "")
-	}
+	d.renderer.WritePage(w, &nt.DevicesPage{Devices: devices})
 }
 
 func (d devicePages) deleteGet(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
@@ -75,16 +66,7 @@ func (d devicePages) deleteGet(ctx context.Context, w http.ResponseWriter, r *ht
 		return
 	}
 
-	data := struct {
-		DeviceName string
-	}{
-		DeviceName: devicename,
-	}
-
-	if err := d.template.executeTemplate(w, "device_delete.tmpl", &data); err != nil {
-		logger.Error().Err(err).Msg("execute template error")
-		srvsupport.WriteError(w, r, http.StatusInternalServerError, "")
-	}
+	d.renderer.WritePage(w, &nt.DeviceDeletePage{DeviceName: devicename})
 }
 
 func (d devicePages) deletePost(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {

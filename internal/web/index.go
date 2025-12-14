@@ -17,21 +17,21 @@ import (
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/common"
-	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/query"
 	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
+	nt "gitlab.com/kabes/go-gpo/internal/web/templates"
 )
 
 type indexPage struct {
 	episodeSrv *service.EpisodesSrv
-	template   templates
+	renderer   *nt.Renderer
 }
 
 func newIndexPage(i do.Injector) (indexPage, error) {
 	return indexPage{
 		episodeSrv: do.MustInvoke[*service.EpisodesSrv](i),
-		template:   do.MustInvoke[templates](i),
+		renderer:   do.MustInvoke[*nt.Renderer](i),
 	}, nil
 }
 
@@ -62,12 +62,5 @@ func (i indexPage) indexPage(ctx context.Context, writer http.ResponseWriter, r 
 
 	slices.Reverse(lastactions)
 
-	data := struct {
-		LastActions []model.EpisodeLastAction
-	}{lastactions}
-
-	if err := i.template.executeTemplate(writer, "index.tmpl", &data); err != nil {
-		logger.Error().Err(err).Msg("execute template error")
-		srvsupport.WriteError(writer, r, http.StatusInternalServerError, "")
-	}
+	i.renderer.WritePage(writer, &nt.IndexPage{LastActions: lastactions})
 }

@@ -24,21 +24,22 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
+	nt "gitlab.com/kabes/go-gpo/internal/web/templates"
 )
 
 type podcastPages struct {
 	podcastsSrv      *service.PodcastsSrv
 	subscriptionsSrv *service.SubscriptionsSrv
-	template         templates
 	webroot          string
+	renderer         *nt.Renderer
 }
 
 func newPodcastPages(i do.Injector) (podcastPages, error) {
 	return podcastPages{
 		podcastsSrv:      do.MustInvoke[*service.PodcastsSrv](i),
 		subscriptionsSrv: do.MustInvoke[*service.SubscriptionsSrv](i),
-		template:         do.MustInvoke[templates](i),
 		webroot:          do.MustInvokeNamed[string](i, "server.webroot"),
+		renderer:         do.MustInvoke[*nt.Renderer](i),
 	}, nil
 }
 
@@ -68,18 +69,7 @@ func (p podcastPages) list(ctx context.Context, w http.ResponseWriter, r *http.R
 		return
 	}
 
-	data := struct {
-		Podcasts       []model.PodcastWithLastEpisode
-		SubscribedOnly bool
-	}{
-		Podcasts:       podcasts,
-		SubscribedOnly: subscribedOnly,
-	}
-
-	if err := p.template.executeTemplate(w, "podcasts.tmpl", &data); err != nil {
-		logger.Error().Err(err).Msg("execute template error")
-		srvsupport.WriteError(w, r, http.StatusInternalServerError, "")
-	}
+	p.renderer.WritePage(w, &nt.PodcastsPage{Podcasts: podcasts, SubscribedOnly: subscribedOnly})
 }
 
 func (p podcastPages) addPodcast(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
@@ -124,14 +114,7 @@ func (p podcastPages) podcastGet(ctx context.Context, w http.ResponseWriter, r *
 		return
 	}
 
-	data := struct {
-		Podcast *model.Podcast
-	}{Podcast: podcast}
-
-	if err := p.template.executeTemplate(w, "podcast.tmpl", &data); err != nil {
-		logger.Error().Err(err).Msg("execute template error")
-		srvsupport.WriteError(w, r, http.StatusInternalServerError, "")
-	}
+	p.renderer.WritePage(w, &nt.PodcastPage{Podcast: podcast})
 }
 
 func (p podcastPages) podcastUnsubscribe(
