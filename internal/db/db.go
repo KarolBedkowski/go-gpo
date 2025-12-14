@@ -9,6 +9,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"net/url"
@@ -276,7 +277,7 @@ func InTransactionR[T any](ctx context.Context, r *Database,
 
 	defer r.CloseConnection(ctx, conn)
 
-	tx, err := conn.BeginTxx(ctx, nil)
+	tx, err := conn.BeginTxx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
 		return *new(T), aerr.ApplyFor(aerr.ErrDatabase, err, "begin tx failed")
 	}
