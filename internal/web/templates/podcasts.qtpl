@@ -11,9 +11,12 @@ type PodcastsPage struct {
 
 {% func (p *PodcastsPage) Body(pctx *PageContext) %}
 <section>
-	<h1>Add podcast</h1>
 	<form method="POST">
-		<label>URL:</label> <input type="text" name="url" /><button type="submit">Add</button>
+		<fieldset>
+			<legend>Add podcast</legend>
+			<label>URL:</label><input type="text" name="url" />
+			<button type="submit">Add</button>
+		</fieldset>
 	</form>
 </section>
 

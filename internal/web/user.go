@@ -36,10 +36,20 @@ func newUserPages(i do.Injector) (userPages, error) {
 
 func (u userPages) Routes() *chi.Mux {
 	r := chi.NewRouter()
+	r.Get(`/`, srvsupport.Wrap(u.userPage))
 	r.Get(`/password`, srvsupport.Wrap(u.changePassword))
 	r.Post(`/password`, srvsupport.Wrap(u.changePassword))
 
 	return r
+}
+
+func (u userPages) userPage(
+	ctx context.Context,
+	w http.ResponseWriter,
+	r *http.Request,
+	logger *zerolog.Logger,
+) {
+	u.renderer.WritePage(w, &nt.UserPage{})
 }
 
 func (u userPages) changePassword(
@@ -61,7 +71,7 @@ func (u userPages) changePassword(
 		msg = u.doChangePassword(ctx, r, logger)
 	}
 
-	u.renderer.WritePage(w, &nt.UsersChangePassPage{Msg: msg})
+	u.renderer.WritePage(w, &nt.UserChangePassPage{Msg: msg})
 }
 
 func (u userPages) doChangePassword(ctx context.Context, r *http.Request, logger *zerolog.Logger) string {

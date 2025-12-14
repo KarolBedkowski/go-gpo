@@ -10,16 +10,6 @@ type IndexPage struct {
 
 {% func (p *IndexPage) Body(pctx *PageContext) %}
 <section>
-	<h2>User</h2>
-
-	<ul>
-		<li><a href="{%s pctx.Webroot %}/web/user/password">Change user password</a></li>
-	</ul>
-</section>
-
-<br/><hr/>
-
-<section>
 	<h2>Last actions</h2>
 	<table>
 		<thead>

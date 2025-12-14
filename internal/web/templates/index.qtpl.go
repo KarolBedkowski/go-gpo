@@ -63,20 +63,6 @@ func (p *IndexPage) StreamBody(qw422016 *qt422016.Writer, pctx *PageContext) {
 //line internal/web/templates/index.qtpl:11
 	qw422016.N().S(`
 <section>
-	<h2>User</h2>
-
-	<ul>
-		<li><a href="`)
-//line internal/web/templates/index.qtpl:16
-	qw422016.E().S(pctx.Webroot)
-//line internal/web/templates/index.qtpl:16
-	qw422016.N().S(`/web/user/password">Change user password</a></li>
-	</ul>
-</section>
-
-<br/><hr/>
-
-<section>
 	<h2>Last actions</h2>
 	<table>
 		<thead>
@@ -91,80 +77,80 @@ func (p *IndexPage) StreamBody(qw422016 *qt422016.Writer, pctx *PageContext) {
 		</thead>
 		<tbody>
 		`)
-//line internal/web/templates/index.qtpl:36
+//line internal/web/templates/index.qtpl:26
 	for _, a := range p.LastActions {
-//line internal/web/templates/index.qtpl:36
+//line internal/web/templates/index.qtpl:26
 		qw422016.N().S(`
 			<tr>
 				<td>`)
-//line internal/web/templates/index.qtpl:38
+//line internal/web/templates/index.qtpl:28
 		qw422016.E().S(formatDateTime(a.Timestamp))
-//line internal/web/templates/index.qtpl:38
+//line internal/web/templates/index.qtpl:28
 		qw422016.N().S(`</td>
 				<td>`)
-//line internal/web/templates/index.qtpl:39
+//line internal/web/templates/index.qtpl:29
 		if a.PodcastTitle != "" {
-//line internal/web/templates/index.qtpl:39
+//line internal/web/templates/index.qtpl:29
 			qw422016.E().S(a.PodcastTitle)
-//line internal/web/templates/index.qtpl:39
+//line internal/web/templates/index.qtpl:29
 		} else {
-//line internal/web/templates/index.qtpl:39
+//line internal/web/templates/index.qtpl:29
 			qw422016.N().S(`<small>`)
-//line internal/web/templates/index.qtpl:39
+//line internal/web/templates/index.qtpl:29
 			qw422016.E().S(a.PodcastURL)
-//line internal/web/templates/index.qtpl:39
+//line internal/web/templates/index.qtpl:29
 			qw422016.N().S(`</small>`)
-//line internal/web/templates/index.qtpl:39
+//line internal/web/templates/index.qtpl:29
 		}
-//line internal/web/templates/index.qtpl:39
+//line internal/web/templates/index.qtpl:29
 		qw422016.N().S(`</td>
 				<td>`)
-//line internal/web/templates/index.qtpl:40
+//line internal/web/templates/index.qtpl:30
 		qw422016.E().S(a.Episode)
-//line internal/web/templates/index.qtpl:40
+//line internal/web/templates/index.qtpl:30
 		qw422016.N().S(`</td>
 				<td>`)
-//line internal/web/templates/index.qtpl:41
+//line internal/web/templates/index.qtpl:31
 		qw422016.E().S(a.Device)
-//line internal/web/templates/index.qtpl:41
+//line internal/web/templates/index.qtpl:31
 		qw422016.N().S(`</td>
 				<td>`)
-//line internal/web/templates/index.qtpl:42
+//line internal/web/templates/index.qtpl:32
 		qw422016.E().S(a.Action)
-//line internal/web/templates/index.qtpl:42
+//line internal/web/templates/index.qtpl:32
 		qw422016.N().S(`</td>
 				<td>
 				`)
-//line internal/web/templates/index.qtpl:44
+//line internal/web/templates/index.qtpl:34
 		if a.Action == "play" {
-//line internal/web/templates/index.qtpl:44
+//line internal/web/templates/index.qtpl:34
 			qw422016.N().S(`
 					`)
-//line internal/web/templates/index.qtpl:45
+//line internal/web/templates/index.qtpl:35
 			qw422016.E().S(formatPInt32AsDuration(a.Started))
-//line internal/web/templates/index.qtpl:45
+//line internal/web/templates/index.qtpl:35
 			qw422016.N().S(`<br/>
 					`)
-//line internal/web/templates/index.qtpl:46
+//line internal/web/templates/index.qtpl:36
 			qw422016.E().S(formatPInt32AsDuration(a.Position))
-//line internal/web/templates/index.qtpl:46
+//line internal/web/templates/index.qtpl:36
 			qw422016.N().S(`<br/>
 					`)
-//line internal/web/templates/index.qtpl:47
+//line internal/web/templates/index.qtpl:37
 			qw422016.E().S(formatPInt32AsDuration(a.Total))
-//line internal/web/templates/index.qtpl:47
+//line internal/web/templates/index.qtpl:37
 			qw422016.N().S(`
 				`)
-//line internal/web/templates/index.qtpl:48
+//line internal/web/templates/index.qtpl:38
 		}
-//line internal/web/templates/index.qtpl:48
+//line internal/web/templates/index.qtpl:38
 		qw422016.N().S(`
 				</td>
 			</tr>
 		`)
-//line internal/web/templates/index.qtpl:51
+//line internal/web/templates/index.qtpl:41
 	}
-//line internal/web/templates/index.qtpl:51
+//line internal/web/templates/index.qtpl:41
 	qw422016.N().S(`
 		</tbody>
 	</table>
@@ -172,31 +158,31 @@ func (p *IndexPage) StreamBody(qw422016 *qt422016.Writer, pctx *PageContext) {
 
 
 `)
-//line internal/web/templates/index.qtpl:57
+//line internal/web/templates/index.qtpl:47
 }
 
-//line internal/web/templates/index.qtpl:57
+//line internal/web/templates/index.qtpl:47
 func (p *IndexPage) WriteBody(qq422016 qtio422016.Writer, pctx *PageContext) {
-//line internal/web/templates/index.qtpl:57
+//line internal/web/templates/index.qtpl:47
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line internal/web/templates/index.qtpl:57
+//line internal/web/templates/index.qtpl:47
 	p.StreamBody(qw422016, pctx)
-//line internal/web/templates/index.qtpl:57
+//line internal/web/templates/index.qtpl:47
 	qt422016.ReleaseWriter(qw422016)
-//line internal/web/templates/index.qtpl:57
+//line internal/web/templates/index.qtpl:47
 }
 
-//line internal/web/templates/index.qtpl:57
+//line internal/web/templates/index.qtpl:47
 func (p *IndexPage) Body(pctx *PageContext) string {
-//line internal/web/templates/index.qtpl:57
+//line internal/web/templates/index.qtpl:47
 	qb422016 := qt422016.AcquireByteBuffer()
-//line internal/web/templates/index.qtpl:57
+//line internal/web/templates/index.qtpl:47
 	p.WriteBody(qb422016, pctx)
-//line internal/web/templates/index.qtpl:57
+//line internal/web/templates/index.qtpl:47
 	qs422016 := string(qb422016.B)
-//line internal/web/templates/index.qtpl:57
+//line internal/web/templates/index.qtpl:47
 	qt422016.ReleaseByteBuffer(qb422016)
-//line internal/web/templates/index.qtpl:57
+//line internal/web/templates/index.qtpl:47
 	return qs422016
-//line internal/web/templates/index.qtpl:57
+//line internal/web/templates/index.qtpl:47
 }
