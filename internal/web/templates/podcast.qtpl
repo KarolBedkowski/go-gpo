@@ -35,6 +35,7 @@ type PodcastPage struct {
 			<button type="submit">Subscribe again</button>
 		</form>
 	{% endif %}
+	<a href="{%s pctx.Webroot %}/web/podcast/{%d int(p.Podcast.ID) %}/delete">Delete podcast</a>
 </section>
 
 

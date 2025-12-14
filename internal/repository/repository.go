@@ -54,6 +54,7 @@ type Podcasts interface {
 	// ListPodcastsToUpdate return list of url-s podcasts that need update (load title etc).
 	ListPodcastsToUpdate(ctx context.Context, since time.Time) ([]string, error)
 	UpdatePodcastsInfo(ctx context.Context, podcast *model.PodcastMetaUpdate) error
+	DeletePodcast(ctx context.Context, podcastid int32) error
 }
 
 type Settings interface {

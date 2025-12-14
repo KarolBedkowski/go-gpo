@@ -197,3 +197,14 @@ func (s Repository) UpdatePodcastsInfo(ctx context.Context, update *model.Podcas
 
 	return nil
 }
+
+func (s Repository) DeletePodcast(ctx context.Context, podcastid int32) error {
+	dbctx := db.MustCtx(ctx)
+
+	_, err := dbctx.ExecContext(ctx, "DELETE  FROM podcasts WHERE id=?", podcastid)
+	if err != nil {
+		return aerr.Wrapf(err, "delete podcasts failed").WithMeta("podcast_id", podcastid)
+	}
+
+	return nil
+}

@@ -50,6 +50,8 @@ func (p podcastPages) Routes() *chi.Mux {
 	r.Get(`/{podcastid:[0-9]+}/`, srvsupport.Wrap(p.podcastGet))
 	r.Post(`/{podcastid:[0-9]+}/unsubscribe`, srvsupport.Wrap(p.podcastUnsubscribe))
 	r.Post(`/{podcastid:[0-9]+}/resubscribe`, srvsupport.Wrap(p.podcastResubscribe))
+	r.Get(`/{podcastid:[0-9]+}/delete`, srvsupport.Wrap(p.podcastDeleteGet))
+	r.Post(`/{podcastid:[0-9]+}/delete`, srvsupport.Wrap(p.podcastDeletePost))
 
 	return r
 }
@@ -201,4 +203,52 @@ func (p podcastPages) podcastFromURLParam(ctx context.Context, r *http.Request, 
 	}
 
 	return podcast, 0
+}
+
+func (p podcastPages) podcastDeleteGet(
+	ctx context.Context,
+	w http.ResponseWriter,
+	r *http.Request,
+	logger *zerolog.Logger,
+) {
+	podcast, status := p.podcastFromURLParam(ctx, r, logger)
+	if status > 0 || podcast == nil {
+		srvsupport.WriteError(w, r, status, "")
+
+		return
+	}
+
+	p.renderer.WritePage(w, &nt.PodcastDeletePage{Podcast: podcast})
+}
+
+func (p podcastPages) podcastDeletePost(
+	ctx context.Context,
+	w http.ResponseWriter,
+	r *http.Request,
+	logger *zerolog.Logger,
+) {
+	podcastidS := chi.URLParam(r, "podcastid")
+	if podcastidS == "" {
+		srvsupport.WriteError(w, r, http.StatusBadRequest, "")
+
+		return
+	}
+
+	podcastid, err := strconv.ParseInt(podcastidS, 10, 32)
+	if err != nil || podcastid < 1 {
+		srvsupport.WriteError(w, r, http.StatusBadRequest, "")
+
+		return
+	}
+
+	user := common.ContextUser(ctx)
+
+	if err := p.podcastsSrv.DeletePodcast(ctx, user, int32(podcastid)); err != nil {
+		srvsupport.CheckAndWriteError(w, r, err)
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("delete podcast error")
+
+		return
+	}
+
+	http.Redirect(w, r, p.webroot+"/web/podcast/", http.StatusFound)
 }

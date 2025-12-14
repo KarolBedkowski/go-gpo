@@ -140,37 +140,46 @@ func (p *PodcastPage) StreamBody(qw422016 *qt422016.Writer, pctx *PageContext) {
 	}
 //line internal/web/templates/podcast.qtpl:37
 	qw422016.N().S(`
+	<a href="`)
+//line internal/web/templates/podcast.qtpl:38
+	qw422016.E().S(pctx.Webroot)
+//line internal/web/templates/podcast.qtpl:38
+	qw422016.N().S(`/web/podcast/`)
+//line internal/web/templates/podcast.qtpl:38
+	qw422016.N().D(int(p.Podcast.ID))
+//line internal/web/templates/podcast.qtpl:38
+	qw422016.N().S(`/delete">Delete podcast</a>
 </section>
 
 
 `)
-//line internal/web/templates/podcast.qtpl:41
+//line internal/web/templates/podcast.qtpl:42
 }
 
-//line internal/web/templates/podcast.qtpl:41
+//line internal/web/templates/podcast.qtpl:42
 func (p *PodcastPage) WriteBody(qq422016 qtio422016.Writer, pctx *PageContext) {
-//line internal/web/templates/podcast.qtpl:41
+//line internal/web/templates/podcast.qtpl:42
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line internal/web/templates/podcast.qtpl:41
+//line internal/web/templates/podcast.qtpl:42
 	p.StreamBody(qw422016, pctx)
-//line internal/web/templates/podcast.qtpl:41
+//line internal/web/templates/podcast.qtpl:42
 	qt422016.ReleaseWriter(qw422016)
-//line internal/web/templates/podcast.qtpl:41
+//line internal/web/templates/podcast.qtpl:42
 }
 
-//line internal/web/templates/podcast.qtpl:41
+//line internal/web/templates/podcast.qtpl:42
 func (p *PodcastPage) Body(pctx *PageContext) string {
-//line internal/web/templates/podcast.qtpl:41
+//line internal/web/templates/podcast.qtpl:42
 	qb422016 := qt422016.AcquireByteBuffer()
-//line internal/web/templates/podcast.qtpl:41
+//line internal/web/templates/podcast.qtpl:42
 	p.WriteBody(qb422016, pctx)
-//line internal/web/templates/podcast.qtpl:41
+//line internal/web/templates/podcast.qtpl:42
 	qs422016 := string(qb422016.B)
-//line internal/web/templates/podcast.qtpl:41
+//line internal/web/templates/podcast.qtpl:42
 	qt422016.ReleaseByteBuffer(qb422016)
-//line internal/web/templates/podcast.qtpl:41
+//line internal/web/templates/podcast.qtpl:42
 	return qs422016
-//line internal/web/templates/podcast.qtpl:41
+//line internal/web/templates/podcast.qtpl:42
 }
 
 // # vim:ft=mako:ts=4:
