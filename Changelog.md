@@ -28,5 +28,5 @@
 
 ### Testing
 
-- Supress nilaway in test; add test for apperror uniqueList
+- Suppress nilaway in test; add test for apperror uniqueList
 - Add more test for error wrapping & tags
