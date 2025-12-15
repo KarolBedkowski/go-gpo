@@ -105,6 +105,8 @@ func (s *SubscriptionsSrv) ReplaceSubscriptions( //nolint:cyclop
 			podcast, ok := subscribed.FindPodcastByURL(sub)
 			if !ok {
 				podcast = model.Podcast{User: *user, URL: sub}
+			} else if podcast.Subscribed {
+				continue
 			}
 
 			if podcast.SetSubscribed(cmd.Timestamp) {
@@ -146,7 +148,7 @@ func (s *SubscriptionsSrv) ChangeSubscriptions( //nolint:cyclop,gocognit
 			}
 		}
 
-		subscribed, err := s.podcastsRepo.ListPodcasts(ctx, user.ID, time.Time{})
+		userpodcasts, err := s.podcastsRepo.ListPodcasts(ctx, user.ID, time.Time{})
 		if err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
@@ -155,7 +157,7 @@ func (s *SubscriptionsSrv) ChangeSubscriptions( //nolint:cyclop,gocognit
 
 		// removed
 		for _, sub := range cmd.Remove {
-			if podcast, ok := subscribed.FindPodcastByURL(sub); ok {
+			if podcast, ok := userpodcasts.FindPodcastByURL(sub); ok {
 				if podcast.SetUnsubscribed(cmd.Timestamp) {
 					podchanges = append(podchanges, podcast)
 				}
@@ -163,9 +165,11 @@ func (s *SubscriptionsSrv) ChangeSubscriptions( //nolint:cyclop,gocognit
 		}
 
 		for _, sub := range cmd.Add {
-			podcast, ok := subscribed.FindPodcastByURL(sub)
+			podcast, ok := userpodcasts.FindPodcastByURL(sub)
 			if !ok { // new
 				podcast = model.Podcast{User: *user, URL: sub}
+			} else if podcast.Subscribed {
+				continue
 			}
 
 			if podcast.SetSubscribed(cmd.Timestamp) {
