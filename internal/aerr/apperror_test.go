@@ -158,6 +158,18 @@ func TestAppErrorTags(t *testing.T) {
 	assert.Equal(t, GetTags(aerr1), []string{"k1", "k2"})
 	assert.True(t, HasTag(aerr2, "k1"))
 	assert.True(t, HasTag(aerr2, "k2"))
+
+	aerr3 := aerr2.WithUserMsg("user msg")
+	assert.Equal(t, GetTags(aerr3), []string{"k1", "k2", "k3"})
+
+	other := New("simple")
+	aerr4 := ApplyFor(aerr3, other)
+	assert.Equal(t, GetTags(aerr4), []string{"k1", "k2", "k3"})
+
+	gerr := errors.New("new base")
+	other2 := Wrapf(gerr, "new error").WithMeta("aa", "vv")
+	aerr5 := ApplyFor(aerr3, other2)
+	assert.Equal(t, GetTags(aerr5), []string{"k1", "k2", "k3"})
 }
 
 func TestAppErrorErr(t *testing.T) {
