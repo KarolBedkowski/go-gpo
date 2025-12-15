@@ -111,12 +111,12 @@ func (e *EpisodesSrv) AddAction(ctx context.Context, cmd *command.AddActionCmd) 
 		// cache devices and podcasts
 		podcastscache, err := e.createPodcastsCache(ctx, user)
 		if err != nil {
-			return err
+			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
 		devicescache, err := e.createDevicesCache(ctx, user)
 		if err != nil {
-			return err
+			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
 		episodes := make([]model.Episode, len(cmd.Actions))
@@ -267,8 +267,26 @@ func (e *EpisodesSrv) createPodcastsCache(ctx context.Context, user *model.User)
 	podcastscache := DynamicCache[string, int32]{
 		items: podcasts.ToIDsMap(),
 		creator: func(key string) (int32, error) {
-			id, err := e.podcastsRepo.SavePodcast(ctx,
-				&model.Podcast{User: *user, URL: key, Subscribed: true})
+			var podcast *model.Podcast
+
+			// check is unsubscribed
+			p, err := e.podcastsRepo.GetPodcast(ctx, user.ID, key)
+			switch {
+			case err == nil:
+				if p.Subscribed {
+					return p.ID, nil
+				}
+
+				p.SetSubscribed(time.Now())
+				podcast = p
+			case errors.Is(err, common.ErrNoData):
+				// new podcast
+				podcast = &model.Podcast{User: *user, URL: key, Subscribed: true}
+			default:
+				return 0, aerr.Wrapf(err, "load podcast failed").WithMeta("podcast_url", key, "user_id", user.ID)
+			}
+
+			id, err := e.podcastsRepo.SavePodcast(ctx, podcast)
 			if err != nil {
 				return 0, aerr.Wrapf(err, "create new podcast failed").WithMeta("podcast_url", key, "user_id", user.ID)
 			}
@@ -299,13 +317,23 @@ func (e *EpisodesSrv) createDevicesCache(ctx context.Context, user *model.User) 
 				return nil, nil //nolint:nilnil
 			}
 
-			did, err := e.devicesRepo.SaveDevice(ctx,
-				&model.Device{User: user, Name: key, DevType: "other"})
-			if err != nil {
-				return nil, aerr.Wrapf(err, "create new device failed").WithMeta("device_name", key, "user_id", user.ID)
-			}
+			d, err := e.devicesRepo.GetDevice(ctx, user.ID, key)
+			switch {
+			case err == nil:
+				return &d.ID, nil
+			case errors.Is(err, common.ErrNoData):
+				did, err := e.devicesRepo.SaveDevice(ctx,
+					&model.Device{User: user, Name: key, DevType: "other"})
+				if err != nil {
+					return nil, aerr.Wrapf(err, "create new device failed").
+						WithMeta("device_name", key, "user_id", user.ID)
+				}
 
-			return &did, nil
+				return &did, nil
+			default:
+				return nil, aerr.Wrapf(err, "load & create new device failed").
+					WithMeta("device_name", key, "user_id", user.ID)
+			}
 		},
 	}
 

@@ -1,3 +1,4 @@
+//nolint:nilaway
 package service
 
 //
@@ -66,4 +67,38 @@ func TestPodcastsServiceUserPodcastsExt(t *testing.T) {
 
 	_, err = podcastsSrv.GetPodcastsWithLastEpisode(ctx, "user3", true)
 	assert.ErrSpec(t, err, common.ErrUnknownUser)
+}
+
+func TestPodcastsServiceDelete(t *testing.T) {
+	ctx, i := prepareTests(t)
+	podcastsSrv := do.MustInvoke[*PodcastsSrv](i)
+	_ = prepareTestUser(ctx, t, i, "user1")
+	_ = prepareTestUser(ctx, t, i, "user2")
+	prepareTestDevice(ctx, t, i, "user1", "dev1")
+
+	subscribed := []string{"http://example.com/p1", "http://example.com/p2", "http://example.com/p3"}
+
+	prepareTestSub(ctx, t, i, "user1", "dev1", subscribed...)
+
+	podcasts, err := podcastsSrv.GetPodcasts(ctx, "user1")
+	assert.NoErr(t, err)
+	assert.Equal(t, len(podcasts), 3)
+	assert.EqualSorted(t, model.PodcastsToUrls(podcasts), subscribed)
+
+	pid := podcasts[1].ID
+
+	// other user
+	err = podcastsSrv.DeletePodcast(ctx, "user2", pid)
+	assert.ErrSpec(t, err, common.ErrUnknownPodcast)
+
+	err = podcastsSrv.DeletePodcast(ctx, "user1", pid)
+	assert.NoErr(t, err)
+
+	podcasts, err = podcastsSrv.GetPodcasts(ctx, "user1")
+	assert.NoErr(t, err)
+	assert.Equal(t, len(podcasts), 2)
+	assert.EqualSorted(t, model.PodcastsToUrls(podcasts), []string{"http://example.com/p1", "http://example.com/p3"})
+
+	_, err = podcastsSrv.GetPodcast(ctx, "user1", pid)
+	assert.ErrSpec(t, err, common.ErrUnknownPodcast)
 }

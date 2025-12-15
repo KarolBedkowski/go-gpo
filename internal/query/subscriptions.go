@@ -10,7 +10,8 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
-	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/common"
+	"gitlab.com/kabes/go-gpo/internal/validators"
 )
 
 type GetUserSubscriptionsQuery struct {
@@ -19,8 +20,8 @@ type GetUserSubscriptionsQuery struct {
 }
 
 func (q *GetUserSubscriptionsQuery) Validate() error {
-	if q.UserName == "" {
-		return aerr.ErrValidation.WithMsg("user name can't be empty")
+	if !validators.IsValidUserName(q.UserName) {
+		return common.ErrInvalidUser.WithUserMsg("invalid username")
 	}
 
 	return nil
@@ -40,12 +41,12 @@ type GetSubscriptionsQuery struct {
 }
 
 func (q *GetSubscriptionsQuery) Validate() error {
-	if q.UserName == "" {
-		return aerr.ErrValidation.WithMsg("user name can't be empty")
+	if !validators.IsValidUserName(q.UserName) {
+		return common.ErrInvalidUser.WithUserMsg("invalid username")
 	}
 
-	if q.DeviceName == "" {
-		return aerr.ErrValidation.WithMsg("device can't be empty")
+	if !validators.IsValidDevName(q.DeviceName) {
+		return common.ErrInvalidDevice.WithUserMsg("invalid device name")
 	}
 
 	return nil
@@ -66,8 +67,8 @@ type GetSubscriptionChangesQuery struct {
 }
 
 func (q *GetSubscriptionChangesQuery) Validate() error {
-	if q.UserName == "" {
-		return aerr.ErrValidation.WithMsg("user name can't be empty")
+	if !validators.IsValidUserName(q.UserName) {
+		return common.ErrInvalidUser.WithUserMsg("invalid username")
 	}
 
 	return nil

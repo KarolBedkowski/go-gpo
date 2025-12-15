@@ -9,19 +9,11 @@ package web
 
 import (
 	"embed"
-	"fmt"
-	"html/template"
-	"io"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/rs/zerolog/log"
 	"github.com/samber/do/v2"
-	"gitlab.com/kabes/go-gpo/internal/aerr"
 )
-
-//go:embed templates/*.tmpl
-var templatesFS embed.FS
 
 //go:embed static/*
 var staticFS embed.FS
@@ -56,56 +48,3 @@ func (w *WEB) Routes() *chi.Mux {
 }
 
 //-----------------------------------------------
-
-type templates map[string]*template.Template
-
-// newTemplate loads templates.
-func newTemplates(webroot string) templates {
-	funcs := template.FuncMap{"webroot": func() string { return webroot }}
-	base := template.Must(template.New("").Funcs(funcs).ParseFS(templatesFS, "templates/_base*"))
-
-	direntries, err := templatesFS.ReadDir("templates")
-	if err != nil {
-		panic(err)
-	}
-
-	res := make(map[string]*template.Template)
-
-	for _, de := range direntries {
-		if de.IsDir() {
-			continue
-		}
-
-		name := de.Name()
-		if name[0] == '_' {
-			continue
-		}
-
-		log.Logger.Debug().Msgf("loading template: %s", name)
-
-		baseclone := template.Must(base.Clone())
-		res[name] = template.Must(baseclone.ParseFS(templatesFS, "templates/"+name))
-	}
-
-	return res
-}
-
-func newTemplatesI(i do.Injector) (templates, error) {
-	webroot := do.MustInvokeNamed[string](i, "server.webroot")
-
-	return newTemplates(webroot), nil
-}
-
-func (t templates) executeTemplate(wr io.Writer, name string, data any) error {
-	tmpl, ok := t[name]
-	if !ok {
-		return aerr.Newf("execute template %q error: template not found", name)
-	}
-
-	err := tmpl.ExecuteTemplate(wr, name, data)
-	if err != nil {
-		return fmt.Errorf("execute template %q error: %w", name, err)
-	}
-
-	return nil
-}

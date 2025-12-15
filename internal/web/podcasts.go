@@ -24,21 +24,22 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
+	nt "gitlab.com/kabes/go-gpo/internal/web/templates"
 )
 
 type podcastPages struct {
 	podcastsSrv      *service.PodcastsSrv
 	subscriptionsSrv *service.SubscriptionsSrv
-	template         templates
 	webroot          string
+	renderer         *nt.Renderer
 }
 
 func newPodcastPages(i do.Injector) (podcastPages, error) {
 	return podcastPages{
 		podcastsSrv:      do.MustInvoke[*service.PodcastsSrv](i),
 		subscriptionsSrv: do.MustInvoke[*service.SubscriptionsSrv](i),
-		template:         do.MustInvoke[templates](i),
 		webroot:          do.MustInvokeNamed[string](i, "server.webroot"),
+		renderer:         do.MustInvoke[*nt.Renderer](i),
 	}, nil
 }
 
@@ -49,6 +50,8 @@ func (p podcastPages) Routes() *chi.Mux {
 	r.Get(`/{podcastid:[0-9]+}/`, srvsupport.Wrap(p.podcastGet))
 	r.Post(`/{podcastid:[0-9]+}/unsubscribe`, srvsupport.Wrap(p.podcastUnsubscribe))
 	r.Post(`/{podcastid:[0-9]+}/resubscribe`, srvsupport.Wrap(p.podcastResubscribe))
+	r.Get(`/{podcastid:[0-9]+}/delete`, srvsupport.Wrap(p.podcastDeleteGet))
+	r.Post(`/{podcastid:[0-9]+}/delete`, srvsupport.Wrap(p.podcastDeletePost))
 
 	return r
 }
@@ -68,18 +71,7 @@ func (p podcastPages) list(ctx context.Context, w http.ResponseWriter, r *http.R
 		return
 	}
 
-	data := struct {
-		Podcasts       []model.PodcastWithLastEpisode
-		SubscribedOnly bool
-	}{
-		Podcasts:       podcasts,
-		SubscribedOnly: subscribedOnly,
-	}
-
-	if err := p.template.executeTemplate(w, "podcasts.tmpl", &data); err != nil {
-		logger.Error().Err(err).Msg("execute template error")
-		srvsupport.WriteError(w, r, http.StatusInternalServerError, "")
-	}
+	p.renderer.WritePage(w, &nt.PodcastsPage{Podcasts: podcasts, SubscribedOnly: subscribedOnly})
 }
 
 func (p podcastPages) addPodcast(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
@@ -124,14 +116,7 @@ func (p podcastPages) podcastGet(ctx context.Context, w http.ResponseWriter, r *
 		return
 	}
 
-	data := struct {
-		Podcast *model.Podcast
-	}{Podcast: podcast}
-
-	if err := p.template.executeTemplate(w, "podcast.tmpl", &data); err != nil {
-		logger.Error().Err(err).Msg("execute template error")
-		srvsupport.WriteError(w, r, http.StatusInternalServerError, "")
-	}
+	p.renderer.WritePage(w, &nt.PodcastPage{Podcast: podcast})
 }
 
 func (p podcastPages) podcastUnsubscribe(
@@ -141,7 +126,7 @@ func (p podcastPages) podcastUnsubscribe(
 	logger *zerolog.Logger,
 ) {
 	podcast, status := p.podcastFromURLParam(ctx, r, logger)
-	if status > 0 {
+	if status > 0 || podcast == nil {
 		srvsupport.WriteError(w, r, status, "")
 
 		return
@@ -171,7 +156,7 @@ func (p podcastPages) podcastResubscribe(
 	logger *zerolog.Logger,
 ) {
 	podcast, status := p.podcastFromURLParam(ctx, r, logger)
-	if status > 0 {
+	if status > 0 || podcast == nil {
 		srvsupport.WriteError(w, r, status, "")
 
 		return
@@ -218,4 +203,52 @@ func (p podcastPages) podcastFromURLParam(ctx context.Context, r *http.Request, 
 	}
 
 	return podcast, 0
+}
+
+func (p podcastPages) podcastDeleteGet(
+	ctx context.Context,
+	w http.ResponseWriter,
+	r *http.Request,
+	logger *zerolog.Logger,
+) {
+	podcast, status := p.podcastFromURLParam(ctx, r, logger)
+	if status > 0 || podcast == nil {
+		srvsupport.WriteError(w, r, status, "")
+
+		return
+	}
+
+	p.renderer.WritePage(w, &nt.PodcastDeletePage{Podcast: podcast})
+}
+
+func (p podcastPages) podcastDeletePost(
+	ctx context.Context,
+	w http.ResponseWriter,
+	r *http.Request,
+	logger *zerolog.Logger,
+) {
+	podcastidS := chi.URLParam(r, "podcastid")
+	if podcastidS == "" {
+		srvsupport.WriteError(w, r, http.StatusBadRequest, "")
+
+		return
+	}
+
+	podcastid, err := strconv.ParseInt(podcastidS, 10, 32)
+	if err != nil || podcastid < 1 {
+		srvsupport.WriteError(w, r, http.StatusBadRequest, "")
+
+		return
+	}
+
+	user := common.ContextUser(ctx)
+
+	if err := p.podcastsSrv.DeletePodcast(ctx, user, int32(podcastid)); err != nil {
+		srvsupport.CheckAndWriteError(w, r, err)
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("delete podcast error")
+
+		return
+	}
+
+	http.Redirect(w, r, p.webroot+"/web/podcast/", http.StatusFound)
 }

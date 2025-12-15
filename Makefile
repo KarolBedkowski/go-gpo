@@ -27,12 +27,12 @@ LDFLAGSR="-w -s\
 	-X gitlab.com/kabes/go-gpo/internal/config.Branch=$(BRANCH)"
 
 .PHONY: build
-build:
+build: generate
 	go build $(GOTAGS) -v -o go-gpo -ldflags $(LDFLAGS) \
 		./cli
 
 .PHONY: build_arm64
-build_arm64:
+build_arm64: generate
 	CGO_ENABLED=1 \
 	GOGCCFLAGS="-fPIC -O4 -Ofast -pipe -march=native -s" \
 		GOARCH=arm64 GOOS=linux \
@@ -40,7 +40,7 @@ build_arm64:
 		./cli
 
 .PHONY: build_arm64_release
-build_arm64_release:
+build_arm64_release: generate
 	CGO_ENABLED=1 \
 	GOGCCFLAGS="-fPIC -O4 -Ofast -pipe -march=native -s" \
 		GOARCH=arm64 GOOS=linux \
@@ -55,6 +55,8 @@ run:
 .PHONY: clean
 clean:
 	rm -f go-gpo
+	find . -type f -name '*.qtpl.go' -delete
+
 
 .PHONY: test
 test:
@@ -63,13 +65,13 @@ test:
 
 
 .PHONY: lint
-lint: 
+lint:
 	golangci-lint run
 	# go install fillmore-labs.com/errortype@latest
-	errortype ./... 
+	errortype ./...
 	typos
 	# go install go.uber.org/nilaway/cmd/nilaway@latest
-	nilaway ./... 
+	nilaway ./...
 
 .PHONY: format
 format:
@@ -80,7 +82,28 @@ database.sqlite: schema.sql
 	sqlite3 database.sqlite ".read schema.sql"
 
 migrate:
-	goose -dir ./internal/cmd/migrations/ sqlite3 ./database.sqlite up
+	goose -dir ./internal/infra/sqlite/migrations sqlite3 ./database.sqlite up
+
+.PHONY: deps
+deps:
+	go get -u ./...
+	go mod tidy
+	$(MAKE) test
+	$(MAKE) build
+
+
+QTPLS := $(shell find . -type f -name '*.qtpl')
+QTPLSC := $(QTPLS:%=%.go)
+
+generate: $(QTPLSC)
+
+%.qtpl.go: %.qtpl
+	qtc -file $<
+
+.PHONY: clean
+prepare:
+	go install github.com/valyala/quicktemplate/qtc
+	go mod tidy
 
 
 # vim:ft=make

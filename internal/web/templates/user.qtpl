@@ -1,0 +1,18 @@
+{% code
+type UserPage struct {
+}
+%}
+
+{% func (p *UserPage) Title() %}Change password{% endfunc %}
+
+{% func (p *UserPage) Body(pctx *PageContext) %}
+<section>
+	<h2>User</h2>
+
+	<ul>
+		<li><a href="{%s pctx.Webroot %}/web/user/password">Change user password</a></li>
+	</ul>
+</section>
+
+
+{% endfunc %}

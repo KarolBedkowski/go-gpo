@@ -139,7 +139,7 @@ func (s *SubscriptionsSrv) ChangeSubscriptions( //nolint:cyclop,gocognit
 			return err
 		}
 
-		// check service
+		// check device if given
 		if cmd.DeviceName != "" {
 			if _, err = s.getUserDevice(ctx, user.ID, cmd.DeviceName); err != nil {
 				return err

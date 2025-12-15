@@ -28,6 +28,10 @@ var (
 	ErrUnknownPodcast = aerr.New("unknown podcast").WithTag(aerr.ValidationError)
 	ErrUnknownEpisode = aerr.New("unknown episode").WithTag(aerr.ValidationError)
 	ErrUserExists     = aerr.New("username exists").WithUserMsg("user name already exists")
+	ErrInvalidUser    = aerr.New("invalid user").WithTag(aerr.ValidationError)
+	ErrInvalidDevice  = aerr.New("invalid device").WithTag(aerr.ValidationError)
+	ErrInvalidPodcast = aerr.New("invalid podcast").WithTag(aerr.ValidationError)
+	ErrInvalidEpisode = aerr.New("invalid episode").WithTag(aerr.ValidationError)
 )
 
 var ErrNoData = errors.New("no result")

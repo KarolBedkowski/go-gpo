@@ -1,0 +1,33 @@
+{% import "gitlab.com/kabes/go-gpo/internal/model" %}
+
+{% code
+type EpisodesPage struct {
+	Episodes []model.Episode
+}
+%}
+
+{% func (p *EpisodesPage) Title() %}Episodes{% endfunc %}
+
+{% func (p *EpisodesPage) Body(pctx *PageContext) %}
+<section>
+  <h1>Episodes</h1>
+
+  <table>
+    <thead>
+      <tr><th>Episode</th><th>Device</th><th>Action</th><th>Timestamp</th></tr>
+    </thead>
+    <tbody>
+      {% for _, e := range p.Episodes %}
+      <tr>
+        <td>{%s e.URL %}</td>
+        <td>{% if e.Device != nil %}{%s e.Device.Name %}{% endif %}</td>
+        <td>{%s e.Action %}</td>
+        <td>{%s formatDateTime(e.Timestamp) %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+</section>
+
+{% endfunc %}

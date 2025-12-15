@@ -1,3 +1,4 @@
+//nolint:nilaway
 package aerr
 
 //
@@ -53,6 +54,22 @@ func TestUniqueList(t *testing.T) {
 	assert.Equal(t, ulist[1], "b")
 	assert.Equal(t, ulist[2], "c")
 	assert.Equal(t, ulist[3], "d")
+}
+
+func TestUniqueList2(t *testing.T) {
+	ul := make(uniqueList, 0)
+	ul.append("1")
+	ul.append("2")
+	ul.append("3")
+
+	assert.Equal(t, ul, []string{"1", "2", "3"})
+
+	ul.append("1")
+	ul.append("2")
+	ul.append("4")
+	ul.append("5")
+
+	assert.Equal(t, ul, []string{"1", "2", "3", "4", "5"})
 }
 
 func TestAppErrorWrap(t *testing.T) {
@@ -141,6 +158,18 @@ func TestAppErrorTags(t *testing.T) {
 	assert.Equal(t, GetTags(aerr1), []string{"k1", "k2"})
 	assert.True(t, HasTag(aerr2, "k1"))
 	assert.True(t, HasTag(aerr2, "k2"))
+
+	aerr3 := aerr2.WithUserMsg("user msg")
+	assert.Equal(t, GetTags(aerr3), []string{"k1", "k2", "k3"})
+
+	other := New("simple")
+	aerr4 := ApplyFor(aerr3, other)
+	assert.Equal(t, GetTags(aerr4), []string{"k1", "k2", "k3"})
+
+	gerr := errors.New("new base")
+	other2 := Wrapf(gerr, "new error").WithMeta("aa", "vv")
+	aerr5 := ApplyFor(aerr3, other2)
+	assert.Equal(t, GetTags(aerr5), []string{"k1", "k2", "k3"})
 }
 
 func TestAppErrorErr(t *testing.T) {

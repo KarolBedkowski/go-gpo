@@ -54,7 +54,9 @@ func (p *PodcastsSrv) GetPodcast(ctx context.Context, username string, podcastid
 		}
 
 		podcast, err := p.podcastsRepo.GetPodcastByID(ctx, user.ID, podcastid)
-		if err != nil {
+		if errors.Is(err, common.ErrNoData) {
+			return nil, common.ErrUnknownPodcast
+		} else if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
@@ -132,6 +134,32 @@ func (p *PodcastsSrv) GetPodcastsWithLastEpisode(ctx context.Context, username s
 		}
 
 		return podcasts, nil
+	})
+}
+
+//------------------------------------------------------------------------------
+
+func (p *PodcastsSrv) DeletePodcast(ctx context.Context, username string, podcastid int32) error {
+	logger := zerolog.Ctx(ctx)
+	logger.Debug().Int32("podcast_id", podcastid).Msg("delete podcast")
+
+	//nolint:wrapcheck
+	return db.InTransaction(ctx, p.db, func(ctx context.Context) error {
+		user, err := p.usersRepo.GetUser(ctx, username)
+		if errors.Is(err, common.ErrNoData) {
+			return common.ErrUnknownUser
+		} else if err != nil {
+			return aerr.ApplyFor(ErrRepositoryError, err)
+		}
+
+		podcast, err := p.podcastsRepo.GetPodcastByID(ctx, user.ID, podcastid)
+		if errors.Is(err, common.ErrNoData) {
+			return common.ErrUnknownPodcast
+		} else if err != nil {
+			return aerr.ApplyFor(ErrRepositoryError, err)
+		}
+
+		return p.podcastsRepo.DeletePodcast(ctx, podcast.ID)
 	})
 }
 

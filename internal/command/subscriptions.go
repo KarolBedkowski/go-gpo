@@ -38,8 +38,12 @@ func (s *ChangeSubscriptionsCmd) Sanitize() [][]string {
 }
 
 func (s *ChangeSubscriptionsCmd) Validate() error {
-	if s.UserName == "" {
-		return common.ErrEmptyUsername
+	if !validators.IsValidUserName(s.UserName) {
+		return common.ErrInvalidUser.WithUserMsg("invalid username")
+	}
+
+	if !validators.IsValidDevName(s.DeviceName) {
+		return common.ErrInvalidDevice.WithUserMsg("invalid device name")
 	}
 
 	for _, i := range s.Add {
@@ -65,8 +69,12 @@ type ReplaceSubscriptionsCmd struct {
 }
 
 func (r *ReplaceSubscriptionsCmd) Validate() error {
-	if r.UserName == "" {
-		return common.ErrEmptyUsername
+	if !validators.IsValidUserName(r.UserName) {
+		return common.ErrInvalidUser.WithUserMsg("invalid username")
+	}
+
+	if !validators.IsValidDevName(r.DeviceName) {
+		return common.ErrInvalidDevice.WithUserMsg("invalid device name")
 	}
 
 	return nil

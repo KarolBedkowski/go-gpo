@@ -1,0 +1,26 @@
+{% import "gitlab.com/kabes/go-gpo/internal/model" %}
+
+{% code
+type PodcastDeletePage struct {
+	Podcast *model.Podcast
+}
+%}
+
+{% func (p *PodcastDeletePage) Title() %}Podcasts{% endfunc %}
+
+{% func (p *PodcastDeletePage) Body(pctx *PageContext) %}
+<section>
+	<h1>Delete podcast</h1>
+
+	<form method="POST">
+		<p>Delete podcast
+			<em>{% if p.Podcast.Title != "" %}{%s p.Podcast.Title %}{% else %}{%s p.Podcast.URL %}{% endif %}</em>?
+			</p>
+		<a href="{%s pctx.Webroot %}/web/podcast/">Back</a> <button type="submit">Delete</button>
+	</form>
+</section>
+
+
+{% endfunc %}
+
+# vim:ft=mako:ts=4:

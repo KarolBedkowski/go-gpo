@@ -38,6 +38,8 @@ func newSimpleResource(i do.Injector) (simpleResource, error) {
 func (s *simpleResource) Routes() *chi.Mux {
 	r := chi.NewRouter()
 
+	// base: /subscriptions/
+
 	r.With(checkUserMiddleware).
 		Get(`/{user:[\w+.-]+}.{format}`, srvsupport.Wrap(s.downloadUserSubscriptions))
 	r.With(checkUserMiddleware, checkDeviceMiddleware).

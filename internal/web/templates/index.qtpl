@@ -1,0 +1,47 @@
+{% import "gitlab.com/kabes/go-gpo/internal/model" %}
+
+{% code
+type IndexPage struct {
+	LastActions []model.EpisodeLastAction
+}
+%}
+
+{% func (p *IndexPage) Title() %}Index{% endfunc %}
+
+{% func (p *IndexPage) Body(pctx *PageContext) %}
+<section>
+	<h2>Last actions</h2>
+	<table>
+		<thead>
+		<tr>
+			<th>Timestamp</th>
+			<th>Podcast</th>
+			<th>Episode</th>
+			<th>Device</th>
+			<th>Action</th>
+			<th>Started<br/>Position<br/>Total</th>
+		</tr>
+		</thead>
+		<tbody>
+		{% for _, a := range p.LastActions %}
+			<tr>
+				<td>{%s formatDateTime(a.Timestamp) %}</td>
+				<td>{% if a.PodcastTitle != "" %}{%s a.PodcastTitle %}{% else %}<small>{%s a.PodcastURL %}</small>{% endif %}</td>
+				<td>{%s a.Episode %}</td>
+				<td>{%s a.Device %}</td>
+				<td>{%s a.Action %}</td>
+				<td>
+				{% if a.Action == "play" %}
+					{%s formatPInt32AsDuration(a.Started) %}<br/>
+					{%s formatPInt32AsDuration(a.Position) %}<br/>
+					{%s formatPInt32AsDuration(a.Total) %}
+				{% endif %}
+				</td>
+			</tr>
+		{% endfor %}
+		</tbody>
+	</table>
+</section>
+
+
+{% endfunc %}

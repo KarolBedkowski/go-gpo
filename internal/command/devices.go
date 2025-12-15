@@ -8,6 +8,7 @@ package command
 //
 import (
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/validators"
 )
 
@@ -20,19 +21,27 @@ type UpdateDeviceCmd struct {
 
 func (u *UpdateDeviceCmd) Validate() error {
 	if u.UserName == "" {
-		return aerr.ErrValidation.WithMsg("user name can't be empty")
+		return common.ErrInvalidUser.WithUserMsg("user name can't be empty")
+	}
+
+	if !validators.IsValidUserName(u.UserName) {
+		return common.ErrInvalidUser
 	}
 
 	if u.DeviceName == "" {
-		return aerr.ErrValidation.WithMsg("device name can't be empty")
+		return common.ErrInvalidDevice.WithUserMsg("device name can't be empty")
+	}
+
+	if !validators.IsValidDevName(u.DeviceName) {
+		return common.ErrInvalidDevice
 	}
 
 	if u.DeviceType == "" {
-		return aerr.ErrValidation.WithMsg("device type can't be empty")
+		return aerr.ErrValidation.WithUserMsg("device type can't be empty")
 	}
 
 	if !validators.IsValidDevType(u.DeviceType) {
-		return aerr.ErrValidation.WithMsg("invalid device type %q", u.DeviceType)
+		return aerr.ErrValidation.WithUserMsg("invalid device type %q", u.DeviceType)
 	}
 
 	return nil
@@ -46,12 +55,12 @@ type DeleteDeviceCmd struct {
 }
 
 func (u *DeleteDeviceCmd) Validate() error {
-	if u.UserName == "" {
-		return aerr.ErrValidation.WithMsg("user name can't be empty")
+	if !validators.IsValidUserName(u.UserName) {
+		return common.ErrInvalidUser.WithUserMsg("invalid username")
 	}
 
-	if u.DeviceName == "" {
-		return aerr.ErrValidation.WithMsg("device name can't be empty")
+	if !validators.IsValidDevName(u.DeviceName) {
+		return common.ErrInvalidDevice.WithUserMsg("invalid device name")
 	}
 
 	return nil

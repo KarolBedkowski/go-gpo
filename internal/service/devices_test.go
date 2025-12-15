@@ -1,3 +1,4 @@
+//nolint:nilaway
 package service
 
 //
@@ -20,6 +21,7 @@ import (
 func TestDevice(t *testing.T) {
 	ctx, i := prepareTests(t)
 	deviceSrv := do.MustInvoke[*DevicesSrv](i)
+
 	_ = prepareTestUser(ctx, t, i, "test")
 
 	// add device

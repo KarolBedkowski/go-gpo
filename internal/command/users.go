@@ -8,6 +8,8 @@ import (
 	"errors"
 
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/common"
+	"gitlab.com/kabes/go-gpo/internal/validators"
 )
 
 //---------------------------------------------------------------------
@@ -21,8 +23,8 @@ type NewUserCmd struct {
 }
 
 func (n *NewUserCmd) Validate() error {
-	if n.UserName == "" {
-		return aerr.ErrValidation.WithUserMsg("username can't be empty")
+	if !validators.IsValidUserName(n.UserName) {
+		return common.ErrInvalidUser.WithUserMsg("invalid username")
 	}
 
 	if n.Password == "" {
@@ -49,8 +51,8 @@ type ChangeUserPasswordCmd struct {
 }
 
 func (c *ChangeUserPasswordCmd) Validate() error {
-	if c.UserName == "" {
-		return aerr.ErrValidation.WithUserMsg("username can't be empty")
+	if !validators.IsValidUserName(c.UserName) {
+		return common.ErrInvalidUser.WithUserMsg("invalid username")
 	}
 
 	if c.Password == "" {
@@ -72,8 +74,8 @@ type LockAccountCmd struct {
 }
 
 func (l *LockAccountCmd) Validate() error {
-	if l.UserName == "" {
-		return aerr.ErrValidation.WithUserMsg("username can't be empty")
+	if !validators.IsValidUserName(l.UserName) {
+		return common.ErrInvalidUser.WithUserMsg("invalid username")
 	}
 
 	return nil
@@ -87,8 +89,8 @@ type DeleteUserCmd struct {
 }
 
 func (d *DeleteUserCmd) Validate() error {
-	if d.UserName == "" {
-		return aerr.ErrValidation.WithUserMsg("username can't be empty")
+	if !validators.IsValidUserName(d.UserName) {
+		return common.ErrInvalidUser.WithUserMsg("invalid username")
 	}
 
 	return nil

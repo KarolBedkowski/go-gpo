@@ -1,0 +1,37 @@
+{% import "gitlab.com/kabes/go-gpo/internal/model" %}
+
+{% code
+type DevicesPage struct {
+	Devices []model.Device
+}
+%}
+
+{% func (p *DevicesPage) Title() %}Devices{% endfunc %}
+
+{% func (p *DevicesPage) Body(pctx *PageContext) %}
+<section>
+	<h1>Devices</h1>
+	<table>
+		<thead>
+			<tr>
+				<th>Name</th>
+				<th>Type</th>
+				<th>Caption</th>
+				<th>&nbsp;</th>
+			</tr>
+		</thead>
+		<tbody>
+			{% for _, d := range p.Devices %}
+			<tr>
+				<td>{%s d.Name %}</td>
+				<td>{%s d.DevType %}</td>
+				<td>{%s d.Caption %}</td>
+				<td><a href="{%s pctx.Webroot %}/web/device/{%s d.Name %}/delete">Delete</a></td>
+			</tr>
+			{% endfor %}
+		</tbody>
+	</table>
+</section>
+
+
+{% endfunc %}
