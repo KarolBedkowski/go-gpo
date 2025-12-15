@@ -205,6 +205,10 @@ func (s Repository) SaveEpisode(ctx context.Context, userid int32, episodes ...m
 			deviceid.Int32 = episode.Device.ID
 		}
 
+		if episode.Timestamp.IsZero() {
+			episode.Timestamp = time.Now().UTC()
+		}
+
 		_, err := stmt.ExecContext(
 			ctx,
 			episode.Podcast.ID,

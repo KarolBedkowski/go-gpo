@@ -122,6 +122,10 @@ func (s Repository) SavePodcast(ctx context.Context, podcast *model.Podcast) (in
 		metaupdatedat = sql.NullTime{Time: podcast.MetaUpdatedAt, Valid: true}
 	}
 
+	if podcast.UpdatedAt.IsZero() {
+		podcast.UpdatedAt = time.Now().UTC()
+	}
+
 	if podcast.ID == 0 {
 		logger.Debug().Object("podcast", podcast).Msg("insert podcast")
 
