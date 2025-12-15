@@ -1,6 +1,8 @@
 package aerr
 
-import "github.com/rs/zerolog"
+import (
+	"github.com/rs/zerolog"
+)
 
 // common_errors.go
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
@@ -21,7 +23,13 @@ var (
 )
 
 func IsSerious(err error) bool {
-	return HasTag(err, InternalError)
+	tags := GetTags(err)
+
+	if len(tags) == 1 && tags[0] == ValidationError {
+		return false
+	}
+
+	return true
 }
 
 func LogLevelForError(err error) zerolog.Level {
