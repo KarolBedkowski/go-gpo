@@ -68,6 +68,10 @@ func (s Repository) SaveDevice(ctx context.Context, device *model.Device) (int32
 
 	logger.Debug().Object("device", device).Msg("save device")
 
+	if device.UpdatedAt.IsZero() {
+		device.UpdatedAt = time.Now().UTC()
+	}
+
 	if device.ID == 0 {
 		logger.Debug().Object("device", device).Msg("insert device")
 

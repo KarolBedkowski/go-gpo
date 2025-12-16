@@ -45,5 +45,6 @@ func SanitizeURL(u string) string {
 		return ""
 	}
 
-	return su
+	// remove last / from url if exists
+	return strings.TrimRight(su, "/")
 }

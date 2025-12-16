@@ -42,8 +42,10 @@ func (s *ChangeSubscriptionsCmd) Validate() error {
 		return common.ErrInvalidUser.WithUserMsg("invalid username")
 	}
 
-	if !validators.IsValidDevName(s.DeviceName) {
-		return common.ErrInvalidDevice.WithUserMsg("invalid device name")
+	if s.DeviceName != "" {
+		if !validators.IsValidDevName(s.DeviceName) {
+			return common.ErrInvalidDevice.WithUserMsg("invalid device name")
+		}
 	}
 
 	for _, i := range s.Add {

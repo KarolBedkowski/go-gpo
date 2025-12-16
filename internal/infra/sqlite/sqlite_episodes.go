@@ -74,9 +74,14 @@ func (s Repository) ListEpisodeActions(
 		FROM episodes e
 		JOIN podcasts p on p.id = e.podcast_id
 		LEFT JOIN devices d on d.id=e.device_id
-		WHERE p.user_id=? AND e.updated_at > ?`
-	args := []any{userid, since}
+		WHERE p.user_id=?`
+	args := []any{userid}
 	dbctx := db.MustCtx(ctx)
+
+	if !since.IsZero() {
+		query += " AND e.updated_at > ? "
+		args = append(args, since) //nolint:wsl_v5
+	}
 
 	if deviceid != nil {
 		query += " AND (e.device_id != ? OR e.device_id is NULL) "
@@ -203,6 +208,10 @@ func (s Repository) SaveEpisode(ctx context.Context, userid int32, episodes ...m
 		if episode.Device != nil {
 			deviceid.Valid = true
 			deviceid.Int32 = episode.Device.ID
+		}
+
+		if episode.Timestamp.IsZero() {
+			episode.Timestamp = time.Now().UTC()
 		}
 
 		_, err := stmt.ExecContext(

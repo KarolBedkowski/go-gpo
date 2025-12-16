@@ -28,13 +28,21 @@ func (s Repository) ListSubscribedPodcasts(ctx context.Context, userid int32, si
 	res := []PodcastDB{}
 	dbctx := db.MustCtx(ctx)
 
-	err := dbctx.SelectContext(ctx, &res,
-		"SELECT p.id, p.user_id, p.url, p.title, p.subscribed, p.created_at, p.updated_at, p.metadata_updated_at, "+
-			"coalesce(p.description, '') as description, coalesce(p.website, '') as website "+
-			"FROM podcasts p "+
-			"WHERE p.user_id=? AND p.updated_at > ? and subscribed "+
-			"ORDER BY p.title, p.url",
-		userid, since)
+	query := `
+		SELECT p.id, p.user_id, p.url, p.title, p.subscribed, p.created_at, p.updated_at, p.metadata_updated_at,
+		coalesce(p.description, '') as description, coalesce(p.website, '') as website
+		FROM podcasts p
+		WHERE p.user_id = ? AND subscribed `
+	args := []any{userid}
+
+	if !since.IsZero() {
+		query += " AND p.updated_at > ? "
+		args = append(args, since) //nolint:wsl_v5
+	}
+
+	query += " ORDER BY p.title, p.url"
+
+	err := dbctx.SelectContext(ctx, &res, query, args...)
 	if err != nil {
 		return nil, aerr.Wrapf(err, "query podcasts failed").WithMeta("user_id", userid, "since", since)
 	}
@@ -50,11 +58,21 @@ func (s Repository) ListPodcasts(ctx context.Context, userid int32, since time.T
 	res := []PodcastDB{}
 	dbctx := db.MustCtx(ctx)
 
-	err := dbctx.SelectContext(ctx, &res,
-		"SELECT p.id, p.user_id, p.url, p.title, p.subscribed, p.created_at, p.updated_at, p.metadata_updated_at, "+
-			"coalesce(p.description, '') as description, coalesce(p.website, '') as website "+
-			"FROM podcasts p "+
-			"WHERE p.user_id=? AND p.updated_at > ? ORDER BY p.title, p.url", userid, since)
+	query := `
+		SELECT p.id, p.user_id, p.url, p.title, p.subscribed, p.created_at, p.updated_at, p.metadata_updated_at,
+		coalesce(p.description, '') as description, coalesce(p.website, '') as website
+		FROM podcasts p
+		WHERE p.user_id=?`
+	args := []any{userid}
+
+	if !since.IsZero() {
+		query += " AND p.updated_at > ? "
+		args = append(args, since) //nolint:wsl_v5
+	}
+
+	query += " ORDER BY p.title, p.url"
+
+	err := dbctx.SelectContext(ctx, &res, query, args...)
 	if err != nil {
 		return nil, aerr.Wrapf(err, "query podcasts failed").WithMeta("user_id", userid, "since", since)
 	}
@@ -120,6 +138,10 @@ func (s Repository) SavePodcast(ctx context.Context, podcast *model.Podcast) (in
 	metaupdatedat := sql.NullTime{}
 	if !podcast.MetaUpdatedAt.IsZero() {
 		metaupdatedat = sql.NullTime{Time: podcast.MetaUpdatedAt, Valid: true}
+	}
+
+	if podcast.UpdatedAt.IsZero() {
+		podcast.UpdatedAt = time.Now().UTC()
 	}
 
 	if podcast.ID == 0 {

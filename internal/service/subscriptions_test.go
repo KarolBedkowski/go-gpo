@@ -262,4 +262,28 @@ func TestSubsServiceUpdateDevSubsChanges(t *testing.T) {
 	assert.NoErr(t, err)
 	assert.EqualSorted(t, state.RemovedURLs(), []string{"http://example.com/p1"})
 	assert.EqualSorted(t, state.AddedURLs(), []string{"http://example.com/p4", "http://example.com/p5"})
+
+	// add again the same subscription
+	changes2 := command.ChangeSubscriptionsCmd{
+		UserName:   "user1",
+		DeviceName: "dev1",
+		Add:        []string{"http://example.com/p4"},
+		Remove:     []string{"http://example.com/p1"},
+		Timestamp:  time.Date(2025, 1, 2, 12, 0, 0, 0, time.UTC),
+	}
+	assert.NoErr(t, changes2.Validate())
+
+	_, err = subsSrv.ChangeSubscriptions(ctx, &changes2)
+	assert.NoErr(t, err)
+
+	// check
+	q = query.GetSubscriptionChangesQuery{
+		UserName:   "user1",
+		DeviceName: "dev1",
+		Since:      time.Date(2025, 1, 2, 11, 0, 0, 0, time.UTC),
+	}
+	state, err = subsSrv.GetSubscriptionChanges(ctx, &q)
+	assert.NoErr(t, err)
+	assert.EqualSorted(t, state.RemovedURLs(), []string{"http://example.com/p1"})
+	assert.EqualSorted(t, state.AddedURLs(), []string{"http://example.com/p4", "http://example.com/p5"})
 }
