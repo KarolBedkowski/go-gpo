@@ -67,7 +67,7 @@ func (p *PodcastsPage) StreamBody(qw422016 *qt422016.Writer, pctx *PageContext) 
 	<form method="POST">
 		<fieldset>
 			<legend>Add podcast</legend>
-			<label>URL:</label><input type="text" name="url" />
+			<label>URL:</label> <input type="text" name="url" />
 			<button type="submit">Add</button>
 		</fieldset>
 	</form>

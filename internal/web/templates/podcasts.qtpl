@@ -2,8 +2,8 @@
 
 {% code
 type PodcastsPage struct {
-    Podcasts       []model.PodcastWithLastEpisode
-    SubscribedOnly bool
+	Podcasts       []model.PodcastWithLastEpisode
+	SubscribedOnly bool
 }
 %}
 
@@ -14,7 +14,7 @@ type PodcastsPage struct {
 	<form method="POST">
 		<fieldset>
 			<legend>Add podcast</legend>
-			<label>URL:</label><input type="text" name="url" />
+			<label>URL:</label> <input type="text" name="url" />
 			<button type="submit">Add</button>
 		</fieldset>
 	</form>
