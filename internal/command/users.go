@@ -31,6 +31,10 @@ func (n *NewUserCmd) Validate() error {
 		return aerr.ErrValidation.WithUserMsg("password can't be empty")
 	}
 
+	if n.Email == "" {
+		return aerr.ErrValidation.WithUserMsg("email can't be empty")
+	}
+
 	return nil
 }
 
