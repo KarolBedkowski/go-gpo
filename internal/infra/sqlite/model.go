@@ -16,17 +16,17 @@ import (
 //----------------------------------------
 
 type DeviceDB struct {
-	CreatedAt     time.Time `db:"created_at"`
-	UpdatedAt     time.Time `db:"updated_at"`
-	LastSeenAt    time.Time `db:"last_seen_at"`
-	Name          string    `db:"name"`
-	DevType       string    `db:"dev_type"`
-	Caption       string    `db:"caption"`
-	UserName      string    `db:"user_name"`
-	UserUserName  string    `db:"user_username"`
-	ID            int32     `db:"id"`
-	UserID        int32     `db:"user_id"`
-	Subscriptions int       `db:"subscriptions"`
+	CreatedAt time.Time `db:"created_at"`
+	UpdatedAt time.Time `db:"updated_at"`
+	Name      string    `db:"name"`
+	DevType   string    `db:"dev_type"`
+	Caption   string    `db:"caption"`
+	ID        int32     `db:"id"`
+	UserID    int32     `db:"user_id"`
+
+	Subscriptions int `db:"subscriptions"`
+
+	User *UserDB `db:"user"`
 }
 
 func (d *DeviceDB) MarshalZerologObject(event *zerolog.Event) {
@@ -37,12 +37,19 @@ func (d *DeviceDB) MarshalZerologObject(event *zerolog.Event) {
 		Str("caption", d.Caption).
 		Time("created_at", d.CreatedAt).
 		Time("updated_at", d.UpdatedAt).
-		Int("subscriptions", d.Subscriptions).
-		Str("user_name", d.UserName).
-		Str("user_username", d.UserUserName)
+		Int("subscriptions", d.Subscriptions)
+
+	if d.User != nil {
+		event.Object("user", d.User)
+	}
 }
 
 func (d *DeviceDB) toModel() *model.Device {
+	var user *model.User
+	if d.User != nil {
+		user = d.User.toModel()
+	}
+
 	return &model.Device{
 		ID:            d.ID,
 		Name:          d.Name,
@@ -50,12 +57,7 @@ func (d *DeviceDB) toModel() *model.Device {
 		Caption:       d.Caption,
 		Subscriptions: d.Subscriptions,
 		UpdatedAt:     d.UpdatedAt,
-		LastSeenAt:    d.LastSeenAt,
-		User: &model.User{
-			ID:       d.UserID,
-			Name:     d.UserName,
-			UserName: d.UserUserName,
-		},
+		User:          user,
 	}
 }
 
@@ -81,9 +83,10 @@ type PodcastDB struct {
 	Description   string       `db:"description"`
 	Website       string       `db:"website"`
 
-	ID         int32 `db:"id"`
-	UserID     int32 `db:"user_id"`
-	Subscribed bool  `db:"subscribed"`
+	ID     int32 `db:"id"`
+	UserID int32 `db:"user_id"`
+
+	Subscribed bool `db:"subscribed"`
 }
 
 func (p *PodcastDB) MarshalZerologObject(event *zerolog.Event) {
@@ -120,70 +123,6 @@ func podcastsFromDb(podcasts []PodcastDB) []model.Podcast {
 
 	return res
 }
-
-//------------------------------------------------------------------------------
-
-// type PodcastMetaUpdateDB struct {
-// 	Title       string `db:"title"`
-// 	URL         string `db:"url"`
-// 	Description string `db:"description"`
-// 	Website     string `db:"website"`
-
-// 	MetaUpdatedAt time.Time `db:"metadata_updated_at"`
-// }
-
-//------------------------------------------------------------------------------
-
-// type PodcastsDB []PodcastDB
-
-// func (s PodcastsDB) FindSubscribedPodcastByURL(url string) (PodcastDB, bool) {
-// 	for _, sp := range s {
-// 		if sp.URL == url && sp.Subscribed {
-// 			return sp, true
-// 		}
-// 	}
-
-// 	return PodcastDB{}, false
-// }
-
-// func (s PodcastsDB) FindPodcastByURL(url string) (PodcastDB, bool) {
-// 	for _, sp := range s {
-// 		if sp.URL == url {
-// 			return sp, true
-// 		}
-// 	}
-
-// 	return PodcastDB{}, false
-// }
-
-// func (s PodcastsDB) ToURLs() []string {
-// 	res := make([]string, 0, len(s))
-// 	for _, p := range s {
-// 		res = append(res, p.URL)
-// 	}
-
-// 	return res
-// }
-
-// func (s PodcastsDB) ToMap() map[string]PodcastDB {
-// 	res := make(map[string]PodcastDB)
-
-// 	for _, p := range s {
-// 		res[p.URL] = p
-// 	}
-
-// 	return res
-// }
-
-// func (s PodcastsDB) ToIDsMap() map[string]int32 {
-// 	res := make(map[string]int32 )
-
-// 	for _, p := range s {
-// 		res[p.URL] = p.ID
-// 	}
-
-// 	return res
-// }
 
 //------------------------------------------------------------------------------
 

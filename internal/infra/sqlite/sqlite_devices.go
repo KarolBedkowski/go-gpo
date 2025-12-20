@@ -34,7 +34,7 @@ func (s Repository) GetDevice(
 	err := dbctx.GetContext(ctx, &device,
 		`
 		SELECT d.id, d.user_id, d.name, d.dev_type, d.caption, d.created_at, d.updated_at,
-				u.name as user_name, u.username as user_username
+				u.id as "user.id", u.name as "user.name", u.username as "user.username"
 		FROM devices d
 		JOIN users u ON u.ID = d.user_id
 		WHERE d.user_id=? and d.name=?
@@ -57,7 +57,7 @@ func (s Repository) GetDevice(
 		return nil, aerr.Wrapf(err, "count subscriptions failed").WithMeta("user_id", userid)
 	}
 
-	logger.Debug().Int("subs", device.Subscriptions).Msg("count subscriptions finished")
+	logger.Debug().Int("subs", device.Subscriptions).Object("device", &device).Msg("count subscriptions finished")
 
 	return device.toModel(), nil
 }
@@ -78,9 +78,9 @@ func (s Repository) SaveDevice(ctx context.Context, device *model.Device) (int32
 		now := time.Now().UTC()
 
 		res, err := dbctx.ExecContext(ctx,
-			"INSERT INTO devices (user_id, name, dev_type, caption, updated_at, created_at, last_seen_at) "+
-				"VALUES(?, ?, ?, ?, ?, ?, ?)",
-			device.User.ID, device.Name, device.DevType, device.Caption, now, now, now)
+			"INSERT INTO devices (user_id, name, dev_type, caption, updated_at, created_at) "+
+				"VALUES(?, ?, ?, ?, ?, ?)",
+			device.User.ID, device.Name, device.DevType, device.Caption, now, now)
 		if err != nil {
 			return 0, aerr.Wrapf(err, "insert device failed")
 		}
@@ -129,8 +129,8 @@ func (s Repository) ListDevices(ctx context.Context, userid int32) ([]model.Devi
 
 	err = dbctx.SelectContext(ctx, &devices, `
 			SELECT d.id, d.user_id, d.name, d.dev_type, d.caption, ? as subscriptions,
-				d.created_at, d.updated_at, d.last_seen_at,
-				u.name as user_name, u.username as user_username
+				d.created_at, d.updated_at,
+				u.id as "user.id", u.name as "user.name", u.username as "user.username"
 			FROM devices d
 			JOIN users u ON u.id = d.user_id
 			WHERE user_id=?
@@ -157,22 +157,6 @@ func (s Repository) DeleteDevice(ctx context.Context, deviceid int32) error {
 	_, err = dbctx.ExecContext(ctx, "DELETE FROM devices where id=?", deviceid)
 	if err != nil {
 		return aerr.Wrapf(err, "delete device failed")
-	}
-
-	return nil
-}
-
-func (s Repository) MarkSeen(ctx context.Context, ts time.Time, deviceid ...int32) error {
-	logger := log.Ctx(ctx)
-	logger.Debug().Ints32("device_id", deviceid).Msgf("mark device seen at: %s", ts)
-
-	dbctx := db.MustCtx(ctx)
-
-	for _, did := range deviceid {
-		_, err := dbctx.ExecContext(ctx, "UPDATE devices SET last_seen_at=? WHERE id=?", ts, did)
-		if err != nil {
-			return aerr.Wrapf(err, "update device failed")
-		}
 	}
 
 	return nil
