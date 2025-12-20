@@ -7,6 +7,7 @@ package command
 // Distributed under terms of the GPLv3 license.
 //
 import (
+	"github.com/rs/zerolog"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/validators"
@@ -47,6 +48,14 @@ func (u *UpdateDeviceCmd) Validate() error {
 	return nil
 }
 
+func (u *UpdateDeviceCmd) MarshalZerologObject(event *zerolog.Event) {
+	event.
+		Str("username", u.UserName).
+		Str("device_name", u.DeviceName).
+		Str("device_type", u.DeviceType).
+		Str("caption", u.Caption)
+}
+
 // ------------------------------------------------------
 
 type DeleteDeviceCmd struct {
@@ -64,4 +73,10 @@ func (u *DeleteDeviceCmd) Validate() error {
 	}
 
 	return nil
+}
+
+func (u *DeleteDeviceCmd) MarshalZerologObject(event *zerolog.Event) {
+	event.
+		Str("username", u.UserName).
+		Str("device_name", u.DeviceName)
 }

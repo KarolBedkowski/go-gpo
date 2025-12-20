@@ -85,7 +85,7 @@ func (d devicePages) deletePost(ctx context.Context, w http.ResponseWriter, r *h
 	err := d.deviceSrv.DeleteDevice(ctx, &cmd)
 	if err != nil {
 		srvsupport.CheckAndWriteError(w, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Interface("cmd", &cmd).Msg("delete device error")
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Object("cmd", &cmd).Msg("delete device error")
 
 		return
 	}

@@ -62,15 +62,22 @@ func (e *Episode) Validate() error {
 }
 
 func (e *Episode) MarshalZerologObject(event *zerolog.Event) {
-	event.Interface("podcast", e.Podcast).
+	event.
 		Str("url", e.URL).
-		Object("device", e.Device).
 		Str("action", e.Action).
 		Time("timestamp", e.Timestamp).
 		Any("guid", e.GUID).
 		Any("started", e.Started).
 		Any("position", e.Position).
 		Any("total", e.Total)
+
+	if e.Device != nil {
+		event.Object("device", e.Device)
+	}
+
+	if e.Podcast != nil {
+		event.Object("podcast", e.Podcast)
+	}
 }
 
 // ------------------------------------------------------
