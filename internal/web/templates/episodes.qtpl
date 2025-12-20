@@ -19,7 +19,7 @@ type EpisodesPage struct {
     <tbody>
       {% for _, e := range p.Episodes %}
       <tr>
-        <td>{%s e.URL %}</td>
+        <td><a href="{%s e.URL %}">{% if e.Title != "" %}{%s e.Title %}{% else %}{%s e.URL %}{% endif %}</a></td>
         <td>{% if e.Device != nil %}{%s e.Device.Name %}{% endif %}</td>
         <td>{%s e.Action %}</td>
         <td>{%s formatDateTime(e.Timestamp) %}</td>

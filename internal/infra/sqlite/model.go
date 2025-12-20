@@ -173,6 +173,7 @@ func (e *EpisodeDB) toModel() *model.Episode {
 		URL:       e.URL,
 		Action:    e.Action,
 		Timestamp: e.UpdatedAt,
+		Title:     e.Title,
 		Started:   nil,
 		Position:  nil,
 		Total:     nil,
