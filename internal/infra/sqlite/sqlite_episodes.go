@@ -33,8 +33,9 @@ func (s Repository) GetEpisode(
 
 	query := `
 		SELECT e.id, e.podcast_id, e.url, e.title, e.action, e.started, e.position, e.total,
-			e.created_at, e.updated_at, p.url as podcast_url, p.title as podcast_title,
-			e.device_id, d.name as device_name
+			e.created_at, e.updated_at, e.device_id,
+			p.url as "podcast.url", p.title as "podcast.title", p.id as "podcast.id",
+			d.name as "device.name", d.id as "device.id"
 		FROM episodes e
 		JOIN podcasts p on p.id = e.podcast_id
 		LEFT JOIN devices d on d.id = e.device_id
@@ -69,8 +70,9 @@ func (s Repository) ListEpisodeActions(
 
 	query := `
 		SELECT e.id, e.podcast_id, e.url, e.title, e.action, e.started, e.position, e.total, e.guid,
-		 e.created_at, e.updated_at, p.url as podcast_url, p.title as podcast_title,
-		 e.device_id, d.name as device_name
+			e.created_at, e.updated_at, e.device_id,
+			p.url as "podcast.url", p.title as "podcast.title", p.id as "podcast.id",
+			d.name as "device.name", d.id as "device.id"
 		FROM episodes e
 		JOIN podcasts p on p.id = e.podcast_id
 		LEFT JOIN devices d on d.id=e.device_id
@@ -98,8 +100,6 @@ func (s Repository) ListEpisodeActions(
 	if lastelements > 0 {
 		query += " LIMIT " + strconv.FormatUint(uint64(lastelements), 10)
 	}
-
-	logger.Debug().Msgf("get episodes - query=%q, args=%v", query, &args)
 
 	res := []EpisodeDB{}
 
@@ -129,8 +129,8 @@ func (s Repository) ListFavorites(ctx context.Context, userid int32) ([]model.Ep
 	logger.Debug().Int32("user_id", userid).Msg("get favorites")
 
 	query := `
-		SELECT e.id, e.podcast_id, e.url, e.title, e.guid,
-			e.created_at, e.updated_at, p.url as podcast_url, p.title as podcast_title
+		SELECT e.id, e.podcast_id, e.url, e.title, e.guid, e.created_at, e.updated_at,
+			p.url as "podcast.url", p.title as "podcast.title", p.id as "podcast.id"
 		FROM episodes e
 		JOIN podcasts p on p.id = e.podcast_id
 		JOIN settings s on s.episode_id = e.id
@@ -157,8 +157,9 @@ func (s Repository) GetLastEpisodeAction(ctx context.Context,
 
 	query := `
 		SELECT e.id, e.podcast_id, e.url, e.title, e.action, e.started, e.position, e.total,
-			e.created_at, e.updated_at, p.url as podcast_url, p.title as podcast_title,
-			e.device_id, d.name as device_name
+			e.created_at, e.updated_at, e.device_id,
+			p.url as "podcast.url", p.title as "podcast.title", p.id as "podcast.id",
+			d.name as "device.name", d.id as "device.id"
 		FROM episodes e
 		JOIN podcasts p on p.id = e.podcast_id
 		LEFT JOIN devices d on d.id=e.device_id
@@ -180,6 +181,8 @@ func (s Repository) GetLastEpisodeAction(ctx context.Context,
 	} else if err != nil {
 		return nil, aerr.Wrapf(err, "query episode failed").WithTag(aerr.InternalError)
 	}
+
+	logger.Debug().Object("episode", &res).Msg("loaded episode")
 
 	return res.toModel(), nil
 }

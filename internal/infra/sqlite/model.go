@@ -127,59 +127,49 @@ func podcastsFromDb(podcasts []PodcastDB) []model.Podcast {
 //------------------------------------------------------------------------------
 
 type EpisodeDB struct {
-	CreatedAt time.Time `db:"created_at"`
-	UpdatedAt time.Time `db:"updated_at"`
-	Title     string    `db:"title"`
-	URL       string    `db:"url"`
-	Action    string    `db:"action"`
+	CreatedAt time.Time      `db:"created_at"`
+	UpdatedAt time.Time      `db:"updated_at"`
+	Title     string         `db:"title"`
+	URL       string         `db:"url"`
+	Action    string         `db:"action"`
+	GUID      sql.NullString `db:"guid"`
+	ID        int32          `db:"id"`
+	PodcastID int32          `db:"podcast_id"`
+	DeviceID  sql.NullInt32  `db:"device_id"`
+	Started   sql.NullInt32  `db:"started"`
+	Position  sql.NullInt32  `db:"position"`
+	Total     sql.NullInt32  `db:"total"`
 
-	PodcastURL   string         `db:"podcast_url"`
-	PodcastTitle string         `db:"podcast_title"`
-	GUID         sql.NullString `db:"guid"`
-
-	DeviceName sql.NullString `db:"device_name"`
-	DeviceID   sql.NullInt32  `db:"device_id"`
-	ID         int32          `db:"id"`
-	PodcastID  int32          `db:"podcast_id"`
-	Started    sql.NullInt32  `db:"started"`
-	Position   sql.NullInt32  `db:"position"`
-	Total      sql.NullInt32  `db:"total"`
+	Podcast *PodcastDB
+	Device  *DeviceDB
 }
 
 func (e *EpisodeDB) MarshalZerologObject(event *zerolog.Event) {
 	event.Int32("id", e.ID).
 		Int32("podcast_id", e.PodcastID).
-		Any("device_id", e.DeviceID).
 		Str("title", e.Title).
 		Str("url", e.URL).
 		Str("action", e.Action).
 		Any("guid", e.GUID).
+		Any("device_id", e.DeviceID).
 		Any("started", e.Started).
 		Any("position", e.Position).
 		Any("total", e.Total).
 		Time("created_at", e.CreatedAt).
 		Time("updated_at", e.UpdatedAt).
-		Dict("podcast", zerolog.Dict().
-			Str("podcast_url", e.PodcastURL).
-			Str("podcast_title", e.PodcastTitle)).
-		Any("device", e.DeviceName)
+		Object("podcast", e.Podcast).
+		Object("device", e.Device)
 }
 
 func (e *EpisodeDB) toModel() *model.Episode {
 	var device *model.Device
-	if e.DeviceID.Valid {
-		device = &model.Device{
-			ID:   e.DeviceID.Int32,
-			Name: e.DeviceName.String,
-		}
+	if e.Device != nil {
+		device = e.Device.toModel()
 	}
 
 	episode := &model.Episode{
-		ID: e.ID,
-		Podcast: &model.Podcast{
-			ID:  e.PodcastID,
-			URL: e.PodcastURL,
-		},
+		ID:        e.ID,
+		Podcast:   e.Podcast.toModel(),
 		Device:    device,
 		URL:       e.URL,
 		Action:    e.Action,
