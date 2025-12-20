@@ -170,7 +170,7 @@ func (p *PodcastsSrv) DownloadPodcastsInfo(ctx context.Context, since time.Time)
 	logger.Debug().Msgf("start downloading podcasts info; since=%s", since)
 
 	// get podcasts to update
-	urls, err := db.InConnectionR(ctx, p.db, func(ctx context.Context) ([]string, error) {
+	urls, err := db.InConnectionR(ctx, p.db, func(ctx context.Context) ([]model.PodcastToUpdate, error) {
 		return p.podcastsRepo.ListPodcastsToUpdate(ctx, since)
 	})
 	if err != nil {
@@ -185,11 +185,11 @@ func (p *PodcastsSrv) DownloadPodcastsInfo(ctx context.Context, since time.Time)
 
 	logger.Debug().Msgf("start downloading podcasts finished; found %d", len(urls))
 
-	tasks := make(chan string, len(urls))
+	tasks := make(chan model.PodcastToUpdate, len(urls))
 
 	var wg sync.WaitGroup
 	for range min(len(urls), 5) { //nolint:mnd
-		wg.Go(func() { p.downloadPodcastInfoWorker(ctx, tasks) })
+		wg.Go(func() { p.downloadPodcastInfoWorker(ctx, tasks, since) })
 	}
 
 	for _, u := range urls {
@@ -207,25 +207,35 @@ func (p *PodcastsSrv) DownloadPodcastsInfo(ctx context.Context, since time.Time)
 
 const downloadPodcastInfoTimeout = 10 * time.Second
 
-func (p *PodcastsSrv) downloadPodcastInfoWorker(ctx context.Context, urls <-chan string) {
+func (p *PodcastsSrv) downloadPodcastInfoWorker(
+	ctx context.Context, tasks <-chan model.PodcastToUpdate, since time.Time,
+) {
 	logger := zerolog.Ctx(ctx)
+	fp := gofeed.NewParser()
 
-	for url := range urls {
-		logger.Debug().Str("podcast_url", url).Msg("downloading podcast info")
+	for task := range tasks {
+		logger := logger.With().Str("podcast_url", task.URL).Logger()
+		logger.Debug().Msg("downloading podcast info")
 
 		dctx, cancel := context.WithTimeout(ctx, downloadPodcastInfoTimeout)
-		fp := gofeed.NewParser()
-		feed, err := fp.ParseURLWithContext(url, dctx)
+		feed, err := fp.ParseURLWithContext(task.URL, dctx)
 
 		cancel()
 
 		if err != nil {
-			logger.Info().Str("podcast_url", url).Err(err).Msg("download podcast info failed")
+			logger.Info().Err(err).Msg("download podcast info failed")
 
 			continue
 		}
 
-		logger.Debug().Str("podcast_url", url).Msgf("got podcast title: %q", feed.Title)
+		logger.Debug().Msgf("got podcast title: %q; published: %s, updated: %s",
+			feed.Title, feed.UpdatedParsed, feed.PublishedParsed)
+
+		if !feedNeedToBeUpdated(feed, task.MetaUpdatedAt) {
+			logger.Debug().Msg("not updated, skipping")
+
+			continue
+		}
 
 		title := feed.Title
 		if title == "" {
@@ -233,41 +243,48 @@ func (p *PodcastsSrv) downloadPodcastInfoWorker(ctx context.Context, urls <-chan
 		}
 
 		update := model.PodcastMetaUpdate{
-			URL:           url,
+			URL:           task.URL,
 			Title:         title,
 			Description:   feed.Description,
 			Website:       feed.Link,
 			MetaUpdatedAt: time.Now().UTC(),
 		}
-
-		episodes := make([]model.Episode, 0, len(feed.Items))
-		for _, item := range feed.Items {
-			if item.Title != "" {
-				if url := findEpisodeURL(item); url != "" {
-					episodes = append(episodes, model.Episode{
-						Title: item.Title,
-						GUID:  &item.GUID,
-						URL:   url,
-					})
-				}
-			}
-		}
+		episodes := episodesToUpdate(feed, since, task.MetaUpdatedAt)
 
 		err = db.InTransaction(ctx, p.db, func(ctx context.Context) error {
 			if err := p.podcastsRepo.UpdatePodcastsInfo(ctx, &update); err != nil {
 				return aerr.Wrapf(err, "update podcast info failed")
 			}
 
-			if err := p.episodesRepo.UpdateEpisodeInfo(ctx, episodes...); err != nil {
-				return aerr.Wrapf(err, "update episodes info failed")
+			if len(episodes) > 0 {
+				if err := p.episodesRepo.UpdateEpisodeInfo(ctx, episodes...); err != nil {
+					return aerr.Wrapf(err, "update episodes info failed")
+				}
 			}
 
 			return nil
 		})
 		if err != nil {
-			logger.Error().Err(err).Str("podcast_url", url).Msg("update podcast info failed")
+			logger.Error().Err(err).Msg("update podcast info failed")
 		}
 	}
+}
+
+func episodesToUpdate(feed *gofeed.Feed, since, metadataUpdatedAt time.Time) []model.Episode {
+	episodes := make([]model.Episode, 0, len(feed.Items))
+	for _, item := range feed.Items {
+		if item.Title != "" && itemNeedToBeUpdated(item, since, metadataUpdatedAt) {
+			if url := findEpisodeURL(item); url != "" {
+				episodes = append(episodes, model.Episode{
+					Title: item.Title,
+					GUID:  &item.GUID,
+					URL:   url,
+				})
+			}
+		}
+	}
+
+	return episodes
 }
 
 func findEpisodeURL(item *gofeed.Item) string {
@@ -278,4 +295,40 @@ func findEpisodeURL(item *gofeed.Item) string {
 	}
 
 	return ""
+}
+
+func feedNeedToBeUpdated(feed *gofeed.Feed, since time.Time) bool {
+	if since.IsZero() {
+		return true
+	}
+
+	if feed.PublishedParsed != nil && feed.PublishedParsed.After(since) {
+		return true
+	}
+
+	if feed.UpdatedParsed != nil && feed.UpdatedParsed.After(since) {
+		return true
+	}
+
+	// if no update and publish date - update
+	return feed.UpdatedParsed == nil && feed.PublishedParsed == nil
+}
+
+func itemNeedToBeUpdated(item *gofeed.Item, since, metadataUpdatedAt time.Time) bool {
+	// if podcast was updated - load episodes only from last update. Otherwise load
+	// episodes `since`.
+	if !metadataUpdatedAt.IsZero() {
+		since = metadataUpdatedAt
+	}
+
+	if item.PublishedParsed != nil && item.PublishedParsed.After(since) {
+		return true
+	}
+
+	if item.UpdatedParsed != nil && item.UpdatedParsed.After(since) {
+		return true
+	}
+
+	// if no update and publish date - update
+	return item.UpdatedParsed == nil && item.PublishedParsed == nil
 }

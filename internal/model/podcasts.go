@@ -145,3 +145,8 @@ type PodcastMetaUpdate struct {
 	Description   string
 	Website       string
 }
+
+type PodcastToUpdate struct {
+	MetaUpdatedAt time.Time
+	URL           string
+}

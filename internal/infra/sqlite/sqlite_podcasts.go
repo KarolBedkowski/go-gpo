@@ -190,20 +190,34 @@ func (s Repository) SavePodcast(ctx context.Context, podcast *model.Podcast) (in
 	return podcast.ID, nil
 }
 
-func (s Repository) ListPodcastsToUpdate(ctx context.Context, since time.Time) ([]string, error) {
+func (s Repository) ListPodcastsToUpdate(ctx context.Context, since time.Time) ([]model.PodcastToUpdate, error) {
 	dbctx := db.MustCtx(ctx)
 
-	var res []string
+	res := []PodcastToUpdate{}
 
-	err := dbctx.SelectContext(ctx, &res,
-		"SELECT DISTINCT p.url FROM podcasts p "+
-			"WHERE p.subscribed AND (metadata_updated_at IS NULL OR metadata_updated_at < ?)",
+	// for some reason metadata_updated_at is string, even after datetime function
+	err := dbctx.SelectContext(ctx, &res, `
+		SELECT p.url as url, min(metadata_updated_at) as metadata_updated_at
+		FROM podcasts p
+		WHERE p.subscribed AND (metadata_updated_at IS NULL OR metadata_updated_at < ?)
+		GROUP by p.url
+		`,
 		since)
 	if err != nil {
 		return nil, aerr.Wrapf(err, "get list podcasts to update failed")
 	}
 
-	return res, nil
+	mres := make([]model.PodcastToUpdate, len(res))
+	for i, r := range res {
+		m, err := r.toModel()
+		if err != nil {
+			return nil, aerr.Wrapf(err, "convert to model failed").WithMeta("obj", r)
+		}
+
+		mres[i] = m
+	}
+
+	return mres, nil
 }
 
 func (s Repository) UpdatePodcastsInfo(ctx context.Context, update *model.PodcastMetaUpdate) error {

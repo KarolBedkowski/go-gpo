@@ -53,7 +53,7 @@ type Podcasts interface {
 	GetPodcastByID(ctx context.Context, userid, podcastid int64) (*model.Podcast, error)
 	SavePodcast(ctx context.Context, podcast *model.Podcast) (int64, error)
 	// ListPodcastsToUpdate return list of url-s podcasts that need update (load title etc).
-	ListPodcastsToUpdate(ctx context.Context, since time.Time) ([]string, error)
+	ListPodcastsToUpdate(ctx context.Context, since time.Time) ([]model.PodcastToUpdate, error)
 	UpdatePodcastsInfo(ctx context.Context, podcast *model.PodcastMetaUpdate) error
 	DeletePodcast(ctx context.Context, podcastid int64) error
 }

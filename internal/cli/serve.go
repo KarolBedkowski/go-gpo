@@ -165,6 +165,7 @@ func (s *Server) backgroundWorker(ctx context.Context, injector do.Injector) {
 	logger.Info().Msg("start background worker")
 
 	podcastSrv := do.MustInvoke[*service.PodcastsSrv](injector)
+	since := time.Now().Add(-24 * time.Hour).UTC()
 
 	for {
 		select {
@@ -173,11 +174,13 @@ func (s *Server) backgroundWorker(ctx context.Context, injector do.Injector) {
 		case <-time.After(1 * time.Hour):
 		}
 
-		since := time.Now().Add(-24 * time.Hour).UTC()
+		start := time.Now()
 
 		if err := podcastSrv.DownloadPodcastsInfo(ctx, since); err != nil {
 			logger.Error().Err(err).Msg("download podcast info failed")
 		}
+
+		since = start
 	}
 }
 

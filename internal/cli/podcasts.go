@@ -36,9 +36,9 @@ func newDownloadPodcastsInfoCmd() *cli.Command {
 func downloadPodcastsInfoCmd(ctx context.Context, clicmd *cli.Command, injector do.Injector) error {
 	podcastSrv := do.MustInvoke[*service.PodcastsSrv](injector)
 
-	maxAge := time.Time{}
+	maxAge := time.Now().UTC()
 	if since := clicmd.Duration("max-age"); since > 0 {
-		maxAge = time.Now().Add(-since).UTC()
+		maxAge = maxAge.Add(-since)
 	}
 
 	if err := podcastSrv.DownloadPodcastsInfo(ctx, maxAge); err != nil {
