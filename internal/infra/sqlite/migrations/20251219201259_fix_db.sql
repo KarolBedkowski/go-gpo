@@ -1,7 +1,8 @@
 -- +goose Up
+-- +goose NO TRANSACTION
 -- +goose StatementBegin
 
-PRAGMA _FK=0;
+PRAGMA foreign_keys=OFF;
 
 CREATE TABLE users2 (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -21,7 +22,7 @@ DROP TABLE users;
 ALTER TABLE users2 RENAME TO users;
 
 
-PRAGMA _FK=1;
+PRAGMA foreign_keys=ON;
 
 
 -- +goose StatementEnd
