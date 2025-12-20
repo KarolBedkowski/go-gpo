@@ -63,7 +63,7 @@ func (e episodePages) list(ctx context.Context, w http.ResponseWriter, r *http.R
 
 	query := query.GetEpisodesByPodcastQuery{
 		UserName:   user,
-		PodcastID:  int32(podcastid),
+		PodcastID:  podcastid,
 		Aggregated: true,
 	}
 

@@ -20,10 +20,10 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/model"
 )
 
-func (s Repository) ListSubscribedPodcasts(ctx context.Context, userid int32, since time.Time,
+func (s Repository) ListSubscribedPodcasts(ctx context.Context, userid int64, since time.Time,
 ) (model.Podcasts, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Int32("user_id", userid).Msgf("get subscribed podcasts since %s", since)
+	logger.Debug().Int64("user_id", userid).Msgf("get subscribed podcasts since %s", since)
 
 	res := []PodcastDB{}
 	dbctx := db.MustCtx(ctx)
@@ -50,10 +50,10 @@ func (s Repository) ListSubscribedPodcasts(ctx context.Context, userid int32, si
 	return podcastsFromDb(res), nil
 }
 
-func (s Repository) ListPodcasts(ctx context.Context, userid int32, since time.Time,
+func (s Repository) ListPodcasts(ctx context.Context, userid int64, since time.Time,
 ) (model.Podcasts, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Int32("user_id", userid).Msgf("get podcasts since %s", since)
+	logger.Debug().Int64("user_id", userid).Msgf("get podcasts since %s", since)
 
 	res := []PodcastDB{}
 	dbctx := db.MustCtx(ctx)
@@ -82,10 +82,10 @@ func (s Repository) ListPodcasts(ctx context.Context, userid int32, since time.T
 
 func (s Repository) GetPodcastByID(
 	ctx context.Context,
-	userid, podcastid int32,
+	userid, podcastid int64,
 ) (*model.Podcast, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Int32("user_id", userid).Int32("podcast_id", podcastid).Msg("get podcast")
+	logger.Debug().Int64("user_id", userid).Int64("podcast_id", podcastid).Msg("get podcast")
 
 	dbctx := db.MustCtx(ctx)
 	podcast := PodcastDB{}
@@ -107,11 +107,11 @@ func (s Repository) GetPodcastByID(
 
 func (s Repository) GetPodcast(
 	ctx context.Context,
-	userid int32,
+	userid int64,
 	podcasturl string,
 ) (*model.Podcast, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Int32("user_id", userid).Str("podcast_url", podcasturl).Msg("get podcast")
+	logger.Debug().Int64("user_id", userid).Str("podcast_url", podcasturl).Msg("get podcast")
 
 	dbctx := db.MustCtx(ctx)
 	podcast := PodcastDB{}
@@ -131,7 +131,7 @@ func (s Repository) GetPodcast(
 	}
 }
 
-func (s Repository) SavePodcast(ctx context.Context, podcast *model.Podcast) (int32, error) {
+func (s Repository) SavePodcast(ctx context.Context, podcast *model.Podcast) (int64, error) {
 	logger := log.Ctx(ctx)
 	dbctx := db.MustCtx(ctx)
 
@@ -173,7 +173,7 @@ func (s Repository) SavePodcast(ctx context.Context, podcast *model.Podcast) (in
 
 		logger.Debug().Object("podcast", podcast).Msg("podcast created")
 
-		return int32(id), nil //nolint:gosec
+		return id, nil
 	}
 
 	// update
@@ -220,7 +220,7 @@ func (s Repository) UpdatePodcastsInfo(ctx context.Context, update *model.Podcas
 	return nil
 }
 
-func (s Repository) DeletePodcast(ctx context.Context, podcastid int32) error {
+func (s Repository) DeletePodcast(ctx context.Context, podcastid int64) error {
 	dbctx := db.MustCtx(ctx)
 
 	_, err := dbctx.ExecContext(ctx, "DELETE  FROM podcasts WHERE id=?", podcastid)

@@ -193,7 +193,7 @@ func (p podcastPages) podcastFromURLParam(ctx context.Context, r *http.Request, 
 
 	user := common.ContextUser(ctx)
 
-	podcast, err := p.podcastsSrv.GetPodcast(ctx, user, int32(podcastid))
+	podcast, err := p.podcastsSrv.GetPodcast(ctx, user, podcastid)
 	if errors.Is(err, common.ErrNoData) {
 		return nil, http.StatusNotFound
 	} else if err != nil {
@@ -243,7 +243,7 @@ func (p podcastPages) podcastDeletePost(
 
 	user := common.ContextUser(ctx)
 
-	if err := p.podcastsSrv.DeletePodcast(ctx, user, int32(podcastid)); err != nil {
+	if err := p.podcastsSrv.DeletePodcast(ctx, user, podcastid); err != nil {
 		srvsupport.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("delete podcast error")
 

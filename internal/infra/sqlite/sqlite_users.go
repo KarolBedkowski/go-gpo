@@ -42,7 +42,7 @@ func (s Repository) GetUser(ctx context.Context, username string) (*model.User, 
 	}
 }
 
-func (s Repository) SaveUser(ctx context.Context, user *model.User) (int32, error) {
+func (s Repository) SaveUser(ctx context.Context, user *model.User) (int64, error) {
 	logger := log.Ctx(ctx)
 	dbctx := db.MustCtx(ctx)
 
@@ -62,7 +62,7 @@ func (s Repository) SaveUser(ctx context.Context, user *model.User) (int32, erro
 			return 0, aerr.Wrapf(err, "get insert id failed").WithTag(aerr.InternalError)
 		}
 
-		return int32(id), nil //nolint:gosec
+		return id, nil
 	}
 
 	// update
@@ -103,9 +103,9 @@ func (s Repository) ListUsers(ctx context.Context, activeOnly bool) ([]model.Use
 }
 
 // DeleteUser and all related objects.
-func (s Repository) DeleteUser(ctx context.Context, userid int32) error {
+func (s Repository) DeleteUser(ctx context.Context, userid int64) error {
 	logger := log.Ctx(ctx)
-	logger.Debug().Int32("user_id", userid).Msg("delete user")
+	logger.Debug().Int64("user_id", userid).Msg("delete user")
 
 	dbctx := db.MustCtx(ctx)
 

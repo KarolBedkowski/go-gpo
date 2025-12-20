@@ -19,42 +19,42 @@ import (
 // ------------------------------------------------------
 
 type Devices interface {
-	GetDevice(ctx context.Context, userid int32, devicename string) (*model.Device, error)
-	SaveDevice(ctx context.Context, device *model.Device) (int32, error)
-	ListDevices(ctx context.Context, userid int32) ([]model.Device, error)
-	DeleteDevice(ctx context.Context, deviceid int32) error
+	GetDevice(ctx context.Context, userid int64, devicename string) (*model.Device, error)
+	SaveDevice(ctx context.Context, device *model.Device) (int64, error)
+	ListDevices(ctx context.Context, userid int64) ([]model.Device, error)
+	DeleteDevice(ctx context.Context, deviceid int64) error
 }
 
 type Users interface {
 	GetUser(ctx context.Context, username string) (*model.User, error)
-	SaveUser(ctx context.Context, user *model.User) (int32, error)
+	SaveUser(ctx context.Context, user *model.User) (int64, error)
 	ListUsers(ctx context.Context, activeOnly bool) ([]model.User, error)
-	DeleteUser(ctx context.Context, userid int32) error
+	DeleteUser(ctx context.Context, userid int64) error
 }
 
 type Episodes interface {
 	// GetEpisode from repository. episode can be episode url or guid.
-	GetEpisode(ctx context.Context, userid, podcastid int32, episode string) (*model.Episode, error)
+	GetEpisode(ctx context.Context, userid, podcastid int64, episode string) (*model.Episode, error)
 	ListEpisodeActions(
-		ctx context.Context, userid int32, deviceid, podcastid *int32, since time.Time, aggregated bool,
+		ctx context.Context, userid int64, deviceid, podcastid *int64, since time.Time, aggregated bool,
 		lastelements uint,
 	) ([]model.Episode, error)
-	SaveEpisode(ctx context.Context, userid int32, episode ...model.Episode) error
-	ListFavorites(ctx context.Context, userid int32) ([]model.Episode, error)
+	SaveEpisode(ctx context.Context, userid int64, episode ...model.Episode) error
+	ListFavorites(ctx context.Context, userid int64) ([]model.Episode, error)
 	GetLastEpisodeAction(ctx context.Context,
-		userid, podcastid int32, excludeDelete bool) (*model.Episode, error)
+		userid, podcastid int64, excludeDelete bool) (*model.Episode, error)
 }
 
 type Podcasts interface {
-	ListSubscribedPodcasts(ctx context.Context, userid int32, since time.Time) (model.Podcasts, error)
-	ListPodcasts(ctx context.Context, userid int32, since time.Time) (model.Podcasts, error)
-	GetPodcast(ctx context.Context, userid int32, podcasturl string) (*model.Podcast, error)
-	GetPodcastByID(ctx context.Context, userid, podcastid int32) (*model.Podcast, error)
-	SavePodcast(ctx context.Context, podcast *model.Podcast) (int32, error)
+	ListSubscribedPodcasts(ctx context.Context, userid int64, since time.Time) (model.Podcasts, error)
+	ListPodcasts(ctx context.Context, userid int64, since time.Time) (model.Podcasts, error)
+	GetPodcast(ctx context.Context, userid int64, podcasturl string) (*model.Podcast, error)
+	GetPodcastByID(ctx context.Context, userid, podcastid int64) (*model.Podcast, error)
+	SavePodcast(ctx context.Context, podcast *model.Podcast) (int64, error)
 	// ListPodcastsToUpdate return list of url-s podcasts that need update (load title etc).
 	ListPodcastsToUpdate(ctx context.Context, since time.Time) ([]string, error)
 	UpdatePodcastsInfo(ctx context.Context, podcast *model.PodcastMetaUpdate) error
-	DeletePodcast(ctx context.Context, podcastid int32) error
+	DeletePodcast(ctx context.Context, podcastid int64) error
 }
 
 type Settings interface {

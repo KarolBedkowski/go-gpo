@@ -22,19 +22,20 @@ const (
 )
 
 type Episode struct {
+	ID int64
+
 	Timestamp time.Time
-	Started   *int32
-	Position  *int32
-	Total     *int32
-	GUID      *string
+	Action    string
+	Title     string
+	URL       string
+
+	Started  *int32
+	Position *int32
+	Total    *int32
+	GUID     *string
 
 	Podcast *Podcast
 	Device  *Device
-	Action  string
-	Title   string
-	URL     string
-
-	ID int32
 }
 
 func (e *Episode) DeviceName() string {

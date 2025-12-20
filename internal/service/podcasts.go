@@ -39,7 +39,7 @@ func NewPodcastsSrv(i do.Injector) (*PodcastsSrv, error) {
 	}, nil
 }
 
-func (p *PodcastsSrv) GetPodcast(ctx context.Context, username string, podcastid int32) (*model.Podcast, error) {
+func (p *PodcastsSrv) GetPodcast(ctx context.Context, username string, podcastid int64) (*model.Podcast, error) {
 	if username == "" {
 		return nil, common.ErrEmptyUsername
 	}
@@ -139,9 +139,9 @@ func (p *PodcastsSrv) GetPodcastsWithLastEpisode(ctx context.Context, username s
 
 //------------------------------------------------------------------------------
 
-func (p *PodcastsSrv) DeletePodcast(ctx context.Context, username string, podcastid int32) error {
+func (p *PodcastsSrv) DeletePodcast(ctx context.Context, username string, podcastid int64) error {
 	logger := zerolog.Ctx(ctx)
-	logger.Debug().Int32("podcast_id", podcastid).Msg("delete podcast")
+	logger.Debug().Int64("podcast_id", podcastid).Msg("delete podcast")
 
 	//nolint:wrapcheck
 	return db.InTransaction(ctx, p.db, func(ctx context.Context) error {

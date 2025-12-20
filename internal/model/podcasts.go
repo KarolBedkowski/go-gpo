@@ -14,6 +14,8 @@ import (
 //
 
 type Podcast struct {
+	ID int64
+
 	UpdatedAt     time.Time
 	MetaUpdatedAt time.Time
 	Title         string
@@ -23,7 +25,6 @@ type Podcast struct {
 	Website       string
 	MygpoLink     string
 	User          User
-	ID            int32
 	Subscribers   int
 	Subscribed    bool
 }
@@ -51,7 +52,7 @@ func (p *Podcast) SetUnsubscribed(timestamp time.Time) bool {
 }
 
 func (p *Podcast) MarshalZerologObject(event *zerolog.Event) {
-	event.Int32("id", p.ID).
+	event.Int64("id", p.ID).
 		Str("title", p.Title).
 		Str("url", p.URL).
 		Str("website", p.Website).
@@ -68,7 +69,7 @@ type PodcastWithLastEpisode struct {
 	LogoURL     string
 	Website     string
 	MygpoLink   string
-	PodcastID   int32
+	PodcastID   int64
 	Subscribers int
 	Subscribed  bool
 }
@@ -125,8 +126,8 @@ func (s Podcasts) ToMap() map[string]Podcast {
 	return res
 }
 
-func (s Podcasts) ToIDsMap() map[string]int32 {
-	res := make(map[string]int32)
+func (s Podcasts) ToIDsMap() map[string]int64 {
+	res := make(map[string]int64)
 
 	for _, p := range s {
 		res[p.URL] = p.ID

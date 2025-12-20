@@ -49,7 +49,7 @@ func (q *GetEpisodesQuery) MarshalZerologObject(event *zerolog.Event) {
 type GetEpisodesByPodcastQuery struct {
 	Since      time.Time
 	UserName   string
-	PodcastID  int32
+	PodcastID  int64
 	Limit      uint
 	Aggregated bool
 }
@@ -68,7 +68,7 @@ func (q *GetEpisodesByPodcastQuery) Validate() error {
 
 func (q *GetEpisodesByPodcastQuery) MarshalZerologObject(event *zerolog.Event) {
 	event.Str("username", q.UserName).
-		Int32("podcast_id", q.PodcastID).
+		Int64("podcast_id", q.PodcastID).
 		Time("since", q.Since).
 		Bool("aggregate", q.Aggregated).
 		Uint("limit", q.Limit)
