@@ -129,7 +129,9 @@ func (r Repository) Migrate(ctx context.Context, db *sql.DB) error {
 
 func (r Repository) OnOpenConn(ctx context.Context, db sqlx.ExecerContext) error {
 	_, err := db.ExecContext(ctx,
-		"PRAGMA optimize",
+		`PRAGMA temp_store = MEMORY;
+		PRAGMA busy_timeout = 1000;
+		`,
 	)
 	if err != nil {
 		return aerr.Wrap(err)
@@ -140,7 +142,7 @@ func (r Repository) OnOpenConn(ctx context.Context, db sqlx.ExecerContext) error
 
 func (r Repository) OnCloseConn(ctx context.Context, db sqlx.ExecerContext) error {
 	_, err := db.ExecContext(ctx,
-		"PRAGMA temp_store = MEMORY;",
+		`PRAGMA optimize`,
 	)
 	if err != nil {
 		return aerr.Wrap(err)
