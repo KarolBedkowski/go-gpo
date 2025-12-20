@@ -240,6 +240,39 @@ func (s Repository) SaveEpisode(ctx context.Context, userid int64, episodes ...m
 	return nil
 }
 
+func (s Repository) UpdateEpisodeInfo(ctx context.Context, episodes ...model.Episode) error {
+	logger := log.Ctx(ctx)
+	logger.Debug().Int("num", len(episodes)).Msg("update episode meta")
+
+	dbctx := db.MustCtx(ctx)
+
+	stmt, err := dbctx.PrepareContext(ctx, `
+		UPDATE episodes
+		SET title=coalesce(?, title), guid=coalesce(?, guid)
+		WHERE url=?`,
+	)
+	if err != nil {
+		return aerr.Wrapf(err, "prepare update episode stmt failed").WithTag(aerr.InternalError)
+	}
+
+	defer stmt.Close()
+
+	for _, episode := range episodes {
+		logger.Debug().Str("episode_url", episode.URL).
+			Str("episode_title", episode.Title).
+			Any("episode_guid", episode.GUID).
+			Msg("update episode")
+
+		_, err := stmt.ExecContext(ctx, episode.Title, episode.GUID, episode.URL)
+		if err != nil {
+			return aerr.Wrapf(err, "update episode failed").WithTag(aerr.InternalError).
+				WithMeta("episode_url", episode.URL, "episode_title", episode.Title, "episode_guid", episode.GUID)
+		}
+	}
+
+	return nil
+}
+
 func aggregateEpisodes(episodes []EpisodeDB) []EpisodeDB {
 	res := make([]EpisodeDB, 0, len(episodes))
 	seen := make(map[string]struct{})

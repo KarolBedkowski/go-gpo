@@ -240,11 +240,42 @@ func (p *PodcastsSrv) downloadPodcastInfoWorker(ctx context.Context, urls <-chan
 			MetaUpdatedAt: time.Now().UTC(),
 		}
 
+		episodes := make([]model.Episode, 0, len(feed.Items))
+		for _, item := range feed.Items {
+			if item.Title != "" {
+				if url := findEpisodeURL(item); url != "" {
+					episodes = append(episodes, model.Episode{
+						Title: item.Title,
+						GUID:  &item.GUID,
+						URL:   url,
+					})
+				}
+			}
+		}
+
 		err = db.InTransaction(ctx, p.db, func(ctx context.Context) error {
-			return p.podcastsRepo.UpdatePodcastsInfo(ctx, &update)
+			if err := p.podcastsRepo.UpdatePodcastsInfo(ctx, &update); err != nil {
+				return aerr.Wrapf(err, "update podcast info failed")
+			}
+
+			if err := p.episodesRepo.UpdateEpisodeInfo(ctx, episodes...); err != nil {
+				return aerr.Wrapf(err, "update episodes info failed")
+			}
+
+			return nil
 		})
 		if err != nil {
 			logger.Error().Err(err).Str("podcast_url", url).Msg("update podcast info failed")
 		}
 	}
+}
+
+func findEpisodeURL(item *gofeed.Item) string {
+	for _, e := range item.Enclosures {
+		if e.URL != "" {
+			return e.URL
+		}
+	}
+
+	return ""
 }

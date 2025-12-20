@@ -43,6 +43,7 @@ type Episodes interface {
 	ListFavorites(ctx context.Context, userid int64) ([]model.Episode, error)
 	GetLastEpisodeAction(ctx context.Context,
 		userid, podcastid int64, excludeDelete bool) (*model.Episode, error)
+	UpdateEpisodeInfo(ctx context.Context, episodes ...model.Episode) error
 }
 
 type Podcasts interface {
