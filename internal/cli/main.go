@@ -32,7 +32,7 @@ func Main() {
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:      "database",
-				Value:     "database.sqlite",
+				Value:     "database.sqlite?_fk=1&_journal_mode=WAL&_synchronous=NORMAL",
 				Usage:     "Database file",
 				Aliases:   []string{"D"},
 				Sources:   cli.EnvVars("GOGPO_DB"),
