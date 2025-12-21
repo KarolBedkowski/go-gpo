@@ -210,11 +210,11 @@ const downloadPodcastInfoTimeout = 10 * time.Second
 func (p *PodcastsSrv) downloadPodcastInfoWorker(
 	ctx context.Context, tasks <-chan model.PodcastToUpdate, since time.Time,
 ) {
-	logger := zerolog.Ctx(ctx)
+	tlogger := zerolog.Ctx(ctx)
 	fp := gofeed.NewParser()
 
 	for task := range tasks {
-		logger := logger.With().Str("podcast_url", task.URL).Logger()
+		logger := tlogger.With().Str("podcast_url", task.URL).Logger()
 		logger.Debug().Msg("downloading podcast info")
 
 		dctx, cancel := context.WithTimeout(ctx, downloadPodcastInfoTimeout)
