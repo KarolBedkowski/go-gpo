@@ -25,7 +25,10 @@ func TestSanitizeURL(t *testing.T) {
 		{"http://xxx.yyy/xxx?123&dkdkd ", "http://xxx.yyy/xxx?123&dkdkd"},
 		{"https://xxx.yyy/xxx?123&dkdkd ", "https://xxx.yyy/xxx?123&dkdkd"},
 		{"ftp://xxx.yyy/xxx?123&dkdkd ", ""},
-		{"xxx.yyy/xxx?123&dkdkd ", ""},
+		{"xxx.yyy/xxx?123&dkdkd ", "http://xxx.yyy/xxx?123&dkdkd"},
+		{"feed://abc.org/abc", "http://abc.org/abc"},
+		{"itpc://abc.org", "http://abc.org/"},
+		{"itms://abc.org/?qwe", "http://abc.org/?qwe"},
 	}
 
 	for _, tt := range tests {
@@ -48,12 +51,12 @@ func TestSanitizeURLs(t *testing.T) {
 			[][]string{{" http://abc.com/abc ", "http://abc.com/abc"}},
 		},
 		{
-			[]string{"http://abc.com/abc", "ddsldsk"},
+			[]string{"http://abc.com/abc", "ftp://ddsldsk"},
 			[]string{"http://abc.com/abc"},
 			[][]string{},
 		},
 		{
-			[]string{" ", "http://abc.com/abc", "ddsldsk", "ftp://123.233.3"},
+			[]string{" ", "http://abc.com/abc", "aaa://ddsldsk", "ftp://123.233.3"},
 			[]string{"http://abc.com/abc"},
 			[][]string{},
 		},
