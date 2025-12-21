@@ -48,7 +48,7 @@ type PodcastsPage struct {
 					</td>
 					<td>
 						{% if !po.Subscribed  %}<small><b>Not subscribed</b></small><br/>{% endif %}
-						{%s po.Description  %}
+						{%s shortString(po.Description, 200)  %}
 					</td>
 					<td>
 						{% if po.LastEpisode != nil %}

@@ -155,7 +155,7 @@ func (p *PodcastsPage) StreamBody(qw422016 *qt422016.Writer, pctx *PageContext) 
 		qw422016.N().S(`
 						`)
 //line internal/web/templates/podcasts.qtpl:51
-		qw422016.E().S(po.Description)
+		qw422016.E().S(shortString(po.Description, 200))
 //line internal/web/templates/podcasts.qtpl:51
 		qw422016.N().S(`
 					</td>
