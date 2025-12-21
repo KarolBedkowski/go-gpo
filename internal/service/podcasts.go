@@ -10,6 +10,7 @@ package service
 import (
 	"context"
 	"errors"
+	"net/http"
 	"sync"
 	"time"
 
@@ -161,6 +162,103 @@ func (p *PodcastsSrv) DeletePodcast(ctx context.Context, username string, podcas
 
 		return p.podcastsRepo.DeletePodcast(ctx, podcast.ID)
 	})
+}
+
+//------------------------------------------------------------------------------
+
+func (p *PodcastsSrv) ResolvePodcastsURL(ctx context.Context, urls []string) map[string]model.ResolvedPodcastURL {
+	logger := zerolog.Ctx(ctx)
+	logger.Debug().Strs("urls", urls).Msgf("start resolving podcasts url")
+
+	if len(urls) == 0 {
+		return nil
+	}
+
+	tasks := make(chan string, len(urls))
+	res := make(chan model.ResolvedPodcastURL, len(urls))
+
+	var wg sync.WaitGroup
+	for range min(len(urls), 5) { //nolint:mnd
+		wg.Go(func() {
+			p.resolvePodcastsURLTask(ctx, tasks, res)
+		})
+	}
+
+	for _, u := range urls {
+		tasks <- u
+	}
+
+	close(tasks)
+
+	wg.Wait()
+
+	close(res)
+
+	resolved := make(map[string]model.ResolvedPodcastURL, len(urls))
+	for r := range res {
+		resolved[r.URL] = r
+	}
+
+	logger.Info().Msgf("resolving podcasts url finished, count: %d", len(urls))
+
+	return resolved
+}
+
+func (p *PodcastsSrv) resolvePodcastsURLTask(
+	ctx context.Context, urls <-chan string, res chan model.ResolvedPodcastURL,
+) {
+	tlogger := zerolog.Ctx(ctx)
+
+	for url := range urls {
+		logger := tlogger.With().Str("podcast_url", url).Logger()
+		logger.Debug().Msg("downloading podcast info")
+
+		dctx, cancel := context.WithTimeout(ctx, downloadPodcastInfoTimeout)
+		resolvedurl, err := p.ResolvePodcastURL(dctx, url)
+
+		cancel()
+
+		res <- model.ResolvedPodcastURL{
+			URL:         url,
+			ResolvedURL: resolvedurl,
+			Err:         err,
+		}
+	}
+}
+
+func (p *PodcastsSrv) ResolvePodcastURL(ctx context.Context, url string) (string, error) {
+	client := http.DefaultClient
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return url, aerr.Wrapf(err, "create request error").WithTag(aerr.InternalError)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return url, aerr.Wrapf(err, "request failed").WithTag(aerr.InternalError)
+	}
+
+	if resp != nil {
+		defer func() {
+			resp.Body.Close()
+		}()
+	}
+
+	if resp.StatusCode == http.StatusFound || resp.StatusCode == http.StatusMovedPermanently {
+		if loc := resp.Header.Get("Location"); loc != "" {
+			return loc, nil
+		}
+
+		return url, aerr.New("get location failed").WithMeta("url", url, "headers", resp.Header)
+	}
+
+	if resp.StatusCode == http.StatusOK {
+		return url, nil
+	}
+
+	return url, aerr.New("invalid response when resolving url %q: %d (%q)", url, resp.StatusCode, resp.Status).
+		WithMeta("url", url, "headers", resp.Header)
 }
 
 //------------------------------------------------------------------------------

@@ -163,3 +163,11 @@ type PodcastToUpdate struct {
 	MetaUpdatedAt time.Time
 	URL           string
 }
+
+//------------------------------------------------------------------------------
+
+type ResolvedPodcastURL struct {
+	URL         string
+	ResolvedURL string
+	Err         error
+}
