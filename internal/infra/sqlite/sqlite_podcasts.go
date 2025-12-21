@@ -11,7 +11,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"strings"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -116,14 +115,12 @@ func (s Repository) GetPodcast(
 
 	dbctx := db.MustCtx(ctx)
 	podcast := PodcastDB{}
-	alturl, _ := strings.CutSuffix(podcasturl, "/")
 
-	err := dbctx.GetContext(ctx, &podcast, `
-		SELECT p.id, p.user_id, p.url, p.title, p.subscribed, p.created_at, p.updated_at, p.metadata_updated_at,
-			coalesce(p.description, '') as description, coalesce(p.website, '') as website
-		FROM podcasts p
-		WHERE p.user_id=? AND p.url in (?, ?)`,
-		userid, podcasturl, alturl)
+	err := dbctx.GetContext(ctx, &podcast,
+		"SELECT p.id, p.user_id, p.url, p.title, p.subscribed, p.created_at, p.updated_at, p.metadata_updated_at, "+
+			"coalesce(p.description, '') as description, coalesce(p.website, '') as website "+
+			"FROM podcasts p "+
+			"WHERE p.user_id=? AND p.url = ?", userid, podcasturl)
 	switch {
 	case err == nil:
 		return podcast.toModel(), nil
