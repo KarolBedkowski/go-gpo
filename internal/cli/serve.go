@@ -73,10 +73,12 @@ func newStartServerCmd() *cli.Command {
 				Usage:   "use secure (https only) cookie",
 				Sources: cli.EnvVars("GOGPO_SERVER_SECURE_COOKIE"),
 			},
-			&cli.BoolFlag{
-				Name:    "enable-podcasts-loader",
-				Usage:   "Enable background worker that download podcast information. This may east a lot of memory....",
-				Sources: cli.EnvVars("GOGPO_SERVER_PODCAST_LOADER"),
+			&cli.DurationFlag{
+				Name: "podcast-load-interval",
+				Usage: "Enable background worker that download podcast information in given intervals. " +
+					"This may eat a lot of memory....",
+				Sources: cli.EnvVars("GOGPO_SERVER_PODCAST_LOAD_INTERVAL"),
+				Value:   0,
 			},
 		},
 		Action: wrap(startServerCmd),
@@ -113,12 +115,14 @@ func startServerCmd(ctx context.Context, clicmd *cli.Command, rootInjector do.In
 
 	s := Server{}
 
-	return s.start(ctx, injector, &serverConf, clicmd.Bool("enable-podcasts-loader"))
+	return s.start(ctx, injector, &serverConf, clicmd.Duration("podcasts-loader"))
 }
 
 type Server struct{}
 
-func (s *Server) start(ctx context.Context, injector do.Injector, cfg *server.Configuration, podcastWorker bool) error {
+func (s *Server) start(ctx context.Context, injector do.Injector, cfg *server.Configuration,
+	podcastLoadInterval time.Duration,
+) error {
 	logger := log.Ctx(ctx)
 	logger.Log().Msgf("Starting go-gpo (%s)...", config.VersionString)
 
@@ -138,8 +142,8 @@ func (s *Server) start(ctx context.Context, injector do.Injector, cfg *server.Co
 	maintSrv := do.MustInvoke[*service.MaintenanceSrv](injector)
 	go s.runBackgroundMaintenance(ctx, maintSrv)
 
-	if podcastWorker {
-		go s.backgroundWorker(ctx, injector)
+	if podcastLoadInterval > 0 {
+		go s.podcastDownloadTask(ctx, injector, podcastLoadInterval)
 	}
 
 	systemd.NotifyReady()           //nolint:errcheck
@@ -160,9 +164,9 @@ func (*Server) startSystemdWatchdog(logger *zerolog.Logger) {
 	}
 }
 
-func (s *Server) backgroundWorker(ctx context.Context, injector do.Injector) {
+func (s *Server) podcastDownloadTask(ctx context.Context, injector do.Injector, interval time.Duration) {
 	logger := log.Ctx(ctx)
-	logger.Info().Msg("start background worker")
+	logger.Info().Msgf("start background worker; interval=%s", interval)
 
 	podcastSrv := do.MustInvoke[*service.PodcastsSrv](injector)
 	since := time.Now().Add(-24 * time.Hour).UTC()
@@ -171,7 +175,7 @@ func (s *Server) backgroundWorker(ctx context.Context, injector do.Injector) {
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(1 * time.Hour):
+		case <-time.After(interval):
 		}
 
 		start := time.Now()
