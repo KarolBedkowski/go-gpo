@@ -1,6 +1,7 @@
 package model
 
 import (
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -97,9 +98,21 @@ func (s Podcasts) FindSubscribedPodcastByURL(url string) (Podcast, bool) {
 	return Podcast{}, false
 }
 
+// FindPodcastByURL look for url in podcasts. if podcasts url or given url
+// url has suffix '/' - try to match it also without it.
 func (s Podcasts) FindPodcastByURL(url string) (Podcast, bool) {
+	alt := ""
+	if a, ok := strings.CutSuffix(url, "/"); ok {
+		alt = a
+	}
+
 	for _, sp := range s {
-		if sp.URL == url {
+		if sp.URL == url || sp.URL == alt {
+			return sp, true
+		}
+
+		trimmed := strings.TrimSuffix(sp.URL, "/")
+		if trimmed == url || trimmed == alt {
 			return sp, true
 		}
 	}
