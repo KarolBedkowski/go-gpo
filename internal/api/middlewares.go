@@ -47,8 +47,9 @@ func checkUserMiddleware(next http.Handler) http.Handler {
 		}
 
 		ctx := common.ContextWithUser(req.Context(), user)
-		llogger := logger.With().Str("user_name", user).Logger()
-		ctx = llogger.WithContext(ctx)
+		// handled by authenticator
+		// llogger := logger.With().Str(common.LogKeyUserName, user).Logger()
+		// ctx = llogger.WithContext(ctx)
 
 		next.ServeHTTP(w, req.WithContext(ctx))
 	})
@@ -65,7 +66,7 @@ func checkDeviceMiddleware(next http.Handler) http.Handler {
 		}
 
 		ctx := common.ContextWithDevice(req.Context(), devicename)
-		logger := hlog.FromRequest(req).With().Str("device_id", devicename).Logger()
+		logger := hlog.FromRequest(req).With().Str(common.LogKeyDeviceID, devicename).Logger()
 		ctx = logger.WithContext(ctx)
 
 		next.ServeHTTP(w, req.WithContext(ctx))

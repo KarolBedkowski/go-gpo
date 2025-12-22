@@ -37,9 +37,9 @@ func newDevicePages(i do.Injector) (devicePages, error) {
 
 func (d devicePages) Routes() *chi.Mux {
 	r := chi.NewRouter()
-	r.Get(`/`, srvsupport.Wrap(d.list))
-	r.Get(`/{devicename:[\w.-]+}/delete`, srvsupport.Wrap(d.deleteGet))
-	r.Post(`/{devicename:[\w.-]+}/delete`, srvsupport.Wrap(d.deletePost))
+	r.Get(`/`, srvsupport.WrapNamed(d.list, "web_device_list"))
+	r.Get(`/{devicename:[\w.-]+}/delete`, srvsupport.WrapNamed(d.deleteGet, "web_device_del"))
+	r.Post(`/{devicename:[\w.-]+}/delete`, srvsupport.WrapNamed(d.deletePost, "web_device_del_post"))
 
 	return r
 }

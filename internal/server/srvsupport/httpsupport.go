@@ -44,6 +44,23 @@ func Wrap(handler func(ctx context.Context, w http.ResponseWriter, r *http.Reque
 	}
 }
 
+// srvsupport.Wrap add context and logger to handler.
+func WrapNamed(
+	handler func(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger),
+	name string,
+) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		logger := hlog.FromRequest(r).
+			With().Str("handler", name).
+			Logger()
+
+		ctx := logger.WithContext(r.Context())
+		r = r.WithContext(ctx)
+
+		handler(ctx, w, r, &logger)
+	}
+}
+
 func WriteError(w http.ResponseWriter, r *http.Request, code int, msg string) {
 	if msg == "" {
 		msg = http.StatusText(code)
