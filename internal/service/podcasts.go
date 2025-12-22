@@ -181,7 +181,7 @@ func (p *PodcastsSrv) ResolvePodcastsURL(ctx context.Context, urls []string) map
 	var wg sync.WaitGroup
 	for range min(len(urls), 5) { //nolint:mnd
 		wg.Go(func() {
-			p.resolvePodcastsURLTask(ctx, tasks, res)
+			resolvePodcastsURLTask(ctx, tasks, res)
 		})
 	}
 
@@ -203,63 +203,6 @@ func (p *PodcastsSrv) ResolvePodcastsURL(ctx context.Context, urls []string) map
 	logger.Info().Msgf("resolving podcasts url finished, count: %d", len(urls))
 
 	return resolved
-}
-
-func (p *PodcastsSrv) resolvePodcastsURLTask(
-	ctx context.Context, urls <-chan string, res chan model.ResolvedPodcastURL,
-) {
-	tlogger := zerolog.Ctx(ctx)
-
-	for url := range urls {
-		logger := tlogger.With().Str("podcast_url", url).Logger()
-		logger.Debug().Msg("downloading podcast info")
-
-		dctx, cancel := context.WithTimeout(ctx, downloadPodcastInfoTimeout)
-		resolvedurl, err := p.ResolvePodcastURL(dctx, url)
-
-		cancel()
-
-		res <- model.ResolvedPodcastURL{
-			URL:         url,
-			ResolvedURL: resolvedurl,
-			Err:         err,
-		}
-	}
-}
-
-func (p *PodcastsSrv) ResolvePodcastURL(ctx context.Context, url string) (string, error) {
-	client := http.DefaultClient
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return url, aerr.Wrapf(err, "create request error").WithTag(aerr.InternalError)
-	}
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return url, aerr.Wrapf(err, "request failed").WithTag(aerr.InternalError)
-	}
-
-	if resp != nil {
-		defer func() {
-			resp.Body.Close()
-		}()
-	}
-
-	if resp.StatusCode == http.StatusFound || resp.StatusCode == http.StatusMovedPermanently {
-		if loc := resp.Header.Get("Location"); loc != "" {
-			return loc, nil
-		}
-
-		return url, aerr.New("get location failed").WithMeta("url", url, "headers", resp.Header)
-	}
-
-	if resp.StatusCode == http.StatusOK {
-		return url, nil
-	}
-
-	return url, aerr.New("invalid response when resolving url %q: %d (%q)", url, resp.StatusCode, resp.Status).
-		WithMeta("url", url, "headers", resp.Header)
 }
 
 //------------------------------------------------------------------------------
@@ -310,6 +253,10 @@ func (p *PodcastsSrv) downloadPodcastInfoWorker(
 	ctx context.Context, tasks <-chan model.PodcastToUpdate, since time.Time,
 ) {
 	tlogger := zerolog.Ctx(ctx)
+	if tlogger == nil {
+		panic("missing logger in ctx")
+	}
+
 	fp := gofeed.NewParser()
 
 	for task := range tasks {
@@ -336,18 +283,7 @@ func (p *PodcastsSrv) downloadPodcastInfoWorker(
 			continue
 		}
 
-		title := feed.Title
-		if title == "" {
-			title = "<no title>"
-		}
-
-		update := model.PodcastMetaUpdate{
-			URL:           task.URL,
-			Title:         title,
-			Description:   feed.Description,
-			Website:       feed.Link,
-			MetaUpdatedAt: time.Now().UTC(),
-		}
+		update := podcastToUpdate(task.URL, feed)
 		episodes := episodesToUpdate(feed, since, task.MetaUpdatedAt)
 
 		err = db.InTransaction(ctx, p.db, func(ctx context.Context) error {
@@ -366,6 +302,21 @@ func (p *PodcastsSrv) downloadPodcastInfoWorker(
 		if err != nil {
 			logger.Error().Err(err).Msg("update podcast info failed")
 		}
+	}
+}
+
+func podcastToUpdate(url string, feed *gofeed.Feed) model.PodcastMetaUpdate {
+	title := feed.Title
+	if title == "" {
+		title = "<no title>"
+	}
+
+	return model.PodcastMetaUpdate{
+		URL:           url,
+		Title:         title,
+		Description:   feed.Description,
+		Website:       feed.Link,
+		MetaUpdatedAt: time.Now().UTC(),
 	}
 }
 
@@ -430,4 +381,68 @@ func itemNeedToBeUpdated(item *gofeed.Item, since, metadataUpdatedAt time.Time) 
 
 	// if no update and publish date - update
 	return item.UpdatedParsed == nil && item.PublishedParsed == nil
+}
+
+func resolvePodcastsURLTask(
+	ctx context.Context, urls <-chan string, res chan model.ResolvedPodcastURL,
+) {
+	tlogger := zerolog.Ctx(ctx)
+	if tlogger == nil {
+		panic("no logger in ctx")
+	}
+
+	for url := range urls {
+		logger := tlogger.With().Str("podcast_url", url).Logger()
+		logger.Debug().Msg("downloading podcast info")
+
+		dctx, cancel := context.WithTimeout(ctx, downloadPodcastInfoTimeout)
+		resolvedurl, err := ResolvePodcastURL(dctx, url)
+
+		cancel()
+
+		res <- model.ResolvedPodcastURL{
+			URL:         url,
+			ResolvedURL: resolvedurl,
+			Err:         err,
+		}
+	}
+}
+
+func ResolvePodcastURL(ctx context.Context, url string) (string, error) {
+	client := http.DefaultClient
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return url, aerr.Wrapf(err, "create request error").WithTag(aerr.InternalError).WithMeta("url", url)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return url, aerr.Wrapf(err, "request failed").WithTag(aerr.InternalError).WithMeta("url", url)
+	}
+
+	if resp == nil {
+		return url, aerr.New("request failed; empty resp").WithTag(aerr.InternalError).WithMeta("url", url)
+	}
+
+	defer func() {
+		if resp.Body != nil {
+			resp.Body.Close()
+		}
+	}()
+
+	if resp.StatusCode == http.StatusFound || resp.StatusCode == http.StatusMovedPermanently {
+		if loc := resp.Header.Get("Location"); loc != "" {
+			return loc, nil
+		}
+
+		return url, aerr.New("get location failed").WithMeta("url", url, "headers", resp.Header)
+	}
+
+	if resp.StatusCode == http.StatusOK {
+		return url, nil
+	}
+
+	return url, aerr.New("invalid response when resolving url %q: %d (%q)", url, resp.StatusCode, resp.Status).
+		WithMeta("url", url, "headers", resp.Header)
 }
