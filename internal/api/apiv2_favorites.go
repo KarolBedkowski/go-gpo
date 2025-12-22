@@ -38,7 +38,7 @@ func (u favoritesResource) Routes() *chi.Mux {
 	r := chi.NewRouter()
 
 	r.With(checkUserMiddleware).
-		Get(`/{user:[\w+.-]+}.json`, srvsupport.Wrap(u.getFafovites))
+		Get(`/{user:[\w+.-]+}.json`, srvsupport.WrapNamed(u.getFafovites, "api_favorites"))
 
 	return r
 }

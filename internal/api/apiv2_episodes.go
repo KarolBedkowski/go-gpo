@@ -41,9 +41,9 @@ func (er episodesResource) Routes() *chi.Mux {
 	r := chi.NewRouter()
 
 	r.With(checkUserMiddleware).
-		Post(`/{user:[\w+.-]+}.json`, srvsupport.Wrap(er.uploadEpisodeActions))
+		Post(`/{user:[\w+.-]+}.json`, srvsupport.WrapNamed(er.uploadEpisodeActions, "api_episodes_post"))
 	r.With(checkUserMiddleware).
-		Get(`/{user:[\w+.-]+}.json`, srvsupport.Wrap(er.getEpisodeActions))
+		Get(`/{user:[\w+.-]+}.json`, srvsupport.WrapNamed(er.getEpisodeActions, "api_episodes_get"))
 
 	return r
 }

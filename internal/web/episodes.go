@@ -37,7 +37,7 @@ func newEpisodePages(i do.Injector) (episodePages, error) {
 
 func (e episodePages) Routes() *chi.Mux {
 	r := chi.NewRouter()
-	r.Get(`/`, srvsupport.Wrap(e.list))
+	r.Get(`/`, srvsupport.WrapNamed(e.list, "web_episoeds_list"))
 
 	return r
 }

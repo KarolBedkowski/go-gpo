@@ -25,8 +25,8 @@ func newAuthResource(_ do.Injector) (authResource, error) {
 
 func (ar authResource) Routes() *chi.Mux {
 	r := chi.NewRouter()
-	r.Post(`/{user:[\w.+-]}/login.json`, srvsupport.Wrap(ar.login))
-	r.Post(`/{user:[\w.+-]}/logout.json`, srvsupport.Wrap(ar.logout))
+	r.Post(`/{user:[\w.+-]}/login.json`, srvsupport.WrapNamed(ar.login, "api_auth_login"))
+	r.Post(`/{user:[\w.+-]}/logout.json`, srvsupport.WrapNamed(ar.logout, "api_auth_logout"))
 
 	return r
 }

@@ -38,7 +38,7 @@ func (u updatesResource) Routes() *chi.Mux {
 	r := chi.NewRouter()
 
 	r.With(checkUserMiddleware, checkDeviceMiddleware).
-		Get(`/{user:[\w+.-]+}/{devicename:[\w.-]+}.json`, srvsupport.Wrap(u.getUpdates))
+		Get(`/{user:[\w+.-]+}/{devicename:[\w.-]+}.json`, srvsupport.WrapNamed(u.getUpdates, "api_updates"))
 
 	return r
 }

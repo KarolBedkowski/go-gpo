@@ -45,13 +45,13 @@ func newPodcastPages(i do.Injector) (podcastPages, error) {
 
 func (p podcastPages) Routes() *chi.Mux {
 	r := chi.NewRouter()
-	r.Get(`/`, srvsupport.Wrap(p.list))
-	r.Post(`/`, srvsupport.Wrap(p.addPodcast))
-	r.Get(`/{podcastid:[0-9]+}/`, srvsupport.Wrap(p.podcastGet))
-	r.Post(`/{podcastid:[0-9]+}/unsubscribe`, srvsupport.Wrap(p.podcastUnsubscribe))
-	r.Post(`/{podcastid:[0-9]+}/resubscribe`, srvsupport.Wrap(p.podcastResubscribe))
-	r.Get(`/{podcastid:[0-9]+}/delete`, srvsupport.Wrap(p.podcastDeleteGet))
-	r.Post(`/{podcastid:[0-9]+}/delete`, srvsupport.Wrap(p.podcastDeletePost))
+	r.Get(`/`, srvsupport.WrapNamed(p.list, "web_podcast_index"))
+	r.Post(`/`, srvsupport.WrapNamed(p.addPodcast, "web_podcast_add"))
+	r.Get(`/{podcastid:[0-9]+}/`, srvsupport.WrapNamed(p.podcastGet, "web_podcast_get"))
+	r.Post(`/{podcastid:[0-9]+}/unsubscribe`, srvsupport.WrapNamed(p.podcastUnsubscribe, "web_podcast_unsub"))
+	r.Post(`/{podcastid:[0-9]+}/resubscribe`, srvsupport.WrapNamed(p.podcastResubscribe, "web_podcast_resub"))
+	r.Get(`/{podcastid:[0-9]+}/delete`, srvsupport.WrapNamed(p.podcastDeleteGet, "web_podcast_del"))
+	r.Post(`/{podcastid:[0-9]+}/delete`, srvsupport.WrapNamed(p.podcastDeletePost, "web_podcast_del_post"))
 
 	return r
 }

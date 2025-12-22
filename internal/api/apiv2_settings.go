@@ -35,9 +35,9 @@ func (u settingsResource) Routes() *chi.Mux {
 	r := chi.NewRouter()
 
 	r.With(checkUserMiddleware).
-		Get(`/{user:[\w+.-]+}/{scope:[a-z]+}.json`, srvsupport.Wrap(u.getSettings))
+		Get(`/{user:[\w+.-]+}/{scope:[a-z]+}.json`, srvsupport.WrapNamed(u.getSettings, "api_sett_user"))
 	r.With(checkUserMiddleware).
-		Post(`/{user:[\w+.-]+}/{scope:[a-z]+}.json`, srvsupport.Wrap(u.postSettings))
+		Post(`/{user:[\w+.-]+}/{scope:[a-z]+}.json`, srvsupport.WrapNamed(u.postSettings, "api_sett_user_post"))
 
 	return r
 }
