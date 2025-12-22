@@ -185,7 +185,7 @@ func (e *EpisodesSrv) GetLastActions(ctx context.Context, query *query.GetLastEp
 	}
 
 	episodes, err := db.InConnectionR(ctx, e.db, func(ctx context.Context) ([]model.Episode, error) {
-		return e.getEpisodes(ctx, query.UserName, "", "", query.Since, true, query.Limit)
+		return e.getEpisodes(ctx, query.UserName, "", "", query.Since, false, query.Limit)
 	})
 	if err != nil {
 		return nil, err //nolint:wrapcheck
