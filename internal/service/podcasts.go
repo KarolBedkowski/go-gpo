@@ -22,6 +22,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/repository"
+	"gitlab.com/kabes/go-gpo/internal/validators"
 )
 
 type PodcastsSrv struct {
@@ -387,8 +388,8 @@ func episodesToUpdate(feed *gofeed.Feed, since, metadataUpdatedAt time.Time) []m
 
 func findEpisodeURL(item *gofeed.Item) string {
 	for _, e := range item.Enclosures {
-		if e.URL != "" {
-			return e.URL
+		if u := validators.SanitizeURL(e.URL); u != "" {
+			return u
 		}
 	}
 
