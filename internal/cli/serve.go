@@ -115,7 +115,7 @@ func startServerCmd(ctx context.Context, clicmd *cli.Command, rootInjector do.In
 
 	s := Server{}
 
-	return s.start(ctx, injector, &serverConf, clicmd.Duration("podcasts-loader"))
+	return s.start(ctx, injector, &serverConf, clicmd.Duration("podcast-load-interval"))
 }
 
 type Server struct{}
@@ -166,7 +166,7 @@ func (*Server) startSystemdWatchdog(logger *zerolog.Logger) {
 
 func (s *Server) podcastDownloadTask(ctx context.Context, injector do.Injector, interval time.Duration) {
 	logger := log.Ctx(ctx)
-	logger.Info().Msgf("start background worker; interval=%s", interval)
+	logger.Info().Msgf("start background podcast downloader; interval=%s", interval)
 
 	podcastSrv := do.MustInvoke[*service.PodcastsSrv](injector)
 	since := time.Now().Add(-24 * time.Hour).UTC()
