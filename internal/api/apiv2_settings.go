@@ -66,7 +66,7 @@ func (u settingsResource) getSettings(
 	}
 
 	render.Status(r, http.StatusOK)
-	render.JSON(w, r, &res)
+	srvsupport.RenderJSON(w, r, &res)
 }
 
 func (u settingsResource) postSettings(

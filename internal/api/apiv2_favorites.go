@@ -19,7 +19,6 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/service"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/render"
 	"github.com/rs/zerolog"
 	"github.com/samber/do/v2"
 )
@@ -60,7 +59,7 @@ func (u favoritesResource) getFafovites(
 	}
 
 	resfavs := common.Map(favorites, newFavoriteFromModel)
-	render.JSON(w, r, resfavs)
+	srvsupport.RenderJSON(w, r, resfavs)
 }
 
 type favorite struct {

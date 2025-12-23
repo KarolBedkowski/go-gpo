@@ -17,7 +17,6 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/service"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/render"
 	"github.com/rs/zerolog"
 	"github.com/samber/do/v2"
 )
@@ -98,7 +97,7 @@ func (u updatesResource) getUpdates(
 		Timestamps: time.Now().UTC().Unix(),
 	}
 
-	render.JSON(w, r, &result)
+	srvsupport.RenderJSON(w, r, &result)
 }
 
 //------------------------------------------------------------------------------

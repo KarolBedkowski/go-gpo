@@ -107,7 +107,7 @@ func (er episodesResource) uploadEpisodeActions(
 		UpdatedURLs: changedurls,
 	}
 
-	render.JSON(w, r, &res)
+	srvsupport.RenderJSON(w, r, &res)
 }
 
 func (er episodesResource) getEpisodeActions(
@@ -155,7 +155,7 @@ func (er episodesResource) getEpisodeActions(
 
 	logger.Debug().Msgf("getEpisodeActions: count=%d", len(resp.Actions))
 
-	render.JSON(w, r, &resp)
+	srvsupport.RenderJSON(w, r, &resp)
 }
 
 // -----------------------------

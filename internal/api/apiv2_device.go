@@ -103,7 +103,7 @@ func (d deviceResource) listDevices(
 	resdevices := common.Map(devices, newDeviceFromModel)
 
 	render.Status(r, http.StatusOK)
-	render.JSON(w, r, resdevices)
+	srvsupport.RenderJSON(w, r, resdevices)
 }
 
 type device struct {
