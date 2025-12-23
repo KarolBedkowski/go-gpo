@@ -150,11 +150,13 @@ func newSimpleLogMiddleware(next http.Handler) http.Handler {
 		requestID, _ := hlog.IDFromCtx(ctx)
 		llog := log.With().Str(common.LogKeyReqID, requestID.String()).Logger()
 		request = request.WithContext(llog.WithContext(ctx))
+		user, _, _ := request.BasicAuth()
 
 		llog.Info().
 			Str("url", request.URL.Redacted()).
 			Str("remote", request.RemoteAddr).
 			Str("method", request.Method).
+			Str("req_user", user).
 			Msg("webhandler: request start")
 
 		lrw := &logResponseWriter{ResponseWriter: writer, status: 0, size: 0}
@@ -181,10 +183,11 @@ func newSimpleLogMiddleware(next http.Handler) http.Handler {
 			}
 
 			llog.WithLevel(loglevel).
-				Str("uri", request.RequestURI).
+				Str("url", request.RequestURI).
 				Int("status", lrw.status).
 				Int("size", lrw.size).
 				Dur("duration", time.Since(start)).
+				Str("req_user", user).
 				Msg("webhandler: request finished")
 		}()
 
@@ -208,12 +211,13 @@ func newFullLogMiddleware(next http.Handler) http.Handler {
 		requestID, _ := hlog.IDFromCtx(ctx)
 		llog := log.With().Str(common.LogKeyReqID, requestID.String()).Logger()
 		request = request.WithContext(llog.WithContext(ctx))
+		user, _, _ := request.BasicAuth()
 
 		llog.Info().
 			Str("url", request.URL.Redacted()).
 			Str("remote", request.RemoteAddr).
 			Str("method", request.Method).
-			Interface("headers", request.Header).
+			Str("req_user", user).
 			Msg("webhandler: request start")
 
 		var reqBody, respBody bytes.Buffer
@@ -239,9 +243,10 @@ func newFullLogMiddleware(next http.Handler) http.Handler {
 			}
 
 			llog.WithLevel(loglevel).
-				Str("uri", request.RequestURI).
+				Str("url", request.RequestURI).
 				Int("status", lrw.Status()).
 				Int("size", lrw.BytesWritten()).
+				Str("req_user", user).
 				Dur("duration", time.Since(start)).
 				Msg("webhandler: request finished")
 		}()
