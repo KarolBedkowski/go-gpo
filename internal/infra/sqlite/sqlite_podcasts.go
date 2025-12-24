@@ -222,11 +222,22 @@ func (s Repository) ListPodcastsToUpdate(ctx context.Context, since time.Time) (
 
 func (s Repository) UpdatePodcastsInfo(ctx context.Context, update *model.PodcastMetaUpdate) error {
 	dbctx := db.MustCtx(ctx)
+	logger := log.Ctx(ctx)
 
-	_, err := dbctx.ExecContext(ctx,
-		"UPDATE podcasts SET title=?, description=?, website=?, metadata_updated_at=? "+
-			"WHERE url=?",
-		update.Title, update.Description, update.Website, update.MetaUpdatedAt, update.URL)
+	logger.Debug().Object("update", update).Msg("update podcast info")
+
+	var err error
+
+	if update.NotModified {
+		_, err = dbctx.ExecContext(ctx,
+			"UPDATE podcasts SET metadata_updated_at=? WHERE url=?",
+			update.MetaUpdatedAt, update.URL)
+	} else {
+		_, err = dbctx.ExecContext(ctx,
+			`UPDATE podcasts SET title=?, description=?, website=?, metadata_updated_at=? WHERE url=?`,
+			update.Title, update.Description, update.Website, update.MetaUpdatedAt, update.URL)
+	}
+
 	if err != nil {
 		return aerr.Wrapf(err, "update podcasts failed").WithMeta("podcast_update", update)
 	}

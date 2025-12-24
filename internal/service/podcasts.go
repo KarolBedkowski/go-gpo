@@ -252,56 +252,118 @@ const downloadPodcastInfoTimeout = 10 * time.Second
 func (p *PodcastsSrv) downloadPodcastInfoWorker(
 	ctx context.Context, tasks <-chan model.PodcastToUpdate, since time.Time,
 ) {
-	tlogger := zerolog.Ctx(ctx)
-	if tlogger == nil {
+	logger := zerolog.Ctx(ctx)
+
+	fp := gofeed.NewParser()
+	fp.UserAgent = "Mozilla/5.0 (X11; Linux x86_64; rv:146.0) Gecko/20100101 Firefox/146.0"
+
+	for task := range tasks {
+		err := p.downloadPodcastInfo(ctx, fp, since, &task)
+		if err != nil {
+			logger.Error().Err(err).Msg("update podcast info failed")
+		}
+	}
+}
+
+func (p *PodcastsSrv) downloadPodcastInfo(ctx context.Context,
+	feedparser *gofeed.Parser, since time.Time, task *model.PodcastToUpdate,
+) error {
+	l := zerolog.Ctx(ctx)
+	if l == nil {
 		panic("missing logger in ctx")
 	}
 
-	fp := gofeed.NewParser()
+	logger := l.With().Str("podcast_url", task.URL).Logger()
+	logger.Debug().Msg("downloading podcast info")
 
-	for task := range tasks {
-		logger := tlogger.With().Str("podcast_url", task.URL).Logger()
-		logger.Debug().Msg("downloading podcast info")
+	var (
+		update   model.PodcastMetaUpdate
+		episodes []model.Episode
+	)
 
-		dctx, cancel := context.WithTimeout(ctx, downloadPodcastInfoTimeout)
-		feed, err := fp.ParseURLWithContext(task.URL, dctx)
+	feed, status, err := parseFeedURLWithContext(ctx, feedparser, task)
+	switch {
+	case err != nil:
+		return err
+	case status == http.StatusNotModified:
+		logger.Debug().Err(err).Msg("podcast not modified")
 
-		cancel()
-
-		if err != nil {
-			logger.Info().Err(err).Msg("download podcast info failed")
-
-			continue
-		}
-
+		update.NotModified = true
+	case feed != nil:
 		logger.Debug().Msgf("got podcast title: %q; published: %s, updated: %s",
 			feed.Title, feed.UpdatedParsed, feed.PublishedParsed)
 
 		if !feedNeedToBeUpdated(feed, task.MetaUpdatedAt) {
 			logger.Debug().Msg("not updated, skipping")
 
-			continue
-		}
-
-		update := podcastToUpdate(task.URL, feed)
-		episodes := episodesToUpdate(feed, since, task.MetaUpdatedAt)
-
-		err = db.InTransaction(ctx, p.db, func(ctx context.Context) error {
-			if err := p.podcastsRepo.UpdatePodcastsInfo(ctx, &update); err != nil {
-				return aerr.Wrapf(err, "update podcast info failed")
-			}
-
-			if len(episodes) > 0 {
-				if err := p.episodesRepo.UpdateEpisodeInfo(ctx, episodes...); err != nil {
-					return aerr.Wrapf(err, "update episodes info failed")
-				}
-			}
-
 			return nil
-		})
-		if err != nil {
-			logger.Error().Err(err).Msg("update podcast info failed")
 		}
+
+		update = podcastToUpdate(task.URL, feed)
+		episodes = episodesToUpdate(feed, since, task.MetaUpdatedAt)
+	default:
+		logger.Info().Int("status_code", status).Msg("download podcast unknown state")
+
+		return nil
+	}
+
+	//nolint:wrapcheck
+	return db.InTransaction(ctx, p.db, func(ctx context.Context) error {
+		if err := p.podcastsRepo.UpdatePodcastsInfo(ctx, &update); err != nil {
+			return aerr.Wrapf(err, "update podcast info failed")
+		}
+
+		if len(episodes) > 0 {
+			if err := p.episodesRepo.UpdateEpisodeInfo(ctx, episodes...); err != nil {
+				return aerr.Wrapf(err, "update episodes info failed")
+			}
+		}
+
+		return nil
+	})
+}
+
+func parseFeedURLWithContext(ctx context.Context, feedparser *gofeed.Parser, //nolint:cyclop
+	ptu *model.PodcastToUpdate,
+) (*gofeed.Feed, int, error) {
+	ctx, cancel := context.WithTimeout(ctx, downloadPodcastInfoTimeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, ptu.URL, nil)
+	if err != nil {
+		return nil, 0, aerr.Wrapf(err, "create request failed")
+	}
+
+	if !ptu.MetaUpdatedAt.IsZero() {
+		req.Header.Add("If-Modified-Since", ptu.MetaUpdatedAt.Format(time.RFC1123))
+	}
+
+	req.Header.Set("User-Agent", feedparser.UserAgent)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, 0, aerr.Wrapf(err, "make request failed")
+	} else if resp == nil {
+		return nil, 0, aerr.New("empty response when get feed")
+	}
+
+	defer resp.Body.Close()
+
+	switch {
+	case resp.StatusCode == http.StatusNotModified:
+		return nil, http.StatusNotModified, nil
+	case resp.StatusCode >= 200 && resp.StatusCode < 300:
+		res, err := feedparser.Parse(resp.Body)
+		if err != nil {
+			return nil, resp.StatusCode, aerr.Wrapf(err, "parse feed body failed")
+		}
+
+		return res, resp.StatusCode, nil
+	case resp.StatusCode >= 400: //nolint:mnd
+		return nil, resp.StatusCode, aerr.New("invalid response from when get feed").
+			WithMeta("status_code", resp.StatusCode, "status", resp.Status)
+	default:
+		return nil, resp.StatusCode, nil
 	}
 }
 

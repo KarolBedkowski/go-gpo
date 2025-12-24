@@ -144,6 +144,17 @@ type PodcastMetaUpdate struct {
 	URL           string
 	Description   string
 	Website       string
+	NotModified   bool
+}
+
+func (p *PodcastMetaUpdate) MarshalZerologObject(event *zerolog.Event) {
+	event.
+		Str("title", p.Title).
+		Str("url", p.URL).
+		Str("website", p.Website).
+		Str("description", p.Description).
+		Bool("not_modified", p.NotModified).
+		Time("metadata_updated_at", p.MetaUpdatedAt)
 }
 
 type PodcastToUpdate struct {
