@@ -207,7 +207,7 @@ func (p *PodcastsSrv) ResolvePodcastsURL(ctx context.Context, urls []string) map
 
 //------------------------------------------------------------------------------
 
-func (p *PodcastsSrv) DownloadPodcastsInfo(ctx context.Context, since time.Time) error {
+func (p *PodcastsSrv) DownloadPodcastsInfo(ctx context.Context, since time.Time, loadepisodes bool) error {
 	logger := zerolog.Ctx(ctx)
 	logger.Debug().Msgf("start downloading podcasts info; since=%s", since)
 
@@ -231,7 +231,7 @@ func (p *PodcastsSrv) DownloadPodcastsInfo(ctx context.Context, since time.Time)
 
 	var wg sync.WaitGroup
 	for range min(len(urls), 5) { //nolint:mnd
-		wg.Go(func() { p.downloadPodcastInfoWorker(ctx, tasks, since) })
+		wg.Go(func() { p.downloadPodcastInfoWorker(ctx, tasks, since, loadepisodes) })
 	}
 
 	for _, u := range urls {
@@ -250,7 +250,7 @@ func (p *PodcastsSrv) DownloadPodcastsInfo(ctx context.Context, since time.Time)
 const downloadPodcastInfoTimeout = 10 * time.Second
 
 func (p *PodcastsSrv) downloadPodcastInfoWorker(
-	ctx context.Context, tasks <-chan model.PodcastToUpdate, since time.Time,
+	ctx context.Context, tasks <-chan model.PodcastToUpdate, since time.Time, loadepisodes bool,
 ) {
 	logger := zerolog.Ctx(ctx)
 
@@ -258,15 +258,15 @@ func (p *PodcastsSrv) downloadPodcastInfoWorker(
 	fp.UserAgent = "Mozilla/5.0 (X11; Linux x86_64; rv:146.0) Gecko/20100101 Firefox/146.0"
 
 	for task := range tasks {
-		err := p.downloadPodcastInfo(ctx, fp, since, &task)
+		err := p.downloadPodcastInfo(ctx, fp, since, &task, loadepisodes)
 		if err != nil {
 			logger.Error().Err(err).Msg("update podcast info failed")
 		}
 	}
 }
 
-func (p *PodcastsSrv) downloadPodcastInfo(ctx context.Context,
-	feedparser *gofeed.Parser, since time.Time, task *model.PodcastToUpdate,
+func (p *PodcastsSrv) downloadPodcastInfo(ctx context.Context, //nolint: cyclop
+	feedparser *gofeed.Parser, since time.Time, task *model.PodcastToUpdate, loadepisodes bool,
 ) error {
 	l := zerolog.Ctx(ctx)
 	if l == nil {
@@ -300,7 +300,9 @@ func (p *PodcastsSrv) downloadPodcastInfo(ctx context.Context,
 		}
 
 		update = podcastToUpdate(task.URL, feed)
-		episodes = episodesToUpdate(feed, since, task.MetaUpdatedAt)
+		if loadepisodes {
+			episodes = episodesToUpdate(feed, since, task.MetaUpdatedAt)
+		}
 	default:
 		logger.Info().Int("status_code", status).Msg("download podcast unknown state")
 

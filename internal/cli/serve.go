@@ -80,6 +80,11 @@ func newStartServerCmd() *cli.Command {
 				Sources: cli.EnvVars("GOGPO_SERVER_PODCAST_LOAD_INTERVAL"),
 				Value:   0,
 			},
+			&cli.BoolFlag{
+				Name:    "podcast-load-episodes",
+				Usage:   "When loading podcast, load also episodes title.",
+				Sources: cli.EnvVars("GOGPO_SERVER_PODCAST_LOAD_EPISODES"),
+			},
 		},
 		Action: wrap(startServerCmd),
 	}
@@ -115,13 +120,13 @@ func startServerCmd(ctx context.Context, clicmd *cli.Command, rootInjector do.In
 
 	s := Server{}
 
-	return s.start(ctx, injector, &serverConf, clicmd.Duration("podcast-load-interval"))
+	return s.start(ctx, injector, &serverConf, clicmd)
 }
 
 type Server struct{}
 
 func (s *Server) start(ctx context.Context, injector do.Injector, cfg *server.Configuration,
-	podcastLoadInterval time.Duration,
+	clicmd *cli.Command,
 ) error {
 	logger := log.Ctx(ctx)
 	logger.Log().Msgf("Starting go-gpo (%s)...", config.VersionString)
@@ -142,8 +147,8 @@ func (s *Server) start(ctx context.Context, injector do.Injector, cfg *server.Co
 	maintSrv := do.MustInvoke[*service.MaintenanceSrv](injector)
 	go s.runBackgroundMaintenance(ctx, maintSrv)
 
-	if podcastLoadInterval > 0 {
-		go s.podcastDownloadTask(ctx, injector, podcastLoadInterval)
+	if i := clicmd.Duration("podcast-load-interval"); i > 0 {
+		go s.podcastDownloadTask(ctx, injector, i, clicmd.Bool("podcast-load-episodes"))
 	}
 
 	systemd.NotifyReady()           //nolint:errcheck
@@ -164,7 +169,9 @@ func (*Server) startSystemdWatchdog(logger *zerolog.Logger) {
 	}
 }
 
-func (s *Server) podcastDownloadTask(ctx context.Context, injector do.Injector, interval time.Duration) {
+func (s *Server) podcastDownloadTask(ctx context.Context, injector do.Injector,
+	interval time.Duration, loadepisodes bool,
+) {
 	logger := log.Ctx(ctx)
 	logger.Info().Msgf("start background podcast downloader; interval=%s", interval)
 
@@ -180,7 +187,7 @@ func (s *Server) podcastDownloadTask(ctx context.Context, injector do.Injector, 
 
 		start := time.Now()
 
-		if err := podcastSrv.DownloadPodcastsInfo(ctx, since); err != nil {
+		if err := podcastSrv.DownloadPodcastsInfo(ctx, since, loadepisodes); err != nil {
 			logger.Error().Err(err).Msg("download podcast info failed")
 		}
 
