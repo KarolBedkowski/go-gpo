@@ -10,6 +10,8 @@ import (
 	stdlog "log"
 	"log/syslog"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -19,7 +21,7 @@ import (
 )
 
 // InitializeLogger set log level and optional log filename.
-func initializeLogger(level, format string) error {
+func initializeLogger(level, format string) error { //nolint:cyclop
 	zerolog.ErrorMarshalFunc = aerr.ErrorMarshalFunc //nolint:reassign
 
 	var writer io.Writer
@@ -46,9 +48,12 @@ func initializeLogger(level, format string) error {
 	case "journald":
 		writer = journald.NewJournalDWriter()
 
+	case "logfmt":
+		writer = setupLogfmtConsoleWriter()
+
 	default:
-		if format != "" && format != "logfmt" {
-			log.Error().Msgf("logger: unknown log format %q; using logfmt", format)
+		if format != "" && format != "console" {
+			log.Error().Msgf("logger: unknown log format %q; using default", format)
 		}
 
 		writer = setupConsoleWriter()
@@ -89,4 +94,40 @@ func outputIsConsole() bool {
 	fileInfo, _ := os.Stderr.Stat()
 
 	return fileInfo != nil && (fileInfo.Mode()&os.ModeCharDevice) != 0
+}
+
+// setupLogfmtConsoleWriter configure logger to proper logfmt format (all fields are in form key=val).
+func setupLogfmtConsoleWriter() io.Writer {
+	return zerolog.ConsoleWriter{ //nolint:exhaustruct
+		Out:        os.Stderr,
+		NoColor:    true,
+		TimeFormat: time.RFC3339,
+		FormatLevel: func(i any) string {
+			if i == nil {
+				return ""
+			} else {
+				return fmt.Sprintf("level=%s", i)
+			}
+		},
+		FormatTimestamp: func(i any) string { return fmt.Sprintf("ts=%s", i) },
+		FormatMessage: func(i any) string {
+			if i == nil {
+				return "msg=<nil>"
+			} else {
+				return "msg=" + strconv.Quote(fmt.Sprintf("%s", i))
+			}
+		},
+		FormatCaller: func(i any) string {
+			if i == nil {
+				return "UNKNOWN"
+			} else {
+				c := fmt.Sprintf("%s", i)
+				if strings.ContainsAny(c, " \"") {
+					c = strconv.Quote(c)
+				}
+
+				return "caller=" + c
+			}
+		},
+	}
 }
