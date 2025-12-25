@@ -86,7 +86,7 @@ func setupConsoleWriter() io.Writer {
 }
 
 func outputIsConsole() bool {
-	fileInfo, _ := os.Stdout.Stat()
+	fileInfo, _ := os.Stderr.Stat()
 
 	return fileInfo != nil && (fileInfo.Mode()&os.ModeCharDevice) != 0
 }
