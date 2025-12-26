@@ -17,7 +17,7 @@ type DynamicCache[T comparable, V any] struct {
 }
 
 // GetOrCreate get value from cache or create it when no exists.
-func (c *DynamicCache[T, V]) GetOrCreate(key T) (V, error) {
+func (c *DynamicCache[T, V]) GetOrCreate(key T) (V, error) { //nolint:ireturn //nolint:nolintlint
 	if value, ok := c.items[key]; ok {
 		if !slices.Contains(c.used, key) {
 			c.used = append(c.used, key)

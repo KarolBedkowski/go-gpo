@@ -12,6 +12,7 @@ import (
 	"runtime/debug"
 )
 
+//nolint:gochecknoglobals
 var (
 	Version   = "dev"
 	Revision  = ""

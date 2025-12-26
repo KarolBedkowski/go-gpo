@@ -64,17 +64,18 @@ func (Repository) Maintenance(ctx context.Context) error {
 
 //------------------------------------------------------------------------------
 
+//nolint:gochecknoglobals
 var maintScripts = []string{
 	// delete play actions when for given episode never play action exists
-	"DELETE FROM episodes AS e " +
-		"WHERE action = 'play' " +
-		"AND updated_at < datetime('now','-14 day') " +
-		"AND EXISTS (" +
-		" SELECT NULL FROM episodes AS ed " +
-		" WHERE ed.url = e.url AND ed.action = 'play' AND ed.updated_at > e.updated_at);",
-	"VACUUM;",
-	"ANALYZE;",
-	"PRAGMA optimize;",
+	`DELETE FROM episodes AS e
+		WHERE action = 'play'
+		AND updated_at < datetime('now','-14 day')
+		AND EXISTS (
+			SELECT NULL FROM episodes AS ed
+			WHERE ed.url = e.url AND ed.action = 'play' AND ed.updated_at > e.updated_at);`,
+	`VACUUM;`,
+	`ANALYZE;`,
+	`PRAGMA optimize;`,
 }
 
 //------------------------------------------------------------------------------

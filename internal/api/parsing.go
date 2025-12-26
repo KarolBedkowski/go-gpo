@@ -34,6 +34,7 @@ func (p ParseError) Error() string {
 
 // ---------------------------------------
 
+//nolint:gochecknoglobals
 var dateFormats = []string{
 	"2006-01-02T15:04:05",
 	time.RFC3339,

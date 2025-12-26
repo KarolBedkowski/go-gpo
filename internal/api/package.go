@@ -9,6 +9,7 @@ package api
 
 import "github.com/samber/do/v2"
 
+//nolint:gochecknoglobals
 var Package = do.Package(
 	do.Lazy(New),
 	do.Lazy(newSimpleResource),

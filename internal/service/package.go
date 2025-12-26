@@ -7,6 +7,7 @@ package service
 
 import "github.com/samber/do/v2"
 
+//nolint:gochecknoglobals
 var Package = do.Package(
 	do.Lazy(NewUsersSrv),
 	do.Lazy(NewDevicesSrv),

@@ -12,6 +12,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/web/templates"
 )
 
+//nolint:gochecknoglobals
 var Package = do.Package(
 	do.Lazy(New),
 	do.Lazy(newDevicePages),

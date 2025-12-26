@@ -43,7 +43,9 @@ func checkUserMiddleware(next http.Handler) http.Handler {
 			}
 		} else {
 			// auth disabled; put user into session
-			sess.Set("user", user)
+			if err := sess.Set("user", user); err != nil {
+				logger.Error().Err(err).Msg("set session failed")
+			}
 		}
 
 		ctx := common.ContextWithUser(req.Context(), user)

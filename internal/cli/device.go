@@ -49,6 +49,7 @@ func updateDeviceCmd(ctx context.Context, clicmd *cli.Command, injector do.Injec
 		return fmt.Errorf("update device error: %w", err)
 	}
 
+	//nolint:forbidigo
 	fmt.Printf("Device updated")
 
 	return nil
@@ -76,6 +77,7 @@ func deleteDeviceCmd(ctx context.Context, clicmd *cli.Command, injector do.Injec
 		return fmt.Errorf("delete device error: %w", err)
 	}
 
+	//nolint:forbidigo
 	fmt.Printf("Device updated")
 
 	return nil

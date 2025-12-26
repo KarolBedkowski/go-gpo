@@ -19,6 +19,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/config"
 )
 
+//nolint:forbidigo
 func Main() {
 	cli.VersionFlag = &cli.BoolFlag{
 		Name:    "print-version",

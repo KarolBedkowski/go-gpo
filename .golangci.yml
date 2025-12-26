@@ -1,3 +1,4 @@
+---
 version: "2"
 run:
   build-tags:
@@ -7,19 +8,47 @@ run:
 linters:
   default: all
   disable:
-    - depguard
     - exhaustruct
-    - forbidigo
-    - gochecknoglobals
-    # - tagliatelle
     - wsl
     - noinlineerr
-    # tmp
-    - errcheck
     - godoclint
-    - godox
-    - ireturn
   settings:
+    depguard:
+      rules:
+        repo-access:
+          list-mode: lax
+          files:
+            - $all
+            - "!${base-path}/internal/service/*"
+            - "!${base-path}/internal/infra/**"
+            - "!${base-path}/internal/cli/do.go"
+          deny:
+            - pkg: "gitlab.com/kabes/go-gpo/internal/infra"
+              desc: "do not use infra directly"
+        api:
+          list-mode: lax
+          files:
+            - "{base-path}/internal/api/*"
+          allow:
+            - "gitlab.com/kabes/go-gpo/internal/model"
+            - "gitlab.com/kabes/go-gpo/internal/service"
+          deny:
+            - pkg: "gitlab.com/kabes/go-gpo/internal/infra"
+              desc: "do not use infra directly"
+        db:
+          list-mode: lax
+          files:
+            - $all
+            - "!${base-path}/internal/cli/common.go"
+            - "!${base-path}/internal/cli/do.go"
+            - "!${base-path}/internal/cli/migrate.go"
+            - "!${base-path}/internal/cli/serve.go"
+            - "!${base-path}/internal/server/middlewares.go"
+            - "!${base-path}/internal/infra/**"
+            - "!${base-path}/internal/service/**"
+          deny:
+            - pkg: "gitlab.com/kabes/go-gpo/internal/db"
+              desc: "do not use `db` directly"
     misspell:
       locale: US
       ignore-rules:

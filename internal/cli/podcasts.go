@@ -51,6 +51,7 @@ func downloadPodcastsInfoCmd(ctx context.Context, clicmd *cli.Command, injector 
 		return fmt.Errorf("download podcast info failed: %w", err)
 	}
 
+	//nolint:forbidigo
 	fmt.Println("Podcast info downloaded")
 
 	return nil

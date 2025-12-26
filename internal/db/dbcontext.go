@@ -29,6 +29,9 @@ type Interface interface {
 	GetContext(ctx context.Context, dest any, query string, args ...any) error
 }
 
+// ------------------------------------------------------------------------------
+
+//nolint:gochecknoglobals
 var CtxDBInterfaceKey = any("CtxDBAccessKey")
 
 func WithCtx(ctx context.Context, dbctx Interface) context.Context {
@@ -40,7 +43,7 @@ func WithCtx(ctx context.Context, dbctx Interface) context.Context {
 	return context.WithValue(ctx, CtxDBInterfaceKey, dbctx)
 }
 
-func Ctx(ctx context.Context) (Interface, bool) {
+func Ctx(ctx context.Context) (Interface, bool) { //nolint:ireturn
 	value, ok := ctx.Value(CtxDBInterfaceKey).(Interface)
 	if !ok || value == nil {
 		return nil, false
@@ -49,7 +52,7 @@ func Ctx(ctx context.Context) (Interface, bool) {
 	return value, true
 }
 
-func MustCtx(ctx context.Context) Interface {
+func MustCtx(ctx context.Context) Interface { //nolint:ireturn
 	value, ok := ctx.Value(CtxDBInterfaceKey).(Interface)
 	if !ok || value == nil {
 		panic("no dbcontext in context")

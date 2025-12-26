@@ -4,6 +4,7 @@ import (
 	"context"
 )
 
+//nolint:gochecknoglobals
 var ctxUserKey = any("ctxUserKey")
 
 func ContextUser(ctx context.Context) string {
@@ -21,6 +22,7 @@ func ContextWithUser(ctx context.Context, username string) context.Context {
 
 // ------------------------------------------------------
 
+//nolint:gochecknoglobals
 var ctxDeviceKey = any("ctxDeviceKey")
 
 func ContextDevice(ctx context.Context) string {

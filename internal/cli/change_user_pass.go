@@ -54,6 +54,7 @@ func changeUserPasswordCmd(ctx context.Context, clicmd *cli.Command, injector do
 		return fmt.Errorf("change user password error: %w", err)
 	}
 
+	//nolint:forbidigo
 	fmt.Printf("Changed password for user %q\n", username)
 
 	return nil
@@ -62,6 +63,7 @@ func changeUserPasswordCmd(ctx context.Context, clicmd *cli.Command, injector do
 func readValidatePassword(pass string) (string, error) {
 	pass = strings.TrimSpace(pass)
 	if pass == "" {
+		//nolint:forbidigo
 		fmt.Print("Enter new password: ")
 
 		bytepw, err := term.ReadPassword(syscall.Stdin)
@@ -101,6 +103,7 @@ func lockUserCmd(ctx context.Context, clicmd *cli.Command, injector do.Injector)
 		return fmt.Errorf("change user password error: %w", err)
 	}
 
+	//nolint:forbidigo
 	fmt.Printf("User %q locked\n", username)
 
 	return nil

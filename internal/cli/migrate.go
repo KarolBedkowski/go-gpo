@@ -32,6 +32,7 @@ func migrateCmd(ctx context.Context, _ *cli.Command, injector do.Injector) error
 		return fmt.Errorf("migrate error: %w", err)
 	}
 
+	//nolint:forbidigo
 	fmt.Printf("Migration finished")
 
 	return nil

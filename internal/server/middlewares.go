@@ -84,7 +84,7 @@ func (a authenticator) handle(next http.Handler) http.Handler {
 				w.Header().Add("WWW-Authenticate", "Basic realm=\"go-gpo\"")
 
 				sess.Flush()
-				sess.Destroy(w, r)
+				sess.Destroy(w, r) //nolint:errcheck
 				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 
 				return

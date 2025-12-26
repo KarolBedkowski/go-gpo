@@ -51,6 +51,7 @@ func listCmd(ctx context.Context, clicmd *cli.Command, injector do.Injector) err
 	}
 }
 
+//nolint:forbidigo
 func listDevicesCmd(ctx context.Context, clicmd *cli.Command, injector do.Injector) error {
 	devsrv := do.MustInvoke[*service.DevicesSrv](injector)
 
@@ -69,6 +70,7 @@ func listDevicesCmd(ctx context.Context, clicmd *cli.Command, injector do.Inject
 	return nil
 }
 
+//nolint:forbidigo
 func listSubscriptionsCmd(ctx context.Context, clicmd *cli.Command, injector do.Injector) error {
 	subssrv := do.MustInvoke[*service.SubscriptionsSrv](injector)
 
