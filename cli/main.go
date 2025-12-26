@@ -12,6 +12,7 @@ import (
 
 	cli "gitlab.com/kabes/go-gpo/internal/cli"
 
+	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 )
 

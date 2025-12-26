@@ -84,6 +84,9 @@ database.sqlite: schema.sql
 migrate:
 	goose -dir ./internal/infra/sqlite/migrations sqlite3 ./database.sqlite up
 
+migrate_pg:
+	goose -dir ./internal/infra/pg/migrations postgres "user=gogpo dbname=gogpo password=gogpo123 host=127.0.0.1" up
+
 .PHONY: deps
 deps:
 	go get -u ./...
