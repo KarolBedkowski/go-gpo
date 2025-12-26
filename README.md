@@ -13,6 +13,7 @@ Implement most useful api's and tested with gPodder and AntennaPod.
 * single binary
 * sqlite3 database
 * simple (very!) web gui
+* optionally download podcast and episodes metadata in configured interval (use only in gui).
 
 Missing features from mygpo:
 
