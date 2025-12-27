@@ -80,7 +80,7 @@ var maintScripts = []string{
 
 //------------------------------------------------------------------------------
 
-func (r Repository) Migrate(ctx context.Context, db *sql.DB) error {
+func (Repository) Migrate(ctx context.Context, db *sql.DB) error {
 	logger := log.Ctx(ctx)
 
 	migdir, err := fs.Sub(embedMigrations, "migrations")
@@ -128,7 +128,7 @@ func (r Repository) Migrate(ctx context.Context, db *sql.DB) error {
 	return nil
 }
 
-func (r Repository) OnOpenConn(ctx context.Context, db sqlx.ExecerContext) error {
+func (Repository) OnOpenConn(ctx context.Context, db sqlx.ExecerContext) error {
 	_, err := db.ExecContext(ctx,
 		`PRAGMA temp_store = MEMORY;
 		PRAGMA busy_timeout = 1000;
@@ -141,7 +141,7 @@ func (r Repository) OnOpenConn(ctx context.Context, db sqlx.ExecerContext) error
 	return nil
 }
 
-func (r Repository) OnCloseConn(ctx context.Context, db sqlx.ExecerContext) error {
+func (Repository) OnCloseConn(ctx context.Context, db sqlx.ExecerContext) error {
 	_, err := db.ExecContext(ctx,
 		`PRAGMA optimize`,
 	)

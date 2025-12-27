@@ -17,6 +17,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 )
 
+// authResource handle request to /api/2/auth (login and logout) methods.
 type authResource struct{}
 
 func newAuthResource(_ do.Injector) (authResource, error) {

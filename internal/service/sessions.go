@@ -69,7 +69,7 @@ func (s *SessionStore) ID() string {
 	return s.sid
 }
 
-// save postgres session values to database.
+// Release save session values to database.
 // must call this method to save values to database.
 func (s *SessionStore) Release() error {
 	log.Logger.Debug().Msgf("session release: %+v", &s.data)

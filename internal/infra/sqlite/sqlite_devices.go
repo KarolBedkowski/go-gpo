@@ -20,7 +20,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/model"
 )
 
-func (s Repository) GetDevice(
+func (Repository) GetDevice(
 	ctx context.Context,
 	userid int64,
 	devicename string,
@@ -62,7 +62,7 @@ func (s Repository) GetDevice(
 	return device.toModel(), nil
 }
 
-func (s Repository) SaveDevice(ctx context.Context, device *model.Device) (int64, error) {
+func (Repository) SaveDevice(ctx context.Context, device *model.Device) (int64, error) {
 	logger := log.Ctx(ctx)
 	dbctx := db.MustCtx(ctx)
 
@@ -107,7 +107,7 @@ func (s Repository) SaveDevice(ctx context.Context, device *model.Device) (int64
 	return device.ID, nil
 }
 
-func (s Repository) ListDevices(ctx context.Context, userid int64) ([]model.Device, error) {
+func (Repository) ListDevices(ctx context.Context, userid int64) ([]model.Device, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Msg("list devices - count subscriptions")
 
@@ -140,10 +140,10 @@ func (s Repository) ListDevices(ctx context.Context, userid int64) ([]model.Devi
 		return nil, aerr.Wrapf(err, "select device failed").WithMeta("user_id", userid)
 	}
 
-	return devicesFromDb(devices), nil
+	return devicesFromDB(devices), nil
 }
 
-func (s Repository) DeleteDevice(ctx context.Context, deviceid int64) error {
+func (Repository) DeleteDevice(ctx context.Context, deviceid int64) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("device_id", deviceid).Msg("delete device")
 

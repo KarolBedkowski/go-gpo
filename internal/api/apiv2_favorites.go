@@ -5,8 +5,6 @@ package api
 //
 // Distributed under terms of the GPLv3 license.
 //
-// GET /api/2/favorites/(username).json
-
 import (
 	"context"
 	"net/http"
@@ -23,6 +21,7 @@ import (
 	"github.com/samber/do/v2"
 )
 
+// favoritesResource handle request to /api/2/favorites/<user>.json.
 type favoritesResource struct {
 	episodesSrv *service.EpisodesSrv
 }

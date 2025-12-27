@@ -1,9 +1,9 @@
+package api
+
 // updates.go
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
 //
 // Distributed under terms of the GPLv3 license.
-package api
-
 import (
 	"context"
 	"net/http"
@@ -21,6 +21,7 @@ import (
 	"github.com/samber/do/v2"
 )
 
+// updatesResource handle request to /api/2/updates resource.
 type updatesResource struct {
 	subsSrv     *service.SubscriptionsSrv
 	episodesSrv *service.EpisodesSrv

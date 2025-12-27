@@ -1,8 +1,9 @@
+package api
+
 // updates.g
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
 //
 // Distributed under terms of the GPLv3 license.
-package api
 
 import (
 	"context"
@@ -21,6 +22,7 @@ import (
 	"github.com/samber/do/v2"
 )
 
+// settingsResource handle /api/2/settings/ request.
 type settingsResource struct {
 	settingsSrv *service.SettingsSrv
 }

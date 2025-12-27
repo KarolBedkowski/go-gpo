@@ -23,6 +23,7 @@ import (
 	"github.com/go-chi/render"
 )
 
+// deviceResource handle request to /api/2/devices resource.
 type deviceResource struct {
 	deviceSrv *service.DevicesSrv
 }

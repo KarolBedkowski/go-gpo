@@ -2,8 +2,6 @@
 version: "2"
 run:
   build-tags:
-    - debug
-    - sdjournal
 
 linters:
   default: all
@@ -11,7 +9,6 @@ linters:
     - exhaustruct
     - wsl
     - noinlineerr
-    - godoclint
   settings:
     depguard:
       rules:

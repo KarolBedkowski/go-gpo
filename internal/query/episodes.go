@@ -14,6 +14,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/validators"
 )
 
+// GetEpisodesQuery define arguments used to get episodes.
 type GetEpisodesQuery struct {
 	Since      time.Time
 	UserName   string
@@ -46,6 +47,7 @@ func (q *GetEpisodesQuery) MarshalZerologObject(event *zerolog.Event) {
 
 //------------------------------------------------------------------------------
 
+// GetEpisodesByPodcastQuery define arguments to get episodes for specified podcast.
 type GetEpisodesByPodcastQuery struct {
 	Since      time.Time
 	UserName   string
@@ -76,6 +78,7 @@ func (q *GetEpisodesByPodcastQuery) MarshalZerologObject(event *zerolog.Event) {
 
 //------------------------------------------------------------------------------
 
+// GetEpisodeUpdatesQuery is used to get episode updates for user/device.
 type GetEpisodeUpdatesQuery struct {
 	Since          time.Time
 	UserName       string
@@ -103,6 +106,8 @@ func (q *GetEpisodeUpdatesQuery) MarshalZerologObject(event *zerolog.Event) {
 }
 
 // ------------------------------------------------------------------------------
+
+// GetLastEpisodesActionsQuery get last episodes actions.
 type GetLastEpisodesActionsQuery struct {
 	Since    time.Time
 	UserName string

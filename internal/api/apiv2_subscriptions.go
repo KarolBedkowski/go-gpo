@@ -1,10 +1,9 @@
+package api
+
 // subscriptions.go
-// /api/2/subscriptions
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
 //
 // Distributed under terms of the GPLv3 license.
-package api
-
 import (
 	"context"
 	"net/http"
@@ -24,6 +23,7 @@ import (
 	"github.com/go-chi/render"
 )
 
+// subscriptionsResource handle request to /api/2/subscriptions resource.
 type subscriptionsResource struct {
 	subsSrv *service.SubscriptionsSrv
 }

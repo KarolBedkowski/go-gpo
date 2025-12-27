@@ -1,3 +1,4 @@
+// Package db provide database access (connection, pooling).
 package db
 
 //

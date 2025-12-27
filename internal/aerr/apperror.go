@@ -105,7 +105,7 @@ func (a AppError) WithMeta(keyval ...any) AppError {
 	return nerr
 }
 
-// WithErr create copy of AppError with new error and updated stack.
+// WithError create copy of AppError with new error and updated stack.
 func (a AppError) WithError(err error) AppError {
 	n := a.clone()
 	n.err = err

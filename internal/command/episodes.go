@@ -13,6 +13,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/validators"
 )
 
+// AddActionCmd store given episode actions.
 type AddActionCmd struct {
 	UserName string
 	Actions  []model.Episode

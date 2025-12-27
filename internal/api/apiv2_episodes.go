@@ -1,7 +1,6 @@
 package api
 
 // episodes.go
-// /api/2/episodes/
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
 //
 // Distributed under terms of the GPLv3 license.
@@ -27,6 +26,8 @@ import (
 )
 
 // -----------------------------
+
+// episodesResource handle request to /api/2/episodes/ resources.
 type episodesResource struct {
 	episodesSrv *service.EpisodesSrv
 }

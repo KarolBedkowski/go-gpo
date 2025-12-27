@@ -13,6 +13,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/validators"
 )
 
+// UpdateDeviceCmd command update device information.
 type UpdateDeviceCmd struct {
 	UserName   string
 	DeviceName string
@@ -58,6 +59,7 @@ func (u *UpdateDeviceCmd) MarshalZerologObject(event *zerolog.Event) {
 
 // ------------------------------------------------------
 
+// DeleteDeviceCmd delete one user device.
 type DeleteDeviceCmd struct {
 	UserName   string
 	DeviceName string

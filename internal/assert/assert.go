@@ -1,3 +1,4 @@
+// Package assert provide helper functions for tests.
 package assert
 
 //
@@ -67,7 +68,7 @@ func Err(tb testing.TB, got error) bool {
 	return true
 }
 
-// Err asserts that the got error matches the want.
+// ErrSpec asserts that the got error matches the want.
 func ErrSpec(tb testing.TB, got error, want any) bool {
 	tb.Helper()
 

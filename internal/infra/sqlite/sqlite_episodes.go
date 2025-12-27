@@ -22,7 +22,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/model"
 )
 
-func (s Repository) GetEpisode(
+func (Repository) GetEpisode(
 	ctx context.Context,
 	userid, podcastid int64,
 	episode string,
@@ -57,7 +57,7 @@ func (s Repository) GetEpisode(
 // If deviceid is given, return actions from OTHER than given devices.
 // Episodes are sorted by updated_at asc.
 // When aggregate get only last action for each episode.
-func (s Repository) ListEpisodeActions(
+func (Repository) ListEpisodeActions(
 	ctx context.Context,
 	userid int64, deviceid, podcastid *int64,
 	since time.Time,
@@ -121,10 +121,10 @@ func (s Repository) ListEpisodeActions(
 	// sorting by ts asc
 	slices.Reverse(res)
 
-	return episodesFromDb(res), nil
+	return episodesFromDB(res), nil
 }
 
-func (s Repository) ListFavorites(ctx context.Context, userid int64) ([]model.Episode, error) {
+func (Repository) ListFavorites(ctx context.Context, userid int64) ([]model.Episode, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Msg("get favorites")
 
@@ -145,10 +145,10 @@ func (s Repository) ListFavorites(ctx context.Context, userid int64) ([]model.Ep
 		return nil, aerr.Wrapf(err, "query episodes failed").WithTag(aerr.InternalError)
 	}
 
-	return episodesFromDb(res), nil
+	return episodesFromDB(res), nil
 }
 
-func (s Repository) GetLastEpisodeAction(ctx context.Context,
+func (Repository) GetLastEpisodeAction(ctx context.Context,
 	userid, podcastid int64, excludeDelete bool,
 ) (*model.Episode, error) {
 	logger := log.Ctx(ctx)
@@ -187,7 +187,7 @@ func (s Repository) GetLastEpisodeAction(ctx context.Context,
 	return res.toModel(), nil
 }
 
-func (s Repository) SaveEpisode(ctx context.Context, userid int64, episodes ...model.Episode) error {
+func (Repository) SaveEpisode(ctx context.Context, userid int64, episodes ...model.Episode) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Msg("save episode")
 
@@ -240,7 +240,7 @@ func (s Repository) SaveEpisode(ctx context.Context, userid int64, episodes ...m
 	return nil
 }
 
-func (s Repository) UpdateEpisodeInfo(ctx context.Context, episodes ...model.Episode) error {
+func (Repository) UpdateEpisodeInfo(ctx context.Context, episodes ...model.Episode) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int("num", len(episodes)).Msg("update episode meta")
 

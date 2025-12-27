@@ -64,7 +64,7 @@ func (d *DeviceDB) toModel() *model.Device {
 
 //------------------------------------------------------------------------------
 
-func devicesFromDb(devices []DeviceDB) []model.Device {
+func devicesFromDB(devices []DeviceDB) []model.Device {
 	res := make([]model.Device, len(devices))
 	for i, r := range devices {
 		res[i] = *r.toModel()
@@ -115,7 +115,7 @@ func (p *PodcastDB) toModel() *model.Podcast {
 	}
 }
 
-func podcastsFromDb(podcasts []PodcastDB) []model.Podcast {
+func podcastsFromDB(podcasts []PodcastDB) []model.Podcast {
 	res := make([]model.Podcast, len(podcasts))
 	for i, r := range podcasts {
 		res[i] = *r.toModel()
@@ -195,7 +195,7 @@ func (e *EpisodeDB) toModel() *model.Episode {
 
 //------------------------------------------------------------------------------
 
-func episodesFromDb(episodes []EpisodeDB) []model.Episode {
+func episodesFromDB(episodes []EpisodeDB) []model.Episode {
 	res := make([]model.Episode, len(episodes))
 	for i, r := range episodes {
 		res[i] = *r.toModel()
@@ -244,7 +244,7 @@ func (u *UserDB) toModel() *model.User {
 
 //------------------------------------------------------------------------------
 
-func usersFromDb(users []UserDB) []model.User {
+func usersFromDB(users []UserDB) []model.User {
 	res := make([]model.User, len(users))
 	for i, r := range users {
 		res[i] = *r.toModel()

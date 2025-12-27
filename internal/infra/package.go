@@ -1,3 +1,4 @@
+// Package infra provide infrastructure layer.
 package infra
 
 //

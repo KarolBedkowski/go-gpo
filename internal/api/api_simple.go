@@ -1,7 +1,6 @@
 package api
 
 // simple.go
-// /subscriptions/
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
 //
 // Distributed under terms of the GPLv3 license.
@@ -25,6 +24,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
+// simpleResource handle request to simple api (/subscriptions/ resource).
 type simpleResource struct {
 	subServ *service.SubscriptionsSrv
 }

@@ -1,11 +1,9 @@
-// Package sqlite implement repository for database.
-package sqlite
+// Package config provide application configuration objects.
+package config
 
 //
-// sqlite.go
+// mod.go
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
 //
 // Distributed under terms of the GPLv3 license.
 //
-
-type Repository struct{}

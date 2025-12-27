@@ -119,7 +119,7 @@ type EpisodeUpdate struct {
 	Status       string
 }
 
-// NewUpisodeUpdateFromModel create new EpisodeUpdate WITHOUT Episode.
+// NewEpisodeUpdate create new EpisodeUpdate WITHOUT Episode.
 func NewEpisodeUpdate(episodedb *Episode) EpisodeUpdate {
 	return EpisodeUpdate{
 		Title:        episodedb.Title,

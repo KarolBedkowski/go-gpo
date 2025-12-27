@@ -1,3 +1,4 @@
+// Package cli handle command line arguments and commands.
 package cli
 
 //
