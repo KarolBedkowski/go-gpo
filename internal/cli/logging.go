@@ -129,5 +129,12 @@ func setupLogfmtConsoleWriter() io.Writer {
 				return "caller=" + c
 			}
 		},
+		FormatErrFieldValue: func(i any) string {
+			if i == nil {
+				return "<nil>"
+			} else {
+				return strconv.Quote(fmt.Sprintf("%s", i))
+			}
+		},
 	}
 }
