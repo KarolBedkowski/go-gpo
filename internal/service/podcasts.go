@@ -253,14 +253,20 @@ func (p *PodcastsSrv) downloadPodcastInfoWorker(
 	ctx context.Context, tasks <-chan model.PodcastToUpdate, since time.Time, loadepisodes bool,
 ) {
 	logger := zerolog.Ctx(ctx)
+	if logger == nil {
+		panic("no logger in ctx")
+	}
 
 	fp := gofeed.NewParser()
 	fp.UserAgent = "Mozilla/5.0 (X11; Linux x86_64; rv:146.0) Gecko/20100101 Firefox/146.0"
 
 	for task := range tasks {
-		err := p.downloadPodcastInfo(ctx, fp, since, &task, loadepisodes)
+		llogger := logger.With().Str("podcast_url", task.URL).Logger()
+		lctx := llogger.WithContext(ctx)
+
+		err := p.downloadPodcastInfo(lctx, fp, since, &task, loadepisodes)
 		if err != nil {
-			logger.Error().Err(err).Msg("update podcast info failed")
+			llogger.Error().Err(err).Msg("update podcast info failed")
 		}
 	}
 }
@@ -268,12 +274,11 @@ func (p *PodcastsSrv) downloadPodcastInfoWorker(
 func (p *PodcastsSrv) downloadPodcastInfo(ctx context.Context, //nolint: cyclop
 	feedparser *gofeed.Parser, since time.Time, task *model.PodcastToUpdate, loadepisodes bool,
 ) error {
-	l := zerolog.Ctx(ctx)
-	if l == nil {
+	logger := zerolog.Ctx(ctx)
+	if logger == nil {
 		panic("missing logger in ctx")
 	}
 
-	logger := l.With().Str("podcast_url", task.URL).Logger()
 	logger.Debug().Msg("downloading podcast info")
 
 	var (
