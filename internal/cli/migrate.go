@@ -1,11 +1,11 @@
+package cli
+
 //
 // migrate.go
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
 //
 // Distributed under terms of the GPLv3 license.
 //
-
-package cli
 
 import (
 	"context"
@@ -32,6 +32,7 @@ func migrateCmd(ctx context.Context, _ *cli.Command, injector do.Injector) error
 		return fmt.Errorf("migrate error: %w", err)
 	}
 
+	//nolint:forbidigo
 	fmt.Printf("Migration finished")
 
 	return nil

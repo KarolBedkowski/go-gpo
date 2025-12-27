@@ -23,6 +23,7 @@ import (
 	"github.com/go-chi/render"
 )
 
+// deviceResource handle request to /api/2/devices resource.
 type deviceResource struct {
 	deviceSrv *service.DevicesSrv
 }
@@ -37,9 +38,9 @@ func (d deviceResource) Routes() *chi.Mux {
 	r := chi.NewRouter()
 
 	r.With(checkUserMiddleware).
-		Get(`/{user:[\w+.-]+}.json`, srvsupport.Wrap(d.listDevices))
+		Get(`/{user:[\w+.-]+}.json`, srvsupport.WrapNamed(d.listDevices, "api_dev_user"))
 	r.With(checkUserMiddleware, checkDeviceMiddleware).
-		Post(`/{user:[\w+.-]+}/{devicename:[\w.-]+}.json`, srvsupport.Wrap(d.updateDevice))
+		Post(`/{user:[\w+.-]+}/{devicename:[\w.-]+}.json`, srvsupport.WrapNamed(d.updateDevice, "api_dev_user_put"))
 
 	return r
 }
@@ -103,7 +104,7 @@ func (d deviceResource) listDevices(
 	resdevices := common.Map(devices, newDeviceFromModel)
 
 	render.Status(r, http.StatusOK)
-	render.JSON(w, r, resdevices)
+	srvsupport.RenderJSON(w, r, resdevices)
 }
 
 type device struct {

@@ -22,19 +22,20 @@ const (
 )
 
 type Episode struct {
+	ID int64
+
 	Timestamp time.Time
-	Started   *int32
-	Position  *int32
-	Total     *int32
-	GUID      *string
+	Action    string
+	Title     string
+	URL       string
+
+	Started  *int32
+	Position *int32
+	Total    *int32
+	GUID     *string
 
 	Podcast *Podcast
 	Device  *Device
-	Action  string
-	Title   string
-	URL     string
-
-	ID int32
 }
 
 func (e *Episode) DeviceName() string {
@@ -61,15 +62,22 @@ func (e *Episode) Validate() error {
 }
 
 func (e *Episode) MarshalZerologObject(event *zerolog.Event) {
-	event.Interface("podcast", e.Podcast).
+	event.
 		Str("url", e.URL).
-		Object("device", e.Device).
 		Str("action", e.Action).
 		Time("timestamp", e.Timestamp).
 		Any("guid", e.GUID).
 		Any("started", e.Started).
 		Any("position", e.Position).
 		Any("total", e.Total)
+
+	if e.Device != nil {
+		event.Object("device", e.Device)
+	}
+
+	if e.Podcast != nil {
+		event.Object("podcast", e.Podcast)
+	}
 }
 
 // ------------------------------------------------------
@@ -111,7 +119,7 @@ type EpisodeUpdate struct {
 	Status       string
 }
 
-// NewUpisodeUpdateFromModel create new EpisodeUpdate WITHOUT Episode.
+// NewEpisodeUpdate create new EpisodeUpdate WITHOUT Episode.
 func NewEpisodeUpdate(episodedb *Episode) EpisodeUpdate {
 	return EpisodeUpdate{
 		Title:        episodedb.Title,

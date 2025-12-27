@@ -16,6 +16,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/validators"
 )
 
+// ChangeSubscriptionsCmd add and/or remove podcasts given by url subscriptions.
 type ChangeSubscriptionsCmd struct {
 	Timestamp  time.Time
 	UserName   string
@@ -63,6 +64,7 @@ type ChangeSubscriptionsCmdResult struct {
 
 //---------------------------------------------------------------------
 
+// ReplaceSubscriptionsCmd replace all user subscriptions with given list of podcasts url.
 type ReplaceSubscriptionsCmd struct {
 	Timestamp     time.Time
 	UserName      string

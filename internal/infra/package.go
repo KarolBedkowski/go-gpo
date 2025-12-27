@@ -1,3 +1,4 @@
+// Package infra provide infrastructure layer.
 package infra
 
 //
@@ -13,6 +14,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
+//nolint:gochecknoglobals
 var Package = do.Package(
 	do.Lazy(func(_ do.Injector) (repository.Sessions, error) {
 		return &sqlite.Repository{}, nil

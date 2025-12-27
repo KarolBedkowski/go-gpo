@@ -37,7 +37,7 @@ func newIndexPage(i do.Injector) (indexPage, error) {
 
 func (i indexPage) Routes() *chi.Mux {
 	r := chi.NewRouter()
-	r.Get("/", srvsupport.Wrap(i.indexPage))
+	r.Get("/", srvsupport.WrapNamed(i.indexPage, "web_index"))
 
 	return r
 }

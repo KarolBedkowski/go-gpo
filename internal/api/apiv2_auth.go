@@ -17,6 +17,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 )
 
+// authResource handle request to /api/2/auth (login and logout) methods.
 type authResource struct{}
 
 func newAuthResource(_ do.Injector) (authResource, error) {
@@ -25,8 +26,8 @@ func newAuthResource(_ do.Injector) (authResource, error) {
 
 func (ar authResource) Routes() *chi.Mux {
 	r := chi.NewRouter()
-	r.Post(`/{user:[\w.+-]}/login.json`, srvsupport.Wrap(ar.login))
-	r.Post(`/{user:[\w.+-]}/logout.json`, srvsupport.Wrap(ar.logout))
+	r.Post(`/{user:[\w.+-]}/login.json`, srvsupport.WrapNamed(ar.login, "api_auth_login"))
+	r.Post(`/{user:[\w.+-]}/logout.json`, srvsupport.WrapNamed(ar.logout, "api_auth_logout"))
 
 	return r
 }

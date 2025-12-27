@@ -36,9 +36,9 @@ func newUserPages(i do.Injector) (userPages, error) {
 
 func (u userPages) Routes() *chi.Mux {
 	r := chi.NewRouter()
-	r.Get(`/`, srvsupport.Wrap(u.userPage))
-	r.Get(`/password`, srvsupport.Wrap(u.changePassword))
-	r.Post(`/password`, srvsupport.Wrap(u.changePassword))
+	r.Get(`/`, srvsupport.WrapNamed(u.userPage, "web_user_index"))
+	r.Get(`/password`, srvsupport.WrapNamed(u.changePassword, "web_user_pass"))
+	r.Post(`/password`, srvsupport.WrapNamed(u.changePassword, "web_user_pass_post"))
 
 	return r
 }

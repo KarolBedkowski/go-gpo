@@ -1,3 +1,4 @@
+// Package db provide database access (connection, pooling).
 package db
 
 //
@@ -9,6 +10,7 @@ package db
 
 import "github.com/samber/do/v2"
 
+//nolint:gochecknoglobals
 var Package = do.Package(
 	do.Lazy(NewDatabaseI),
 )

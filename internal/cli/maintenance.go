@@ -1,11 +1,11 @@
+package cli
+
 //
 // maintenance.go
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
 //
 // Distributed under terms of the GPLv3 license.
 //
-
-package cli
 
 import (
 	"context"
@@ -32,6 +32,7 @@ func maintenanceCmd(ctx context.Context, _ *cli.Command, injector do.Injector) e
 		return fmt.Errorf("maintenance error: %w", err)
 	}
 
+	//nolint:forbidigo
 	fmt.Printf("Done")
 
 	return nil

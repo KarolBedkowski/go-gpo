@@ -43,6 +43,7 @@ func enableDoDebug(ctx context.Context, injector *do.RootScope) {
 	logger := log.Ctx(ctx)
 
 	explanation := do.ExplainInjector(injector)
+	//nolint:forbidigo
 	fmt.Println(explanation.String())
 
 	// injector.AddAfterInvocationHook(func(_ *do.Scope, serviceName string, err error) {

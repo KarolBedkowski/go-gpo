@@ -1,11 +1,11 @@
+package api
+
 //
 // parsing.go
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
 //
 // Distributed under terms of the GPLv3 license.
 //
-
-package api
 
 import (
 	"bytes"
@@ -34,6 +34,7 @@ func (p ParseError) Error() string {
 
 // ---------------------------------------
 
+//nolint:gochecknoglobals
 var dateFormats = []string{
 	"2006-01-02T15:04:05",
 	time.RFC3339,

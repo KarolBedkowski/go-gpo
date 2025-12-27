@@ -1,3 +1,4 @@
+// Package sqlite implement repository for database.
 package sqlite
 
 //

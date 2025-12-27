@@ -1,3 +1,4 @@
+// Package common define application common functions and objects.
 package common
 
 //

@@ -1,9 +1,9 @@
+package api
+
 // updates.go
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
 //
 // Distributed under terms of the GPLv3 license.
-package api
-
 import (
 	"context"
 	"net/http"
@@ -17,11 +17,11 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/service"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/render"
 	"github.com/rs/zerolog"
 	"github.com/samber/do/v2"
 )
 
+// updatesResource handle request to /api/2/updates resource.
 type updatesResource struct {
 	subsSrv     *service.SubscriptionsSrv
 	episodesSrv *service.EpisodesSrv
@@ -38,7 +38,7 @@ func (u updatesResource) Routes() *chi.Mux {
 	r := chi.NewRouter()
 
 	r.With(checkUserMiddleware, checkDeviceMiddleware).
-		Get(`/{user:[\w+.-]+}/{devicename:[\w.-]+}.json`, srvsupport.Wrap(u.getUpdates))
+		Get(`/{user:[\w+.-]+}/{devicename:[\w.-]+}.json`, srvsupport.WrapNamed(u.getUpdates, "api_updates"))
 
 	return r
 }
@@ -98,7 +98,7 @@ func (u updatesResource) getUpdates(
 		Timestamps: time.Now().UTC().Unix(),
 	}
 
-	render.JSON(w, r, &result)
+	srvsupport.RenderJSON(w, r, &result)
 }
 
 //------------------------------------------------------------------------------

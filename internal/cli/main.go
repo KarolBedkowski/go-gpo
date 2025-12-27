@@ -1,3 +1,4 @@
+// Package cli handle command line arguments and commands.
 package cli
 
 //
@@ -19,6 +20,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/config"
 )
 
+//nolint:forbidigo
 func Main() {
 	cli.VersionFlag = &cli.BoolFlag{
 		Name:    "print-version",
@@ -32,7 +34,7 @@ func Main() {
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:      "database",
-				Value:     "database.sqlite",
+				Value:     "database.sqlite?_fk=1&_journal_mode=WAL&_synchronous=NORMAL",
 				Usage:     "Database file",
 				Aliases:   []string{"D"},
 				Sources:   cli.EnvVars("GOGPO_DB"),
@@ -48,8 +50,7 @@ func Main() {
 			},
 			&cli.StringFlag{
 				Name:    "log.format",
-				Value:   "logfmt",
-				Usage:   "Log format (logfmt, json, journald, syslog)",
+				Usage:   "Log format (console, logfmt, json, journald, syslog)",
 				Sources: cli.EnvVars("GOGPO_LOGFORMAT"),
 				Config:  cli.StringConfig{TrimSpace: true},
 			},

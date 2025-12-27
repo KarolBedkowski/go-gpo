@@ -1,11 +1,11 @@
+package cli
+
 //
-// adduser.go
+// user.go
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
 //
 // Distributed under terms of the GPLv3 license.
 //
-
-package cli
 
 import (
 	"context"
@@ -33,6 +33,7 @@ func newAddUserCmd() *cli.Command {
 	}
 }
 
+//nolint:forbidigo
 func addUserCmd(ctx context.Context, clicmd *cli.Command, injector do.Injector) error {
 	username := clicmd.String("username")
 
@@ -70,6 +71,7 @@ func newListUsersCmd() *cli.Command {
 	}
 }
 
+//nolint:forbidigo
 func listUsersCmd(ctx context.Context, clicmd *cli.Command, injector do.Injector) error {
 	usersrv := do.MustInvoke[*service.UsersSrv](injector)
 
@@ -117,6 +119,7 @@ func deleteUserCmd(ctx context.Context, clicmd *cli.Command, injector do.Injecto
 		return fmt.Errorf("delete user error: %w", err)
 	}
 
+	//nolint:forbidigo
 	fmt.Printf("User %s deleted\n", username)
 
 	return nil

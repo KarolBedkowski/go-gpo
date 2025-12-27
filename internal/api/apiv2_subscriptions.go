@@ -1,10 +1,9 @@
+package api
+
 // subscriptions.go
-// /api/2/subscriptions
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
 //
 // Distributed under terms of the GPLv3 license.
-package api
-
 import (
 	"context"
 	"net/http"
@@ -24,6 +23,7 @@ import (
 	"github.com/go-chi/render"
 )
 
+// subscriptionsResource handle request to /api/2/subscriptions resource.
 type subscriptionsResource struct {
 	subsSrv *service.SubscriptionsSrv
 }
@@ -38,11 +38,14 @@ func (sr subscriptionsResource) Routes() *chi.Mux {
 	router := chi.NewRouter()
 
 	router.With(checkUserMiddleware).
-		Get(`/{user:[\w+.-]+}.opml`, srvsupport.Wrap(sr.userSubscriptions))
+		Get(`/{user:[\w+.-]+}.opml`,
+			srvsupport.WrapNamed(sr.userSubscriptions, "api_subs_user"))
 	router.With(checkUserMiddleware, checkDeviceMiddleware).
-		Get(`/{user:[\w+.-]+}/{devicename:[\w.-]+}.json`, srvsupport.Wrap(sr.devSubscriptions))
+		Get(`/{user:[\w+.-]+}/{devicename:[\w.-]+}.json`,
+			srvsupport.WrapNamed(sr.devSubscriptions, "api_subs_userdev"))
 	router.With(checkUserMiddleware, checkDeviceMiddleware).
-		Post(`/{user:[\w+.-]+}/{devicename:[\w.-]+}.json`, srvsupport.Wrap(sr.uploadSubscriptionChanges))
+		Post(`/{user:[\w+.-]+}/{devicename:[\w.-]+}.json`,
+			srvsupport.WrapNamed(sr.uploadSubscriptionChanges, "api_subs_userdev_post"))
 
 	return router
 }

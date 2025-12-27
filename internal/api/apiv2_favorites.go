@@ -5,8 +5,6 @@ package api
 //
 // Distributed under terms of the GPLv3 license.
 //
-// GET /api/2/favorites/(username).json
-
 import (
 	"context"
 	"net/http"
@@ -19,11 +17,11 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/service"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/render"
 	"github.com/rs/zerolog"
 	"github.com/samber/do/v2"
 )
 
+// favoritesResource handle request to /api/2/favorites/<user>.json.
 type favoritesResource struct {
 	episodesSrv *service.EpisodesSrv
 }
@@ -38,7 +36,7 @@ func (u favoritesResource) Routes() *chi.Mux {
 	r := chi.NewRouter()
 
 	r.With(checkUserMiddleware).
-		Get(`/{user:[\w+.-]+}.json`, srvsupport.Wrap(u.getFafovites))
+		Get(`/{user:[\w+.-]+}.json`, srvsupport.WrapNamed(u.getFafovites, "api_favorites"))
 
 	return r
 }
@@ -60,7 +58,7 @@ func (u favoritesResource) getFafovites(
 	}
 
 	resfavs := common.Map(favorites, newFavoriteFromModel)
-	render.JSON(w, r, resfavs)
+	srvsupport.RenderJSON(w, r, resfavs)
 }
 
 type favorite struct {

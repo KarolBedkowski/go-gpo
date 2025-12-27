@@ -14,6 +14,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/validators"
 )
 
+// ChangeSettingsCmd save setting for given object.
 type ChangeSettingsCmd struct {
 	UserName   string
 	Scope      string

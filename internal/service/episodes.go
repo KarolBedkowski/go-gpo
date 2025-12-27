@@ -185,7 +185,7 @@ func (e *EpisodesSrv) GetLastActions(ctx context.Context, query *query.GetLastEp
 	}
 
 	episodes, err := db.InConnectionR(ctx, e.db, func(ctx context.Context) ([]model.Episode, error) {
-		return e.getEpisodes(ctx, query.UserName, "", "", query.Since, true, query.Limit)
+		return e.getEpisodes(ctx, query.UserName, "", "", query.Since, false, query.Limit)
 	})
 	if err != nil {
 		return nil, err //nolint:wrapcheck
@@ -257,16 +257,16 @@ func (e *EpisodesSrv) getEpisodes(
 	return episodes, nil
 }
 
-func (e *EpisodesSrv) createPodcastsCache(ctx context.Context, user *model.User) (DynamicCache[string, int32], error) {
+func (e *EpisodesSrv) createPodcastsCache(ctx context.Context, user *model.User) (DynamicCache[string, int64], error) {
 	podcasts, err := e.podcastsRepo.ListSubscribedPodcasts(ctx, user.ID, time.Time{})
 	if err != nil {
-		return DynamicCache[string, int32]{}, aerr.Wrapf(err, "load podcasts into cache failed").
+		return DynamicCache[string, int64]{}, aerr.Wrapf(err, "load podcasts into cache failed").
 			WithMeta("user_id", user.ID)
 	}
 
-	podcastscache := DynamicCache[string, int32]{
+	podcastscache := DynamicCache[string, int64]{
 		items: podcasts.ToIDsMap(),
-		creator: func(key string) (int32, error) {
+		creator: func(key string) (int64, error) {
 			var podcast *model.Podcast
 
 			// check is unsubscribed
@@ -298,21 +298,21 @@ func (e *EpisodesSrv) createPodcastsCache(ctx context.Context, user *model.User)
 	return podcastscache, nil
 }
 
-func (e *EpisodesSrv) createDevicesCache(ctx context.Context, user *model.User) (DynamicCache[string, *int32], error) {
+func (e *EpisodesSrv) createDevicesCache(ctx context.Context, user *model.User) (DynamicCache[string, *int64], error) {
 	devices, err := e.devicesRepo.ListDevices(ctx, user.ID)
 	if err != nil {
-		return DynamicCache[string, *int32]{}, aerr.Wrapf(err, "load devices into cache failed").
+		return DynamicCache[string, *int64]{}, aerr.Wrapf(err, "load devices into cache failed").
 			WithMeta("user_id", user.ID)
 	}
 
-	items := make(map[string]*int32, len(devices))
+	items := make(map[string]*int64, len(devices))
 	for _, d := range devices {
 		items[d.Name] = &d.ID
 	}
 
-	devicescache := DynamicCache[string, *int32]{
+	devicescache := DynamicCache[string, *int64]{
 		items: items,
-		creator: func(key string) (*int32, error) {
+		creator: func(key string) (*int64, error) {
 			if key == "" {
 				return nil, nil //nolint:nilnil
 			}
@@ -342,9 +342,9 @@ func (e *EpisodesSrv) createDevicesCache(ctx context.Context, user *model.User) 
 
 func (e *EpisodesSrv) getDeviceID(
 	ctx context.Context,
-	userid int32,
+	userid int64,
 	devicename string,
-) (*int32, error) {
+) (*int64, error) {
 	if devicename == "" {
 		return nil, nil //nolint:nilnil
 	}
@@ -361,9 +361,9 @@ func (e *EpisodesSrv) getDeviceID(
 
 func (e *EpisodesSrv) getPodcastID(
 	ctx context.Context,
-	userid int32,
+	userid int64,
 	podcast string,
-) (*int32, error) {
+) (*int64, error) {
 	if podcast == "" {
 		return nil, nil //nolint:nilnil
 	}

@@ -1,11 +1,11 @@
+package cli
+
 //
 // podcasts.go
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
 //
 // Distributed under terms of the GPLv3 license.
 //
-
-package cli
 
 import (
 	"context"
@@ -28,6 +28,10 @@ func newDownloadPodcastsInfoCmd() *cli.Command {
 				Name:  "max-age",
 				Usage: "max age of existing podcast metadata to update",
 			},
+			&cli.BoolFlag{
+				Name:  "load-episodes",
+				Usage: "When loading podcast, load also episodes title.",
+			},
 		},
 		Action: wrap(downloadPodcastsInfoCmd),
 	}
@@ -36,15 +40,18 @@ func newDownloadPodcastsInfoCmd() *cli.Command {
 func downloadPodcastsInfoCmd(ctx context.Context, clicmd *cli.Command, injector do.Injector) error {
 	podcastSrv := do.MustInvoke[*service.PodcastsSrv](injector)
 
-	maxAge := time.Time{}
+	maxAge := time.Now().UTC()
 	if since := clicmd.Duration("max-age"); since > 0 {
-		maxAge = time.Now().Add(-since).UTC()
+		maxAge = maxAge.Add(-since)
 	}
 
-	if err := podcastSrv.DownloadPodcastsInfo(ctx, maxAge); err != nil {
+	loadepisodes := clicmd.Bool("load-episodes")
+
+	if err := podcastSrv.DownloadPodcastsInfo(ctx, maxAge, loadepisodes); err != nil {
 		return fmt.Errorf("download podcast info failed: %w", err)
 	}
 
+	//nolint:forbidigo
 	fmt.Println("Podcast info downloaded")
 
 	return nil

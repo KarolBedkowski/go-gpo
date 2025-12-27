@@ -9,6 +9,7 @@ import "slices"
 // Distributed under terms of the GPLv3 license.
 //
 
+//nolint:gochecknoglobals
 var ValidActions = []string{"download", "delete", "play", "new", "flattr", ""}
 
 func IsValidEpisodeAction(action string) bool {

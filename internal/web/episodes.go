@@ -37,7 +37,7 @@ func newEpisodePages(i do.Injector) (episodePages, error) {
 
 func (e episodePages) Routes() *chi.Mux {
 	r := chi.NewRouter()
-	r.Get(`/`, srvsupport.Wrap(e.list))
+	r.Get(`/`, srvsupport.WrapNamed(e.list, "web_episoeds_list"))
 
 	return r
 }
@@ -63,7 +63,7 @@ func (e episodePages) list(ctx context.Context, w http.ResponseWriter, r *http.R
 
 	query := query.GetEpisodesByPodcastQuery{
 		UserName:   user,
-		PodcastID:  int32(podcastid),
+		PodcastID:  podcastid,
 		Aggregated: true,
 	}
 

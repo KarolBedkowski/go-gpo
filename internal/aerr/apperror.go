@@ -105,7 +105,7 @@ func (a AppError) WithMeta(keyval ...any) AppError {
 	return nerr
 }
 
-// WithErr create copy of AppError with new error and updated stack.
+// WithError create copy of AppError with new error and updated stack.
 func (a AppError) WithError(err error) AppError {
 	n := a.clone()
 	n.err = err
@@ -170,7 +170,7 @@ func (a AppError) Format(s fmt.State, verb rune) {
 
 		fallthrough
 	case 's', 'q':
-		io.WriteString(s, a.Error())
+		io.WriteString(s, a.Error()) //nolint:errcheck
 	}
 }
 
@@ -452,6 +452,7 @@ func ErrorMarshalFunc(err error) any {
 // 	return ""
 // }
 
+//nolint:gochecknoglobals
 var skipFunctions = []string{
 	"net/http.HandlerFunc.ServeHTTP",
 	"runtime.goexit",

@@ -76,11 +76,23 @@ func (p *EpisodesPage) StreamBody(qw422016 *qt422016.Writer, pctx *PageContext) 
 //line internal/web/templates/episodes.qtpl:20
 		qw422016.N().S(`
       <tr>
-        <td>`)
+        <td><a href="`)
 //line internal/web/templates/episodes.qtpl:22
 		qw422016.E().S(e.URL)
 //line internal/web/templates/episodes.qtpl:22
-		qw422016.N().S(`</td>
+		qw422016.N().S(`">`)
+//line internal/web/templates/episodes.qtpl:22
+		if e.Title != "" {
+//line internal/web/templates/episodes.qtpl:22
+			qw422016.E().S(e.Title)
+//line internal/web/templates/episodes.qtpl:22
+		} else {
+//line internal/web/templates/episodes.qtpl:22
+			qw422016.E().S(e.URL)
+//line internal/web/templates/episodes.qtpl:22
+		}
+//line internal/web/templates/episodes.qtpl:22
+		qw422016.N().S(`</a></td>
         <td>`)
 //line internal/web/templates/episodes.qtpl:23
 		if e.Device != nil {

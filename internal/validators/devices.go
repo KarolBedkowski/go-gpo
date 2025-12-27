@@ -12,6 +12,7 @@ import (
 	"slices"
 )
 
+//nolint:gochecknoglobals
 var ValidDevTypes = []string{"desktop", "laptop", "mobile", "server", "other"}
 
 func IsValidDevType(deviceType string) bool {

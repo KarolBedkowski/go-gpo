@@ -22,19 +22,20 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/model"
 )
 
-func (s Repository) GetEpisode(
+func (Repository) GetEpisode(
 	ctx context.Context,
-	userid, podcastid int32,
+	userid, podcastid int64,
 	episode string,
 ) (*model.Episode, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Int32("user_id", userid).Int32("podcast_id", podcastid).Str("episode", episode).
+	logger.Debug().Int64("user_id", userid).Int64("podcast_id", podcastid).Str("episode", episode).
 		Msgf("get episode")
 
 	query := `
 		SELECT e.id, e.podcast_id, e.url, e.title, e.action, e.started, e.position, e.total,
-			e.created_at, e.updated_at, p.url as podcast_url, p.title as podcast_title,
-			e.device_id, d.name as device_name
+			e.created_at, e.updated_at, e.device_id,
+			p.url as "podcast.url", p.title as "podcast.title", p.id as "podcast.id",
+			d.name as "device.name", d.id as "device.id"
 		FROM episodes e
 		JOIN podcasts p on p.id = e.podcast_id
 		LEFT JOIN devices d on d.id = e.device_id
@@ -56,21 +57,22 @@ func (s Repository) GetEpisode(
 // If deviceid is given, return actions from OTHER than given devices.
 // Episodes are sorted by updated_at asc.
 // When aggregate get only last action for each episode.
-func (s Repository) ListEpisodeActions(
+func (Repository) ListEpisodeActions(
 	ctx context.Context,
-	userid int32, deviceid, podcastid *int32,
+	userid int64, deviceid, podcastid *int64,
 	since time.Time,
 	aggregated bool,
 	lastelements uint,
 ) ([]model.Episode, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Int32("user_id", userid).Any("podcast_id", podcastid).Any("device_id", deviceid).
+	logger.Debug().Int64("user_id", userid).Any("podcast_id", podcastid).Any("device_id", deviceid).
 		Msgf("get episodes since=%s aggregated=%v", since, aggregated)
 
 	query := `
 		SELECT e.id, e.podcast_id, e.url, e.title, e.action, e.started, e.position, e.total, e.guid,
-		 e.created_at, e.updated_at, p.url as podcast_url, p.title as podcast_title,
-		 e.device_id, d.name as device_name
+			e.created_at, e.updated_at, e.device_id,
+			p.url as "podcast.url", p.title as "podcast.title", p.id as "podcast.id",
+			d.name as "device.name", d.id as "device.id"
 		FROM episodes e
 		JOIN podcasts p on p.id = e.podcast_id
 		LEFT JOIN devices d on d.id=e.device_id
@@ -99,8 +101,6 @@ func (s Repository) ListEpisodeActions(
 		query += " LIMIT " + strconv.FormatUint(uint64(lastelements), 10)
 	}
 
-	logger.Debug().Msgf("get episodes - query=%q, args=%v", query, &args)
-
 	res := []EpisodeDB{}
 
 	err := dbctx.SelectContext(ctx, &res, query, args...)
@@ -121,16 +121,16 @@ func (s Repository) ListEpisodeActions(
 	// sorting by ts asc
 	slices.Reverse(res)
 
-	return episodesFromDb(res), nil
+	return episodesFromDB(res), nil
 }
 
-func (s Repository) ListFavorites(ctx context.Context, userid int32) ([]model.Episode, error) {
+func (Repository) ListFavorites(ctx context.Context, userid int64) ([]model.Episode, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Int32("user_id", userid).Msg("get favorites")
+	logger.Debug().Int64("user_id", userid).Msg("get favorites")
 
 	query := `
-		SELECT e.id, e.podcast_id, e.url, e.title, e.guid,
-			e.created_at, e.updated_at, p.url as podcast_url, p.title as podcast_title
+		SELECT e.id, e.podcast_id, e.url, e.title, e.guid, e.created_at, e.updated_at,
+			p.url as "podcast.url", p.title as "podcast.title", p.id as "podcast.id"
 		FROM episodes e
 		JOIN podcasts p on p.id = e.podcast_id
 		JOIN settings s on s.episode_id = e.id
@@ -145,20 +145,21 @@ func (s Repository) ListFavorites(ctx context.Context, userid int32) ([]model.Ep
 		return nil, aerr.Wrapf(err, "query episodes failed").WithTag(aerr.InternalError)
 	}
 
-	return episodesFromDb(res), nil
+	return episodesFromDB(res), nil
 }
 
-func (s Repository) GetLastEpisodeAction(ctx context.Context,
-	userid, podcastid int32, excludeDelete bool,
+func (Repository) GetLastEpisodeAction(ctx context.Context,
+	userid, podcastid int64, excludeDelete bool,
 ) (*model.Episode, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Int32("user_id", userid).Int32("podcast_id", podcastid).
+	logger.Debug().Int64("user_id", userid).Int64("podcast_id", podcastid).
 		Msgf("get last episode action excludeDelete=%v", excludeDelete)
 
 	query := `
 		SELECT e.id, e.podcast_id, e.url, e.title, e.action, e.started, e.position, e.total,
-			e.created_at, e.updated_at, p.url as podcast_url, p.title as podcast_title,
-			e.device_id, d.name as device_name
+			e.created_at, e.updated_at, e.device_id,
+			p.url as "podcast.url", p.title as "podcast.title", p.id as "podcast.id",
+			d.name as "device.name", d.id as "device.id"
 		FROM episodes e
 		JOIN podcasts p on p.id = e.podcast_id
 		LEFT JOIN devices d on d.id=e.device_id
@@ -181,12 +182,14 @@ func (s Repository) GetLastEpisodeAction(ctx context.Context,
 		return nil, aerr.Wrapf(err, "query episode failed").WithTag(aerr.InternalError)
 	}
 
+	logger.Debug().Object("episode", &res).Msg("loaded episode")
+
 	return res.toModel(), nil
 }
 
-func (s Repository) SaveEpisode(ctx context.Context, userid int32, episodes ...model.Episode) error {
+func (Repository) SaveEpisode(ctx context.Context, userid int64, episodes ...model.Episode) error {
 	logger := log.Ctx(ctx)
-	logger.Debug().Int32("user_id", userid).Msg("save episode")
+	logger.Debug().Int64("user_id", userid).Msg("save episode")
 
 	dbctx := db.MustCtx(ctx)
 
@@ -204,10 +207,10 @@ func (s Repository) SaveEpisode(ctx context.Context, userid int32, episodes ...m
 	for _, episode := range episodes {
 		logger.Debug().Object("episode", &episode).Msg("save episode")
 
-		deviceid := sql.NullInt32{}
+		deviceid := sql.NullInt64{}
 		if episode.Device != nil {
 			deviceid.Valid = true
-			deviceid.Int32 = episode.Device.ID
+			deviceid.Int64 = episode.Device.ID
 		}
 
 		if episode.Timestamp.IsZero() {
@@ -231,6 +234,39 @@ func (s Repository) SaveEpisode(ctx context.Context, userid int32, episodes ...m
 		if err != nil {
 			return aerr.Wrapf(err, "insert episode failed").WithTag(aerr.InternalError).
 				WithMeta("podcast_id", episode.Podcast.ID, "episode_url", episode.URL)
+		}
+	}
+
+	return nil
+}
+
+func (Repository) UpdateEpisodeInfo(ctx context.Context, episodes ...model.Episode) error {
+	logger := log.Ctx(ctx)
+	logger.Debug().Int("num", len(episodes)).Msg("update episode meta")
+
+	dbctx := db.MustCtx(ctx)
+
+	stmt, err := dbctx.PrepareContext(ctx, `
+		UPDATE episodes
+		SET title=coalesce(?, title), guid=coalesce(?, guid)
+		WHERE url=?`,
+	)
+	if err != nil {
+		return aerr.Wrapf(err, "prepare update episode stmt failed").WithTag(aerr.InternalError)
+	}
+
+	defer stmt.Close()
+
+	for _, episode := range episodes {
+		logger.Debug().Str("episode_url", episode.URL).
+			Str("episode_title", episode.Title).
+			Any("episode_guid", episode.GUID).
+			Msg("update episode")
+
+		_, err := stmt.ExecContext(ctx, episode.Title, episode.GUID, episode.URL)
+		if err != nil {
+			return aerr.Wrapf(err, "update episode failed").WithTag(aerr.InternalError).
+				WithMeta("episode_url", episode.URL, "episode_title", episode.Title, "episode_guid", episode.GUID)
 		}
 	}
 

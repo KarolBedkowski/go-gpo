@@ -1,5 +1,12 @@
 package srvsupport
 
+//
+// httpsupport.go
+// Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
+//
+// Distributed under terms of the GPLv3 license.
+//
+
 import (
 	"context"
 	"errors"
@@ -15,13 +22,6 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/common"
 )
 
-//
-// httpsupport.go
-// Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
-//
-// Distributed under terms of the GPLv3 license.
-//
-
 func SessionUser(store session.Store) string {
 	log.Debug().Str("session_id", store.ID()).Msg("session id")
 
@@ -33,7 +33,7 @@ func SessionUser(store session.Store) string {
 	return ""
 }
 
-// srvsupport.Wrap add context and logger to handler.
+// Wrap add context and logger to handler.
 func Wrap(handler func(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	logger *zerolog.Logger),
 ) http.HandlerFunc {
@@ -41,6 +41,23 @@ func Wrap(handler func(ctx context.Context, w http.ResponseWriter, r *http.Reque
 		ctx := r.Context()
 		logger := hlog.FromRequest(r)
 		handler(ctx, w, r, logger)
+	}
+}
+
+// WrapNamed add context and logger to handler. `name` is put as `handler` in logger context.
+func WrapNamed(
+	handler func(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger),
+	name string,
+) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		logger := hlog.FromRequest(r).
+			With().Str("handler", name).
+			Logger()
+
+		ctx := logger.WithContext(r.Context())
+		r = r.WithContext(ctx)
+
+		handler(ctx, w, r, &logger)
 	}
 }
 

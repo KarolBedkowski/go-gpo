@@ -1,7 +1,6 @@
 package api
 
 // episodes.go
-// /api/2/episodes/
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
 //
 // Distributed under terms of the GPLv3 license.
@@ -27,6 +26,8 @@ import (
 )
 
 // -----------------------------
+
+// episodesResource handle request to /api/2/episodes/ resources.
 type episodesResource struct {
 	episodesSrv *service.EpisodesSrv
 }
@@ -41,9 +42,9 @@ func (er episodesResource) Routes() *chi.Mux {
 	r := chi.NewRouter()
 
 	r.With(checkUserMiddleware).
-		Post(`/{user:[\w+.-]+}.json`, srvsupport.Wrap(er.uploadEpisodeActions))
+		Post(`/{user:[\w+.-]+}.json`, srvsupport.WrapNamed(er.uploadEpisodeActions, "api_episodes_post"))
 	r.With(checkUserMiddleware).
-		Get(`/{user:[\w+.-]+}.json`, srvsupport.Wrap(er.getEpisodeActions))
+		Get(`/{user:[\w+.-]+}.json`, srvsupport.WrapNamed(er.getEpisodeActions, "api_episodes_get"))
 
 	return r
 }
@@ -107,7 +108,7 @@ func (er episodesResource) uploadEpisodeActions(
 		UpdatedURLs: changedurls,
 	}
 
-	render.JSON(w, r, &res)
+	srvsupport.RenderJSON(w, r, &res)
 }
 
 func (er episodesResource) getEpisodeActions(
@@ -155,7 +156,7 @@ func (er episodesResource) getEpisodeActions(
 
 	logger.Debug().Msgf("getEpisodeActions: count=%d", len(resp.Actions))
 
-	render.JSON(w, r, &resp)
+	srvsupport.RenderJSON(w, r, &resp)
 }
 
 // -----------------------------

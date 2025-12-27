@@ -16,7 +16,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/model"
 )
 
-func (s Repository) GetSettings(ctx context.Context, key *model.SettingsKey) (model.Settings, error) {
+func (Repository) GetSettings(ctx context.Context, key *model.SettingsKey) (model.Settings, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Object("key", key).Msg("get settings")
 
@@ -42,7 +42,7 @@ func (s Repository) GetSettings(ctx context.Context, key *model.SettingsKey) (mo
 }
 
 // SaveSettings insert or update setting.
-func (s Repository) SaveSettings(ctx context.Context, key *model.SettingsKey, value string,
+func (Repository) SaveSettings(ctx context.Context, key *model.SettingsKey, value string,
 ) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Object("key", key).Str("value", value).Msg("save settings")

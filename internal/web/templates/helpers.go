@@ -9,6 +9,7 @@ package templates
 
 import (
 	"io"
+	"strings"
 	"time"
 
 	"github.com/samber/do/v2"
@@ -44,4 +45,20 @@ func NewRenderer(i do.Injector) (*Renderer, error) {
 
 func (r *Renderer) WritePage(w io.Writer, p Page) {
 	WritePageTemplate(w, p, r.pageContext)
+}
+
+//------------------------------------------------------------------------------
+
+func shortString(str string, maxlen int) string {
+	if len(str) <= maxlen {
+		return str
+	}
+
+	str = str[:maxlen]
+
+	if lastSep := strings.LastIndexAny(str, " \t\n\r"); lastSep > -1 {
+		str = str[:lastSep]
+	}
+
+	return str + "…"
 }

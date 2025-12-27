@@ -10,6 +10,7 @@ package service
 import (
 	"context"
 	"errors"
+	"net/http"
 	"sync"
 	"time"
 
@@ -21,6 +22,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/repository"
+	"gitlab.com/kabes/go-gpo/internal/validators"
 )
 
 type PodcastsSrv struct {
@@ -39,7 +41,7 @@ func NewPodcastsSrv(i do.Injector) (*PodcastsSrv, error) {
 	}, nil
 }
 
-func (p *PodcastsSrv) GetPodcast(ctx context.Context, username string, podcastid int32) (*model.Podcast, error) {
+func (p *PodcastsSrv) GetPodcast(ctx context.Context, username string, podcastid int64) (*model.Podcast, error) {
 	if username == "" {
 		return nil, common.ErrEmptyUsername
 	}
@@ -139,9 +141,9 @@ func (p *PodcastsSrv) GetPodcastsWithLastEpisode(ctx context.Context, username s
 
 //------------------------------------------------------------------------------
 
-func (p *PodcastsSrv) DeletePodcast(ctx context.Context, username string, podcastid int32) error {
+func (p *PodcastsSrv) DeletePodcast(ctx context.Context, username string, podcastid int64) error {
 	logger := zerolog.Ctx(ctx)
-	logger.Debug().Int32("podcast_id", podcastid).Msg("delete podcast")
+	logger.Debug().Int64("podcast_id", podcastid).Msg("delete podcast")
 
 	//nolint:wrapcheck
 	return db.InTransaction(ctx, p.db, func(ctx context.Context) error {
@@ -165,12 +167,52 @@ func (p *PodcastsSrv) DeletePodcast(ctx context.Context, username string, podcas
 
 //------------------------------------------------------------------------------
 
-func (p *PodcastsSrv) DownloadPodcastsInfo(ctx context.Context, since time.Time) error {
+func (p *PodcastsSrv) ResolvePodcastsURL(ctx context.Context, urls []string) map[string]model.ResolvedPodcastURL {
+	logger := zerolog.Ctx(ctx)
+	logger.Debug().Strs("urls", urls).Msgf("start resolving podcasts url")
+
+	if len(urls) == 0 {
+		return nil
+	}
+
+	tasks := make(chan string, len(urls))
+	res := make(chan model.ResolvedPodcastURL, len(urls))
+
+	var wg sync.WaitGroup
+	for range min(len(urls), 5) { //nolint:mnd
+		wg.Go(func() {
+			resolvePodcastsURLTask(ctx, tasks, res)
+		})
+	}
+
+	for _, u := range urls {
+		tasks <- u
+	}
+
+	close(tasks)
+
+	wg.Wait()
+
+	close(res)
+
+	resolved := make(map[string]model.ResolvedPodcastURL, len(urls))
+	for r := range res {
+		resolved[r.URL] = r
+	}
+
+	logger.Info().Msgf("resolving podcasts url finished, count: %d", len(urls))
+
+	return resolved
+}
+
+//------------------------------------------------------------------------------
+
+func (p *PodcastsSrv) DownloadPodcastsInfo(ctx context.Context, since time.Time, loadepisodes bool) error {
 	logger := zerolog.Ctx(ctx)
 	logger.Debug().Msgf("start downloading podcasts info; since=%s", since)
 
 	// get podcasts to update
-	urls, err := db.InConnectionR(ctx, p.db, func(ctx context.Context) ([]string, error) {
+	urls, err := db.InConnectionR(ctx, p.db, func(ctx context.Context) ([]model.PodcastToUpdate, error) {
 		return p.podcastsRepo.ListPodcastsToUpdate(ctx, since)
 	})
 	if err != nil {
@@ -185,11 +227,11 @@ func (p *PodcastsSrv) DownloadPodcastsInfo(ctx context.Context, since time.Time)
 
 	logger.Debug().Msgf("start downloading podcasts finished; found %d", len(urls))
 
-	tasks := make(chan string, len(urls))
+	tasks := make(chan model.PodcastToUpdate, len(urls))
 
 	var wg sync.WaitGroup
 	for range min(len(urls), 5) { //nolint:mnd
-		wg.Go(func() { p.downloadPodcastInfoWorker(ctx, tasks) })
+		wg.Go(func() { p.downloadPodcastInfoWorker(ctx, tasks, since, loadepisodes) })
 	}
 
 	for _, u := range urls {
@@ -207,44 +249,269 @@ func (p *PodcastsSrv) DownloadPodcastsInfo(ctx context.Context, since time.Time)
 
 const downloadPodcastInfoTimeout = 10 * time.Second
 
-func (p *PodcastsSrv) downloadPodcastInfoWorker(ctx context.Context, urls <-chan string) {
+func (p *PodcastsSrv) downloadPodcastInfoWorker(
+	ctx context.Context, tasks <-chan model.PodcastToUpdate, since time.Time, loadepisodes bool,
+) {
 	logger := zerolog.Ctx(ctx)
+	if logger == nil {
+		panic("no logger in ctx")
+	}
+
+	fp := gofeed.NewParser()
+	fp.UserAgent = "Mozilla/5.0 (X11; Linux x86_64; rv:146.0) Gecko/20100101 Firefox/146.0"
+
+	for task := range tasks {
+		llogger := logger.With().Str("podcast_url", task.URL).Logger()
+		lctx := llogger.WithContext(ctx)
+
+		err := p.downloadPodcastInfo(lctx, fp, since, &task, loadepisodes)
+		if err != nil {
+			llogger.Error().Err(err).Msg("update podcast info failed")
+		}
+	}
+}
+
+func (p *PodcastsSrv) downloadPodcastInfo(ctx context.Context, //nolint: cyclop
+	feedparser *gofeed.Parser, since time.Time, task *model.PodcastToUpdate, loadepisodes bool,
+) error {
+	logger := zerolog.Ctx(ctx)
+	if logger == nil {
+		panic("missing logger in ctx")
+	}
+
+	logger.Debug().Msg("downloading podcast info")
+
+	var (
+		update   model.PodcastMetaUpdate
+		episodes []model.Episode
+	)
+
+	feed, status, err := parseFeedURLWithContext(ctx, feedparser, task)
+	switch {
+	case err != nil:
+		return err
+	case status == http.StatusNotModified:
+		logger.Debug().Err(err).Msg("podcast not modified")
+
+		update.NotModified = true
+	case feed != nil:
+		logger.Debug().Msgf("got podcast title: %q; published: %s, updated: %s",
+			feed.Title, feed.UpdatedParsed, feed.PublishedParsed)
+
+		if !feedNeedToBeUpdated(feed, task.MetaUpdatedAt) {
+			logger.Debug().Msg("not updated, skipping")
+
+			return nil
+		}
+
+		update = podcastToUpdate(task.URL, feed)
+		if loadepisodes {
+			episodes = episodesToUpdate(feed, since, task.MetaUpdatedAt)
+		}
+	default:
+		logger.Info().Int("status_code", status).Msg("download podcast unknown state")
+
+		return nil
+	}
+
+	//nolint:wrapcheck
+	return db.InTransaction(ctx, p.db, func(ctx context.Context) error {
+		if err := p.podcastsRepo.UpdatePodcastsInfo(ctx, &update); err != nil {
+			return aerr.Wrapf(err, "update podcast info failed")
+		}
+
+		if len(episodes) > 0 {
+			if err := p.episodesRepo.UpdateEpisodeInfo(ctx, episodes...); err != nil {
+				return aerr.Wrapf(err, "update episodes info failed")
+			}
+		}
+
+		return nil
+	})
+}
+
+func parseFeedURLWithContext(ctx context.Context, feedparser *gofeed.Parser, //nolint:cyclop
+	ptu *model.PodcastToUpdate,
+) (*gofeed.Feed, int, error) {
+	ctx, cancel := context.WithTimeout(ctx, downloadPodcastInfoTimeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, ptu.URL, nil)
+	if err != nil {
+		return nil, 0, aerr.Wrapf(err, "create request failed")
+	}
+
+	if !ptu.MetaUpdatedAt.IsZero() {
+		req.Header.Add("If-Modified-Since", ptu.MetaUpdatedAt.Format(time.RFC1123))
+	}
+
+	req.Header.Set("User-Agent", feedparser.UserAgent)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, 0, aerr.Wrapf(err, "make request failed")
+	} else if resp == nil {
+		return nil, 0, aerr.New("empty response when get feed")
+	}
+
+	defer resp.Body.Close()
+
+	switch {
+	case resp.StatusCode == http.StatusNotModified:
+		return nil, http.StatusNotModified, nil
+	case resp.StatusCode >= 200 && resp.StatusCode < 300:
+		res, err := feedparser.Parse(resp.Body)
+		if err != nil {
+			return nil, resp.StatusCode, aerr.Wrapf(err, "parse feed body failed")
+		}
+
+		return res, resp.StatusCode, nil
+	case resp.StatusCode >= 400: //nolint:mnd
+		return nil, resp.StatusCode, aerr.New("invalid response from when get feed").
+			WithMeta("status_code", resp.StatusCode, "status", resp.Status)
+	default:
+		return nil, resp.StatusCode, nil
+	}
+}
+
+func podcastToUpdate(url string, feed *gofeed.Feed) model.PodcastMetaUpdate {
+	title := feed.Title
+	if title == "" {
+		title = "<no title>"
+	}
+
+	return model.PodcastMetaUpdate{
+		URL:           url,
+		Title:         title,
+		Description:   feed.Description,
+		Website:       feed.Link,
+		MetaUpdatedAt: time.Now().UTC(),
+	}
+}
+
+func episodesToUpdate(feed *gofeed.Feed, since, metadataUpdatedAt time.Time) []model.Episode {
+	episodes := make([]model.Episode, 0, len(feed.Items))
+	for _, item := range feed.Items {
+		if item.Title != "" && itemNeedToBeUpdated(item, since, metadataUpdatedAt) {
+			if url := findEpisodeURL(item); url != "" {
+				episodes = append(episodes, model.Episode{
+					Title: item.Title,
+					GUID:  &item.GUID,
+					URL:   url,
+				})
+			}
+		}
+	}
+
+	return episodes
+}
+
+func findEpisodeURL(item *gofeed.Item) string {
+	for _, e := range item.Enclosures {
+		if u := validators.SanitizeURL(e.URL); u != "" {
+			return u
+		}
+	}
+
+	return ""
+}
+
+func feedNeedToBeUpdated(feed *gofeed.Feed, since time.Time) bool {
+	if since.IsZero() {
+		return true
+	}
+
+	if feed.PublishedParsed != nil && feed.PublishedParsed.After(since) {
+		return true
+	}
+
+	if feed.UpdatedParsed != nil && feed.UpdatedParsed.After(since) {
+		return true
+	}
+
+	// if no update and publish date - update
+	return feed.UpdatedParsed == nil && feed.PublishedParsed == nil
+}
+
+func itemNeedToBeUpdated(item *gofeed.Item, since, metadataUpdatedAt time.Time) bool {
+	// if podcast was updated - load episodes only from last update. Otherwise load
+	// episodes `since`.
+	if !metadataUpdatedAt.IsZero() {
+		since = metadataUpdatedAt
+	}
+
+	if item.PublishedParsed != nil && item.PublishedParsed.After(since) {
+		return true
+	}
+
+	if item.UpdatedParsed != nil && item.UpdatedParsed.After(since) {
+		return true
+	}
+
+	// if no update and publish date - update
+	return item.UpdatedParsed == nil && item.PublishedParsed == nil
+}
+
+func resolvePodcastsURLTask(
+	ctx context.Context, urls <-chan string, res chan model.ResolvedPodcastURL,
+) {
+	tlogger := zerolog.Ctx(ctx)
+	if tlogger == nil {
+		panic("no logger in ctx")
+	}
 
 	for url := range urls {
-		logger.Debug().Str("podcast_url", url).Msg("downloading podcast info")
+		logger := tlogger.With().Str("podcast_url", url).Logger()
+		logger.Debug().Msg("downloading podcast info")
 
 		dctx, cancel := context.WithTimeout(ctx, downloadPodcastInfoTimeout)
-		fp := gofeed.NewParser()
-		feed, err := fp.ParseURLWithContext(url, dctx)
+		resolvedurl, err := ResolvePodcastURL(dctx, url)
 
 		cancel()
 
-		if err != nil {
-			logger.Info().Str("podcast_url", url).Err(err).Msg("download podcast info failed")
-
-			continue
-		}
-
-		logger.Debug().Str("podcast_url", url).Msgf("got podcast title: %q", feed.Title)
-
-		title := feed.Title
-		if title == "" {
-			title = "<no title>"
-		}
-
-		update := model.PodcastMetaUpdate{
-			URL:           url,
-			Title:         title,
-			Description:   feed.Description,
-			Website:       feed.Link,
-			MetaUpdatedAt: time.Now().UTC(),
-		}
-
-		err = db.InTransaction(ctx, p.db, func(ctx context.Context) error {
-			return p.podcastsRepo.UpdatePodcastsInfo(ctx, &update)
-		})
-		if err != nil {
-			logger.Error().Err(err).Str("podcast_url", url).Msg("update podcast info failed")
+		res <- model.ResolvedPodcastURL{
+			URL:         url,
+			ResolvedURL: resolvedurl,
+			Err:         err,
 		}
 	}
+}
+
+func ResolvePodcastURL(ctx context.Context, url string) (string, error) {
+	client := http.DefaultClient
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return url, aerr.Wrapf(err, "create request error").WithTag(aerr.InternalError).WithMeta("url", url)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return url, aerr.Wrapf(err, "request failed").WithTag(aerr.InternalError).WithMeta("url", url)
+	}
+
+	if resp == nil {
+		return url, aerr.New("request failed; empty resp").WithTag(aerr.InternalError).WithMeta("url", url)
+	}
+
+	defer func() {
+		if resp.Body != nil {
+			resp.Body.Close()
+		}
+	}()
+
+	if resp.StatusCode == http.StatusFound || resp.StatusCode == http.StatusMovedPermanently {
+		if loc := resp.Header.Get("Location"); loc != "" {
+			return loc, nil
+		}
+
+		return url, aerr.New("get location failed").WithMeta("url", url, "headers", resp.Header)
+	}
+
+	if resp.StatusCode == http.StatusOK {
+		return url, nil
+	}
+
+	return url, aerr.New("invalid response when resolving url %q: %d (%q)", url, resp.StatusCode, resp.Status).
+		WithMeta("url", url, "headers", resp.Header)
 }

@@ -1,7 +1,6 @@
 package api
 
 // simple.go
-// /subscriptions/
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
 //
 // Distributed under terms of the GPLv3 license.
@@ -25,6 +24,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
+// simpleResource handle request to simple api (/subscriptions/ resource).
 type simpleResource struct {
 	subServ *service.SubscriptionsSrv
 }
@@ -36,18 +36,20 @@ func newSimpleResource(i do.Injector) (simpleResource, error) {
 }
 
 func (s *simpleResource) Routes() *chi.Mux {
-	r := chi.NewRouter()
+	router := chi.NewRouter()
 
 	// base: /subscriptions/
 
-	r.With(checkUserMiddleware).
-		Get(`/{user:[\w+.-]+}.{format}`, srvsupport.Wrap(s.downloadUserSubscriptions))
-	r.With(checkUserMiddleware, checkDeviceMiddleware).
-		Get(`/{user:[\w+.-]+}/{devicename:[\w.-]+}.{format}`, srvsupport.Wrap(s.downloadDevSubscriptions))
-	r.With(checkUserMiddleware, checkDeviceMiddleware).
-		Put(`/{user:[\w+.-]+}/{devicename:[\w.-]+}.{format}`, srvsupport.Wrap(s.uploadSubscriptions))
+	router.With(checkUserMiddleware).
+		Get(`/{user:[\w+.-]+}.{format}`, srvsupport.WrapNamed(s.downloadUserSubscriptions, "api_subs_user"))
+	router.With(checkUserMiddleware, checkDeviceMiddleware).
+		Get(`/{user:[\w+.-]+}/{devicename:[\w.-]+}.{format}`,
+			srvsupport.WrapNamed(s.downloadDevSubscriptions, "api_subs_userdev"))
+	router.With(checkUserMiddleware, checkDeviceMiddleware).
+		Put(`/{user:[\w+.-]+}/{devicename:[\w.-]+}.{format}`,
+			srvsupport.WrapNamed(s.uploadSubscriptions, "api_subs_userdev_put"))
 
-	return r
+	return router
 }
 
 func (s *simpleResource) downloadUserSubscriptions(

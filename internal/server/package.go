@@ -9,6 +9,7 @@ package server
 
 import "github.com/samber/do/v2"
 
+//nolint:gochecknoglobals
 var Package = do.Package(
 	do.Lazy(newAuthenticator),
 	do.Lazy(New),

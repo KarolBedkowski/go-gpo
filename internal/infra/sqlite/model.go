@@ -7,6 +7,7 @@ package sqlite
 
 import (
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -16,33 +17,40 @@ import (
 //----------------------------------------
 
 type DeviceDB struct {
-	CreatedAt     time.Time `db:"created_at"`
-	UpdatedAt     time.Time `db:"updated_at"`
-	LastSeenAt    time.Time `db:"last_seen_at"`
-	Name          string    `db:"name"`
-	DevType       string    `db:"dev_type"`
-	Caption       string    `db:"caption"`
-	UserName      string    `db:"user_name"`
-	UserUserName  string    `db:"user_username"`
-	ID            int32     `db:"id"`
-	UserID        int32     `db:"user_id"`
-	Subscriptions int       `db:"subscriptions"`
+	ID        int64     `db:"id"`
+	UserID    int64     `db:"user_id"`
+	CreatedAt time.Time `db:"created_at"`
+	UpdatedAt time.Time `db:"updated_at"`
+	Name      string    `db:"name"`
+	DevType   string    `db:"dev_type"`
+	Caption   string    `db:"caption"`
+
+	Subscriptions int `db:"subscriptions"`
+
+	User *UserDB `db:"user"`
 }
 
 func (d *DeviceDB) MarshalZerologObject(event *zerolog.Event) {
-	event.Int32("id", d.ID).
-		Int32("user_id", d.UserID).
+	event.Int64("id", d.ID).
+		Int64("user_id", d.UserID).
 		Str("name", d.Name).
 		Str("type", d.DevType).
 		Str("caption", d.Caption).
 		Time("created_at", d.CreatedAt).
 		Time("updated_at", d.UpdatedAt).
-		Int("subscriptions", d.Subscriptions).
-		Str("user_name", d.UserName).
-		Str("user_username", d.UserUserName)
+		Int("subscriptions", d.Subscriptions)
+
+	if d.User != nil {
+		event.Object("user", d.User)
+	}
 }
 
 func (d *DeviceDB) toModel() *model.Device {
+	var user *model.User
+	if d.User != nil {
+		user = d.User.toModel()
+	}
+
 	return &model.Device{
 		ID:            d.ID,
 		Name:          d.Name,
@@ -50,18 +58,13 @@ func (d *DeviceDB) toModel() *model.Device {
 		Caption:       d.Caption,
 		Subscriptions: d.Subscriptions,
 		UpdatedAt:     d.UpdatedAt,
-		LastSeenAt:    d.LastSeenAt,
-		User: &model.User{
-			ID:       d.UserID,
-			Name:     d.UserName,
-			UserName: d.UserUserName,
-		},
+		User:          user,
 	}
 }
 
 //------------------------------------------------------------------------------
 
-func devicesFromDb(devices []DeviceDB) []model.Device {
+func devicesFromDB(devices []DeviceDB) []model.Device {
 	res := make([]model.Device, len(devices))
 	for i, r := range devices {
 		res[i] = *r.toModel()
@@ -73,6 +76,8 @@ func devicesFromDb(devices []DeviceDB) []model.Device {
 //------------------------------------------------------------------------------
 
 type PodcastDB struct {
+	ID            int64        `db:"id"`
+	UserID        int64        `db:"user_id"`
 	CreatedAt     time.Time    `db:"created_at"`
 	UpdatedAt     time.Time    `db:"updated_at"`
 	MetaUpdatedAt sql.NullTime `db:"metadata_updated_at"`
@@ -81,14 +86,12 @@ type PodcastDB struct {
 	Description   string       `db:"description"`
 	Website       string       `db:"website"`
 
-	ID         int32 `db:"id"`
-	UserID     int32 `db:"user_id"`
-	Subscribed bool  `db:"subscribed"`
+	Subscribed bool `db:"subscribed"`
 }
 
 func (p *PodcastDB) MarshalZerologObject(event *zerolog.Event) {
-	event.Int32("id", p.ID).
-		Int32("user_id", p.UserID).
+	event.Int64("id", p.ID).
+		Int64("user_id", p.UserID).
 		Str("title", p.Title).
 		Str("url", p.URL).
 		Str("website", p.Website).
@@ -112,7 +115,7 @@ func (p *PodcastDB) toModel() *model.Podcast {
 	}
 }
 
-func podcastsFromDb(podcasts []PodcastDB) []model.Podcast {
+func podcastsFromDB(podcasts []PodcastDB) []model.Podcast {
 	res := make([]model.Podcast, len(podcasts))
 	for i, r := range podcasts {
 		res[i] = *r.toModel()
@@ -123,128 +126,55 @@ func podcastsFromDb(podcasts []PodcastDB) []model.Podcast {
 
 //------------------------------------------------------------------------------
 
-// type PodcastMetaUpdateDB struct {
-// 	Title       string `db:"title"`
-// 	URL         string `db:"url"`
-// 	Description string `db:"description"`
-// 	Website     string `db:"website"`
-
-// 	MetaUpdatedAt time.Time `db:"metadata_updated_at"`
-// }
-
-//------------------------------------------------------------------------------
-
-// type PodcastsDB []PodcastDB
-
-// func (s PodcastsDB) FindSubscribedPodcastByURL(url string) (PodcastDB, bool) {
-// 	for _, sp := range s {
-// 		if sp.URL == url && sp.Subscribed {
-// 			return sp, true
-// 		}
-// 	}
-
-// 	return PodcastDB{}, false
-// }
-
-// func (s PodcastsDB) FindPodcastByURL(url string) (PodcastDB, bool) {
-// 	for _, sp := range s {
-// 		if sp.URL == url {
-// 			return sp, true
-// 		}
-// 	}
-
-// 	return PodcastDB{}, false
-// }
-
-// func (s PodcastsDB) ToURLs() []string {
-// 	res := make([]string, 0, len(s))
-// 	for _, p := range s {
-// 		res = append(res, p.URL)
-// 	}
-
-// 	return res
-// }
-
-// func (s PodcastsDB) ToMap() map[string]PodcastDB {
-// 	res := make(map[string]PodcastDB)
-
-// 	for _, p := range s {
-// 		res[p.URL] = p
-// 	}
-
-// 	return res
-// }
-
-// func (s PodcastsDB) ToIDsMap() map[string]int32 {
-// 	res := make(map[string]int32 )
-
-// 	for _, p := range s {
-// 		res[p.URL] = p.ID
-// 	}
-
-// 	return res
-// }
-
-//------------------------------------------------------------------------------
-
 type EpisodeDB struct {
-	CreatedAt time.Time `db:"created_at"`
-	UpdatedAt time.Time `db:"updated_at"`
-	Title     string    `db:"title"`
-	URL       string    `db:"url"`
-	Action    string    `db:"action"`
+	ID        int64          `db:"id"`
+	PodcastID int64          `db:"podcast_id"`
+	CreatedAt time.Time      `db:"created_at"`
+	UpdatedAt time.Time      `db:"updated_at"`
+	DeviceID  sql.NullInt64  `db:"device_id"`
+	Title     string         `db:"title"`
+	URL       string         `db:"url"`
+	Action    string         `db:"action"`
+	GUID      sql.NullString `db:"guid"`
+	Started   sql.NullInt32  `db:"started"`
+	Position  sql.NullInt32  `db:"position"`
+	Total     sql.NullInt32  `db:"total"`
 
-	PodcastURL   string         `db:"podcast_url"`
-	PodcastTitle string         `db:"podcast_title"`
-	GUID         sql.NullString `db:"guid"`
-
-	DeviceName sql.NullString `db:"device_name"`
-	DeviceID   sql.NullInt32  `db:"device_id"`
-	ID         int32          `db:"id"`
-	PodcastID  int32          `db:"podcast_id"`
-	Started    sql.NullInt32  `db:"started"`
-	Position   sql.NullInt32  `db:"position"`
-	Total      sql.NullInt32  `db:"total"`
+	Podcast *PodcastDB
+	Device  *DeviceDB
 }
 
 func (e *EpisodeDB) MarshalZerologObject(event *zerolog.Event) {
-	event.Int32("id", e.ID).
-		Int32("podcast_id", e.PodcastID).
-		Any("device_id", e.DeviceID).
+	event.Int64("id", e.ID).
+		Int64("podcast_id", e.PodcastID).
 		Str("title", e.Title).
 		Str("url", e.URL).
 		Str("action", e.Action).
 		Any("guid", e.GUID).
+		Any("device_id", e.DeviceID).
 		Any("started", e.Started).
 		Any("position", e.Position).
 		Any("total", e.Total).
 		Time("created_at", e.CreatedAt).
 		Time("updated_at", e.UpdatedAt).
-		Dict("podcast", zerolog.Dict().
-			Str("podcast_url", e.PodcastURL).
-			Str("podcast_title", e.PodcastTitle)).
-		Any("device", e.DeviceName)
+		Object("podcast", e.Podcast).
+		Object("device", e.Device)
 }
 
 func (e *EpisodeDB) toModel() *model.Episode {
 	var device *model.Device
-	if e.DeviceID.Valid {
-		device = &model.Device{
-			ID:   e.DeviceID.Int32,
-			Name: e.DeviceName.String,
-		}
+	if e.Device != nil {
+		device = e.Device.toModel()
 	}
 
 	episode := &model.Episode{
-		ID: e.ID,
-		Podcast: &model.Podcast{
-			ID:  e.PodcastID,
-			URL: e.PodcastURL,
-		},
+		ID:        e.ID,
+		Podcast:   e.Podcast.toModel(),
 		Device:    device,
 		URL:       e.URL,
 		Action:    e.Action,
 		Timestamp: e.UpdatedAt,
+		Title:     e.Title,
 		Started:   nil,
 		Position:  nil,
 		Total:     nil,
@@ -265,7 +195,7 @@ func (e *EpisodeDB) toModel() *model.Episode {
 
 //------------------------------------------------------------------------------
 
-func episodesFromDb(episodes []EpisodeDB) []model.Episode {
+func episodesFromDB(episodes []EpisodeDB) []model.Episode {
 	res := make([]model.Episode, len(episodes))
 	for i, r := range episodes {
 		res[i] = *r.toModel()
@@ -277,13 +207,13 @@ func episodesFromDb(episodes []EpisodeDB) []model.Episode {
 //------------------------------------------------------------------------------
 
 type UserDB struct {
+	ID        int64     `db:"id"`
 	CreatedAt time.Time `db:"created_at"`
 	UpdatedAt time.Time `db:"updated_at"`
 	UserName  string    `db:"username"`
 	Password  string    `db:"password"`
 	Email     string    `db:"email"`
 	Name      string    `db:"name"`
-	ID        int32     `db:"id"`
 }
 
 func (u *UserDB) MarshalZerologObject(event *zerolog.Event) {
@@ -292,7 +222,7 @@ func (u *UserDB) MarshalZerologObject(event *zerolog.Event) {
 		pass = "***"
 	}
 
-	event.Int32("id", u.ID).
+	event.Int64("id", u.ID).
 		Str("user_name", u.UserName).
 		Str("Password", pass).
 		Str("email", u.Email).
@@ -314,7 +244,7 @@ func (u *UserDB) toModel() *model.User {
 
 //------------------------------------------------------------------------------
 
-func usersFromDb(users []UserDB) []model.User {
+func usersFromDB(users []UserDB) []model.User {
 	res := make([]model.User, len(users))
 	for i, r := range users {
 		res[i] = *r.toModel()
@@ -326,17 +256,17 @@ func usersFromDb(users []UserDB) []model.User {
 // ------------------------------------------------------------------------------
 
 type SettingsDB struct {
+	UserID    int64         `db:"user_id"`
 	Scope     string        `db:"scope"`
 	Key       string        `db:"key"`
 	Value     string        `db:"value"`
-	PodcastID sql.NullInt32 `db:"podcast_id"`
-	EpisodeID sql.NullInt32 `db:"episode_id"`
-	DeviceID  sql.NullInt32 `db:"device_id"`
-	UserID    int32         `db:"user_id"`
+	PodcastID sql.NullInt64 `db:"podcast_id"`
+	EpisodeID sql.NullInt64 `db:"episode_id"`
+	DeviceID  sql.NullInt64 `db:"device_id"`
 }
 
 func (s SettingsDB) MarshalZerologObject(event *zerolog.Event) {
-	event.Int32("user_id", s.UserID).
+	event.Int64("user_id", s.UserID).
 		Any("podcast_id", s.PodcastID).
 		Any("episode_id", s.EpisodeID).
 		Any("device_id", s.DeviceID).
@@ -346,3 +276,26 @@ func (s SettingsDB) MarshalZerologObject(event *zerolog.Event) {
 }
 
 //------------------------------------------------------------------------------
+
+type PodcastToUpdate struct {
+	MetaUpdatedAt sql.NullString `db:"metadata_updated_at"`
+	URL           string         `db:"url"`
+}
+
+func (p *PodcastToUpdate) toModel() (model.PodcastToUpdate, error) {
+	updatedAt := time.Time{}
+
+	if p.MetaUpdatedAt.Valid && p.MetaUpdatedAt.String != "" {
+		t, err := time.Parse("2006-01-02 15:04:05.999999999-07:00", p.MetaUpdatedAt.String)
+		if err != nil {
+			return model.PodcastToUpdate{}, fmt.Errorf("parse datetime %q failed: %w", p.MetaUpdatedAt.String, err)
+		}
+
+		updatedAt = t
+	}
+
+	return model.PodcastToUpdate{
+		URL:           p.URL,
+		MetaUpdatedAt: updatedAt,
+	}, nil
+}

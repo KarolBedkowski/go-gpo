@@ -204,7 +204,7 @@ func prepareSqliteConnstr(connstr string) (string, error) {
 //------------------------------------------------------------------------------
 
 // InConnectionR run `fun` in database context. Open/close connection. Return `fun` result and error.
-func InConnectionR[T any](ctx context.Context, r *Database,
+func InConnectionR[T any](ctx context.Context, r *Database, //nolint:ireturn
 	fun func(context.Context) (T, error),
 ) (T, error) {
 	start := time.Now()
@@ -264,7 +264,7 @@ func InTransaction(ctx context.Context, r *Database, fun func(context.Context) e
 }
 
 // InTransactionR run `fun` in db transactions; return `fun` result and error.
-func InTransactionR[T any](ctx context.Context, r *Database,
+func InTransactionR[T any](ctx context.Context, r *Database, //nolint:ireturn
 	fun func(context.Context) (T, error),
 ) (T, error) {
 	start := time.Now()

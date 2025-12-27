@@ -24,6 +24,7 @@ import (
 	"github.com/rs/zerolog/hlog"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/do/v2"
+	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/config"
 	"gitlab.com/kabes/go-gpo/internal/db"
@@ -77,27 +78,31 @@ func (a authenticator) handle(next http.Handler) http.Handler {
 
 			_, err := a.usersSrv.LoginUser(ctx, username, password)
 			if errors.Is(err, common.ErrUnauthorized) || errors.Is(err, common.ErrUnknownUser) {
-				logger.Warn().Err(err).Str("user_name", username).Msg("auth failed")
+				logger.Warn().Err(err).Str(common.LogKeyUserName, username).
+					Str(common.LogKeyAuthResult, common.LogAuthResultFailed).
+					Msg("auth failed")
 				w.Header().Add("WWW-Authenticate", "Basic realm=\"go-gpo\"")
 
 				sess.Flush()
-				_ = sess.Destroy(w, r)
-
+				sess.Destroy(w, r) //nolint:errcheck
 				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 
 				return
 			} else if err != nil {
-				logger.Error().Err(err).Msg("login user internal error")
+				logger.Error().Err(err).
+					Str(common.LogKeyAuthResult, common.LogAuthResultError).
+					Msg("login user internal error")
 				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 
 				return
 			}
 
-			lloger := logger.With().Str("user_name", username).Logger()
+			lloger := logger.With().Str(common.LogKeyUserName, username).Logger()
+			lloger.Info().
+				Str(common.LogKeyAuthResult, common.LogAuthResultSuccess).
+				Msg("user authenticated")
+
 			ctx = lloger.WithContext(ctx)
-
-			lloger.Info().Msg("user authenticated")
-
 			r = r.WithContext(common.ContextWithUser(ctx, username))
 			_ = sess.Set("user", username)
 		}
@@ -143,32 +148,46 @@ func newSimpleLogMiddleware(next http.Handler) http.Handler {
 		start := time.Now().UTC()
 		ctx := request.Context()
 		requestID, _ := hlog.IDFromCtx(ctx)
-		llog := log.With().Str("req_id", requestID.String()).Logger()
+		llog := log.With().Str(common.LogKeyReqID, requestID.String()).Logger()
 		request = request.WithContext(llog.WithContext(ctx))
+		user, _, _ := request.BasicAuth()
 
 		llog.Info().
 			Str("url", request.URL.Redacted()).
 			Str("remote", request.RemoteAddr).
 			Str("method", request.Method).
+			Str("req_user", user).
 			Msg("webhandler: request start")
-
-		llog.Debug().Interface("req-headers", request.Header).Msg("webhandler: request data")
 
 		lrw := &logResponseWriter{ResponseWriter: writer, status: 0, size: 0}
 
 		defer func() {
 			loglevel := zerolog.InfoLevel
-			if lrw.status >= 400 && lrw.status != 404 {
+			if lrw.status >= 500 { //nolint: mnd
+				loglevel = zerolog.ErrorLevel
+				// always log headers on error
+				llog.Info().Interface(common.LogKeyRequestHeaders, request.Header).
+					Msg("webhandler: request data")
+				llog.Info().Interface(common.LogKeyResponseHeaders, lrw.Header()).
+					Msg("webhandler: response data")
+			} else if lrw.status >= 400 && lrw.status != http.StatusNotFound {
 				loglevel = zerolog.WarnLevel
 			}
 
-			llog.Debug().Interface("resp-headers", lrw.Header()).Msg("webhandler: response data")
+			// log headers as debug if not error
+			if lrw.status < 500 { //nolint: mnd
+				llog.Debug().Interface(common.LogKeyRequestHeaders, request.Header).
+					Msg("webhandler: request data")
+				llog.Debug().Interface(common.LogKeyResponseHeaders, lrw.Header()).
+					Msg("webhandler: response data")
+			}
 
 			llog.WithLevel(loglevel).
-				Str("uri", request.RequestURI).
+				Str("url", request.RequestURI).
 				Int("status", lrw.status).
 				Int("size", lrw.size).
 				Dur("duration", time.Since(start)).
+				Str("req_user", user).
 				Msg("webhandler: request finished")
 		}()
 
@@ -190,14 +209,15 @@ func newFullLogMiddleware(next http.Handler) http.Handler {
 		start := time.Now().UTC()
 		ctx := request.Context()
 		requestID, _ := hlog.IDFromCtx(ctx)
-		llog := log.With().Str("req_id", requestID.String()).Logger()
+		llog := log.With().Str(common.LogKeyReqID, requestID.String()).Logger()
 		request = request.WithContext(llog.WithContext(ctx))
+		user, _, _ := request.BasicAuth()
 
 		llog.Info().
 			Str("url", request.URL.Redacted()).
 			Str("remote", request.RemoteAddr).
 			Str("method", request.Method).
-			Interface("headers", request.Header).
+			Str("req_user", user).
 			Msg("webhandler: request start")
 
 		var reqBody, respBody bytes.Buffer
@@ -210,10 +230,10 @@ func newFullLogMiddleware(next http.Handler) http.Handler {
 		defer func() {
 			if shouldLogRequestBody(request) {
 				llog.Debug().
-					Interface("req-headers", request.Header).
+					Interface(common.LogKeyRequestHeaders, request.Header).
 					Msg("request data: " + reqBody.String())
 				llog.Debug().
-					Interface("resp-headers", lrw.Header()).
+					Interface(common.LogKeyResponseHeaders, lrw.Header()).
 					Msg("response data: " + respBody.String())
 			}
 
@@ -223,9 +243,10 @@ func newFullLogMiddleware(next http.Handler) http.Handler {
 			}
 
 			llog.WithLevel(loglevel).
-				Str("uri", request.RequestURI).
+				Str("url", request.RequestURI).
 				Int("status", lrw.Status()).
 				Int("size", lrw.BytesWritten()).
+				Str("req_user", user).
 				Dur("duration", time.Since(start)).
 				Msg("webhandler: request finished")
 		}()
@@ -240,7 +261,8 @@ func newFullLogMiddleware(next http.Handler) http.Handler {
 func shouldSkipLogRequest(request *http.Request) bool {
 	path := request.URL.Path
 
-	return strings.HasPrefix(path, "/metrics") || strings.HasPrefix(path, "/debug")
+	return strings.HasPrefix(path, "/metrics") || strings.HasPrefix(path, "/debug") ||
+		path == "/favicon.ico" || strings.HasPrefix(path, "/web/static/")
 }
 
 func shouldLogRequestBody(request *http.Request) bool {
@@ -320,7 +342,7 @@ func newSessionMiddleware(i do.Injector) (sessionMiddleware, error) {
 		CookiePath:     cfg.WebRoot,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("start session manager error: %w", err)
+		return nil, aerr.Wrapf(err, "start session manager failed")
 	}
 
 	return sess, nil

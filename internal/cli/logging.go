@@ -1,8 +1,9 @@
+package cli
+
 // logging.go
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
 //
 // Distributed under terms of the GPLv3 license.
-package cli
 
 import (
 	"fmt"
@@ -10,6 +11,8 @@ import (
 	stdlog "log"
 	"log/syslog"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -24,16 +27,9 @@ func initializeLogger(level, format string) error {
 
 	var writer io.Writer
 
-	switch format {
+	switch checkFormat(format) {
 	case "json":
 		writer = os.Stderr
-
-	case "text":
-		writer = zerolog.ConsoleWriter{ //nolint:exhaustruct
-			Out:          os.Stderr,
-			NoColor:      true,
-			PartsExclude: []string{zerolog.TimestampFieldName},
-		}
 
 	case "syslog":
 		syslogwriter, err := syslog.New(syslog.LOG_USER, "gogpo")
@@ -46,11 +42,10 @@ func initializeLogger(level, format string) error {
 	case "journald":
 		writer = journald.NewJournalDWriter()
 
-	default:
-		if format != "" && format != "logfmt" {
-			log.Error().Msgf("logger: unknown log format %q; using logfmt", format)
-		}
+	case "logfmt": //nolint:goconst
+		writer = setupLogfmtConsoleWriter()
 
+	default: // (console)
 		writer = setupConsoleWriter()
 	}
 
@@ -67,6 +62,23 @@ func initializeLogger(level, format string) error {
 	stdlog.SetOutput(log.Logger)
 
 	return nil
+}
+
+// checkFormat check log format name. If is unknown or empty - set default according to output is on console or not.
+func checkFormat(format string) string {
+	if format == "json" || format == "syslog" || format == "journald" || format == "logfmt" || format == "console" {
+		return format
+	}
+
+	if format != "" {
+		log.Error().Msgf("logger: unknown log format %q; using default", format)
+	}
+
+	if outputIsConsole() {
+		return "console"
+	}
+
+	return "logfmt"
 }
 
 func setupConsoleWriter() io.Writer {
@@ -86,7 +98,50 @@ func setupConsoleWriter() io.Writer {
 }
 
 func outputIsConsole() bool {
-	fileInfo, _ := os.Stdout.Stat()
+	fileInfo, _ := os.Stderr.Stat()
 
 	return fileInfo != nil && (fileInfo.Mode()&os.ModeCharDevice) != 0
+}
+
+// setupLogfmtConsoleWriter configure logger to proper logfmt format (all fields are in form key=val).
+func setupLogfmtConsoleWriter() io.Writer {
+	return zerolog.ConsoleWriter{ //nolint:exhaustruct
+		Out:        os.Stderr,
+		NoColor:    true,
+		TimeFormat: time.RFC3339,
+		FormatLevel: func(i any) string {
+			if i == nil {
+				return ""
+			} else {
+				return fmt.Sprintf("level=%s", i)
+			}
+		},
+		FormatTimestamp: func(i any) string { return fmt.Sprintf("ts=%s", i) },
+		FormatMessage: func(i any) string {
+			if i == nil {
+				return "msg=<nil>"
+			} else {
+				return "msg=" + strconv.Quote(fmt.Sprintf("%s", i))
+			}
+		},
+		FormatCaller: func(i any) string {
+			if i == nil {
+				return "UNKNOWN"
+			} else {
+				c := fmt.Sprintf("%s", i)
+				if strings.ContainsAny(c, " \"") {
+					c = strconv.Quote(c)
+				}
+
+				return "caller=" + c
+			}
+		},
+		FormatErrFieldValue: func(i any) string {
+			if i == nil {
+				return "<nil>"
+			} else {
+				return strconv.Quote(fmt.Sprintf("%s", i))
+			}
+		},
+	}
 }

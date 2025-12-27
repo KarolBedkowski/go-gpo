@@ -1,2 +1,7 @@
 [files]
 extend-exclude = ["doc.dev/*", "tmp/*"]
+
+[default]
+extend-ignore-identifiers-re = [
+  'itms',
+]

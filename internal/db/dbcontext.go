@@ -13,6 +13,8 @@ import (
 )
 
 // ------------------------------------------------------------------------------
+
+// Queryer define interface for object used to query database.
 type Queryer interface {
 	sqlx.QueryerContext
 	SelectContext(ctx context.Context, dest any, query string, args ...any) error
@@ -29,19 +31,24 @@ type Interface interface {
 	GetContext(ctx context.Context, dest any, query string, args ...any) error
 }
 
-var CtxDBInterfaceKey = any("CtxDBAccessKey")
+// ------------------------------------------------------------------------------
 
+//nolint:gochecknoglobals
+var ctxDBInterfaceKey = any("CtxDBAccessKey")
+
+// WithCtx create new context with database access object.
 func WithCtx(ctx context.Context, dbctx Interface) context.Context {
-	db, ok := ctx.Value(CtxDBInterfaceKey).(Interface)
+	db, ok := ctx.Value(ctxDBInterfaceKey).(Interface)
 	if ok && db != nil {
 		return ctx
 	}
 
-	return context.WithValue(ctx, CtxDBInterfaceKey, dbctx)
+	return context.WithValue(ctx, ctxDBInterfaceKey, dbctx)
 }
 
-func Ctx(ctx context.Context) (Interface, bool) {
-	value, ok := ctx.Value(CtxDBInterfaceKey).(Interface)
+// Ctx return database access object from context.
+func Ctx(ctx context.Context) (Interface, bool) { //nolint:ireturn
+	value, ok := ctx.Value(ctxDBInterfaceKey).(Interface)
 	if !ok || value == nil {
 		return nil, false
 	}
@@ -49,8 +56,9 @@ func Ctx(ctx context.Context) (Interface, bool) {
 	return value, true
 }
 
-func MustCtx(ctx context.Context) Interface {
-	value, ok := ctx.Value(CtxDBInterfaceKey).(Interface)
+// MustCtx return database access object from context. Panic when not exists.
+func MustCtx(ctx context.Context) Interface { //nolint:ireturn
+	value, ok := ctx.Value(ctxDBInterfaceKey).(Interface)
 	if !ok || value == nil {
 		panic("no dbcontext in context")
 	}

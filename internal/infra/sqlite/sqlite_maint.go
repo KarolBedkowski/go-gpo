@@ -64,22 +64,23 @@ func (Repository) Maintenance(ctx context.Context) error {
 
 //------------------------------------------------------------------------------
 
+//nolint:gochecknoglobals
 var maintScripts = []string{
 	// delete play actions when for given episode never play action exists
-	"DELETE FROM episodes AS e " +
-		"WHERE action = 'play' " +
-		"AND updated_at < datetime('now','-14 day') " +
-		"AND EXISTS (" +
-		" SELECT NULL FROM episodes AS ed " +
-		" WHERE ed.url = e.url AND ed.action = 'play' AND ed.updated_at > e.updated_at);",
-	"VACUUM;",
-	"ANALYZE;",
-	"PRAGMA optimize;",
+	`DELETE FROM episodes AS e
+		WHERE action = 'play'
+		AND updated_at < datetime('now','-14 day')
+		AND EXISTS (
+			SELECT NULL FROM episodes AS ed
+			WHERE ed.url = e.url AND ed.action = 'play' AND ed.updated_at > e.updated_at);`,
+	`VACUUM;`,
+	`ANALYZE;`,
+	`PRAGMA optimize;`,
 }
 
 //------------------------------------------------------------------------------
 
-func (r Repository) Migrate(ctx context.Context, db *sql.DB) error {
+func (Repository) Migrate(ctx context.Context, db *sql.DB) error {
 	logger := log.Ctx(ctx)
 
 	migdir, err := fs.Sub(embedMigrations, "migrations")
@@ -127,9 +128,11 @@ func (r Repository) Migrate(ctx context.Context, db *sql.DB) error {
 	return nil
 }
 
-func (r Repository) OnOpenConn(ctx context.Context, db sqlx.ExecerContext) error {
+func (Repository) OnOpenConn(ctx context.Context, db sqlx.ExecerContext) error {
 	_, err := db.ExecContext(ctx,
-		"PRAGMA optimize",
+		`PRAGMA temp_store = MEMORY;
+		PRAGMA busy_timeout = 1000;
+		`,
 	)
 	if err != nil {
 		return aerr.Wrap(err)
@@ -138,9 +141,9 @@ func (r Repository) OnOpenConn(ctx context.Context, db sqlx.ExecerContext) error
 	return nil
 }
 
-func (r Repository) OnCloseConn(ctx context.Context, db sqlx.ExecerContext) error {
+func (Repository) OnCloseConn(ctx context.Context, db sqlx.ExecerContext) error {
 	_, err := db.ExecContext(ctx,
-		"PRAGMA temp_store = MEMORY;",
+		`PRAGMA optimize`,
 	)
 	if err != nil {
 		return aerr.Wrap(err)

@@ -1,11 +1,12 @@
+// Package api handle request do api's endpoints.
+package api
+
 //
-// mod.go
+// api.go
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
 //
 // Distributed under terms of the GPLv3 license.
 //
-
-package api
 
 import (
 	"github.com/go-chi/chi/v5"
@@ -18,6 +19,7 @@ type Configuration struct {
 	LogBody bool
 }
 
+// API is handler for all api endpoints.
 type API struct {
 	router *chi.Mux
 }

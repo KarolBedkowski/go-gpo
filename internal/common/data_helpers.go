@@ -19,7 +19,7 @@ func Coalesce(value ...string) string {
 }
 
 // NVL return *value if value != nil or T otherwise.
-func NVL[T any](value *T, def T) T {
+func NVL[T any](value *T, def T) T { //nolint:ireturn
 	if value == nil {
 		return def
 	}
