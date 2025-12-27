@@ -21,21 +21,14 @@ import (
 )
 
 // InitializeLogger set log level and optional log filename.
-func initializeLogger(level, format string) error { //nolint:cyclop
+func initializeLogger(level, format string) error {
 	zerolog.ErrorMarshalFunc = aerr.ErrorMarshalFunc //nolint:reassign
 
 	var writer io.Writer
 
-	switch format {
+	switch checkFormat(format) {
 	case "json":
 		writer = os.Stderr
-
-	case "text":
-		writer = zerolog.ConsoleWriter{ //nolint:exhaustruct
-			Out:          os.Stderr,
-			NoColor:      true,
-			PartsExclude: []string{zerolog.TimestampFieldName},
-		}
 
 	case "syslog":
 		syslogwriter, err := syslog.New(syslog.LOG_USER, "gogpo")
@@ -48,14 +41,10 @@ func initializeLogger(level, format string) error { //nolint:cyclop
 	case "journald":
 		writer = journald.NewJournalDWriter()
 
-	case "logfmt":
+	case "logfmt": //nolint:goconst
 		writer = setupLogfmtConsoleWriter()
 
-	default:
-		if format != "" && format != "console" {
-			log.Error().Msgf("logger: unknown log format %q; using default", format)
-		}
-
+	default: // (console)
 		writer = setupConsoleWriter()
 	}
 
@@ -72,6 +61,23 @@ func initializeLogger(level, format string) error { //nolint:cyclop
 	stdlog.SetOutput(log.Logger)
 
 	return nil
+}
+
+// checkFormat check log format name. If is unknown or empty - set default according to output is on console or not.
+func checkFormat(format string) string {
+	if format == "json" || format == "syslog" || format == "journald" || format == "logfmt" || format == "console" {
+		return format
+	}
+
+	if format != "" {
+		log.Error().Msgf("logger: unknown log format %q; using default", format)
+	}
+
+	if outputIsConsole() {
+		return "console"
+	}
+
+	return "logfmt"
 }
 
 func setupConsoleWriter() io.Writer {
