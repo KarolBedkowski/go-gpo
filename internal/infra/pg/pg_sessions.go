@@ -31,7 +31,7 @@ func (s Repository) DeleteSession(ctx context.Context, sid string) error {
 
 	dbctx := db.MustCtx(ctx)
 
-	_, err := dbctx.ExecContext(ctx, "DELETE FROM sessions WHERE key=?", sid)
+	_, err := dbctx.ExecContext(ctx, "DELETE FROM sessions WHERE key=$1", sid)
 	if err != nil {
 		return aerr.Wrapf(err, "delete session failed").WithMeta("sid", sid)
 	}
@@ -51,7 +51,7 @@ func (s Repository) SaveSession(ctx context.Context, sid string, data map[any]an
 	}
 
 	_, err = dbctx.ExecContext(ctx,
-		"UPDATE sessions SET data=?, created_at=? WHERE key=?",
+		"UPDATE sessions SET data=$1, created_at=$2 WHERE key=$3",
 		encoded, time.Now().UTC(), sid)
 	if err != nil {
 		return aerr.Wrapf(err, "update session failed").WithMeta("sid", sid)
@@ -66,7 +66,7 @@ func (s Repository) RegenerateSession(ctx context.Context, oldsid, newsid string
 
 	dbctx := db.MustCtx(ctx)
 
-	res, err := dbctx.ExecContext(ctx, "UPDATE sessions SET key=?, created_at=? WHERE key=?",
+	res, err := dbctx.ExecContext(ctx, "UPDATE sessions SET key=$1, created_at=$2 WHERE key=$3",
 		newsid, time.Now().UTC(), oldsid)
 	if err != nil {
 		return aerr.Wrapf(err, "update session key failed").WithMeta("oldsid", oldsid, "newsid", newsid)
@@ -84,7 +84,7 @@ func (s Repository) RegenerateSession(ctx context.Context, oldsid, newsid string
 
 	// session not exists - insert
 	_, err = dbctx.ExecContext(ctx,
-		"INSERT INTO sessions(key, data, created_at) VALUES(?, '', ?)",
+		"INSERT INTO sessions(key, data, created_at) VALUES($1, '', $2)",
 		newsid, time.Now().UTC())
 	if err != nil {
 		return aerr.Wrapf(err, "insert new session failed").WithMeta("sid", newsid)
@@ -120,7 +120,7 @@ func (s Repository) CleanSessions(
 
 	dbctx := db.MustCtx(ctx)
 
-	res, err := dbctx.ExecContext(ctx, "DELETE FROM sessions WHERE created_at < ?", oldestUsed)
+	res, err := dbctx.ExecContext(ctx, "DELETE FROM sessions WHERE created_at < $1", oldestUsed)
 	if err != nil {
 		logger.Err(err).Msg("error delete old sessions")
 	} else if res != nil {
@@ -133,7 +133,7 @@ func (s Repository) CleanSessions(
 	}
 
 	// remove empty session older than 2 hour
-	res, err = dbctx.ExecContext(ctx, "DELETE FROM sessions WHERE created_at < ? AND data is null", oldestEmpty)
+	res, err = dbctx.ExecContext(ctx, "DELETE FROM sessions WHERE created_at < $1 AND data is null", oldestEmpty)
 	if err != nil {
 		logger.Error().Err(err).Msg("error delete old sessions")
 	} else if res != nil {
@@ -164,12 +164,12 @@ func (s Repository) ReadOrCreate(
 	var data []byte
 
 	dbctx := db.MustCtx(ctx)
-	err := dbctx.QueryRowxContext(ctx, "SELECT key, data, created_at FROM sessions WHERE key=?", sid).
+	err := dbctx.QueryRowxContext(ctx, "SELECT key, data, created_at FROM sessions WHERE key=$1", sid).
 		Scan(&session.SID, &data, &session.CreatedAt)
 
 	if errors.Is(err, sql.ErrNoRows) {
 		// create empty session
-		_, err := dbctx.ExecContext(ctx, "INSERT INTO sessions(key, created_at) VALUES(?, ?)", sid, session.CreatedAt)
+		_, err := dbctx.ExecContext(ctx, "INSERT INTO sessions(key, created_at) VALUES($1, $2)", sid, session.CreatedAt)
 		if err != nil {
 			return nil, aerr.Wrapf(err, "insert session failed").WithMeta("sid", sid)
 		}
@@ -199,7 +199,7 @@ func (s Repository) SessionExists(ctx context.Context, sid string) (bool, error)
 
 	var count int
 
-	err := dbctx.GetContext(ctx, &count, "SELECT 1 FROM sessions where key=?", sid)
+	err := dbctx.GetContext(ctx, &count, "SELECT 1 FROM sessions where key=$1", sid)
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
 	} else if err != nil {

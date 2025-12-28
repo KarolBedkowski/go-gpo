@@ -32,11 +32,11 @@ func (s Repository) ListSubscribedPodcasts(ctx context.Context, userid int64, si
 		SELECT p.id, p.user_id, p.url, p.title, p.subscribed, p.created_at, p.updated_at, p.metadata_updated_at,
 		coalesce(p.description, '') as description, coalesce(p.website, '') as website
 		FROM podcasts p
-		WHERE p.user_id = ? AND subscribed `
+		WHERE p.user_id = $1 AND subscribed `
 	args := []any{userid}
 
 	if !since.IsZero() {
-		query += " AND p.updated_at > ? "
+		query += " AND p.updated_at > $2 "
 		args = append(args, since) //nolint:wsl_v5
 	}
 
@@ -62,11 +62,11 @@ func (s Repository) ListPodcasts(ctx context.Context, userid int64, since time.T
 		SELECT p.id, p.user_id, p.url, p.title, p.subscribed, p.created_at, p.updated_at, p.metadata_updated_at,
 		coalesce(p.description, '') as description, coalesce(p.website, '') as website
 		FROM podcasts p
-		WHERE p.user_id=?`
+		WHERE p.user_id=$1`
 	args := []any{userid}
 
 	if !since.IsZero() {
-		query += " AND p.updated_at > ? "
+		query += " AND p.updated_at > $2 "
 		args = append(args, since) //nolint:wsl_v5
 	}
 
@@ -90,11 +90,12 @@ func (s Repository) GetPodcastByID(
 	dbctx := db.MustCtx(ctx)
 	podcast := PodcastDB{}
 
-	err := dbctx.GetContext(ctx, &podcast,
-		"SELECT p.id, p.user_id, p.url, p.title, p.subscribed, p.created_at, p.updated_at, p.metadata_updated_at, "+
-			"coalesce(p.description, '') as description, coalesce(p.website, '') as website "+
-			"FROM podcasts p "+
-			"WHERE p.user_id=? AND p.id = ?", userid, podcastid)
+	err := dbctx.GetContext(ctx, &podcast, `
+		SELECT p.id, p.user_id, p.url, p.title, p.subscribed, p.created_at, p.updated_at, p.metadata_updated_at,
+			coalesce(p.description, '') as description, coalesce(p.website, '') as website
+		FROM podcasts p
+		WHERE p.user_id=$1 AND p.id = $2`,
+		userid, podcastid)
 	switch {
 	case err == nil:
 		return podcast.toModel(), nil
@@ -116,11 +117,12 @@ func (s Repository) GetPodcast(
 	dbctx := db.MustCtx(ctx)
 	podcast := PodcastDB{}
 
-	err := dbctx.GetContext(ctx, &podcast,
-		"SELECT p.id, p.user_id, p.url, p.title, p.subscribed, p.created_at, p.updated_at, p.metadata_updated_at, "+
-			"coalesce(p.description, '') as description, coalesce(p.website, '') as website "+
-			"FROM podcasts p "+
-			"WHERE p.user_id=? AND p.url = ?", userid, podcasturl)
+	err := dbctx.GetContext(ctx, &podcast, `
+		SELECT p.id, p.user_id, p.url, p.title, p.subscribed, p.created_at, p.updated_at, p.metadata_updated_at,
+			coalesce(p.description, '') as description, coalesce(p.website, '') as website
+		FROM podcasts p
+		WHERE p.user_id=$1 AND p.url = $2`,
+		userid, podcasturl)
 	switch {
 	case err == nil:
 		return podcast.toModel(), nil
@@ -147,11 +149,14 @@ func (s Repository) SavePodcast(ctx context.Context, podcast *model.Podcast) (in
 	if podcast.ID == 0 {
 		logger.Debug().Object("podcast", podcast).Msg("insert podcast")
 
-		res, err := dbctx.ExecContext(
-			ctx,
-			"INSERT INTO podcasts "+
-				"(user_id, title, url, subscribed, created_at, updated_at, metadata_updated_at, website, description) "+
-				"VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		var podcastid int64
+
+		err := dbctx.GetContext(
+			ctx, &podcastid, `
+			INSERT INTO podcasts
+				(user_id, title, url, subscribed, created_at, updated_at, metadata_updated_at, website, description)
+			VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
+			RETURNING id`,
 			podcast.User.ID,
 			podcast.Title,
 			podcast.URL,
@@ -166,21 +171,16 @@ func (s Repository) SavePodcast(ctx context.Context, podcast *model.Podcast) (in
 			return 0, aerr.Wrapf(err, "insert podcast failed").WithMeta("podcast_url", podcast.URL)
 		}
 
-		id, err := res.LastInsertId()
-		if err != nil {
-			return 0, aerr.Wrapf(err, "get last id failed").WithMeta("podcast_url", podcast.URL)
-		}
-
 		logger.Debug().Object("podcast", podcast).Msg("podcast created")
 
-		return id, nil
+		return podcastid, nil
 	}
 
 	// update
 	logger.Debug().Object("podcast", podcast).Msg("update podcast")
 
 	_, err := dbctx.ExecContext(ctx,
-		"UPDATE podcasts SET subscribed=?, title=?, url=?, updated_at=? WHERE id=?",
+		"UPDATE podcasts SET subscribed=$1, title=$2, url=$3, updated_at=$4 WHERE id=$5",
 		podcast.Subscribed, podcast.Title, podcast.URL, podcast.UpdatedAt, podcast.ID)
 	if err != nil {
 		return 0, aerr.Wrapf(err, "update podcast failed").
@@ -199,9 +199,8 @@ func (s Repository) ListPodcastsToUpdate(ctx context.Context, since time.Time) (
 	err := dbctx.SelectContext(ctx, &res, `
 		SELECT p.url as url, min(metadata_updated_at) as metadata_updated_at
 		FROM podcasts p
-		WHERE p.subscribed AND (metadata_updated_at IS NULL OR metadata_updated_at < ?)
-		GROUP by p.url
-		`,
+		WHERE p.subscribed AND (metadata_updated_at IS NULL OR metadata_updated_at < $1)
+		GROUP by p.url`,
 		since)
 	if err != nil {
 		return nil, aerr.Wrapf(err, "get list podcasts to update failed")
@@ -230,11 +229,11 @@ func (s Repository) UpdatePodcastsInfo(ctx context.Context, update *model.Podcas
 
 	if update.NotModified {
 		_, err = dbctx.ExecContext(ctx,
-			"UPDATE podcasts SET metadata_updated_at=? WHERE url=?",
+			"UPDATE podcasts SET metadata_updated_at=$1 WHERE url=$2",
 			update.MetaUpdatedAt, update.URL)
 	} else {
 		_, err = dbctx.ExecContext(ctx,
-			`UPDATE podcasts SET title=?, description=?, website=?, metadata_updated_at=? WHERE url=?`,
+			`UPDATE podcasts SET title=$1, description=$2, website=$3, metadata_updated_at=$4 WHERE url=$5`,
 			update.Title, update.Description, update.Website, update.MetaUpdatedAt, update.URL)
 	}
 
@@ -248,7 +247,7 @@ func (s Repository) UpdatePodcastsInfo(ctx context.Context, update *model.Podcas
 func (s Repository) DeletePodcast(ctx context.Context, podcastid int64) error {
 	dbctx := db.MustCtx(ctx)
 
-	_, err := dbctx.ExecContext(ctx, "DELETE  FROM podcasts WHERE id=?", podcastid)
+	_, err := dbctx.ExecContext(ctx, "DELETE  FROM podcasts WHERE id=$1", podcastid)
 	if err != nil {
 		return aerr.Wrapf(err, "delete podcasts failed").WithMeta("podcast_id", podcastid)
 	}

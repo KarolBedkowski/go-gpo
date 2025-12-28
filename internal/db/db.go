@@ -29,8 +29,6 @@ type Database struct {
 	db        *sqlx.DB
 	maintRepo repository.Maintenance
 
-	Driver string
-
 	queryDuration *prometheus.HistogramVec
 }
 
@@ -42,8 +40,6 @@ func NewDatabaseI(i do.Injector) (*Database, error) {
 
 func (r *Database) Connect(ctx context.Context, driver, connstr string) error {
 	var err error
-
-	r.Driver = driver
 
 	if driver == "sqlite3" {
 		// add some required parameters to connstr

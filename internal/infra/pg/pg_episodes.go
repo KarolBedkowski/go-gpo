@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/common"
@@ -39,7 +40,7 @@ func (s Repository) GetEpisode(
 		FROM episodes e
 		JOIN podcasts p on p.id = e.podcast_id
 		LEFT JOIN devices d on d.id = e.device_id
-		WHERE p.user_id=? AND e.podcast_id = ? and (e.url = ? or e.guid = ?)
+		WHERE p.user_id=$1 AND e.podcast_id = $2 and (e.url = $3 or e.guid = $4)
 	`
 
 	res := EpisodeDB{}
@@ -68,6 +69,7 @@ func (s Repository) ListEpisodeActions(
 	logger.Debug().Int64("user_id", userid).Any("podcast_id", podcastid).Any("device_id", deviceid).
 		Msgf("get episodes since=%s aggregated=%v", since, aggregated)
 
+	// ? because of rebind
 	query := `
 		SELECT e.id, e.podcast_id, e.url, e.title, e.action, e.started, e.position, e.total, e.guid,
 			e.created_at, e.updated_at, e.device_id,
@@ -103,7 +105,7 @@ func (s Repository) ListEpisodeActions(
 
 	res := []EpisodeDB{}
 
-	err := dbctx.SelectContext(ctx, &res, query, args...)
+	err := dbctx.SelectContext(ctx, &res, sqlx.Rebind(sqlx.DOLLAR, query), args...)
 	if err != nil {
 		return nil, aerr.Wrapf(err, "query episodes failed").WithTag(aerr.InternalError).
 			WithMeta("sql", query, "args", args)
@@ -134,7 +136,7 @@ func (s Repository) ListFavorites(ctx context.Context, userid int64) ([]model.Ep
 		FROM episodes e
 		JOIN podcasts p on p.id = e.podcast_id
 		JOIN settings s on s.episode_id = e.id
-		WHERE p.user_id=? AND s.scope = 'episode' and s.key = 'is_favorite'
+		WHERE p.user_id=$1 AND s.scope = 'episode' and s.key = 'is_favorite'
 		`
 
 	res := []EpisodeDB{}
@@ -163,7 +165,7 @@ func (s Repository) GetLastEpisodeAction(ctx context.Context,
 		FROM episodes e
 		JOIN podcasts p on p.id = e.podcast_id
 		LEFT JOIN devices d on d.id=e.device_id
-		WHERE p.user_id=? AND e.podcast_id = ?
+		WHERE p.user_id=$1 AND e.podcast_id = $2
 		`
 
 	if excludeDelete {
@@ -196,7 +198,7 @@ func (s Repository) SaveEpisode(ctx context.Context, userid int64, episodes ...m
 	stmt, err := dbctx.PrepareContext(ctx,
 		"INSERT INTO episodes (podcast_id, device_id, title, url, action, started, position, total, guid, "+
 			"created_at, updated_at) "+
-			"VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+			"VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
 	)
 	if err != nil {
 		return aerr.Wrapf(err, "prepare insert episode stmt failed").WithTag(aerr.InternalError)
@@ -248,8 +250,8 @@ func (s Repository) UpdateEpisodeInfo(ctx context.Context, episodes ...model.Epi
 
 	stmt, err := dbctx.PrepareContext(ctx, `
 		UPDATE episodes
-		SET title=coalesce(?, title), guid=coalesce(?, guid)
-		WHERE url=?`,
+		SET title=coalesce($1, title), guid=coalesce($2, guid)
+		WHERE url=$3`,
 	)
 	if err != nil {
 		return aerr.Wrapf(err, "prepare update episode stmt failed").WithTag(aerr.InternalError)

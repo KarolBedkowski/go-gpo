@@ -10,31 +10,84 @@ package infra
 
 import (
 	"github.com/samber/do/v2"
+	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/infra/pg"
 	"gitlab.com/kabes/go-gpo/internal/infra/sqlite"
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
+var ErrInvalidDBInfra = aerr.New("not found infrastructure for db driver")
+
 //nolint:gochecknoglobals
 var Package = do.Package(
-	do.Lazy(func(_ do.Injector) (repository.Sessions, error) {
-		return &sqlite.Repository{}, nil
+	do.Lazy(func(i do.Injector) (repository.Sessions, error) {
+		switch do.MustInvokeNamed[string](i, "db.driver") {
+		case "sqlite3": //nolint:goconst
+			return &sqlite.Repository{}, nil
+		case "postgres": //nolint:goconst
+			return &pg.Repository{}, nil
+		default:
+			return nil, ErrInvalidDBInfra
+		}
 	}),
-	do.Lazy(func(_ do.Injector) (repository.Users, error) {
-		return &sqlite.Repository{}, nil
+	do.Lazy(func(i do.Injector) (repository.Users, error) {
+		switch do.MustInvokeNamed[string](i, "db.driver") {
+		case "sqlite3":
+			return &sqlite.Repository{}, nil
+		case "postgres":
+			return &pg.Repository{}, nil
+		default:
+			return nil, ErrInvalidDBInfra
+		}
 	}),
-	do.Lazy(func(_ do.Injector) (repository.Podcasts, error) {
-		return &sqlite.Repository{}, nil
+	do.Lazy(func(i do.Injector) (repository.Podcasts, error) {
+		switch do.MustInvokeNamed[string](i, "db.driver") {
+		case "sqlite3":
+			return &sqlite.Repository{}, nil
+		case "postgres":
+			return &pg.Repository{}, nil
+		default:
+			return nil, ErrInvalidDBInfra
+		}
 	}),
-	do.Lazy(func(_ do.Injector) (repository.Devices, error) {
-		return &sqlite.Repository{}, nil
+	do.Lazy(func(i do.Injector) (repository.Devices, error) {
+		switch do.MustInvokeNamed[string](i, "db.driver") {
+		case "sqlite3":
+			return &sqlite.Repository{}, nil
+		case "postgres":
+			return &pg.Repository{}, nil
+		default:
+			return nil, ErrInvalidDBInfra
+		}
 	}),
-	do.Lazy(func(_ do.Injector) (repository.Episodes, error) {
-		return &sqlite.Repository{}, nil
+	do.Lazy(func(i do.Injector) (repository.Episodes, error) {
+		switch do.MustInvokeNamed[string](i, "db.driver") {
+		case "sqlite3":
+			return &sqlite.Repository{}, nil
+		case "postgres":
+			return &pg.Repository{}, nil
+		default:
+			return nil, ErrInvalidDBInfra
+		}
 	}),
-	do.Lazy(func(_ do.Injector) (repository.Settings, error) {
-		return &sqlite.Repository{}, nil
+	do.Lazy(func(i do.Injector) (repository.Settings, error) {
+		switch do.MustInvokeNamed[string](i, "db.driver") {
+		case "sqlite3":
+			return &sqlite.Repository{}, nil
+		case "postgres":
+			return &pg.Repository{}, nil
+		default:
+			return nil, ErrInvalidDBInfra
+		}
 	}),
-	do.Lazy(func(_ do.Injector) (repository.Maintenance, error) {
-		return &sqlite.Repository{}, nil
+	do.Lazy(func(i do.Injector) (repository.Maintenance, error) {
+		switch do.MustInvokeNamed[string](i, "db.driver") {
+		case "sqlite3":
+			return &sqlite.Repository{}, nil
+		case "postgres":
+			return &pg.Repository{}, nil
+		default:
+			return nil, ErrInvalidDBInfra
+		}
 	}),
 )

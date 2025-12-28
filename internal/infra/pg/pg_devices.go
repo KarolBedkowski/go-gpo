@@ -37,7 +37,7 @@ func (s Repository) GetDevice(
 				u.id as "user.id", u.name as "user.name", u.username as "user.username"
 		FROM devices d
 		JOIN users u ON u.ID = d.user_id
-		WHERE d.user_id=? and d.name=?
+		WHERE d.user_id=$1 and d.name=$2
 		`,
 		userid, devicename)
 
@@ -50,7 +50,7 @@ func (s Repository) GetDevice(
 	logger.Debug().Int64("user_id", userid).Str("device_name", devicename).Msg("count subscriptions")
 
 	err = dbctx.GetContext(ctx, &device.Subscriptions,
-		"SELECT count(*) FROM podcasts where user_id=? and subscribed",
+		"SELECT count(*) FROM podcasts where user_id=$1 and subscribed",
 		userid,
 	)
 	if err != nil {
@@ -77,18 +77,15 @@ func (s Repository) SaveDevice(ctx context.Context, device *model.Device) (int64
 
 		now := time.Now().UTC()
 
-		res, err := dbctx.ExecContext(ctx,
-			"INSERT INTO devices (user_id, name, dev_type, caption, updated_at, created_at) "+
-				"VALUES(?, ?, ?, ?, ?, ?)",
+		var id int64
+
+		err := dbctx.GetContext(ctx, &id,
+			`INSERT INTO devices (user_id, name, dev_type, caption, updated_at, created_at)
+				VALUES($1, $2, $3, $4, $5, $6)
+			RETURNING id`,
 			device.User.ID, device.Name, device.DevType, device.Caption, now, now)
 		if err != nil {
 			return 0, aerr.Wrapf(err, "insert device failed")
-		}
-
-		id, err := res.LastInsertId()
-		if err != nil {
-			return 0, aerr.Wrapf(err, "get last id device failed").
-				WithMeta("device_name", device.Name, "user_id", device.User.ID)
 		}
 
 		return id, nil
@@ -98,7 +95,7 @@ func (s Repository) SaveDevice(ctx context.Context, device *model.Device) (int64
 	logger.Debug().Object("device", device).Msg("update device")
 
 	_, err := dbctx.ExecContext(ctx,
-		"UPDATE devices SET dev_type=?, caption=?, updated_at=? WHERE id=?",
+		"UPDATE devices SET dev_type=$1, caption=$2, updated_at=$3 WHERE id=$4",
 		device.DevType, device.Caption, time.Now().UTC(), device.ID)
 	if err != nil {
 		return device.ID, aerr.Wrapf(err, "update device failed").WithMeta("device_id", device.ID)
@@ -117,7 +114,7 @@ func (s Repository) ListDevices(ctx context.Context, userid int64) ([]model.Devi
 	dbctx := db.MustCtx(ctx)
 
 	err := dbctx.GetContext(ctx, &subscriptions,
-		"SELECT count(*) FROM podcasts where user_id=? and subscribed",
+		"SELECT count(*) FROM podcasts where user_id=$1 and subscribed",
 		userid)
 	if err != nil {
 		return nil, aerr.Wrapf(err, "count subscriptions error").WithMeta("user_id", userid)
@@ -128,12 +125,12 @@ func (s Repository) ListDevices(ctx context.Context, userid int64) ([]model.Devi
 	devices := []DeviceDB{}
 
 	err = dbctx.SelectContext(ctx, &devices, `
-			SELECT d.id, d.user_id, d.name, d.dev_type, d.caption, ? as subscriptions,
+			SELECT d.id, d.user_id, d.name, d.dev_type, d.caption, $1 as subscriptions,
 				d.created_at, d.updated_at,
 				u.id as "user.id", u.name as "user.name", u.username as "user.username"
 			FROM devices d
 			JOIN users u ON u.id = d.user_id
-			WHERE user_id=?
+			WHERE user_id=$2
 			ORDER BY d.name`,
 		subscriptions, userid)
 	if err != nil {
@@ -149,12 +146,12 @@ func (s Repository) DeleteDevice(ctx context.Context, deviceid int64) error {
 
 	dbctx := db.MustCtx(ctx)
 
-	_, err := dbctx.ExecContext(ctx, "UPDATE episodes SET device_id=NULL WHERE device_id=?", deviceid)
+	_, err := dbctx.ExecContext(ctx, "UPDATE episodes SET device_id=NULL WHERE device_id=$1", deviceid)
 	if err != nil {
 		return aerr.Wrapf(err, "delete device failed")
 	}
 
-	_, err = dbctx.ExecContext(ctx, "DELETE FROM devices where id=?", deviceid)
+	_, err = dbctx.ExecContext(ctx, "DELETE FROM devices where id=$2", deviceid)
 	if err != nil {
 		return aerr.Wrapf(err, "delete device failed")
 	}

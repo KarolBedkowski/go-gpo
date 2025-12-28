@@ -29,7 +29,7 @@ func (s Repository) GetUser(ctx context.Context, username string) (*model.User, 
 
 	err := dbctx.GetContext(ctx, &user,
 		"SELECT id, username, password, email, name, created_at, updated_at "+
-			"FROM users WHERE username=?",
+			"FROM users WHERE username=$1",
 		username)
 
 	switch {
@@ -49,17 +49,16 @@ func (s Repository) SaveUser(ctx context.Context, user *model.User) (int64, erro
 	if user.ID == 0 {
 		logger.Debug().Object("user", user).Msg("insert user")
 
-		res, err := dbctx.ExecContext(ctx,
-			"INSERT INTO users (username, password, email, name, created_at, updated_at) "+
-				"VALUES(?, ?, ?, ?, ?, ?)",
+		var id int64
+
+		err := dbctx.GetContext(ctx, &id, `
+			INSERT INTO users (username, password, email, name, created_at, updated_at)
+				VALUES($1, $2, $3, $4, $5, $6)
+			RETURNING id
+			`,
 			user.UserName, user.Password, user.Email, user.Name, time.Now().UTC(), time.Now().UTC())
 		if err != nil {
 			return 0, aerr.Wrapf(err, "insert user failed").WithTag(aerr.InternalError)
-		}
-
-		id, err := res.LastInsertId()
-		if err != nil {
-			return 0, aerr.Wrapf(err, "get insert id failed").WithTag(aerr.InternalError)
 		}
 
 		return id, nil
@@ -69,7 +68,7 @@ func (s Repository) SaveUser(ctx context.Context, user *model.User) (int64, erro
 	logger.Debug().Object("user", user).Msg("update user")
 
 	_, err := dbctx.ExecContext(ctx,
-		"UPDATE users SET password=?, email=?, name=?, updated_at=? WHERE id=?",
+		"UPDATE users SET password=$1, email=$2, name=$3, updated_at=$4 WHERE id=$5",
 		user.Password, user.Email, user.Name, time.Now().UTC(), user.ID)
 	if err != nil {
 		return 0, aerr.Wrapf(err, "update user failed").WithTag(aerr.InternalError)
@@ -110,25 +109,25 @@ func (s Repository) DeleteUser(ctx context.Context, userid int64) error {
 	dbctx := db.MustCtx(ctx)
 
 	_, err := dbctx.ExecContext(ctx,
-		"DELETE FROM episodes WHERE podcast_id IN (SELECT id FROM podcasts WHERE user_id=?)",
+		"DELETE FROM episodes WHERE podcast_id IN (SELECT id FROM podcasts WHERE user_id=$1)",
 		userid)
 	if err != nil {
 		return aerr.Wrapf(err, "delete episodes failed").WithTag(aerr.InternalError).WithMeta("user_id", userid)
 	}
 
-	if _, err := dbctx.ExecContext(ctx, "DELETE FROM settings WHERE user_id=?", userid); err != nil {
+	if _, err := dbctx.ExecContext(ctx, "DELETE FROM settings WHERE user_id=$1", userid); err != nil {
 		return aerr.Wrapf(err, "delete settings failed").WithTag(aerr.InternalError).WithMeta("user_id", userid)
 	}
 
-	if _, err := dbctx.ExecContext(ctx, "DELETE FROM podcasts WHERE user_id=?", userid); err != nil {
+	if _, err := dbctx.ExecContext(ctx, "DELETE FROM podcasts WHERE user_id=$1", userid); err != nil {
 		return aerr.Wrapf(err, "delete podcasts failed").WithTag(aerr.InternalError).WithMeta("user_id", userid)
 	}
 
-	if _, err := dbctx.ExecContext(ctx, "DELETE FROM devices WHERE user_id=?", userid); err != nil {
+	if _, err := dbctx.ExecContext(ctx, "DELETE FROM devices WHERE user_id=$1", userid); err != nil {
 		return aerr.Wrapf(err, "delete devices failed").WithTag(aerr.InternalError).WithMeta("user_id", userid)
 	}
 
-	if _, err := dbctx.ExecContext(ctx, "DELETE FROM users WHERE id=?", userid); err != nil {
+	if _, err := dbctx.ExecContext(ctx, "DELETE FROM users WHERE id=$1", userid); err != nil {
 		return aerr.Wrapf(err, "delete user failed").WithTag(aerr.InternalError).WithMeta("user_id", userid)
 	}
 

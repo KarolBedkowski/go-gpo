@@ -27,15 +27,24 @@ func wrap(
 
 		ctx = log.Logger.WithContext(ctx)
 
-		database := clicmd.String("database")
-		if database == "" {
-			return aerr.New("database argument can't be empty").WithTag(aerr.ValidationError)
+		dbconnstr := clicmd.String("db.connstr")
+		if dbconnstr == "" {
+			return aerr.New("db.connstr argument can't be empty").WithTag(aerr.ValidationError)
 		}
+
+		dbdriver := clicmd.String("db.driver")
+		if dbdriver == "" {
+			return aerr.New("db.driver argument can't be empty").WithTag(aerr.ValidationError)
+		}
+
+		// TODO: aliases, validation
 
 		injector := createInjector(ctx)
 
+		do.ProvideNamedValue(injector, "db.driver", clicmd.String("db.driver"))
+
 		db := do.MustInvoke[*db.Database](injector)
-		if err := db.Connect(ctx, "sqlite3", database); err != nil {
+		if err := db.Connect(ctx, dbdriver, dbconnstr); err != nil {
 			return aerr.Wrapf(err, "connect to database failed")
 		}
 

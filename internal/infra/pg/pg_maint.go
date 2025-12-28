@@ -75,7 +75,6 @@ var maintScripts = []string{
 			WHERE ed.url = e.url AND ed.action = 'play' AND ed.updated_at > e.updated_at);`,
 	`VACUUM;`,
 	`ANALYZE;`,
-	`PRAGMA optimize;`,
 }
 
 //------------------------------------------------------------------------------
@@ -120,34 +119,13 @@ func (r Repository) Migrate(ctx context.Context, db *sql.DB) error {
 
 	logger.Info().Msgf("migrated database version: %d", ver)
 
-	_, err = db.ExecContext(ctx, "PRAGMA optimize")
-	if err != nil {
-		return aerr.ApplyFor(aerr.ErrDatabase, err, "execute optimize script failed")
-	}
-
 	return nil
 }
 
 func (r Repository) OnOpenConn(ctx context.Context, db sqlx.ExecerContext) error {
-	_, err := db.ExecContext(ctx,
-		`PRAGMA temp_store = MEMORY;
-		PRAGMA busy_timeout = 1000;
-		`,
-	)
-	if err != nil {
-		return aerr.Wrap(err)
-	}
-
 	return nil
 }
 
 func (r Repository) OnCloseConn(ctx context.Context, db sqlx.ExecerContext) error {
-	_, err := db.ExecContext(ctx,
-		`PRAGMA optimize`,
-	)
-	if err != nil {
-		return aerr.Wrap(err)
-	}
-
 	return nil
 }

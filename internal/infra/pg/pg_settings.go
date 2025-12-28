@@ -25,7 +25,7 @@ func (s Repository) GetSettings(ctx context.Context, key *model.SettingsKey) (mo
 
 	query := `
 		SELECT user_id, podcast_id, episode_id, device_id, scope, key, value
-		FROM settings WHERE user_id=? AND scope=? AND podcast_id IS ? AND episode_id IS ? and device_id IS ?`
+		FROM settings WHERE user_id=$1 AND scope=$2 AND podcast_id IS $3 AND episode_id IS $4 and device_id IS $5`
 
 	err := dbctx.SelectContext(ctx, &res, query,
 		key.UserID, key.Scope, key.PodcastID, key.EpisodeID, key.DeviceID)
@@ -52,7 +52,7 @@ func (s Repository) SaveSettings(ctx context.Context, key *model.SettingsKey, va
 	_, err := dbctx.ExecContext(
 		ctx, `
 		DELETE from settings
-		WHERE user_id=? AND scope=? AND podcast_id IS ? AND episode_id IS ? AND device_id IS ? AND key=?`,
+		WHERE user_id=$1 AND scope=$2 AND podcast_id IS $3 AND episode_id IS $4 AND device_id IS $5 AND key=$6`,
 		key.UserID, key.Scope, key.PodcastID, key.EpisodeID, key.DeviceID, key.Key,
 	)
 	if err != nil {
@@ -67,7 +67,7 @@ func (s Repository) SaveSettings(ctx context.Context, key *model.SettingsKey, va
 	_, err = dbctx.ExecContext(
 		ctx, `
 		INSERT INTO settings (user_id, scope, podcast_id, episode_id, device_id, key, value)
-		VALUES(?, ?, ?, ?, ?, ?, ?)`,
+		VALUES($1, $2, $3, $4, $5, $6, $7)`,
 		key.UserID, key.Scope, key.PodcastID, key.EpisodeID, key.DeviceID, key.Key, value,
 	)
 	if err != nil {
