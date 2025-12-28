@@ -13,4 +13,5 @@ type ExportStruct struct {
 	Devices  []Device
 	Podcasts Podcasts
 	Episodes []Episode
+	Settings []UserSettings
 }

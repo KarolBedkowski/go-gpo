@@ -59,6 +59,7 @@ type Podcasts interface {
 }
 
 type Settings interface {
+	GetAllSettings(ctx context.Context, userid int64) ([]model.UserSettings, error)
 	GetSettings(ctx context.Context, key *model.SettingsKey) (model.Settings, error)
 	// save (insert or update) or delete settings
 	SaveSettings(ctx context.Context, key *model.SettingsKey, value string) error

@@ -83,7 +83,10 @@ func (m *MaintenanceSrv) ExportAll(ctx context.Context) ([]model.ExportStruct, e
 				return nil, aerr.Wrapf(err, "get user episodes error").WithMeta("user_id", user.ID)
 			}
 
-			// TODO: settings
+			esu.Settings, err = m.settingsRepo.GetAllSettings(ctx, user.ID)
+			if err != nil {
+				return nil, aerr.Wrapf(err, "get user settings error").WithMeta("user_id", user.ID)
+			}
 
 			res = append(res, esu)
 		}
@@ -190,6 +193,39 @@ func (m *MaintenanceSrv) importPodcasts(
 	}
 
 	return podcastsmap, nil
+}
+
+func (m *MaintenanceSrv) importSettings(
+	ctx context.Context,
+	settings []model.UserSettings,
+	uid int64,
+	podcastsmap, devmap map[int64]int64,
+) error {
+	for _, usett := range settings {
+		usett.UserID = uid
+
+		if usett.PodcastID != nil {
+			v := podcastsmap[*usett.PodcastID]
+			usett.PodcastID = &v
+		}
+
+		if usett.DeviceID != nil {
+			v := devmap[*usett.DeviceID]
+			usett.DeviceID = &v
+		}
+
+		if usett.EpisodeID != nil {
+		}
+
+		key := usett.ToKey()
+
+		err := m.settingsRepo.SaveSettings(ctx, &key, usett.Value)
+		if err != nil {
+			return aerr.Wrapf(err, "save settings error").WithMeta("setting", usett)
+		}
+	}
+
+	return nil
 }
 
 func remapEpisodes(episodes []model.Episode, podcastsmap, devmap map[int64]int64) []model.Episode {
