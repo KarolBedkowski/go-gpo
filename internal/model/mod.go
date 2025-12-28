@@ -7,3 +7,10 @@ package model
 //
 // Distributed under terms of the GPLv3 license.
 //
+
+type ExportStruct struct {
+	User     User
+	Devices  []Device
+	Podcasts Podcasts
+	Episodes []Episode
+}
