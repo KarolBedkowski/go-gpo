@@ -97,6 +97,8 @@ func (u settingsResource) postSettings(
 		DeviceName: r.URL.Query().Get("device"),
 		Podcast:    r.URL.Query().Get("podcast"),
 		Episode:    r.URL.Query().Get("episode"),
+		Set:        reqData.Set,
+		Remove:     reqData.Remove,
 	}
 	if err := u.settingsSrv.SaveSettings(ctx, &cmd); err != nil {
 		checkAndWriteError(w, r, err)
