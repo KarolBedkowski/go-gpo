@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.1.3 2025-12-28
+
+- Fix broken save settings
+
+
 ## v1.1.2 2025-12-27
 
 ### Bug Fixes
