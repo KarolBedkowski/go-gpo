@@ -25,7 +25,11 @@ func (s Repository) GetSettings(ctx context.Context, key *model.SettingsKey) (mo
 
 	query := `
 		SELECT user_id, podcast_id, episode_id, device_id, scope, key, value
-		FROM settings WHERE user_id=$1 AND scope=$2 AND podcast_id IS $3 AND episode_id IS $4 and device_id IS $5`
+		FROM settings
+		WHERE user_id=$1 AND scope=$2
+			AND NOT (podcast_id IS DISTINCT FROM $3)
+			AND NOT (episode_id IS DISTINCT FROM $4)
+			AND NOT (device_id IS DISTINCT FROM $5)`
 
 	err := dbctx.SelectContext(ctx, &res, query,
 		key.UserID, key.Scope, key.PodcastID, key.EpisodeID, key.DeviceID)
@@ -51,8 +55,12 @@ func (s Repository) SaveSettings(ctx context.Context, key *model.SettingsKey, va
 
 	_, err := dbctx.ExecContext(
 		ctx, `
-		DELETE from settings
-		WHERE user_id=$1 AND scope=$2 AND podcast_id IS $3 AND episode_id IS $4 AND device_id IS $5 AND key=$6`,
+		DELETE FROM settings
+		WHERE user_id=$1 AND scope=$2
+			AND NOT (podcast_id IS DISTINCT FROM $3)
+			AND NOT (episode_id IS DISTINCT FROM $4)
+			AND NOT (device_id IS DISTINCT FROM $5)
+			AND key=$6`,
 		key.UserID, key.Scope, key.PodcastID, key.EpisodeID, key.DeviceID, key.Key,
 	)
 	if err != nil {

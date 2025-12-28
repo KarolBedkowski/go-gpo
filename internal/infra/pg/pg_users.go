@@ -27,9 +27,10 @@ func (s Repository) GetUser(ctx context.Context, username string) (*model.User, 
 	dbctx := db.MustCtx(ctx)
 	user := UserDB{}
 
-	err := dbctx.GetContext(ctx, &user,
-		"SELECT id, username, password, email, name, created_at, updated_at "+
-			"FROM users WHERE username=$1",
+	err := dbctx.GetContext(ctx, &user, `
+		SELECT id, username, password, email, name, created_at, updated_at
+		FROM users
+		WHERE username=$1`,
 		username)
 
 	switch {
@@ -54,8 +55,7 @@ func (s Repository) SaveUser(ctx context.Context, user *model.User) (int64, erro
 		err := dbctx.GetContext(ctx, &id, `
 			INSERT INTO users (username, password, email, name, created_at, updated_at)
 				VALUES($1, $2, $3, $4, $5, $6)
-			RETURNING id
-			`,
+			RETURNING id`,
 			user.UserName, user.Password, user.Email, user.Name, time.Now().UTC(), time.Now().UTC())
 		if err != nil {
 			return 0, aerr.Wrapf(err, "insert user failed").WithTag(aerr.InternalError)

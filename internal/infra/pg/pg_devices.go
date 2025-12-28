@@ -31,14 +31,12 @@ func (s Repository) GetDevice(
 	dbctx := db.MustCtx(ctx)
 
 	device := DeviceDB{}
-	err := dbctx.GetContext(ctx, &device,
-		`
+	err := dbctx.GetContext(ctx, &device, `
 		SELECT d.id, d.user_id, d.name, d.dev_type, d.caption, d.created_at, d.updated_at,
-				u.id as "user.id", u.name as "user.name", u.username as "user.username"
+				u.id AS "user.id", u.name AS "user.name", u.username AS "user.username"
 		FROM devices d
 		JOIN users u ON u.ID = d.user_id
-		WHERE d.user_id=$1 and d.name=$2
-		`,
+		WHERE d.user_id=$1 AND d.name=$2`,
 		userid, devicename)
 
 	if errors.Is(err, sql.ErrNoRows) {
@@ -50,7 +48,7 @@ func (s Repository) GetDevice(
 	logger.Debug().Int64("user_id", userid).Str("device_name", devicename).Msg("count subscriptions")
 
 	err = dbctx.GetContext(ctx, &device.Subscriptions,
-		"SELECT count(*) FROM podcasts where user_id=$1 and subscribed",
+		"SELECT count(*) FROM podcasts WHERE user_id=$1 AND subscribed",
 		userid,
 	)
 	if err != nil {
@@ -79,9 +77,9 @@ func (s Repository) SaveDevice(ctx context.Context, device *model.Device) (int64
 
 		var id int64
 
-		err := dbctx.GetContext(ctx, &id,
-			`INSERT INTO devices (user_id, name, dev_type, caption, updated_at, created_at)
-				VALUES($1, $2, $3, $4, $5, $6)
+		err := dbctx.GetContext(ctx, &id, `
+			INSERT INTO devices (user_id, name, dev_type, caption, updated_at, created_at)
+			VALUES($1, $2, $3, $4, $5, $6)
 			RETURNING id`,
 			device.User.ID, device.Name, device.DevType, device.Caption, now, now)
 		if err != nil {
@@ -125,9 +123,9 @@ func (s Repository) ListDevices(ctx context.Context, userid int64) ([]model.Devi
 	devices := []DeviceDB{}
 
 	err = dbctx.SelectContext(ctx, &devices, `
-			SELECT d.id, d.user_id, d.name, d.dev_type, d.caption, $1 as subscriptions,
+			SELECT d.id, d.user_id, d.name, d.dev_type, d.caption, $1 AS subscriptions,
 				d.created_at, d.updated_at,
-				u.id as "user.id", u.name as "user.name", u.username as "user.username"
+				u.id AS "user.id", u.name AS "user.name", u.username AS "user.username"
 			FROM devices d
 			JOIN users u ON u.id = d.user_id
 			WHERE user_id=$2

@@ -30,7 +30,7 @@ func (s Repository) ListSubscribedPodcasts(ctx context.Context, userid int64, si
 
 	query := `
 		SELECT p.id, p.user_id, p.url, p.title, p.subscribed, p.created_at, p.updated_at, p.metadata_updated_at,
-		coalesce(p.description, '') as description, coalesce(p.website, '') as website
+		coalesce(p.description, '') AS description, coalesce(p.website, '') AS website
 		FROM podcasts p
 		WHERE p.user_id = $1 AND subscribed `
 	args := []any{userid}
@@ -60,7 +60,7 @@ func (s Repository) ListPodcasts(ctx context.Context, userid int64, since time.T
 
 	query := `
 		SELECT p.id, p.user_id, p.url, p.title, p.subscribed, p.created_at, p.updated_at, p.metadata_updated_at,
-		coalesce(p.description, '') as description, coalesce(p.website, '') as website
+		coalesce(p.description, '') AS description, coalesce(p.website, '') AS website
 		FROM podcasts p
 		WHERE p.user_id=$1`
 	args := []any{userid}
@@ -92,7 +92,7 @@ func (s Repository) GetPodcastByID(
 
 	err := dbctx.GetContext(ctx, &podcast, `
 		SELECT p.id, p.user_id, p.url, p.title, p.subscribed, p.created_at, p.updated_at, p.metadata_updated_at,
-			coalesce(p.description, '') as description, coalesce(p.website, '') as website
+			coalesce(p.description, '') AS description, coalesce(p.website, '') AS website
 		FROM podcasts p
 		WHERE p.user_id=$1 AND p.id = $2`,
 		userid, podcastid)
@@ -119,7 +119,7 @@ func (s Repository) GetPodcast(
 
 	err := dbctx.GetContext(ctx, &podcast, `
 		SELECT p.id, p.user_id, p.url, p.title, p.subscribed, p.created_at, p.updated_at, p.metadata_updated_at,
-			coalesce(p.description, '') as description, coalesce(p.website, '') as website
+			coalesce(p.description, '') AS description, coalesce(p.website, '') AS website
 		FROM podcasts p
 		WHERE p.user_id=$1 AND p.url = $2`,
 		userid, podcasturl)
@@ -197,7 +197,7 @@ func (s Repository) ListPodcastsToUpdate(ctx context.Context, since time.Time) (
 
 	// for some reason metadata_updated_at is string, even after datetime function
 	err := dbctx.SelectContext(ctx, &res, `
-		SELECT p.url as url, min(metadata_updated_at) as metadata_updated_at
+		SELECT p.url AS url, min(metadata_updated_at) AS metadata_updated_at
 		FROM podcasts p
 		WHERE p.subscribed AND (metadata_updated_at IS NULL OR metadata_updated_at < $1)
 		GROUP by p.url`,

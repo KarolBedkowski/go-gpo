@@ -35,13 +35,12 @@ func (s Repository) GetEpisode(
 	query := `
 		SELECT e.id, e.podcast_id, e.url, e.title, e.action, e.started, e.position, e.total,
 			e.created_at, e.updated_at, e.device_id,
-			p.url as "podcast.url", p.title as "podcast.title", p.id as "podcast.id",
-			d.name as "device.name", d.id as "device.id"
+			p.url AS "podcast.url", p.title AS "podcast.title", p.id AS "podcast.id",
+			d.name AS "device.name", d.id AS "device.id"
 		FROM episodes e
 		JOIN podcasts p on p.id = e.podcast_id
 		LEFT JOIN devices d on d.id = e.device_id
-		WHERE p.user_id=$1 AND e.podcast_id = $2 and (e.url = $3 or e.guid = $4)
-	`
+		WHERE p.user_id=$1 AND e.podcast_id = $2 and (e.url = $3 or e.guid = $4)`
 
 	res := EpisodeDB{}
 	dbctx := db.MustCtx(ctx)
@@ -73,11 +72,11 @@ func (s Repository) ListEpisodeActions(
 	query := `
 		SELECT e.id, e.podcast_id, e.url, e.title, e.action, e.started, e.position, e.total, e.guid,
 			e.created_at, e.updated_at, e.device_id,
-			p.url as "podcast.url", p.title as "podcast.title", p.id as "podcast.id",
-			d.name as "device.name", d.id as "device.id"
+			p.url AS "podcast.url", p.title AS "podcast.title", p.id AS "podcast.id",
+			d.name AS "device.name", d.id AS "device.id"
 		FROM episodes e
-		JOIN podcasts p on p.id = e.podcast_id
-		LEFT JOIN devices d on d.id=e.device_id
+		JOIN podcasts p ON p.id = e.podcast_id
+		LEFT JOIN devices d ON d.id=e.device_id
 		WHERE p.user_id=?`
 	args := []any{userid}
 	dbctx := db.MustCtx(ctx)
@@ -132,12 +131,11 @@ func (s Repository) ListFavorites(ctx context.Context, userid int64) ([]model.Ep
 
 	query := `
 		SELECT e.id, e.podcast_id, e.url, e.title, e.guid, e.created_at, e.updated_at,
-			p.url as "podcast.url", p.title as "podcast.title", p.id as "podcast.id"
+			p.url AS "podcast.url", p.title AS "podcast.title", p.id AS "podcast.id"
 		FROM episodes e
-		JOIN podcasts p on p.id = e.podcast_id
-		JOIN settings s on s.episode_id = e.id
-		WHERE p.user_id=$1 AND s.scope = 'episode' and s.key = 'is_favorite'
-		`
+		JOIN podcasts p ON p.id = e.podcast_id
+		JOIN settings s ON s.episode_id = e.id
+		WHERE p.user_id=$1 AND s.scope = 'episode' and s.key = 'is_favorite' `
 
 	res := []EpisodeDB{}
 	dbctx := db.MustCtx(ctx)
@@ -160,13 +158,12 @@ func (s Repository) GetLastEpisodeAction(ctx context.Context,
 	query := `
 		SELECT e.id, e.podcast_id, e.url, e.title, e.action, e.started, e.position, e.total,
 			e.created_at, e.updated_at, e.device_id,
-			p.url as "podcast.url", p.title as "podcast.title", p.id as "podcast.id",
-			d.name as "device.name", d.id as "device.id"
+			p.url AS "podcast.url", p.title AS "podcast.title", p.id AS "podcast.id",
+			d.name AS "device.name", d.id AS "device.id"
 		FROM episodes e
-		JOIN podcasts p on p.id = e.podcast_id
-		LEFT JOIN devices d on d.id=e.device_id
-		WHERE p.user_id=$1 AND e.podcast_id = $2
-		`
+		JOIN podcasts p ON p.id = e.podcast_id
+		LEFT JOIN devices d ON d.id=e.device_id
+		WHERE p.user_id=$1 AND e.podcast_id = $2 `
 
 	if excludeDelete {
 		query += " AND e.action != 'delete' "
@@ -195,10 +192,10 @@ func (s Repository) SaveEpisode(ctx context.Context, userid int64, episodes ...m
 
 	dbctx := db.MustCtx(ctx)
 
-	stmt, err := dbctx.PrepareContext(ctx,
-		"INSERT INTO episodes (podcast_id, device_id, title, url, action, started, position, total, guid, "+
-			"created_at, updated_at) "+
-			"VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
+	stmt, err := dbctx.PrepareContext(ctx, `
+		INSERT INTO episodes (podcast_id, device_id, title, url, action, started, position, total,
+			guid, created_at, updated_at)
+		VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
 	)
 	if err != nil {
 		return aerr.Wrapf(err, "prepare insert episode stmt failed").WithTag(aerr.InternalError)
