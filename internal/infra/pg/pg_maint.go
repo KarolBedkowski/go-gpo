@@ -86,7 +86,7 @@ func (r Repository) Migrate(ctx context.Context, db *sql.DB) error {
 		panic(fmt.Errorf("prepare migration fs failed: %w", err))
 	}
 
-	provider, err := goose.NewProvider(goose.DialectSQLite3, db, migdir)
+	provider, err := goose.NewProvider(goose.DialectPostgres, db, migdir)
 	if err != nil {
 		panic(fmt.Errorf("create goose provider failed: %w", err))
 	}
