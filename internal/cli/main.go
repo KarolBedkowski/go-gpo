@@ -110,6 +110,7 @@ func databaseSubCmd() *cli.Command {
 			newMigrateCmd(),
 			newMaintenanceCmd(),
 			newDataExportCmd(),
+			newDataImportCmd(),
 		},
 	}
 }

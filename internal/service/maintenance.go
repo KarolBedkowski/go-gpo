@@ -11,6 +11,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/rs/zerolog"
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/db"
@@ -94,4 +95,113 @@ func (m *MaintenanceSrv) ExportAll(ctx context.Context) ([]model.ExportStruct, e
 	}
 
 	return res, nil
+}
+
+func (m *MaintenanceSrv) ImportAll(ctx context.Context, data []model.ExportStruct) error {
+	logger := zerolog.Ctx(ctx)
+
+	err := db.InTransaction(ctx, m.db, func(ctx context.Context) error {
+		for _, record := range data {
+			logger.Info().Msgf("loading user %q", record.User.UserName)
+
+			record.User.ID = 0
+
+			uid, err := m.usersRepo.SaveUser(ctx, &record.User)
+			if err != nil {
+				return aerr.Wrapf(err, "save users error").WithMeta("username", record.User.Name)
+			}
+
+			logger.Debug().Msgf("loading user %q - devices...", record.User.UserName)
+
+			devmap, err := m.importDevices(ctx, record.Devices, uid)
+			if err != nil {
+				return err
+			}
+
+			logger.Debug().Msgf("loading user %q - podcasts...", record.User.UserName)
+
+			podcastsmap, err := m.importPodcasts(ctx, record.Podcasts, uid)
+			if err != nil {
+				return err
+			}
+
+			logger.Debug().Msgf("loading user %q - episodes...", record.User.UserName)
+
+			ep := remapEpisodes(record.Episodes, podcastsmap, devmap)
+
+			err = m.episodesRepo.SaveEpisode(ctx, uid, ep...)
+			if err != nil {
+				return aerr.Wrapf(err, "save episodes error")
+			}
+
+			// TODO: settings
+		}
+
+		return nil
+	})
+	if err != nil {
+		return aerr.ApplyFor(ErrRepositoryError, err)
+	}
+
+	return nil
+}
+
+func (m *MaintenanceSrv) importDevices(
+	ctx context.Context,
+	devices []model.Device,
+	uid int64,
+) (map[int64]int64, error) {
+	devmap := make(map[int64]int64, len(devices))
+
+	for _, d := range devices {
+		oldid := d.ID
+		d.ID = 0
+		d.User.ID = uid
+
+		did, err := m.devicesRepo.SaveDevice(ctx, &d)
+		if err != nil {
+			return nil, aerr.Wrapf(err, "save device error").WithMeta("devicename", d.Name)
+		}
+
+		devmap[oldid] = did
+	}
+
+	return devmap, nil
+}
+
+func (m *MaintenanceSrv) importPodcasts(
+	ctx context.Context,
+	podcasts model.Podcasts,
+	uid int64,
+) (map[int64]int64, error) {
+	podcastsmap := make(map[int64]int64, len(podcasts))
+
+	for _, p := range podcasts {
+		oldid := p.ID
+		p.ID = 0
+		p.User.ID = uid
+
+		pid, err := m.podcastsRepo.SavePodcast(ctx, &p)
+		if err != nil {
+			return nil, aerr.Wrapf(err, "save podcasts error").WithMeta("podcast_url", p.URL)
+		}
+
+		podcastsmap[oldid] = pid
+	}
+
+	return podcastsmap, nil
+}
+
+func remapEpisodes(episodes []model.Episode, podcastsmap, devmap map[int64]int64) []model.Episode {
+	ep := make([]model.Episode, len(episodes))
+	for i, e := range episodes {
+		e.Podcast.ID = podcastsmap[e.Podcast.ID]
+		if e.Device != nil {
+			e.Device.ID = devmap[e.Device.ID]
+		}
+
+		ep[i] = e
+	}
+
+	return ep
 }

@@ -15,6 +15,7 @@ import (
 
 	"github.com/samber/do/v2"
 	"github.com/urfave/cli/v3"
+	"gitlab.com/kabes/go-gpo/internal/model"
 	"gitlab.com/kabes/go-gpo/internal/service"
 )
 
@@ -37,6 +38,34 @@ func dataExportCmd(ctx context.Context, _ *cli.Command, injector do.Injector) er
 	enc := json.NewEncoder(os.Stdout)
 	if err := enc.Encode(data); err != nil {
 		return fmt.Errorf("export data error: %w", err)
+	}
+
+	return nil
+}
+
+//------------------------------------------------------------------------------
+
+func newDataImportCmd() *cli.Command {
+	return &cli.Command{
+		Name:   "import",
+		Usage:  "import data from database",
+		Action: wrap(dataImportCmd),
+	}
+}
+
+func dataImportCmd(ctx context.Context, _ *cli.Command, injector do.Injector) error {
+	maintSrv := do.MustInvoke[*service.MaintenanceSrv](injector)
+
+	var data []model.ExportStruct
+
+	enc := json.NewDecoder(os.Stdin)
+	if err := enc.Decode(&data); err != nil {
+		return fmt.Errorf("parse data error: %w", err)
+	}
+
+	err := maintSrv.ImportAll(ctx, data)
+	if err != nil {
+		return fmt.Errorf("import data error: %w", err)
 	}
 
 	return nil
