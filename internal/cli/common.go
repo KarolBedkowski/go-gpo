@@ -32,12 +32,12 @@ func wrap(
 			return aerr.New("db.connstr argument can't be empty").WithTag(aerr.ValidationError)
 		}
 
-		dbdriver := clicmd.String("db.driver")
+		dbdriver, ok := validateDriverName(clicmd.String("db.driver"))
 		if dbdriver == "" {
 			return aerr.New("db.driver argument can't be empty").WithTag(aerr.ValidationError)
+		} else if !ok {
+			return aerr.New("invalid (unsupported) db.driver").WithTag(aerr.ValidationError)
 		}
-
-		// TODO: aliases, validation
 
 		injector := createInjector(ctx)
 
@@ -52,4 +52,15 @@ func wrap(
 
 		return cmdfunc(ctx, clicmd, injector)
 	}
+}
+
+func validateDriverName(driver string) (string, bool) {
+	switch driver {
+	case "sqlite", "sqlite3":
+		return "sqlite3", true
+	case "pg", "postgresql", "postgres":
+		return "postgres", true
+	}
+
+	return driver, false
 }

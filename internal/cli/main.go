@@ -20,7 +20,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/config"
 )
 
-//nolint:forbidigo
+//nolint:forbidigo,funlen
 func Main() {
 	cli.VersionFlag = &cli.BoolFlag{
 		Name:    "print-version",

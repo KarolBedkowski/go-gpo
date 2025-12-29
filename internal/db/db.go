@@ -41,13 +41,15 @@ func NewDatabaseI(i do.Injector) (*Database, error) {
 func (r *Database) Connect(ctx context.Context, driver, connstr string) error {
 	var err error
 
-	if driver == "sqlite3" {
+	switch driver {
+	case "sqlite3":
 		// add some required parameters to connstr
 		connstr, err = prepareSqliteConnstr(connstr)
 		if err != nil {
 			return err
 		}
-	} else if driver == "postgres" {
+	case "postgres":
+		// use pgx driver
 		driver = "pgx"
 	}
 
