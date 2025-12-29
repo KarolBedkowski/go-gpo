@@ -22,7 +22,7 @@ import (
 func newDataExportCmd() *cli.Command {
 	return &cli.Command{
 		Name:   "export",
-		Usage:  "export data from database",
+		Usage:  "export data from database and print output as json to stdout",
 		Action: wrap(dataExportCmd),
 	}
 }
@@ -36,7 +36,7 @@ func dataExportCmd(ctx context.Context, _ *cli.Command, injector do.Injector) er
 	}
 
 	enc := json.NewEncoder(os.Stdout)
-	if err := enc.Encode(data); err != nil {
+	if err := enc.Encode(data); err != nil { //nolint:musttag
 		return fmt.Errorf("export data error: %w", err)
 	}
 
@@ -48,7 +48,7 @@ func dataExportCmd(ctx context.Context, _ *cli.Command, injector do.Injector) er
 func newDataImportCmd() *cli.Command {
 	return &cli.Command{
 		Name:   "import",
-		Usage:  "import data from database",
+		Usage:  "import json data from stdin into database",
 		Action: wrap(dataImportCmd),
 	}
 }
@@ -59,7 +59,7 @@ func dataImportCmd(ctx context.Context, _ *cli.Command, injector do.Injector) er
 	var data []model.ExportStruct
 
 	enc := json.NewDecoder(os.Stdin)
-	if err := enc.Decode(&data); err != nil {
+	if err := enc.Decode(&data); err != nil { //nolint:musttag
 		return fmt.Errorf("parse data error: %w", err)
 	}
 
