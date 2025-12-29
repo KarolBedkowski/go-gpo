@@ -128,3 +128,23 @@ func (r Repository) OnOpenConn(ctx context.Context, db sqlx.ExecerContext) error
 func (r Repository) OnCloseConn(ctx context.Context, db sqlx.ExecerContext) error {
 	return nil
 }
+
+func (r Repository) Clear(ctx context.Context, db *sql.DB) error {
+	sqls := []string{
+		"DELETE FROM settings;",
+		"DELETE FROM episodes;",
+		"DELETE FROM podcasts;",
+		"DELETE FROM devices;",
+		"DELETE FROM users;",
+		"DELETE FROM sessions;",
+	}
+
+	for _, sql := range sqls {
+		_, err := db.ExecContext(ctx, sql)
+		if err != nil {
+			return aerr.ApplyFor(aerr.ErrDatabase, err, "clear database failed").WithMeta("sql", sql)
+		}
+	}
+
+	return nil
+}

@@ -111,6 +111,20 @@ func (r *Database) Shutdown(ctx context.Context) error {
 	return nil
 }
 
+func (r *Database) Clear(ctx context.Context) error {
+	logger := log.Ctx(ctx)
+	logger.Debug().Msg("migration start")
+
+	err := r.maintRepo.Clear(ctx, r.db.DB)
+	if err != nil {
+		return aerr.ApplyFor(aerr.ErrDatabase, err, "migration error")
+	}
+
+	logger.Debug().Msg("migration finished")
+
+	return nil
+}
+
 func (r *Database) Migrate(ctx context.Context) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msg("migration start")

@@ -151,3 +151,23 @@ func (Repository) OnCloseConn(ctx context.Context, db sqlx.ExecerContext) error 
 
 	return nil
 }
+
+func (r Repository) Clear(ctx context.Context, db *sql.DB) error {
+	sql := `
+		PRAGMA foreign_keys=OFF;
+		DELETE FROM settings;
+		DELETE FROM episodes;
+		DELETE FROM podcasts;
+		DELETE FROM devices;
+		DELETE FROM users;
+		DELETE FROM sessions;
+		PRAGMA foreign_keys=ON;
+	`
+
+	_, err := db.ExecContext(ctx, sql)
+	if err != nil {
+		return aerr.ApplyFor(aerr.ErrDatabase, err, "clear database failed")
+	}
+
+	return nil
+}
