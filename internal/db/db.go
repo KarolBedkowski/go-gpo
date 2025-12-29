@@ -47,6 +47,8 @@ func (r *Database) Connect(ctx context.Context, driver, connstr string) error {
 		if err != nil {
 			return err
 		}
+	} else if driver == "postgres" {
+		driver = "pgx"
 	}
 
 	logger := log.Ctx(ctx)
