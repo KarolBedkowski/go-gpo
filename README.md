@@ -11,7 +11,7 @@ Implement most useful api's and tested with gPodder and AntennaPod.
 * support (partial) simple api and v2 api
 * multi user
 * single binary
-* sqlite3 database
+* sqlite3 or PostgreSQL database
 * simple (very!) web gui
 * optionally download podcast and episodes metadata in configured interval (use only in gui).
 
@@ -46,13 +46,19 @@ Create/update database
 
     ./go-gpo database migrate
 
+
+Create user:
+
+    ./go-gpo user add -u user1 -p passwordforuser1 -e email@of.user -n 'some user name'
+
 Run
 
     ./go-gpo serve
 
-Configure database file:
+Configure database:
 
-    ./go-gpo --database='/some/path/database.sqlite?_fk=1&_journal_mode=WAL&_synchronous=NORMAL' ...
+    ./go-gpo --db.driver=sqlite  --db.connstr='/some/path/database.sqlite?_fk=1&_journal_mode=WAL&_synchronous=NORMAL' ...
+    ./go-gpo --db.driver=postgres  --db.connstr='host=127.0.0.1 user=gogpo password=gogpo123 database=gogpo' ...
 
 For other options / commands:
 
