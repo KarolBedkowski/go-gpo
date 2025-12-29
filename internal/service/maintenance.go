@@ -137,7 +137,10 @@ func (m *MaintenanceSrv) ImportAll(ctx context.Context, data []model.ExportStruc
 				return aerr.Wrapf(err, "save episodes error")
 			}
 
-			// TODO: settings
+			err = m.importSettings(ctx, &record, uid, podcastsmap, devmap)
+			if err != nil {
+				return aerr.Wrapf(err, "import settings error")
+			}
 		}
 
 		return nil
@@ -197,11 +200,11 @@ func (m *MaintenanceSrv) importPodcasts(
 
 func (m *MaintenanceSrv) importSettings(
 	ctx context.Context,
-	settings []model.UserSettings,
+	data *model.ExportStruct,
 	uid int64,
 	podcastsmap, devmap map[int64]int64,
 ) error {
-	for _, usett := range settings {
+	for _, usett := range data.Settings {
 		usett.UserID = uid
 
 		if usett.PodcastID != nil {
@@ -215,6 +218,22 @@ func (m *MaintenanceSrv) importSettings(
 		}
 
 		if usett.EpisodeID != nil {
+			if usett.PodcastID == nil {
+				return aerr.New("missing podcast for episode").WithMeta("episode_id", usett.EpisodeID)
+			}
+
+			e, ok := data.FindEpisode(*usett.EpisodeID)
+			if !ok {
+				return aerr.New("episode not found").WithMeta("episode_id", usett.EpisodeID)
+			}
+
+			ue, err := m.episodesRepo.GetEpisode(ctx, uid, *usett.PodcastID, e.URL)
+			if err != nil {
+				return aerr.Wrapf(err, "failed to find episode").WithMeta("userid", uid,
+					"podcastid", *usett.PodcastID, "episode_url", e.URL)
+			}
+
+			usett.EpisodeID = &ue.ID
 		}
 
 		key := usett.ToKey()

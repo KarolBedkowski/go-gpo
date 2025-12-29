@@ -15,3 +15,13 @@ type ExportStruct struct {
 	Episodes []Episode
 	Settings []UserSettings
 }
+
+func (e *ExportStruct) FindEpisode(id int64) (Episode, bool) {
+	for _, e := range e.Episodes {
+		if e.ID == id {
+			return e, true
+		}
+	}
+
+	return Episode{}, false
+}
