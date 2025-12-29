@@ -64,10 +64,14 @@ func (d *DeviceDB) toModel() *model.Device {
 
 //------------------------------------------------------------------------------
 
-func devicesFromDb(devices []DeviceDB) []model.Device {
+func devicesFromDBSetSubs(devices []DeviceDB, subs int) []model.Device {
 	res := make([]model.Device, len(devices))
 	for i, r := range devices {
-		res[i] = *r.toModel()
+		v := *r.toModel()
+
+		v.Subscriptions = subs
+
+		res[i] = v
 	}
 
 	return res

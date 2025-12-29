@@ -123,19 +123,19 @@ func (s Repository) ListDevices(ctx context.Context, userid int64) ([]model.Devi
 	devices := []DeviceDB{}
 
 	err = dbctx.SelectContext(ctx, &devices, `
-			SELECT d.id, d.user_id, d.name, d.dev_type, d.caption, $1 AS subscriptions,
+			SELECT d.id, d.user_id, d.name, d.dev_type, d.caption,
 				d.created_at, d.updated_at,
-				u.id AS "user.id", u.name AS "user.name", u.username AS "user.username"
+				u.id as "user.id", u.name as "user.name", u.username as "user.username"
 			FROM devices d
 			JOIN users u ON u.id = d.user_id
-			WHERE user_id=$2
+			WHERE user_id=$1
 			ORDER BY d.name`,
-		subscriptions, userid)
+		userid)
 	if err != nil {
 		return nil, aerr.Wrapf(err, "select device failed").WithMeta("user_id", userid)
 	}
 
-	return devicesFromDb(devices), nil
+	return devicesFromDBSetSubs(devices, subscriptions), nil
 }
 
 func (s Repository) DeleteDevice(ctx context.Context, deviceid int64) error {
