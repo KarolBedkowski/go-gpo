@@ -149,7 +149,7 @@ func (s Repository) DeleteDevice(ctx context.Context, deviceid int64) error {
 		return aerr.Wrapf(err, "delete device failed")
 	}
 
-	_, err = dbctx.ExecContext(ctx, "DELETE FROM devices where id=$2", deviceid)
+	_, err = dbctx.ExecContext(ctx, "DELETE FROM devices where id=$1", deviceid)
 	if err != nil {
 		return aerr.Wrapf(err, "delete device failed")
 	}
