@@ -122,7 +122,7 @@ func (s Repository) ListEpisodeActions(
 	// sorting by ts asc
 	slices.Reverse(res)
 
-	return episodesFromDb(res), nil
+	return episodesFromDB(res), nil
 }
 
 func (s Repository) ListFavorites(ctx context.Context, userid int64) ([]model.Episode, error) {
@@ -145,7 +145,7 @@ func (s Repository) ListFavorites(ctx context.Context, userid int64) ([]model.Ep
 		return nil, aerr.Wrapf(err, "query episodes failed").WithTag(aerr.InternalError)
 	}
 
-	return episodesFromDb(res), nil
+	return episodesFromDB(res), nil
 }
 
 func (s Repository) GetLastEpisodeAction(ctx context.Context,

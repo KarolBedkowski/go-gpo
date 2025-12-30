@@ -1,3 +1,4 @@
+// Package pg implement repositories for PsotgreSQL database.
 package pg
 
 //

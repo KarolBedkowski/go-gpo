@@ -98,7 +98,7 @@ func (s Repository) ListUsers(ctx context.Context, activeOnly bool) ([]model.Use
 		return nil, aerr.Wrapf(err, "select users failed").WithTag(aerr.InternalError)
 	}
 
-	return usersFromDb(users), nil
+	return usersFromDB(users), nil
 }
 
 // DeleteUser and all related objects.

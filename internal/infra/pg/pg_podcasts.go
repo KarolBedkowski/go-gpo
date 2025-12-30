@@ -47,7 +47,7 @@ func (s Repository) ListSubscribedPodcasts(ctx context.Context, userid int64, si
 		return nil, aerr.Wrapf(err, "query podcasts failed").WithMeta("user_id", userid, "since", since)
 	}
 
-	return podcastsFromDb(res), nil
+	return podcastsFromDB(res), nil
 }
 
 func (s Repository) ListPodcasts(ctx context.Context, userid int64, since time.Time,
@@ -77,7 +77,7 @@ func (s Repository) ListPodcasts(ctx context.Context, userid int64, since time.T
 		return nil, aerr.Wrapf(err, "query podcasts failed").WithMeta("user_id", userid, "since", since)
 	}
 
-	return podcastsFromDb(res), nil
+	return podcastsFromDB(res), nil
 }
 
 func (s Repository) GetPodcastByID(
