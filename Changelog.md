@@ -18,7 +18,7 @@
 - Logging objects
 - Fix updating podcasts info; load only changed episodes/podcasts
 - Do not remove / suffix from podcasts urls
-- When serach for podcast by url - try match also url without / suffix
+- When search for podcast by url - try match also url without / suffix
 - Fix log podcast downloader
 - Normalize podcast url; similar to mygpo
 - Sanitize episode url when loading podcast data
@@ -29,7 +29,7 @@
 - Check is stderr is console output when configure logging
 - Proper formatting logfmt log format
 - Quote error value in logfmt log format
-- Better loging in podcast downloader
+- Better logging in podcast downloader
 - Drop "text" log format; autodetect format by default
 
 ### Features

@@ -227,13 +227,13 @@ func (m *MaintenanceSrv) importSettings(
 				return aerr.New("episode not found").WithMeta("episode_id", usett.EpisodeID)
 			}
 
-			ue, err := m.episodesRepo.GetEpisode(ctx, uid, *usett.PodcastID, e.URL)
+			uepisode, err := m.episodesRepo.GetEpisode(ctx, uid, *usett.PodcastID, e.URL)
 			if err != nil {
 				return aerr.Wrapf(err, "failed to find episode").WithMeta("userid", uid,
 					"podcastid", *usett.PodcastID, "episode_url", e.URL)
 			}
 
-			usett.EpisodeID = &ue.ID
+			usett.EpisodeID = &uepisode.ID
 		}
 
 		key := usett.ToKey()
