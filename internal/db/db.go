@@ -48,14 +48,6 @@ func (r *Database) Connect(ctx context.Context) error {
 		return aerr.Wrapf(err, "open database failed").WithTag(aerr.InternalError)
 	}
 
-	if err := r.onConnect(ctx, r.db); err != nil {
-		return aerr.Wrapf(err, "call startup scripts error").WithTag(aerr.InternalError)
-	}
-
-	if err := r.db.PingContext(ctx); err != nil {
-		return aerr.Wrapf(err, "ping database failed").WithTag(aerr.InternalError)
-	}
-
 	return nil
 }
 
@@ -79,10 +71,6 @@ func (r *Database) RegisterMetrics(queryTime bool) {
 
 // Shutdown close database. Called by samber/do.
 func (r *Database) Shutdown(ctx context.Context) error {
-	if r.db == nil {
-		return nil
-	}
-
 	if err := r.dbimpl.Close(ctx); err != nil {
 		return fmt.Errorf("close db error: %w", err)
 	}
@@ -122,34 +110,18 @@ func (r *Database) Migrate(ctx context.Context) error {
 }
 
 func (r *Database) GetConnection(ctx context.Context) (*sqlx.Conn, error) {
-	conn, err := r.db.Connx(ctx)
+	conn, err := r.dbimpl.GetConnection(ctx)
 	if err != nil {
 		return nil, aerr.ApplyFor(aerr.ErrDatabase, err, "failed open connection")
-	}
-
-	if err := r.onConnect(ctx, conn); err != nil {
-		return nil, aerr.ApplyFor(aerr.ErrDatabase, err, "failed run onConnect scripts")
 	}
 
 	return conn, nil
 }
 
 func (r *Database) CloseConnection(ctx context.Context, conn *sqlx.Conn) {
-	if err := r.dbimpl.OnCloseConn(ctx, conn); err != nil {
-		log.Logger.Error().Err(err).Msg("run scripts onClose failed")
-	}
-
-	if err := conn.Close(); err != nil {
+	if err := r.dbimpl.CloseConnection(ctx, conn); err != nil {
 		log.Logger.Error().Err(err).Msg("close connection failed")
 	}
-}
-
-func (r *Database) onConnect(ctx context.Context, db sqlx.ExecerContext) error {
-	if err := r.dbimpl.OnOpenConn(ctx, db); err != nil {
-		return aerr.ApplyFor(aerr.ErrDatabase, err, "execute onConnect script failed")
-	}
-
-	return nil
 }
 
 func (r *Database) observeQueryDuration(start time.Time) {

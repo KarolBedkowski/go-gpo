@@ -1,7 +1,7 @@
-package db
+package sqlite
 
 //
-// mod_test.go
+// sqlite_test.go
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
 //
 // Distributed under terms of the GPLv3 license.

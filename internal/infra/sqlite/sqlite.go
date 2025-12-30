@@ -53,7 +53,7 @@ func NewDatabaseI(i do.Injector) (*Database, error) {
 
 func (d *Database) Open(ctx context.Context) (*sqlx.DB, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Msgf("connecting to %q", d.connstr)
+	logger.Debug().Msgf("connecting to sqlite")
 
 	var err error
 
@@ -66,6 +66,15 @@ func (d *Database) Open(ctx context.Context) (*sqlx.DB, error) {
 	d.db.SetConnMaxLifetime(60 * time.Second) //nolint:mnd
 	d.db.SetMaxIdleConns(1)
 	d.db.SetMaxOpenConns(10) //nolint:mnd
+
+	if err := d.onOpenConn(ctx, d.db); err != nil {
+		return nil, aerr.Wrapf(err, "open database failed - run init script error").
+			WithTag(aerr.InternalError)
+	}
+
+	if err := d.db.PingContext(ctx); err != nil {
+		return nil, aerr.Wrapf(err, "ping database failed").WithTag(aerr.InternalError)
+	}
 
 	return d.db, nil
 }
@@ -82,6 +91,31 @@ func (d *Database) Close(ctx context.Context) error {
 	}
 
 	d.db = nil
+
+	return nil
+}
+
+func (d *Database) GetConnection(ctx context.Context) (*sqlx.Conn, error) {
+	conn, err := d.db.Connx(ctx)
+	if err != nil {
+		return nil, aerr.ApplyFor(aerr.ErrDatabase, err, "failed open connection")
+	}
+
+	if err := d.onOpenConn(ctx, conn); err != nil {
+		return nil, aerr.ApplyFor(aerr.ErrDatabase, err, "failed run onOpenConn scripts")
+	}
+
+	return conn, nil
+}
+
+func (d *Database) CloseConnection(ctx context.Context, conn *sqlx.Conn) error {
+	if err := d.onCloseConn(ctx, conn); err != nil {
+		return aerr.ApplyFor(aerr.ErrDatabase, err, "run scripts onClose failed")
+	}
+
+	if err := conn.Close(); err != nil {
+		return aerr.ApplyFor(aerr.ErrDatabase, err, "close connection failed")
+	}
 
 	return nil
 }
@@ -129,30 +163,6 @@ func (d *Database) Migrate(ctx context.Context) error {
 	return nil
 }
 
-func (*Database) OnOpenConn(ctx context.Context, db sqlx.ExecerContext) error {
-	_, err := db.ExecContext(ctx,
-		`PRAGMA temp_store = MEMORY;
-		PRAGMA busy_timeout = 1000;
-		`,
-	)
-	if err != nil {
-		return aerr.Wrap(err)
-	}
-
-	return nil
-}
-
-func (*Database) OnCloseConn(ctx context.Context, db sqlx.ExecerContext) error {
-	_, err := db.ExecContext(ctx,
-		`PRAGMA optimize`,
-	)
-	if err != nil {
-		return aerr.Wrap(err)
-	}
-
-	return nil
-}
-
 func (d *Database) Clear(ctx context.Context) error {
 	sql := `
 		PRAGMA foreign_keys=OFF;
@@ -172,6 +182,32 @@ func (d *Database) Clear(ctx context.Context) error {
 
 	return nil
 }
+
+func (d *Database) onOpenConn(ctx context.Context, db sqlx.ExecerContext) error {
+	_, err := db.ExecContext(ctx,
+		`PRAGMA temp_store = MEMORY;
+		PRAGMA busy_timeout = 1000;
+		`,
+	)
+	if err != nil {
+		return aerr.Wrap(err)
+	}
+
+	return nil
+}
+
+func (d *Database) onCloseConn(ctx context.Context, db sqlx.ExecerContext) error {
+	_, err := db.ExecContext(ctx,
+		`PRAGMA optimize`,
+	)
+	if err != nil {
+		return aerr.Wrap(err)
+	}
+
+	return nil
+}
+
+//------------------------------------------------------------------------------
 
 func prepareSqliteConnstr(connstr string) (string, error) {
 	if connstr == "" {

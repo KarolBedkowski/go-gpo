@@ -97,6 +97,6 @@ type Database interface {
 	Close(ctx context.Context) error
 	Clear(ctx context.Context) error
 	Migrate(ctx context.Context) error
-	OnOpenConn(ctx context.Context, db sqlx.ExecerContext) error
-	OnCloseConn(ctx context.Context, db sqlx.ExecerContext) error
+	GetConnection(ctx context.Context) (*sqlx.Conn, error)
+	CloseConnection(ctx context.Context, conn *sqlx.Conn) error
 }
