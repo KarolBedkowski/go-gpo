@@ -9,6 +9,7 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -94,4 +95,5 @@ type Database interface {
 	Migrate(ctx context.Context) error
 	GetConnection(ctx context.Context) (*sqlx.Conn, error)
 	CloseConnection(ctx context.Context, conn *sqlx.Conn) error
+	GetDB() *sql.DB
 }

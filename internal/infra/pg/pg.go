@@ -9,6 +9,7 @@ package pg
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -22,6 +23,17 @@ import (
 )
 
 type Repository struct{}
+
+//------------------------------------------------------------------------------
+
+const (
+	ConnMaxIdleTime = 300 * time.Second
+	ConnMaxLifetime = 600 * time.Second
+	MaxIdleConns    = 1
+	MaxOpenConns    = 10
+)
+
+// ------------------------------------------------------------------------------
 
 type Database struct {
 	db      *sqlx.DB
@@ -52,13 +64,14 @@ func (d *Database) Open(ctx context.Context) (*sqlx.DB, error) {
 
 	d.db, err = sqlx.Open("pgx", d.connstr)
 	if err != nil {
-		return nil, aerr.Wrapf(err, "open database failed").WithTag(aerr.InternalError).WithMeta("connstr", d.connstr)
+		return nil, aerr.Wrapf(err, "open database failed").WithTag(aerr.InternalError).
+			WithMeta("connstr", d.connstr)
 	}
 
-	d.db.SetConnMaxIdleTime(30 * time.Second) //nolint:mnd
-	d.db.SetConnMaxLifetime(60 * time.Second) //nolint:mnd
-	d.db.SetMaxIdleConns(1)
-	d.db.SetMaxOpenConns(10) //nolint:mnd
+	d.db.SetConnMaxIdleTime(ConnMaxIdleTime)
+	d.db.SetConnMaxLifetime(ConnMaxLifetime)
+	d.db.SetMaxIdleConns(MaxIdleConns)
+	d.db.SetMaxOpenConns(MaxOpenConns)
 
 	if err := d.db.PingContext(ctx); err != nil {
 		return nil, aerr.Wrapf(err, "ping database failed").WithTag(aerr.InternalError)
@@ -79,6 +92,14 @@ func (d *Database) Close(ctx context.Context) error {
 	}
 
 	d.db = nil
+
+	return nil
+}
+
+func (d *Database) GetDB() *sql.DB {
+	if d.db != nil {
+		return d.db.DB
+	}
 
 	return nil
 }

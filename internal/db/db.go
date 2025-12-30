@@ -27,7 +27,6 @@ import (
 type Database struct {
 	dbimpl repository.Database
 
-	db            *sqlx.DB
 	queryDuration *prometheus.HistogramVec
 }
 
@@ -43,7 +42,7 @@ func (r *Database) Connect(ctx context.Context) error {
 	logger := log.Ctx(ctx)
 	logger.Info().Msg("connecting to database")
 
-	r.db, err = r.dbimpl.Open(ctx)
+	_, err = r.dbimpl.Open(ctx)
 	if err != nil {
 		return aerr.Wrapf(err, "open database failed").WithTag(aerr.InternalError)
 	}
@@ -52,8 +51,13 @@ func (r *Database) Connect(ctx context.Context) error {
 }
 
 func (r *Database) RegisterMetrics(queryTime bool) {
+	db := r.dbimpl.GetDB()
+	if db == nil {
+		panic("db not connected")
+	}
+
 	// gather stats from database
-	prometheus.DefaultRegisterer.MustRegister(collectors.NewDBStatsCollector(r.db.DB, "main"))
+	prometheus.DefaultRegisterer.MustRegister(collectors.NewDBStatsCollector(db, "main"))
 
 	if queryTime {
 		r.queryDuration = prometheus.NewHistogramVec(
@@ -71,11 +75,13 @@ func (r *Database) RegisterMetrics(queryTime bool) {
 
 // Shutdown close database. Called by samber/do.
 func (r *Database) Shutdown(ctx context.Context) error {
+	logger := log.Ctx(ctx)
+	logger.Info().Msg("closing db...")
+
 	if err := r.dbimpl.Close(ctx); err != nil {
 		return fmt.Errorf("close db error: %w", err)
 	}
 
-	logger := log.Ctx(ctx)
 	logger.Debug().Msg("db closed")
 
 	return nil
@@ -109,7 +115,7 @@ func (r *Database) Migrate(ctx context.Context) error {
 	return nil
 }
 
-func (r *Database) GetConnection(ctx context.Context) (*sqlx.Conn, error) {
+func (r *Database) getConnection(ctx context.Context) (*sqlx.Conn, error) {
 	conn, err := r.dbimpl.GetConnection(ctx)
 	if err != nil {
 		return nil, aerr.ApplyFor(aerr.ErrDatabase, err, "failed open connection")
@@ -118,7 +124,7 @@ func (r *Database) GetConnection(ctx context.Context) (*sqlx.Conn, error) {
 	return conn, nil
 }
 
-func (r *Database) CloseConnection(ctx context.Context, conn *sqlx.Conn) {
+func (r *Database) closeConnection(ctx context.Context, conn *sqlx.Conn) {
 	if err := r.dbimpl.CloseConnection(ctx, conn); err != nil {
 		log.Logger.Error().Err(err).Msg("close connection failed")
 	}
@@ -154,12 +160,12 @@ func InConnectionR[T any](ctx context.Context, r *Database, //nolint:ireturn
 	start := time.Now()
 	defer r.observeQueryDuration(start)
 
-	conn, err := r.GetConnection(ctx)
+	conn, err := r.getConnection(ctx)
 	if err != nil {
 		return *new(T), err
 	}
 
-	defer r.CloseConnection(ctx, conn)
+	defer r.closeConnection(ctx, conn)
 
 	ctx = WithCtx(ctx, conn)
 
@@ -175,12 +181,12 @@ func InTransaction(ctx context.Context, r *Database, fun func(context.Context) e
 	start := time.Now()
 	defer r.observeQueryDuration(start)
 
-	conn, err := r.GetConnection(ctx)
+	conn, err := r.getConnection(ctx)
 	if err != nil {
 		return err
 	}
 
-	defer r.CloseConnection(ctx, conn)
+	defer r.closeConnection(ctx, conn)
 
 	tx, err := conn.BeginTxx(ctx, nil)
 	if err != nil {
@@ -214,12 +220,12 @@ func InTransactionR[T any](ctx context.Context, r *Database, //nolint:ireturn
 	start := time.Now()
 	defer r.observeQueryDuration(start)
 
-	conn, err := r.GetConnection(ctx)
+	conn, err := r.getConnection(ctx)
 	if err != nil {
 		return *new(T), err
 	}
 
-	defer r.CloseConnection(ctx, conn)
+	defer r.closeConnection(ctx, conn)
 
 	tx, err := conn.BeginTxx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
