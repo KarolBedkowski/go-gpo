@@ -9,7 +9,6 @@ package repository
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -86,10 +85,6 @@ type Repository interface {
 
 type Maintenance interface {
 	Maintenance(ctx context.Context) error
-	Clear(ctx context.Context, db *sql.DB) error
-	Migrate(ctx context.Context, db *sql.DB) error
-	OnOpenConn(ctx context.Context, db sqlx.ExecerContext) error
-	OnCloseConn(ctx context.Context, db sqlx.ExecerContext) error
 }
 
 type Database interface {
