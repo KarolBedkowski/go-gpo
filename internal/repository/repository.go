@@ -91,3 +91,12 @@ type Maintenance interface {
 	OnOpenConn(ctx context.Context, db sqlx.ExecerContext) error
 	OnCloseConn(ctx context.Context, db sqlx.ExecerContext) error
 }
+
+type Database interface {
+	Open(ctx context.Context) (*sqlx.DB, error)
+	Close(ctx context.Context) error
+	Clear(ctx context.Context) error
+	Migrate(ctx context.Context) error
+	OnOpenConn(ctx context.Context, db sqlx.ExecerContext) error
+	OnCloseConn(ctx context.Context, db sqlx.ExecerContext) error
+}

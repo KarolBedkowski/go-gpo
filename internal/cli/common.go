@@ -42,9 +42,10 @@ func wrap(
 		injector := createInjector(ctx)
 
 		do.ProvideNamedValue(injector, "db.driver", dbdriver)
+		do.ProvideNamedValue(injector, "db.connstr", dbconnstr)
 
 		db := do.MustInvoke[*db.Database](injector)
-		if err := db.Connect(ctx, dbdriver, dbconnstr); err != nil {
+		if err := db.Connect(ctx); err != nil {
 			return aerr.Wrapf(err, "connect to database failed")
 		}
 

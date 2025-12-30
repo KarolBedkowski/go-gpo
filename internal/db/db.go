@@ -12,7 +12,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"net/url"
 	"runtime"
 	"time"
 
@@ -26,45 +25,28 @@ import (
 )
 
 type Database struct {
-	db        *sqlx.DB
-	maintRepo repository.Maintenance
+	dbimpl repository.Database
 
+	db            *sqlx.DB
 	queryDuration *prometheus.HistogramVec
 }
 
 func NewDatabaseI(i do.Injector) (*Database, error) {
 	return &Database{
-		maintRepo: do.MustInvoke[repository.Maintenance](i),
+		dbimpl: do.MustInvoke[repository.Database](i),
 	}, nil
 }
 
-func (r *Database) Connect(ctx context.Context, driver, connstr string) error {
+func (r *Database) Connect(ctx context.Context) error {
 	var err error
 
-	switch driver {
-	case "sqlite3":
-		// add some required parameters to connstr
-		connstr, err = prepareSqliteConnstr(connstr)
-		if err != nil {
-			return err
-		}
-	case "postgres":
-		// use pgx driver
-		driver = "pgx"
-	}
-
 	logger := log.Ctx(ctx)
-	logger.Info().Msgf("connecting to %q %q", driver, connstr)
+	logger.Info().Msg("connecting to database")
 
-	r.db, err = sqlx.Open(driver, connstr)
+	r.db, err = r.dbimpl.Open(ctx)
 	if err != nil {
-		return aerr.Wrapf(err, "open database failed").WithTag(aerr.InternalError).WithMeta("connstr", connstr)
+		return aerr.Wrapf(err, "open database failed").WithTag(aerr.InternalError)
 	}
-
-	r.db.SetConnMaxIdleTime(30 * time.Second) //nolint:mnd
-	r.db.SetConnMaxLifetime(60 * time.Second) //nolint:mnd
-	r.db.SetMaxIdleConns(1)
-	r.db.SetMaxOpenConns(10) //nolint:mnd
 
 	if err := r.onConnect(ctx, r.db); err != nil {
 		return aerr.Wrapf(err, "call startup scripts error").WithTag(aerr.InternalError)
@@ -101,7 +83,7 @@ func (r *Database) Shutdown(ctx context.Context) error {
 		return nil
 	}
 
-	if err := r.db.Close(); err != nil {
+	if err := r.dbimpl.Close(ctx); err != nil {
 		return fmt.Errorf("close db error: %w", err)
 	}
 
@@ -115,7 +97,7 @@ func (r *Database) Clear(ctx context.Context) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msg("migration start")
 
-	err := r.maintRepo.Clear(ctx, r.db.DB)
+	err := r.dbimpl.Clear(ctx)
 	if err != nil {
 		return aerr.ApplyFor(aerr.ErrDatabase, err, "migration error")
 	}
@@ -129,7 +111,7 @@ func (r *Database) Migrate(ctx context.Context) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Msg("migration start")
 
-	err := r.maintRepo.Migrate(ctx, r.db.DB)
+	err := r.dbimpl.Migrate(ctx)
 	if err != nil {
 		return aerr.ApplyFor(aerr.ErrDatabase, err, "migration error")
 	}
@@ -153,7 +135,7 @@ func (r *Database) GetConnection(ctx context.Context) (*sqlx.Conn, error) {
 }
 
 func (r *Database) CloseConnection(ctx context.Context, conn *sqlx.Conn) {
-	if err := r.maintRepo.OnCloseConn(ctx, conn); err != nil {
+	if err := r.dbimpl.OnCloseConn(ctx, conn); err != nil {
 		log.Logger.Error().Err(err).Msg("run scripts onClose failed")
 	}
 
@@ -163,7 +145,7 @@ func (r *Database) CloseConnection(ctx context.Context, conn *sqlx.Conn) {
 }
 
 func (r *Database) onConnect(ctx context.Context, db sqlx.ExecerContext) error {
-	if err := r.maintRepo.OnOpenConn(ctx, db); err != nil {
+	if err := r.dbimpl.OnOpenConn(ctx, db); err != nil {
 		return aerr.ApplyFor(aerr.ErrDatabase, err, "execute onConnect script failed")
 	}
 
@@ -189,36 +171,6 @@ func (r *Database) observeQueryDuration(start time.Time) {
 
 	caller := frame.Function
 	r.queryDuration.WithLabelValues(caller).Observe(time.Since(start).Seconds())
-}
-
-//------------------------------------------------------------------------------
-
-func prepareSqliteConnstr(connstr string) (string, error) {
-	if connstr == "" {
-		return "", aerr.ErrInvalidConf.WithUserMsg("invalid (empty) database connection string")
-	}
-
-	if connstr == ":memory:" {
-		return ":memory:?_fk=ON", nil
-	}
-
-	parsed, err := url.Parse(connstr)
-	if err != nil {
-		return "", aerr.ApplyFor(aerr.ErrInvalidConf, err, "", "failed to parse database connections string")
-	}
-
-	if parsed.Path == "" {
-		return "", aerr.ErrInvalidConf.WithUserMsg("invalid database connection string - missing path")
-	}
-
-	query := parsed.Query()
-	if !query.Has("_fk") && !query.Has("__foreign_keys") {
-		query.Set("_fk", "ON")
-	}
-
-	parsed.RawQuery = query.Encode()
-
-	return parsed.String(), err
 }
 
 //------------------------------------------------------------------------------
