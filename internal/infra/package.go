@@ -90,4 +90,15 @@ var Package = do.Package(
 			return nil, ErrInvalidDBInfra
 		}
 	}),
+
+	do.Lazy(func(i do.Injector) (repository.Database, error) {
+		switch do.MustInvokeNamed[string](i, "db.driver") {
+		case "sqlite3":
+			return sqlite.NewDatabaseI(i)
+		case "postgres":
+			return pg.NewDatabaseI(i)
+		default:
+			return nil, ErrInvalidDBInfra
+		}
+	}),
 )

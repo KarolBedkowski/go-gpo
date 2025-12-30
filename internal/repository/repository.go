@@ -86,8 +86,14 @@ type Repository interface {
 
 type Maintenance interface {
 	Maintenance(ctx context.Context) error
-	Clear(ctx context.Context, db *sql.DB) error
-	Migrate(ctx context.Context, db *sql.DB) error
-	OnOpenConn(ctx context.Context, db sqlx.ExecerContext) error
-	OnCloseConn(ctx context.Context, db sqlx.ExecerContext) error
+}
+
+type Database interface {
+	Open(ctx context.Context) (*sqlx.DB, error)
+	Close(ctx context.Context) error
+	Clear(ctx context.Context) error
+	Migrate(ctx context.Context) error
+	GetConnection(ctx context.Context) (*sqlx.Conn, error)
+	CloseConnection(ctx context.Context, conn *sqlx.Conn) error
+	GetDB() *sql.DB
 }

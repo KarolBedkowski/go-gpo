@@ -46,9 +46,10 @@ func prepareTests(t *testing.T) (context.Context, *do.RootScope) {
 	}
 
 	do.ProvideNamedValue(i, "db.driver", dbdriver)
+	do.ProvideNamedValue(i, "db.connstr", dbconnstr)
 
 	db := do.MustInvoke[*db.Database](i)
-	if err := db.Connect(ctx, dbdriver, dbconnstr); err != nil {
+	if err := db.Connect(ctx); err != nil {
 		t.Fatalf("connect to db error: %#+v", err)
 	}
 

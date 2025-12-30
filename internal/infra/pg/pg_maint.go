@@ -9,14 +9,8 @@ package pg
 
 import (
 	"context"
-	"database/sql"
 	"embed"
-	"errors"
-	"fmt"
-	"io/fs"
 
-	"github.com/jmoiron/sqlx"
-	"github.com/pressly/goose/v3"
 	"github.com/rs/zerolog/log"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/db"
@@ -74,77 +68,4 @@ var maintScripts = []string{
 			SELECT NULL FROM episodes AS ed
 			WHERE ed.url = e.url AND ed.action = 'play' AND ed.updated_at > e.updated_at
 		);`,
-}
-
-//------------------------------------------------------------------------------
-
-func (r Repository) Migrate(ctx context.Context, db *sql.DB) error {
-	logger := log.Ctx(ctx)
-
-	migdir, err := fs.Sub(embedMigrations, "migrations")
-	if err != nil {
-		panic(fmt.Errorf("prepare migration fs failed: %w", err))
-	}
-
-	provider, err := goose.NewProvider(goose.DialectPostgres, db, migdir)
-	if err != nil {
-		panic(fmt.Errorf("create goose provider failed: %w", err))
-	}
-
-	ver, err := provider.GetDBVersion(ctx)
-	if err != nil {
-		return aerr.ApplyFor(aerr.ErrDatabase, err, "", "failed to check current database version")
-	}
-
-	logger.Info().Msgf("current database version: %d", ver)
-
-	for {
-		res, err := provider.UpByOne(ctx)
-		if res != nil {
-			logger.Debug().Msgf("migration: %s", res)
-		}
-
-		if errors.Is(err, goose.ErrNoNextVersion) {
-			break
-		} else if err != nil {
-			return aerr.ApplyFor(aerr.ErrDatabase, err, "", "migrate database up failed")
-		}
-	}
-
-	ver, err = provider.GetDBVersion(ctx)
-	if err != nil {
-		return aerr.ApplyFor(aerr.ErrDatabase, err, "", "failed to check current database version")
-	}
-
-	logger.Info().Msgf("migrated database version: %d", ver)
-
-	return nil
-}
-
-func (r Repository) OnOpenConn(ctx context.Context, db sqlx.ExecerContext) error {
-	return nil
-}
-
-func (r Repository) OnCloseConn(ctx context.Context, db sqlx.ExecerContext) error {
-	return nil
-}
-
-func (r Repository) Clear(ctx context.Context, db *sql.DB) error {
-	sqls := []string{
-		"DELETE FROM settings;",
-		"DELETE FROM episodes;",
-		"DELETE FROM podcasts;",
-		"DELETE FROM devices;",
-		"DELETE FROM users;",
-		"DELETE FROM sessions;",
-	}
-
-	for _, sql := range sqls {
-		_, err := db.ExecContext(ctx, sql)
-		if err != nil {
-			return aerr.ApplyFor(aerr.ErrDatabase, err, "clear database failed").WithMeta("sql", sql)
-		}
-	}
-
-	return nil
 }
