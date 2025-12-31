@@ -206,6 +206,14 @@ func (d *Database) Clear(ctx context.Context) error {
 	return nil
 }
 
+func (d *Database) HealthCheck(ctx context.Context) error {
+	if err := d.db.PingContext(ctx); err != nil {
+		return aerr.Wrapf(err, "ping database failed").WithTag(aerr.InternalError)
+	}
+
+	return nil
+}
+
 func (d *Database) onOpenConn(ctx context.Context, db sqlx.ExecerContext) error {
 	_, err := db.ExecContext(ctx,
 		`PRAGMA temp_store = MEMORY;

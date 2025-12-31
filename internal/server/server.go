@@ -19,6 +19,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/render"
 	"github.com/rs/zerolog/hlog"
 	"github.com/rs/zerolog/log"
 	dochi "github.com/samber/do/http/chi/v2"
@@ -56,6 +57,7 @@ func New(injector do.Injector) (*Server, error) {
 	router := chi.NewRouter()
 	router.Use(middleware.Heartbeat(cfg.WebRoot + "/ping"))
 	router.Use(middleware.RealIP)
+	router.Get(cfg.WebRoot+"/health", newHealthChecker(injector))
 
 	router.Group(func(group chi.Router) {
 		group.Use(hlog.RequestIDHandler("req_id", "Request-Id"))
@@ -210,4 +212,31 @@ func (s *Server) newListener(ctx context.Context) (net.Listener, error) {
 	}
 
 	return l, nil
+}
+
+// newHealthChecker create new handler for /health endpoint. Accept only connection from localhost.
+func newHealthChecker(injector do.Injector) http.HandlerFunc {
+	rootscope := injector.RootScope()
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		log.Logger.Debug().Msgf("remote %v", r.RemoteAddr)
+
+		if !strings.HasPrefix(r.RemoteAddr, "localhost") && !strings.HasPrefix(r.RemoteAddr, "127.0.0.1") {
+			w.WriteHeader(http.StatusForbidden)
+
+			return
+		}
+
+		response := "ok"
+
+		for service, err := range rootscope.HealthCheckWithContext(r.Context()) {
+			if err != nil {
+				log.Logger.Error().Err(err).Str("service", service).Msgf("service %q failed on healthcheck", service)
+
+				response = "error"
+			}
+		}
+
+		render.PlainText(w, r, response)
+	}
 }
