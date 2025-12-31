@@ -21,6 +21,7 @@ import (
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/assert"
 	"gitlab.com/kabes/go-gpo/internal/command"
+	"gitlab.com/kabes/go-gpo/internal/config"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/infra"
 	"gitlab.com/kabes/go-gpo/internal/model"
@@ -46,8 +47,8 @@ func prepareTests(t *testing.T) (context.Context, *do.RootScope) {
 		dbconnstr = ":memory:"
 	}
 
-	do.ProvideNamedValue(i, "db.driver", dbdriver)
-	do.ProvideNamedValue(i, "db.connstr", dbconnstr)
+	dbconfig := config.NewDBConfig(dbdriver, dbconnstr)
+	do.ProvideValue(i, dbconfig)
 
 	rdb := do.MustInvoke[repository.Database](i)
 	if _, err := rdb.Open(ctx); err != nil {

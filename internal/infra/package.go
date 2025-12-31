@@ -13,6 +13,7 @@ import (
 
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/config"
 	"gitlab.com/kabes/go-gpo/internal/infra/pg"
 	"gitlab.com/kabes/go-gpo/internal/infra/sqlite"
 	"gitlab.com/kabes/go-gpo/internal/repository"
@@ -23,7 +24,7 @@ var ErrInvalidDBInfra = aerr.New("not found infrastructure for db driver")
 //nolint:gochecknoglobals
 var Package = do.Package(
 	do.Lazy(func(i do.Injector) (repository.Sessions, error) {
-		switch do.MustInvokeNamed[string](i, "db.driver") {
+		switch getDriverName(i) {
 		case "sqlite3": //nolint:goconst
 			return &sqlite.Repository{}, nil
 		case "postgres": //nolint:goconst
@@ -33,7 +34,7 @@ var Package = do.Package(
 		}
 	}),
 	do.Lazy(func(i do.Injector) (repository.Users, error) {
-		switch do.MustInvokeNamed[string](i, "db.driver") {
+		switch getDriverName(i) {
 		case "sqlite3":
 			return &sqlite.Repository{}, nil
 		case "postgres":
@@ -43,7 +44,7 @@ var Package = do.Package(
 		}
 	}),
 	do.Lazy(func(i do.Injector) (repository.Podcasts, error) {
-		switch do.MustInvokeNamed[string](i, "db.driver") {
+		switch getDriverName(i) {
 		case "sqlite3":
 			return &sqlite.Repository{}, nil
 		case "postgres":
@@ -53,7 +54,7 @@ var Package = do.Package(
 		}
 	}),
 	do.Lazy(func(i do.Injector) (repository.Devices, error) {
-		switch do.MustInvokeNamed[string](i, "db.driver") {
+		switch getDriverName(i) {
 		case "sqlite3":
 			return &sqlite.Repository{}, nil
 		case "postgres":
@@ -63,7 +64,7 @@ var Package = do.Package(
 		}
 	}),
 	do.Lazy(func(i do.Injector) (repository.Episodes, error) {
-		switch do.MustInvokeNamed[string](i, "db.driver") {
+		switch getDriverName(i) {
 		case "sqlite3":
 			return &sqlite.Repository{}, nil
 		case "postgres":
@@ -73,7 +74,7 @@ var Package = do.Package(
 		}
 	}),
 	do.Lazy(func(i do.Injector) (repository.Settings, error) {
-		switch do.MustInvokeNamed[string](i, "db.driver") {
+		switch getDriverName(i) {
 		case "sqlite3":
 			return &sqlite.Repository{}, nil
 		case "postgres":
@@ -83,7 +84,7 @@ var Package = do.Package(
 		}
 	}),
 	do.Lazy(func(i do.Injector) (repository.Maintenance, error) {
-		switch do.MustInvokeNamed[string](i, "db.driver") {
+		switch getDriverName(i) {
 		case "sqlite3":
 			return &sqlite.Repository{}, nil
 		case "postgres":
@@ -94,7 +95,7 @@ var Package = do.Package(
 	}),
 
 	do.Lazy(func(i do.Injector) (repository.Database, error) {
-		switch do.MustInvokeNamed[string](i, "db.driver") {
+		switch getDriverName(i) {
 		case "sqlite3":
 			return sqlite.NewDatabaseI(i)
 		case "postgres":
@@ -117,3 +118,9 @@ var Package = do.Package(
 		return nil, aerr.Wrapf(err, "get database connection failed")
 	}),
 )
+
+func getDriverName(i do.Injector) string {
+	dbconf := do.MustInvoke[config.DBConfig](i)
+
+	return dbconf.Driver
+}

@@ -21,6 +21,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/config"
 )
 
 type Repository struct{}
@@ -42,18 +43,11 @@ type Database struct {
 }
 
 func NewDatabaseI(i do.Injector) (*Database, error) {
-	connstr, err := do.InvokeNamed[string](i, "db.connstr")
-	if err != nil {
-		return nil, aerr.Wrapf(err, "invoke db.connstr failed").WithTag(aerr.InternalError)
-	}
-
-	if connstr == "" {
-		return nil, aerr.Wrapf(err, "empty db.connstr")
-	}
+	dbconf := do.MustInvoke[config.DBConfig](i)
 
 	return &Database{
 		db:      nil,
-		connstr: connstr,
+		connstr: dbconf.Connstr,
 	}, nil
 }
 

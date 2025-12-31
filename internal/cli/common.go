@@ -14,6 +14,7 @@ import (
 	"github.com/samber/do/v2"
 	"github.com/urfave/cli/v3"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/config"
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
@@ -27,22 +28,14 @@ func wrap(
 
 		ctx = log.Logger.WithContext(ctx)
 
-		dbconnstr := clicmd.String("db.connstr")
-		if dbconnstr == "" {
-			return aerr.New("db.connstr argument can't be empty").WithTag(aerr.ValidationError)
-		}
+		dbconf := config.NewDBConfig(clicmd.String("db.driver"), clicmd.String("db.connstr"))
 
-		dbdriver, ok := validateDriverName(clicmd.String("db.driver"))
-		if dbdriver == "" {
-			return aerr.New("db.driver argument can't be empty").WithTag(aerr.ValidationError)
-		} else if !ok {
-			return aerr.New("invalid (unsupported) db.driver").WithTag(aerr.ValidationError)
+		if err := dbconf.Validate(); err != nil {
+			return aerr.Wrapf(err, "invalid database configuration")
 		}
 
 		injector := createInjector(ctx)
-
-		do.ProvideNamedValue(injector, "db.driver", dbdriver)
-		do.ProvideNamedValue(injector, "db.connstr", dbconnstr)
+		do.ProvideValue(injector, dbconf)
 
 		db := do.MustInvoke[repository.Database](injector)
 		if _, err := db.Open(ctx); err != nil {
@@ -53,15 +46,4 @@ func wrap(
 
 		return cmdfunc(ctx, clicmd, injector)
 	}
-}
-
-func validateDriverName(driver string) (string, bool) {
-	switch driver {
-	case "sqlite", "sqlite3":
-		return "sqlite3", true
-	case "pg", "postgresql", "postgres":
-		return "postgres", true
-	}
-
-	return driver, false
 }
