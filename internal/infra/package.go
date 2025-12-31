@@ -9,6 +9,8 @@ package infra
 //
 
 import (
+	"database/sql"
+
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/infra/pg"
@@ -100,5 +102,18 @@ var Package = do.Package(
 		default:
 			return nil, ErrInvalidDBInfra
 		}
+	}),
+
+	do.Transient(func(i do.Injector) (*sql.DB, error) {
+		dbimpl, err := do.Invoke[repository.Database](i)
+		if err != nil {
+			return nil, aerr.Wrapf(err, "get database failed")
+		}
+
+		if db := dbimpl.GetDB(); db != nil {
+			return db, nil
+		}
+
+		return nil, aerr.Wrapf(err, "get database connection failed")
 	}),
 )

@@ -53,12 +53,7 @@ func (q *queryObserver) observeQueryDuration(start time.Time) {
 var observer = queryObserver{} //nolint: gochecknoglobals
 
 func RegisterMetrics(i do.Injector, queryTime bool) {
-	dbimpl := do.MustInvoke[repository.Database](i)
-
-	db := dbimpl.GetDB()
-	if db == nil {
-		panic("db not connected")
-	}
+	db := do.MustInvoke[*sql.DB](i)
 
 	// gather stats from database
 	prometheus.DefaultRegisterer.MustRegister(collectors.NewDBStatsCollector(db, "main"))
@@ -196,4 +191,4 @@ func InTransactionR[T any](ctx context.Context, database repository.Database, //
 	return res, nil
 }
 
-// ------------------------------------------------------
+//------------------------------------------------------------------------------
