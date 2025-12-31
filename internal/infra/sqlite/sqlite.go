@@ -263,6 +263,14 @@ func prepareSqliteConnstr(connstr string) (string, error) {
 		query.Set("_fk", "ON")
 	}
 
+	if !query.Has("_journal_mode") {
+		query.Set("_journal_mode", "WAL")
+	}
+
+	if !query.Has("_synchronous") {
+		query.Set("_synchronous", "NORMAL")
+	}
+
 	parsed.RawQuery = query.Encode()
 
 	return parsed.String(), err

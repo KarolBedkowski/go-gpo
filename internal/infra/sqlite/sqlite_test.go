@@ -22,11 +22,19 @@ func TestPrepareSqliteConnstr(t *testing.T) {
 	}{
 		{"", "", true},
 		{"?abc?_fk=1", "", true},
-		{"/abc/abc?_fk=1", "/abc/abc?_fk=1", false},
-		{"/abc/abc?_fk=0", "/abc/abc?_fk=0", false},
-		{"/abc/abc?__foreign_keys=ON", "/abc/abc?__foreign_keys=ON", false},
-		{"/abc/abc", "/abc/abc?_fk=ON", false},
-		{"/abc/abc?_abc=123", "/abc/abc?_abc=123&_fk=ON", false},
+		{"/abc/abc?_fk=1", "/abc/abc?_fk=1&_journal_mode=WAL&_synchronous=NORMAL", false},
+		{"/abc/abc?_fk=0", "/abc/abc?_fk=0&_journal_mode=WAL&_synchronous=NORMAL", false},
+		{"/abc/abc?__foreign_keys=ON", "/abc/abc?__foreign_keys=ON&_journal_mode=WAL&_synchronous=NORMAL", false},
+		{"/abc/abc", "/abc/abc?_fk=ON&_journal_mode=WAL&_synchronous=NORMAL", false},
+		{"/abc/abc?_abc=123", "/abc/abc?_abc=123&_fk=ON&_journal_mode=WAL&_synchronous=NORMAL", false},
+		{
+			"/abc/abc?_abc=123&_journal_mode=WAL&_synchronous=NORMAL",
+			"/abc/abc?_abc=123&_fk=ON&_journal_mode=WAL&_synchronous=NORMAL", false,
+		},
+		{
+			"/abc/abc?_abc=123&_journal_mode=AAA&_synchronous=BBB",
+			"/abc/abc?_abc=123&_fk=ON&_journal_mode=AAA&_synchronous=BBB", false,
+		},
 	}
 
 	for _, tt := range tests {
