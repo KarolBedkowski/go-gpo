@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/model"
 )
 
@@ -88,12 +89,21 @@ type Maintenance interface {
 	Maintenance(ctx context.Context) error
 }
 
+//------------------------------------------------------------------------------
+
 type Database interface {
+	do.ShutdownerWithContextAndError
+
+	// Open and check database, return DB object and error.
 	Open(ctx context.Context) (*sqlx.DB, error)
-	Close(ctx context.Context) error
+	// Clear database (remove all data). Used in tests.
 	Clear(ctx context.Context) error
+	// Migrate database to highest version.
 	Migrate(ctx context.Context) error
+	// GetConnection create and return new database connection.
 	GetConnection(ctx context.Context) (*sqlx.Conn, error)
+	// CloseConnection close connection.
 	CloseConnection(ctx context.Context, conn *sqlx.Conn) error
+	// GetDB return underlying sql.DB object.
 	GetDB() *sql.DB
 }

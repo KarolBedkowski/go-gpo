@@ -81,10 +81,13 @@ func (d *Database) Open(ctx context.Context) (*sqlx.DB, error) {
 	return d.db, nil
 }
 
-func (d *Database) Close(ctx context.Context) error {
+func (d *Database) Shutdown(ctx context.Context) error {
 	if d.db == nil {
 		return nil
 	}
+
+	logger := log.Ctx(ctx)
+	logger.Debug().Msg("closing database...")
 
 	if err := d.db.Close(); err != nil {
 		d.db = nil
