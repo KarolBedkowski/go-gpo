@@ -11,7 +11,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"runtime"
 	"time"
 
@@ -131,9 +130,7 @@ func InTransaction(ctx context.Context, database repository.Database, fun func(c
 	err = fun(ctx)
 	if err != nil {
 		if err := tx.Rollback(); err != nil {
-			merr := errors.Join(err, fmt.Errorf("rollback error: %w", err))
-
-			return aerr.ApplyFor(aerr.ErrDatabase, merr, "execute func in trans and rollback error")
+			return errors.Join(err, aerr.ApplyFor(aerr.ErrDatabase, err, "execute func and rollback error"))
 		}
 
 		return err
@@ -176,9 +173,7 @@ func InTransactionR[T any](ctx context.Context, database repository.Database, //
 	res, err := fun(ctx)
 	if err != nil {
 		if err := tx.Rollback(); err != nil {
-			merr := errors.Join(err, fmt.Errorf("commit error: %w", err))
-
-			return res, aerr.ApplyFor(aerr.ErrDatabase, merr, "execute func in trans and rollback error")
+			return res, errors.Join(err, aerr.ApplyFor(aerr.ErrDatabase, err, "execute func and rollback error"))
 		}
 
 		return res, err
