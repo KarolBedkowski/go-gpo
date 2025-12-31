@@ -24,6 +24,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/infra"
 	"gitlab.com/kabes/go-gpo/internal/model"
+	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
 func prepareTests(t *testing.T) (context.Context, *do.RootScope) {
@@ -48,16 +49,16 @@ func prepareTests(t *testing.T) (context.Context, *do.RootScope) {
 	do.ProvideNamedValue(i, "db.driver", dbdriver)
 	do.ProvideNamedValue(i, "db.connstr", dbconnstr)
 
-	db := do.MustInvoke[*db.Database](i)
-	if err := db.Connect(ctx); err != nil {
+	rdb := do.MustInvoke[repository.Database](i)
+	if _, err := rdb.Open(ctx); err != nil {
 		t.Fatalf("connect to db error: %#+v", err)
 	}
 
-	if err := db.Migrate(ctx); err != nil {
+	if err := rdb.Migrate(ctx); err != nil {
 		t.Fatalf("prepare db error: %#+v", err)
 	}
 
-	if err := db.Clear(ctx); err != nil {
+	if err := rdb.Clear(ctx); err != nil {
 		t.Fatalf("clear db error: %#+v", err)
 	}
 

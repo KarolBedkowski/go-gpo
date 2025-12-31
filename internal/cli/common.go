@@ -14,7 +14,7 @@ import (
 	"github.com/samber/do/v2"
 	"github.com/urfave/cli/v3"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
-	"gitlab.com/kabes/go-gpo/internal/db"
+	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
 func wrap(
@@ -44,8 +44,8 @@ func wrap(
 		do.ProvideNamedValue(injector, "db.driver", dbdriver)
 		do.ProvideNamedValue(injector, "db.connstr", dbconnstr)
 
-		db := do.MustInvoke[*db.Database](injector)
-		if err := db.Connect(ctx); err != nil {
+		db := do.MustInvoke[repository.Database](injector)
+		if _, err := db.Open(ctx); err != nil {
 			return aerr.Wrapf(err, "connect to database failed")
 		}
 

@@ -27,7 +27,6 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/config"
-	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/repository"
 	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
@@ -324,12 +323,12 @@ func newRecoverMiddleware(next http.Handler) http.Handler {
 type sessionMiddleware func(http.Handler) http.Handler
 
 func newSessionMiddleware(i do.Injector) (sessionMiddleware, error) {
-	db := do.MustInvoke[*db.Database](i)
+	dbi := do.MustInvoke[repository.Database](i)
 	repo := do.MustInvoke[repository.Sessions](i)
 	cfg := do.MustInvoke[*Configuration](i)
 
 	session.RegisterFn("db", func() session.Provider {
-		return service.NewSessionProvider(db, repo, sessionMaxLifetime)
+		return service.NewSessionProvider(dbi, repo, sessionMaxLifetime)
 	})
 
 	sess, err := session.Sessioner(session.Options{

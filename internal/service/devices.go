@@ -22,14 +22,14 @@ import (
 )
 
 type DevicesSrv struct {
-	db          *db.Database
+	dbi         repository.Database
 	usersRepo   repository.Users
 	devicesRepo repository.Devices
 }
 
 func NewDevicesSrv(i do.Injector) (*DevicesSrv, error) {
 	return &DevicesSrv{
-		db:          do.MustInvoke[*db.Database](i),
+		dbi:         do.MustInvoke[repository.Database](i),
 		usersRepo:   do.MustInvoke[repository.Users](i),
 		devicesRepo: do.MustInvoke[repository.Devices](i),
 	}, nil
@@ -42,7 +42,7 @@ func (d *DevicesSrv) UpdateDevice(ctx context.Context, cmd *command.UpdateDevice
 	}
 
 	//nolint:wrapcheck
-	return db.InTransaction(ctx, d.db, func(ctx context.Context) error {
+	return db.InTransaction(ctx, d.dbi, func(ctx context.Context) error {
 		user, err := d.usersRepo.GetUser(ctx, cmd.UserName)
 		if errors.Is(err, common.ErrNoData) {
 			return common.ErrUnknownUser
@@ -77,7 +77,7 @@ func (d *DevicesSrv) ListDevices(ctx context.Context, query *query.GetDevicesQue
 		return nil, aerr.Wrapf(err, "validate query failed")
 	}
 
-	devices, err := db.InConnectionR(ctx, d.db, func(ctx context.Context) ([]model.Device, error) {
+	devices, err := db.InConnectionR(ctx, d.dbi, func(ctx context.Context) ([]model.Device, error) {
 		user, err := d.usersRepo.GetUser(ctx, query.UserName)
 		if errors.Is(err, common.ErrNoData) {
 			return nil, common.ErrUnknownUser
@@ -105,7 +105,7 @@ func (d *DevicesSrv) DeleteDevice(ctx context.Context, cmd *command.DeleteDevice
 	}
 
 	//nolint:wrapcheck
-	return db.InTransaction(ctx, d.db, func(ctx context.Context) error {
+	return db.InTransaction(ctx, d.dbi, func(ctx context.Context) error {
 		user, err := d.usersRepo.GetUser(ctx, cmd.UserName)
 		if errors.Is(err, common.ErrNoData) {
 			return common.ErrUnknownUser

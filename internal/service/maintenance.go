@@ -20,7 +20,7 @@ import (
 )
 
 type MaintenanceSrv struct {
-	db           *db.Database
+	dbi          repository.Database
 	maintRepo    repository.Maintenance
 	usersRepo    repository.Users
 	devicesRepo  repository.Devices
@@ -31,7 +31,7 @@ type MaintenanceSrv struct {
 
 func NewMaintenanceSrv(i do.Injector) (*MaintenanceSrv, error) {
 	return &MaintenanceSrv{
-		db:           do.MustInvoke[*db.Database](i),
+		dbi:          do.MustInvoke[repository.Database](i),
 		maintRepo:    do.MustInvoke[repository.Maintenance](i),
 		usersRepo:    do.MustInvoke[repository.Users](i),
 		devicesRepo:  do.MustInvoke[repository.Devices](i),
@@ -42,7 +42,7 @@ func NewMaintenanceSrv(i do.Injector) (*MaintenanceSrv, error) {
 }
 
 func (m *MaintenanceSrv) MaintainDatabase(ctx context.Context) error {
-	_, err := db.InConnectionR(ctx, m.db, func(ctx context.Context) (any, error) {
+	_, err := db.InTransactionR(ctx, m.dbi, func(ctx context.Context) (any, error) {
 		return nil, m.maintRepo.Maintenance(ctx)
 	})
 	if err != nil {
@@ -53,7 +53,7 @@ func (m *MaintenanceSrv) MaintainDatabase(ctx context.Context) error {
 }
 
 func (m *MaintenanceSrv) ExportAll(ctx context.Context) ([]model.ExportStruct, error) {
-	res, err := db.InConnectionR(ctx, m.db, func(ctx context.Context) ([]model.ExportStruct, error) {
+	res, err := db.InConnectionR(ctx, m.dbi, func(ctx context.Context) ([]model.ExportStruct, error) {
 		res := []model.ExportStruct{}
 
 		users, err := m.usersRepo.ListUsers(ctx, false)
@@ -103,7 +103,7 @@ func (m *MaintenanceSrv) ExportAll(ctx context.Context) ([]model.ExportStruct, e
 func (m *MaintenanceSrv) ImportAll(ctx context.Context, data []model.ExportStruct) error {
 	logger := zerolog.Ctx(ctx)
 
-	err := db.InTransaction(ctx, m.db, func(ctx context.Context) error {
+	err := db.InTransaction(ctx, m.dbi, func(ctx context.Context) error {
 		for _, record := range data {
 			logger.Info().Msgf("loading user %q", record.User.UserName)
 

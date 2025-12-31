@@ -22,16 +22,17 @@ import (
 )
 
 type UsersSrv struct {
-	db         *db.Database
+	dbi        repository.Database
 	usersRepo  repository.Users
 	passHasher PasswordHasher
 }
 
 func NewUsersSrv(i do.Injector) (*UsersSrv, error) {
-	db := do.MustInvoke[*db.Database](i)
-	repo := do.MustInvoke[repository.Users](i)
-
-	return &UsersSrv{db, repo, BCryptPasswordHasher{}}, nil
+	return &UsersSrv{
+		dbi:        do.MustInvoke[repository.Database](i),
+		usersRepo:  do.MustInvoke[repository.Users](i),
+		passHasher: BCryptPasswordHasher{},
+	}, nil
 }
 
 func (u *UsersSrv) LoginUser(ctx context.Context, username, password string) (*model.User, error) {
@@ -43,7 +44,7 @@ func (u *UsersSrv) LoginUser(ctx context.Context, username, password string) (*m
 		return nil, aerr.ErrValidation.WithMsg("password can't be empty")
 	}
 
-	user, err := db.InConnectionR(ctx, u.db, func(ctx context.Context) (*model.User, error) {
+	user, err := db.InConnectionR(ctx, u.dbi, func(ctx context.Context) (*model.User, error) {
 		return u.usersRepo.GetUser(ctx, username)
 	})
 
@@ -76,7 +77,7 @@ func (u *UsersSrv) AddUser(ctx context.Context, cmd *command.NewUserCmd) (comman
 	}
 
 	//nolint:wrapcheck
-	return db.InTransactionR(ctx, u.db, func(ctx context.Context) (command.NewUserCmdResult, error) {
+	return db.InTransactionR(ctx, u.dbi, func(ctx context.Context) (command.NewUserCmdResult, error) {
 		// is user exists?
 		_, err := u.usersRepo.GetUser(ctx, cmd.UserName)
 		switch {
@@ -123,7 +124,7 @@ func (u *UsersSrv) ChangePassword(ctx context.Context, cmd *command.ChangeUserPa
 	}
 
 	//nolint: wrapcheck
-	return db.InTransaction(ctx, u.db, func(ctx context.Context) error {
+	return db.InTransaction(ctx, u.dbi, func(ctx context.Context) error {
 		// is user exists?
 		user, err := u.usersRepo.GetUser(ctx, cmd.UserName)
 
@@ -151,7 +152,7 @@ func (u *UsersSrv) ChangePassword(ctx context.Context, cmd *command.ChangeUserPa
 }
 
 func (u *UsersSrv) GetUsers(ctx context.Context, activeOnly bool) ([]model.User, error) {
-	users, err := db.InConnectionR(ctx, u.db, func(ctx context.Context) ([]model.User, error) {
+	users, err := db.InConnectionR(ctx, u.dbi, func(ctx context.Context) ([]model.User, error) {
 		return u.usersRepo.ListUsers(ctx, activeOnly)
 	})
 	if err != nil {
@@ -167,7 +168,7 @@ func (u *UsersSrv) LockAccount(ctx context.Context, cmd command.LockAccountCmd) 
 	}
 
 	//nolint:wrapcheck
-	return db.InTransaction(ctx, u.db, func(ctx context.Context) error {
+	return db.InTransaction(ctx, u.dbi, func(ctx context.Context) error {
 		udb, err := u.usersRepo.GetUser(ctx, cmd.UserName)
 		if errors.Is(err, common.ErrNoData) {
 			return common.ErrUnknownUser
@@ -191,7 +192,7 @@ func (u *UsersSrv) DeleteUser(ctx context.Context, cmd *command.DeleteUserCmd) e
 	}
 
 	//nolint:wrapcheck
-	return db.InTransaction(ctx, u.db, func(ctx context.Context) error {
+	return db.InTransaction(ctx, u.dbi, func(ctx context.Context) error {
 		user, err := u.usersRepo.GetUser(ctx, cmd.UserName)
 		if errors.Is(err, common.ErrNoData) {
 			return common.ErrUnknownUser

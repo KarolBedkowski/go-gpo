@@ -79,9 +79,10 @@ CREATE INDEX podcasts_user_id_idx ON podcasts (user_id);
 CREATE INDEX podcasts_idx1 ON podcasts (updated_at, subscribed);
 CREATE INDEX podcasts_url ON podcasts (url);
 CREATE INDEX episodes_device_id_idx ON episodes (device_id);
-CREATE INDEX episodes_guid ON episodes(guid);
+CREATE INDEX episodes_guid ON episodes (guid);
 CREATE INDEX episodes_idx1 ON episodes (podcast_id, device_id, updated_at);
-CREATE INDEX episodes_idx2 ON episodes (podcast_id, url);
+--CREATE INDEX episodes_idx2 ON episodes (podcast_id, url);
+CREATE INDEX episodes_idx3 ON episodes USING btree (podcast_id, device_id, updated_at desc);
 CREATE INDEX episodes_podcast_id_idx ON episodes (podcast_id);
 CREATE INDEX expisode_action ON episodes (action);
 CREATE INDEX expisode_updated_at ON episodes (updated_at);
@@ -89,6 +90,7 @@ CREATE INDEX expisode_url ON episodes (url);
 CREATE INDEX podcasts_meta_updated_at ON podcasts (metadata_updated_at);
 CREATE UNIQUE INDEX podcast_user_uniq ON podcasts (user_id, url);
 CREATE UNIQUE INDEX settings_idx ON settings(user_id, scope, podcast_id, episode_id, device_id, key);
+
 -- +goose StatementEnd
 
 -- +goose Down

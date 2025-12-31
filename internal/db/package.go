@@ -11,6 +11,4 @@ package db
 import "github.com/samber/do/v2"
 
 //nolint:gochecknoglobals
-var Package = do.Package(
-	do.Lazy(NewDatabaseI),
-)
+var Package = do.Package()
