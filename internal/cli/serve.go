@@ -132,8 +132,7 @@ func (s *Server) start(ctx context.Context, injector do.Injector, cfg *server.Co
 
 	s.startSystemdWatchdog(logger)
 
-	database := do.MustInvoke[*db.Database](injector)
-	database.RegisterMetrics(cfg.DebugFlags.HasFlag(config.DebugDBQueryMetrics))
+	db.RegisterMetrics(injector, cfg.DebugFlags.HasFlag(config.DebugDBQueryMetrics))
 
 	ctx, cancel := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGINT)
 	defer cancel()

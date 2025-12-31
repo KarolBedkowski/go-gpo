@@ -20,7 +20,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/config"
 )
 
-//nolint:forbidigo
+//nolint:forbidigo,funlen
 func Main() {
 	cli.VersionFlag = &cli.BoolFlag{
 		Name:    "print-version",
@@ -33,11 +33,20 @@ func Main() {
 		Version: config.VersionString,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:      "database",
-				Value:     "database.sqlite?_fk=1&_journal_mode=WAL&_synchronous=NORMAL",
-				Usage:     "Database file",
+				Name:      "db.driver",
+				Value:     "sqlite",
+				Usage:     "Database driver name (sqlite, postgresql)",
 				Aliases:   []string{"D"},
-				Sources:   cli.EnvVars("GOGPO_DB"),
+				Sources:   cli.EnvVars("GOGPO_DB_DRIVER"),
+				Validator: dbConnstrValidator,
+				Config:    cli.StringConfig{TrimSpace: true},
+			},
+			&cli.StringFlag{
+				Name:      "db.connstr",
+				Value:     "database.sqlite?_fk=1&_journal_mode=WAL&_synchronous=NORMAL",
+				Usage:     "Database connection string",
+				Aliases:   []string{"C"},
+				Sources:   cli.EnvVars("GOGPO_DB_CONNSTR"),
 				Validator: dbConnstrValidator,
 				Config:    cli.StringConfig{TrimSpace: true},
 			},
@@ -100,6 +109,8 @@ func databaseSubCmd() *cli.Command {
 		Commands: []*cli.Command{
 			newMigrateCmd(),
 			newMaintenanceCmd(),
+			newDataExportCmd(),
+			newDataImportCmd(),
 		},
 	}
 }

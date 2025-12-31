@@ -25,7 +25,7 @@ import (
 )
 
 type EpisodesSrv struct {
-	db           *db.Database
+	dbi          repository.Database
 	episodesRepo repository.Episodes
 	devicesRepo  repository.Devices
 	podcastsRepo repository.Podcasts
@@ -34,7 +34,7 @@ type EpisodesSrv struct {
 
 func NewEpisodesSrv(i do.Injector) (*EpisodesSrv, error) {
 	return &EpisodesSrv{
-		db:           do.MustInvoke[*db.Database](i),
+		dbi:          do.MustInvoke[repository.Database](i),
 		episodesRepo: do.MustInvoke[repository.Episodes](i),
 		devicesRepo:  do.MustInvoke[repository.Devices](i),
 		podcastsRepo: do.MustInvoke[repository.Podcasts](i),
@@ -52,7 +52,7 @@ func (e *EpisodesSrv) GetEpisodes(ctx context.Context, query *query.GetEpisodesQ
 	}
 
 	//nolint:wrapcheck
-	return db.InConnectionR(ctx, e.db, func(ctx context.Context) ([]model.Episode, error) {
+	return db.InConnectionR(ctx, e.dbi, func(ctx context.Context) ([]model.Episode, error) {
 		return e.getEpisodes(
 			ctx,
 			query.UserName,
@@ -71,7 +71,7 @@ func (e *EpisodesSrv) GetEpisodesByPodcast(ctx context.Context, query *query.Get
 		return nil, aerr.Wrapf(err, "validate query failed")
 	}
 	//nolint:wrapcheck
-	return db.InConnectionR(ctx, e.db, func(ctx context.Context) ([]model.Episode, error) {
+	return db.InConnectionR(ctx, e.dbi, func(ctx context.Context) ([]model.Episode, error) {
 		user, err := e.usersRepo.GetUser(ctx, query.UserName)
 		if errors.Is(err, common.ErrNoData) {
 			return nil, common.ErrUnknownUser
@@ -100,7 +100,7 @@ func (e *EpisodesSrv) AddAction(ctx context.Context, cmd *command.AddActionCmd) 
 	}
 
 	//nolint:wrapcheck
-	return db.InTransaction(ctx, e.db, func(ctx context.Context) error {
+	return db.InTransaction(ctx, e.dbi, func(ctx context.Context) error {
 		user, err := e.usersRepo.GetUser(ctx, cmd.UserName)
 		if errors.Is(err, common.ErrNoData) {
 			return common.ErrUnknownUser
@@ -160,7 +160,7 @@ func (e *EpisodesSrv) GetUpdates(ctx context.Context, query *query.GetEpisodeUpd
 		return nil, aerr.Wrapf(err, "validate query failed")
 	}
 
-	episodes, err := db.InConnectionR(ctx, e.db, func(ctx context.Context) ([]model.Episode, error) {
+	episodes, err := db.InConnectionR(ctx, e.dbi, func(ctx context.Context) ([]model.Episode, error) {
 		return e.getEpisodes(ctx, query.UserName, query.DeviceName, "", query.Since, true, 0)
 	})
 	if err != nil {
@@ -184,7 +184,7 @@ func (e *EpisodesSrv) GetLastActions(ctx context.Context, query *query.GetLastEp
 		return nil, aerr.Wrapf(err, "validate query failed")
 	}
 
-	episodes, err := db.InConnectionR(ctx, e.db, func(ctx context.Context) ([]model.Episode, error) {
+	episodes, err := db.InConnectionR(ctx, e.dbi, func(ctx context.Context) ([]model.Episode, error) {
 		return e.getEpisodes(ctx, query.UserName, "", "", query.Since, false, query.Limit)
 	})
 	if err != nil {
@@ -199,7 +199,7 @@ func (e *EpisodesSrv) GetFavorites(ctx context.Context, username string) ([]mode
 		return nil, common.ErrEmptyUsername
 	}
 
-	episodes, err := db.InConnectionR(ctx, e.db, func(ctx context.Context) ([]model.Episode, error) {
+	episodes, err := db.InConnectionR(ctx, e.dbi, func(ctx context.Context) ([]model.Episode, error) {
 		user, err := e.usersRepo.GetUser(ctx, username)
 		if errors.Is(err, common.ErrNoData) {
 			return nil, common.ErrUnknownUser

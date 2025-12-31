@@ -1,4 +1,4 @@
-package sqlite
+package pg
 
 //
 // podcasts.go
@@ -17,7 +17,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/model"
 )
 
-func (Repository) GetSettings(ctx context.Context, key *model.SettingsKey) (model.Settings, error) {
+func (s Repository) GetSettings(ctx context.Context, key *model.SettingsKey) (model.Settings, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Object("key", key).Msg("get settings")
 
@@ -26,7 +26,11 @@ func (Repository) GetSettings(ctx context.Context, key *model.SettingsKey) (mode
 
 	query := `
 		SELECT user_id, podcast_id, episode_id, device_id, scope, key, value
-		FROM settings WHERE user_id=? AND scope=? AND podcast_id IS ? AND episode_id IS ? and device_id IS ?`
+		FROM settings
+		WHERE user_id=$1 AND scope=$2
+			AND NOT (podcast_id IS DISTINCT FROM $3)
+			AND NOT (episode_id IS DISTINCT FROM $4)
+			AND NOT (device_id IS DISTINCT FROM $5)`
 
 	err := dbctx.SelectContext(ctx, &res, query,
 		key.UserID, key.Scope, key.PodcastID, key.EpisodeID, key.DeviceID)
@@ -43,7 +47,7 @@ func (Repository) GetSettings(ctx context.Context, key *model.SettingsKey) (mode
 }
 
 // SaveSettings insert or update setting.
-func (Repository) SaveSettings(ctx context.Context, key *model.SettingsKey, value string,
+func (s Repository) SaveSettings(ctx context.Context, key *model.SettingsKey, value string,
 ) error {
 	logger := log.Ctx(ctx)
 	logger.Debug().Object("key", key).Str("value", value).Msg("save settings")
@@ -52,8 +56,12 @@ func (Repository) SaveSettings(ctx context.Context, key *model.SettingsKey, valu
 
 	_, err := dbctx.ExecContext(
 		ctx, `
-		DELETE from settings
-		WHERE user_id=? AND scope=? AND podcast_id IS ? AND episode_id IS ? AND device_id IS ? AND key=?`,
+		DELETE FROM settings
+		WHERE user_id=$1 AND scope=$2
+			AND NOT (podcast_id IS DISTINCT FROM $3)
+			AND NOT (episode_id IS DISTINCT FROM $4)
+			AND NOT (device_id IS DISTINCT FROM $5)
+			AND key=$6`,
 		key.UserID, key.Scope, key.PodcastID, key.EpisodeID, key.DeviceID, key.Key,
 	)
 	if err != nil {
@@ -68,7 +76,7 @@ func (Repository) SaveSettings(ctx context.Context, key *model.SettingsKey, valu
 	_, err = dbctx.ExecContext(
 		ctx, `
 		INSERT INTO settings (user_id, scope, podcast_id, episode_id, device_id, key, value)
-		VALUES(?, ?, ?, ?, ?, ?, ?)`,
+		VALUES($1, $2, $3, $4, $5, $6, $7)`,
 		key.UserID, key.Scope, key.PodcastID, key.EpisodeID, key.DeviceID, key.Key, value,
 	)
 	if err != nil {
@@ -87,7 +95,7 @@ func (Repository) GetAllSettings(ctx context.Context, userid int64) ([]model.Use
 
 	query := `
 		SELECT user_id, podcast_id, episode_id, device_id, scope, key, value
-		FROM settings WHERE user_id=?`
+		FROM settings WHERE user_id=$1`
 
 	err := dbctx.SelectContext(ctx, &dbsettings, query, userid)
 	if err != nil {

@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -23,6 +24,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/infra"
 	"gitlab.com/kabes/go-gpo/internal/model"
+	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
 func prepareTests(t *testing.T) (context.Context, *do.RootScope) {
@@ -36,13 +38,28 @@ func prepareTests(t *testing.T) (context.Context, *do.RootScope) {
 	ctx := log.Logger.WithContext(context.Background())
 	i := do.New(Package, db.Package, infra.Package)
 
-	db := do.MustInvoke[*db.Database](i)
-	if err := db.Connect(ctx, "sqlite3", ":memory:"); err != nil {
+	dbdriver := os.Getenv("GOGPO_TEST_DB_DRIVER")
+	dbconnstr := os.Getenv("GOGPO_TEST_DB_CONNSTR")
+
+	if dbdriver == "" || dbconnstr == "" {
+		dbdriver = "sqlite3"
+		dbconnstr = ":memory:"
+	}
+
+	do.ProvideNamedValue(i, "db.driver", dbdriver)
+	do.ProvideNamedValue(i, "db.connstr", dbconnstr)
+
+	rdb := do.MustInvoke[repository.Database](i)
+	if _, err := rdb.Open(ctx); err != nil {
 		t.Fatalf("connect to db error: %#+v", err)
 	}
 
-	if err := db.Migrate(ctx); err != nil {
+	if err := rdb.Migrate(ctx); err != nil {
 		t.Fatalf("prepare db error: %#+v", err)
+	}
+
+	if err := rdb.Clear(ctx); err != nil {
+		t.Fatalf("clear db error: %#+v", err)
 	}
 
 	return ctx, i

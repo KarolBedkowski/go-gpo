@@ -1,8 +1,8 @@
-// Package sqlite implement repository for database.
-package sqlite
+// Package pg implement repositories for PsotgreSQL database.
+package pg
 
 //
-// sqlite.go
+// pg.go
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
 //
 // Distributed under terms of the GPLv3 license.
@@ -14,7 +14,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"net/url"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -29,13 +28,13 @@ type Repository struct{}
 //------------------------------------------------------------------------------
 
 const (
-	ConnMaxIdleTime = 30 * time.Second
-	ConnMaxLifetime = 60 * time.Second
+	ConnMaxIdleTime = 300 * time.Second
+	ConnMaxLifetime = 600 * time.Second
 	MaxIdleConns    = 1
 	MaxOpenConns    = 10
 )
 
-//------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------
 
 type Database struct {
 	db      *sqlx.DB
@@ -52,11 +51,6 @@ func NewDatabaseI(i do.Injector) (*Database, error) {
 		return nil, aerr.Wrapf(err, "empty db.connstr")
 	}
 
-	connstr, err = prepareSqliteConnstr(connstr)
-	if err != nil {
-		return nil, aerr.Wrapf(err, "invalid db.connstr")
-	}
-
 	return &Database{
 		db:      nil,
 		connstr: connstr,
@@ -65,24 +59,20 @@ func NewDatabaseI(i do.Injector) (*Database, error) {
 
 func (d *Database) Open(ctx context.Context) (*sqlx.DB, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Msgf("connecting to sqlite")
+	logger.Debug().Msgf("connecting to postgresql")
 
 	var err error
 
-	d.db, err = sqlx.Open("sqlite3", d.connstr)
+	d.db, err = sqlx.Open("pgx", d.connstr)
 	if err != nil {
-		return nil, aerr.Wrapf(err, "open database failed").WithTag(aerr.InternalError).WithMeta("connstr", d.connstr)
+		return nil, aerr.Wrapf(err, "open database failed").WithTag(aerr.InternalError).
+			WithMeta("connstr", d.connstr)
 	}
 
 	d.db.SetConnMaxIdleTime(ConnMaxIdleTime)
 	d.db.SetConnMaxLifetime(ConnMaxLifetime)
 	d.db.SetMaxIdleConns(MaxIdleConns)
 	d.db.SetMaxOpenConns(MaxOpenConns)
-
-	if err := d.onOpenConn(ctx, d.db); err != nil {
-		return nil, aerr.Wrapf(err, "open database failed - run init script error").
-			WithTag(aerr.InternalError)
-	}
 
 	if err := d.db.PingContext(ctx); err != nil {
 		return nil, aerr.Wrapf(err, "ping database failed").WithTag(aerr.InternalError)
@@ -124,18 +114,10 @@ func (d *Database) GetConnection(ctx context.Context) (*sqlx.Conn, error) {
 		return nil, aerr.ApplyFor(aerr.ErrDatabase, err, "failed open connection")
 	}
 
-	if err := d.onOpenConn(ctx, conn); err != nil {
-		return nil, aerr.ApplyFor(aerr.ErrDatabase, err, "failed run onOpenConn scripts")
-	}
-
 	return conn, nil
 }
 
 func (d *Database) CloseConnection(ctx context.Context, conn *sqlx.Conn) error {
-	if err := d.onCloseConn(ctx, conn); err != nil {
-		return aerr.ApplyFor(aerr.ErrDatabase, err, "run scripts onClose failed")
-	}
-
 	if err := conn.Close(); err != nil {
 		return aerr.ApplyFor(aerr.ErrDatabase, err, "close connection failed")
 	}
@@ -151,7 +133,7 @@ func (d *Database) Migrate(ctx context.Context) error {
 		panic(fmt.Errorf("prepare migration fs failed: %w", err))
 	}
 
-	provider, err := goose.NewProvider(goose.DialectSQLite3, d.db.DB, migdir)
+	provider, err := goose.NewProvider(goose.DialectPostgres, d.db.DB, migdir)
 	if err != nil {
 		panic(fmt.Errorf("create goose provider failed: %w", err))
 	}
@@ -187,20 +169,20 @@ func (d *Database) Migrate(ctx context.Context) error {
 }
 
 func (d *Database) Clear(ctx context.Context) error {
-	sql := `
-		PRAGMA foreign_keys=OFF;
-		DELETE FROM settings;
-		DELETE FROM episodes;
-		DELETE FROM podcasts;
-		DELETE FROM devices;
-		DELETE FROM users;
-		DELETE FROM sessions;
-		PRAGMA foreign_keys=ON;
-	`
+	sqls := []string{
+		"DELETE FROM settings;",
+		"DELETE FROM episodes;",
+		"DELETE FROM podcasts;",
+		"DELETE FROM devices;",
+		"DELETE FROM users;",
+		"DELETE FROM sessions;",
+	}
 
-	_, err := d.db.ExecContext(ctx, sql)
-	if err != nil {
-		return aerr.ApplyFor(aerr.ErrDatabase, err, "clear database failed")
+	for _, sql := range sqls {
+		_, err := d.db.ExecContext(ctx, sql)
+		if err != nil {
+			return aerr.ApplyFor(aerr.ErrDatabase, err, "clear database failed").WithMeta("sql", sql)
+		}
 	}
 
 	return nil
@@ -212,66 +194,4 @@ func (d *Database) HealthCheck(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-func (d *Database) onOpenConn(ctx context.Context, db sqlx.ExecerContext) error {
-	_, err := db.ExecContext(ctx,
-		`PRAGMA temp_store = MEMORY;
-		PRAGMA busy_timeout = 1000;
-		`,
-	)
-	if err != nil {
-		return aerr.Wrap(err)
-	}
-
-	return nil
-}
-
-func (d *Database) onCloseConn(ctx context.Context, db sqlx.ExecerContext) error {
-	_, err := db.ExecContext(ctx,
-		`PRAGMA optimize`,
-	)
-	if err != nil {
-		return aerr.Wrap(err)
-	}
-
-	return nil
-}
-
-//------------------------------------------------------------------------------
-
-func prepareSqliteConnstr(connstr string) (string, error) {
-	if connstr == "" {
-		return "", aerr.ErrInvalidConf.WithUserMsg("invalid (empty) database connection string")
-	}
-
-	if connstr == ":memory:" {
-		return ":memory:?_fk=ON", nil
-	}
-
-	parsed, err := url.Parse(connstr)
-	if err != nil {
-		return "", aerr.ApplyFor(aerr.ErrInvalidConf, err, "", "failed to parse database connections string")
-	}
-
-	if parsed.Path == "" {
-		return "", aerr.ErrInvalidConf.WithUserMsg("invalid database connection string - missing path")
-	}
-
-	query := parsed.Query()
-	if !query.Has("_fk") && !query.Has("__foreign_keys") {
-		query.Set("_fk", "ON")
-	}
-
-	if !query.Has("_journal_mode") {
-		query.Set("_journal_mode", "WAL")
-	}
-
-	if !query.Has("_synchronous") {
-		query.Set("_synchronous", "NORMAL")
-	}
-
-	parsed.RawQuery = query.Encode()
-
-	return parsed.String(), err
 }

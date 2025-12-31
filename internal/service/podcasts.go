@@ -26,7 +26,7 @@ import (
 )
 
 type PodcastsSrv struct {
-	db           *db.Database
+	dbi          repository.Database
 	usersRepo    repository.Users
 	podcastsRepo repository.Podcasts
 	episodesRepo repository.Episodes
@@ -34,7 +34,7 @@ type PodcastsSrv struct {
 
 func NewPodcastsSrv(i do.Injector) (*PodcastsSrv, error) {
 	return &PodcastsSrv{
-		db:           do.MustInvoke[*db.Database](i),
+		dbi:          do.MustInvoke[repository.Database](i),
 		usersRepo:    do.MustInvoke[repository.Users](i),
 		podcastsRepo: do.MustInvoke[repository.Podcasts](i),
 		episodesRepo: do.MustInvoke[repository.Episodes](i),
@@ -47,7 +47,7 @@ func (p *PodcastsSrv) GetPodcast(ctx context.Context, username string, podcastid
 	}
 
 	//nolint:wrapcheck
-	return db.InConnectionR(ctx, p.db, func(ctx context.Context) (*model.Podcast, error) {
+	return db.InConnectionR(ctx, p.dbi, func(ctx context.Context) (*model.Podcast, error) {
 		user, err := p.usersRepo.GetUser(ctx, username)
 		if errors.Is(err, common.ErrNoData) {
 			return nil, common.ErrUnknownUser
@@ -71,7 +71,7 @@ func (p *PodcastsSrv) GetPodcasts(ctx context.Context, username string) ([]model
 		return nil, common.ErrEmptyUsername
 	}
 	//nolint:wrapcheck
-	return db.InConnectionR(ctx, p.db, func(ctx context.Context) ([]model.Podcast, error) {
+	return db.InConnectionR(ctx, p.dbi, func(ctx context.Context) ([]model.Podcast, error) {
 		user, err := p.usersRepo.GetUser(ctx, username)
 		if errors.Is(err, common.ErrNoData) {
 			return nil, common.ErrUnknownUser
@@ -95,7 +95,7 @@ func (p *PodcastsSrv) GetPodcastsWithLastEpisode(ctx context.Context, username s
 	}
 
 	//nolint:wrapcheck
-	return db.InConnectionR(ctx, p.db, func(ctx context.Context) ([]model.PodcastWithLastEpisode, error) {
+	return db.InConnectionR(ctx, p.dbi, func(ctx context.Context) ([]model.PodcastWithLastEpisode, error) {
 		user, err := p.usersRepo.GetUser(ctx, username)
 		if errors.Is(err, common.ErrNoData) {
 			return nil, common.ErrUnknownUser
@@ -146,7 +146,7 @@ func (p *PodcastsSrv) DeletePodcast(ctx context.Context, username string, podcas
 	logger.Debug().Int64("podcast_id", podcastid).Msg("delete podcast")
 
 	//nolint:wrapcheck
-	return db.InTransaction(ctx, p.db, func(ctx context.Context) error {
+	return db.InTransaction(ctx, p.dbi, func(ctx context.Context) error {
 		user, err := p.usersRepo.GetUser(ctx, username)
 		if errors.Is(err, common.ErrNoData) {
 			return common.ErrUnknownUser
@@ -212,7 +212,7 @@ func (p *PodcastsSrv) DownloadPodcastsInfo(ctx context.Context, since time.Time,
 	logger.Debug().Msgf("start downloading podcasts info; since=%s", since)
 
 	// get podcasts to update
-	urls, err := db.InConnectionR(ctx, p.db, func(ctx context.Context) ([]model.PodcastToUpdate, error) {
+	urls, err := db.InConnectionR(ctx, p.dbi, func(ctx context.Context) ([]model.PodcastToUpdate, error) {
 		return p.podcastsRepo.ListPodcastsToUpdate(ctx, since)
 	})
 	if err != nil {
@@ -315,7 +315,7 @@ func (p *PodcastsSrv) downloadPodcastInfo(ctx context.Context, //nolint: cyclop
 	}
 
 	//nolint:wrapcheck
-	return db.InTransaction(ctx, p.db, func(ctx context.Context) error {
+	return db.InTransaction(ctx, p.dbi, func(ctx context.Context) error {
 		if err := p.podcastsRepo.UpdatePodcastsInfo(ctx, &update); err != nil {
 			return aerr.Wrapf(err, "update podcast info failed")
 		}

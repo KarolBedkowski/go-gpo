@@ -24,7 +24,7 @@ import (
 )
 
 type SettingsSrv struct {
-	db           *db.Database
+	dbi          repository.Database
 	settRepo     repository.Settings
 	usersRepo    repository.Users
 	episodesRepo repository.Episodes
@@ -34,7 +34,7 @@ type SettingsSrv struct {
 
 func NewSettingsSrv(i do.Injector) (*SettingsSrv, error) {
 	return &SettingsSrv{
-		db:           do.MustInvoke[*db.Database](i),
+		dbi:          do.MustInvoke[repository.Database](i),
 		settRepo:     do.MustInvoke[repository.Settings](i),
 		usersRepo:    do.MustInvoke[repository.Users](i),
 		episodesRepo: do.MustInvoke[repository.Episodes](i),
@@ -52,7 +52,7 @@ func (s SettingsSrv) GetSettings(ctx context.Context, query *query.SettingsQuery
 	}
 
 	//nolint:wrapcheck
-	return db.InConnectionR(ctx, s.db, func(ctx context.Context) (model.Settings, error) {
+	return db.InConnectionR(ctx, s.dbi, func(ctx context.Context) (model.Settings, error) {
 		key, err := s.load(ctx, query.UserName, query.Scope, query.DeviceName, query.Podcast, query.Episode)
 		if err != nil {
 			return nil, err
@@ -78,7 +78,7 @@ func (s SettingsSrv) SaveSettings(ctx context.Context, cmd *command.ChangeSettin
 	settings := cmd.CombinedSetting()
 
 	//nolint:wrapcheck
-	return db.InTransaction(ctx, s.db, func(ctx context.Context) error {
+	return db.InTransaction(ctx, s.dbi, func(ctx context.Context) error {
 		key, err := s.load(ctx, cmd.UserName, cmd.Scope, cmd.DeviceName, cmd.Podcast, cmd.Episode)
 		if err != nil {
 			return err
