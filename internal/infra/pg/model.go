@@ -7,7 +7,6 @@ package pg
 
 import (
 	"database/sql"
-	"fmt"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -282,24 +281,13 @@ func (s SettingsDB) MarshalZerologObject(event *zerolog.Event) {
 //------------------------------------------------------------------------------
 
 type PodcastToUpdate struct {
-	MetaUpdatedAt sql.NullString `db:"metadata_updated_at"`
-	URL           string         `db:"url"`
+	MetaUpdatedAt sql.NullTime `db:"metadata_updated_at"`
+	URL           string       `db:"url"`
 }
 
 func (p *PodcastToUpdate) toModel() (model.PodcastToUpdate, error) {
-	updatedAt := time.Time{}
-
-	if p.MetaUpdatedAt.Valid && p.MetaUpdatedAt.String != "" {
-		t, err := time.Parse("2006-01-02 15:04:05.999999999-07:00", p.MetaUpdatedAt.String)
-		if err != nil {
-			return model.PodcastToUpdate{}, fmt.Errorf("parse datetime %q failed: %w", p.MetaUpdatedAt.String, err)
-		}
-
-		updatedAt = t
-	}
-
 	return model.PodcastToUpdate{
 		URL:           p.URL,
-		MetaUpdatedAt: updatedAt,
+		MetaUpdatedAt: p.MetaUpdatedAt.Time,
 	}, nil
 }
