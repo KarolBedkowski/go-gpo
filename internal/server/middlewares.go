@@ -392,7 +392,7 @@ type frMiddleware struct {
 	fr   *trace.FlightRecorder
 }
 
-func newFRMiddleware() *frMiddleware {
+func newFRMiddleware() func(http.Handler) http.Handler {
 	frm := &frMiddleware{}
 
 	frm.fr = trace.NewFlightRecorder(trace.FlightRecorderConfig{
@@ -406,19 +406,17 @@ func newFRMiddleware() *frMiddleware {
 		frm.once.Do(func() {})
 	}
 
-	return frm
-}
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			start := time.Now()
 
-func (f *frMiddleware) handle(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
+			next.ServeHTTP(w, r)
 
-		next.ServeHTTP(w, r)
-
-		if f.fr.Enabled() && time.Since(start) > FlightRecorderThreshold {
-			go f.captureSnapshot(r.Context())
-		}
-	})
+			if frm.fr.Enabled() && time.Since(start) > FlightRecorderThreshold {
+				go frm.captureSnapshot(r.Context())
+			}
+		})
+	}
 }
 
 func (f *frMiddleware) captureSnapshot(ctx context.Context) {
@@ -441,8 +439,7 @@ func (f *frMiddleware) captureSnapshot(ctx context.Context) {
 		defer fout.Close()
 
 		// WriteTo writes the flight recorder data to the provided io.Writer.
-		_, err = f.fr.WriteTo(fout)
-		if err != nil {
+		if _, err = f.fr.WriteTo(fout); err != nil {
 			logger.Error().Err(err).Msgf("writing snapshot to file %q failed: %s", fout.Name(), err)
 
 			return

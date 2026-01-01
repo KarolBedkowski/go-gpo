@@ -46,7 +46,7 @@ type Server struct {
 	s   *http.Server
 }
 
-func New(injector do.Injector) (*Server, error) {
+func New(injector do.Injector) (*Server, error) { //nolint:funlen
 	cfg := do.MustInvoke[*Configuration](injector)
 	authMW := do.MustInvoke[authenticator](injector)
 	api := do.MustInvoke[gpoapi.API](injector)
@@ -64,7 +64,7 @@ func New(injector do.Injector) (*Server, error) {
 		group.Use(hlog.RequestIDHandler("req_id", "Request-Id"))
 
 		if cfg.DebugFlags.HasFlag(config.DebugFlightRecorder) {
-			group.Use(newFRMiddleware().handle)
+			group.Use(newFRMiddleware())
 		}
 
 		if cfg.DebugFlags.HasFlag(config.DebugGo) {
@@ -78,11 +78,11 @@ func New(injector do.Injector) (*Server, error) {
 		group.Use(authMW.handle)
 		group.Use(AuthenticatedOnly)
 		group.
-			With(newPromMiddleware("api", nil).Handler).
+			With(newPromMiddleware("api", nil)).
 			With(middleware.NoCache).
 			Mount(cfg.WebRoot+"/", api.Routes())
 		group.
-			With(newPromMiddleware("web", nil).Handler).
+			With(newPromMiddleware("web", nil)).
 			Mount(cfg.WebRoot+"/web", web.Routes())
 		group.
 			Get(cfg.WebRoot+"/", func(w http.ResponseWriter, r *http.Request) {
