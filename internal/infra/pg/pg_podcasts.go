@@ -208,12 +208,7 @@ func (s Repository) ListPodcastsToUpdate(ctx context.Context, since time.Time) (
 
 	mres := make([]model.PodcastToUpdate, len(res))
 	for i, r := range res {
-		m, err := r.toModel()
-		if err != nil {
-			return nil, aerr.Wrapf(err, "convert to model failed").WithMeta("obj", r)
-		}
-
-		mres[i] = m
+		mres[i] = r.toModel()
 	}
 
 	return mres, nil

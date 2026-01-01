@@ -285,9 +285,9 @@ type PodcastToUpdate struct {
 	URL           string       `db:"url"`
 }
 
-func (p *PodcastToUpdate) toModel() (model.PodcastToUpdate, error) {
+func (p *PodcastToUpdate) toModel() model.PodcastToUpdate {
 	return model.PodcastToUpdate{
 		URL:           p.URL,
 		MetaUpdatedAt: p.MetaUpdatedAt.Time,
-	}, nil
+	}
 }
