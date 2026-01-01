@@ -14,8 +14,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"runtime/debug"
+	"runtime/trace"
 	"strings"
+	"sync"
 	"time"
 
 	"gitea.com/go-chi/session"
@@ -370,4 +373,76 @@ func mapStatusToLogLevel(status int) (zerolog.Level, zerolog.Level) {
 	default:
 		return zerolog.InfoLevel, zerolog.DebugLevel
 	}
+}
+
+//-------------------------------------------------------------
+
+const FlightRecorderThreshold = 200 * time.Millisecond
+
+type frMiddleware struct {
+	once sync.Once
+	fr   *trace.FlightRecorder
+}
+
+func newFRMiddleware() *frMiddleware {
+	frm := &frMiddleware{}
+
+	frm.fr = trace.NewFlightRecorder(trace.FlightRecorderConfig{
+		MinAge:   FlightRecorderThreshold,
+		MaxBytes: 1 << 20, //nolint:mnd  // 1MB
+	})
+
+	if err := frm.fr.Start(); err != nil {
+		log.Logger.Error().Err(err).Msgf("start flight recorder failed: %s", err)
+
+		frm.once.Do(func() {})
+	}
+
+	return frm
+}
+
+func (f *frMiddleware) handle(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
+		next.ServeHTTP(w, r)
+
+		if f.fr.Enabled() && time.Since(start) > FlightRecorderThreshold {
+			go f.captureSnapshot(r.Context())
+		}
+	})
+}
+
+func (f *frMiddleware) captureSnapshot(ctx context.Context) {
+	// once.Do ensures that the provided function is executed only once.
+	f.once.Do(func() {
+		logger := log.Logger
+		fname := time.Now().Format(time.RFC3339)
+
+		reqid := "unk"
+		if id, ok := hlog.IDFromCtx(ctx); ok {
+			reqid = id.String()
+		}
+
+		fout, err := os.Create("snapshot" + fname + reqid + ".trace")
+		if err != nil {
+			logger.Error().Err(err).Msgf("opening snapshot file %q failed: %s", fout.Name(), err)
+
+			return
+		}
+		defer fout.Close()
+
+		// WriteTo writes the flight recorder data to the provided io.Writer.
+		_, err = f.fr.WriteTo(fout)
+		if err != nil {
+			logger.Error().Err(err).Msgf("writing snapshot to file %q failed: %s", fout.Name(), err)
+
+			return
+		}
+
+		// Stop the flight recorder after the snapshot has been taken.
+		f.fr.Stop()
+		logger.Warn().Str(common.LogKeyReqID, reqid).
+			Msgf("captured a flight recorder snapshot to %q for req_id=%s", fout.Name(), reqid)
+	})
 }

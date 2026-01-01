@@ -61,6 +61,11 @@ func New(injector do.Injector) (*Server, error) {
 
 	router.Group(func(group chi.Router) {
 		group.Use(hlog.RequestIDHandler("req_id", "Request-Id"))
+
+		if cfg.DebugFlags.HasFlag(config.DebugFlightRecorder) {
+			group.Use(newFRMiddleware().handle)
+		}
+
 		group.Use(logMW)
 		group.Use(newRecoverMiddleware)
 		group.Use(middleware.CleanPath)

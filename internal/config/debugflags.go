@@ -27,6 +27,8 @@ const (
 	DebugRouter = DebugFlag("router")
 	// DebugDBQueryMetrics enable metrics for query metrics.
 	DebugDBQueryMetrics = DebugFlag("querymetrics")
+	// DebugFlightRecorderMetrics enable flight recorder for long server queries.
+	DebugFlightRecorder = DebugFlag("flighrecorder")
 
 	// DebugAll enable all debug flags.
 	DebugAll = DebugFlag("all")
