@@ -180,7 +180,7 @@ func (p *SessionProvider) Destroy(sid string) error {
 }
 
 // Regenerate regenerates a session store from old session ID to new one.
-func (p *SessionProvider) Regenerate(oldsid, sid string) (session.RawStore, error) { //nolint:ireturn
+func (p *SessionProvider) Regenerate(oldsid, sid string) (session.RawStore, error) { //nolint:ireturn,nolintlint
 	p.logger.Debug().Str("sid", sid).Str("old_sid", oldsid).Msg("regenerate session")
 
 	ctx := p.logger.WithContext(context.Background())

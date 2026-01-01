@@ -62,7 +62,7 @@ func (u userPages) changePassword(
 
 	if r.Method == http.MethodPost {
 		if err := r.ParseForm(); err != nil {
-			logger.Info().Err(err).Msg("parse form error")
+			logger.Info().Err(err).Msgf("bad request: parse form error: %s", err)
 			srvsupport.WriteError(w, r, http.StatusBadRequest, "")
 
 			return
@@ -89,7 +89,7 @@ func (u userPages) doChangePassword(ctx context.Context, r *http.Request, logger
 	if errors.Is(err, command.ErrChangePasswordOldNotMatch) {
 		return "Error: invalid current password"
 	} else if err != nil {
-		logger.Info().Err(err).Str("user_name", username).Msg("change user password failed")
+		logger.Info().Err(err).Str("user_name", username).Msgf("change user %q password failed: %s", username, err)
 
 		return "Error: change password failed"
 	}

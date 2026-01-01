@@ -25,7 +25,7 @@ func checkUserMiddleware(next http.Handler) http.Handler {
 
 		user := chi.URLParam(req, "user")
 		if user == "" {
-			logger.Debug().Msg("empty user")
+			logger.Debug().Msg("bad request: missing or empty user")
 			w.WriteHeader(http.StatusBadRequest)
 
 			return
@@ -44,7 +44,7 @@ func checkUserMiddleware(next http.Handler) http.Handler {
 		} else {
 			// auth disabled; put user into session
 			if err := sess.Set("user", user); err != nil {
-				logger.Error().Err(err).Msg("set session failed")
+				logger.Error().Err(err).Msgf("set session for user %q failed: %s", user, err)
 			}
 		}
 
@@ -61,7 +61,7 @@ func checkDeviceMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		devicename := chi.URLParam(req, "devicename")
 		if devicename == "" {
-			hlog.FromRequest(req).Debug().Msg("empty devicename")
+			hlog.FromRequest(req).Debug().Msg("bad request: missing or empty devicename")
 			w.WriteHeader(http.StatusBadRequest)
 
 			return

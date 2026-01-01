@@ -15,7 +15,9 @@ import (
 	"time"
 
 	"github.com/mmcdole/gofeed"
+	"github.com/rs/xid"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/hlog"
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/common"
@@ -261,8 +263,9 @@ func (p *PodcastsSrv) downloadPodcastInfoWorker(
 	fp.UserAgent = "Mozilla/5.0 (X11; Linux x86_64; rv:146.0) Gecko/20100101 Firefox/146.0"
 
 	for task := range tasks {
-		llogger := logger.With().Str("podcast_url", task.URL).Logger()
-		lctx := llogger.WithContext(ctx)
+		taskid := xid.New()
+		llogger := logger.With().Str("podcast_url", task.URL).Str("taskid", taskid.String()).Logger()
+		lctx := hlog.CtxWithID(llogger.WithContext(ctx), taskid)
 
 		err := p.downloadPodcastInfo(lctx, fp, since, &task, loadepisodes)
 		if err != nil {

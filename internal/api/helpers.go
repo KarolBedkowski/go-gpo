@@ -25,7 +25,7 @@ func getSinceParameter(r *http.Request) (time.Time, error) {
 	if s := r.URL.Query().Get("since"); s != "" {
 		se, err := strconv.ParseInt(s, 10, 64)
 		if err != nil {
-			return since, fmt.Errorf("parse since %q error: %w", s, err)
+			return since, fmt.Errorf("parse error: %w", err)
 		}
 
 		since = time.Unix(se, 0).UTC()

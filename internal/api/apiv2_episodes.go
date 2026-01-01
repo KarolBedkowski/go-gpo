@@ -55,7 +55,7 @@ func (er episodesResource) uploadEpisodeActions(
 	var reqData []episode
 
 	if err := render.DecodeJSON(r.Body, &reqData); err != nil {
-		logger.Debug().Err(err).Msg("parse json error")
+		logger.Debug().Err(err).Msgf("parse json error: %s", err)
 		http.Error(w, "invalid reqData data", http.StatusBadRequest)
 
 		return
@@ -77,7 +77,7 @@ func (er episodesResource) uploadEpisodeActions(
 		}
 
 		if err := reqEpisode.validate(); err != nil {
-			logger.Debug().Err(err).Interface("req", reqEpisode).Msg("validate error")
+			logger.Debug().Err(err).Interface("req", reqEpisode).Msgf("validate error: %s", err)
 			http.Error(w, "validate reqData data failed", http.StatusBadRequest)
 
 			return
@@ -94,8 +94,7 @@ func (er episodesResource) uploadEpisodeActions(
 	}
 	if err := er.episodesSrv.AddAction(ctx, &cmd); err != nil {
 		checkAndWriteError(w, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).
-			Err(err).Msg("save episodes error")
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msgf("save episodes error: %s", err)
 
 		return
 	}
@@ -124,7 +123,7 @@ func (er episodesResource) getEpisodeActions(
 
 	since, err := getSinceParameter(r)
 	if err != nil {
-		logger.Debug().Err(err).Msg("parse since parameter to time error")
+		logger.Debug().Err(err).Msgf("parse since parameter %q to time error: %s", r.URL.Query().Get("since"), err)
 		writeError(w, r, http.StatusBadRequest)
 
 		return
@@ -141,7 +140,7 @@ func (er episodesResource) getEpisodeActions(
 	res, err := er.episodesSrv.GetEpisodes(ctx, &query)
 	if err != nil {
 		checkAndWriteError(w, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get episodes actions error")
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msgf("get episodes actions error: %s", err)
 
 		return
 	}
@@ -153,8 +152,6 @@ func (er episodesResource) getEpisodeActions(
 		Actions:   common.Map(res, newEpisodesFromModel),
 		Timestamp: time.Now().UTC().Unix(),
 	}
-
-	logger.Debug().Msgf("getEpisodeActions: count=%d", len(resp.Actions))
 
 	srvsupport.RenderJSON(w, r, &resp)
 }

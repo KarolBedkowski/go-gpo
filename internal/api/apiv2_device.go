@@ -76,7 +76,7 @@ func (d deviceResource) updateDevice(
 	}
 	if err := d.deviceSrv.UpdateDevice(ctx, &cmd); err != nil {
 		checkAndWriteError(w, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("updateDevice device error")
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msgf("update device error: %s", err)
 
 		return
 	}
@@ -96,7 +96,7 @@ func (d deviceResource) listDevices(
 	devices, err := d.deviceSrv.ListDevices(ctx, &query.GetDevicesQuery{UserName: user})
 	if err != nil {
 		checkAndWriteError(w, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get devices error")
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msgf("get devices error: %s", err)
 
 		return
 	}

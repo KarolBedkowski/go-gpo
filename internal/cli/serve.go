@@ -14,7 +14,9 @@ import (
 	"time"
 
 	"github.com/Merovius/systemd"
+	"github.com/rs/xid"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/hlog"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/do/v2"
 	"github.com/urfave/cli/v3"
@@ -186,7 +188,7 @@ func (s *Server) podcastDownloadTask(ctx context.Context, injector do.Injector,
 		start := time.Now()
 
 		if err := podcastSrv.DownloadPodcastsInfo(ctx, since, loadepisodes); err != nil {
-			logger.Error().Err(err).Msg("download podcast info failed")
+			logger.Error().Err(err).Msgf("download podcast info job failed: %s", err)
 		}
 
 		since = start
@@ -215,8 +217,11 @@ func (s *Server) runBackgroundMaintenance(ctx context.Context, maintSrv *service
 		case <-ctx.Done():
 			return
 		case <-time.After(wait):
-			if err := maintSrv.MaintainDatabase(ctx); err != nil {
-				logger.Error().Err(err).Msg("run database maintenance failed")
+			taskid := xid.New()
+			llog := logger.With().Str("task_id", taskid.String()).Logger() //nolint:nilaway
+
+			if err := maintSrv.MaintainDatabase(hlog.CtxWithID(ctx, taskid)); err != nil {
+				llog.Error().Err(err).Msgf("run database maintenance task failed: %s", err)
 			}
 		}
 	}

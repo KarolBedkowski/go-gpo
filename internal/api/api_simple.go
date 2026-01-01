@@ -109,7 +109,7 @@ func (s *simpleResource) downloadDevSubscriptions(
 	subs, err := s.subServ.GetSubscriptions(ctx, &query.GetSubscriptionsQuery{UserName: user, DeviceName: devicename})
 	if err != nil {
 		checkAndWriteError(w, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get device subscriptions error")
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msgf("get device subscriptions error: %s", err)
 
 		return
 	}
@@ -187,7 +187,7 @@ func (s *simpleResource) uploadSubscriptions(
 	}
 	if err := s.subServ.ReplaceSubscriptions(ctx, &cmd); err != nil {
 		checkAndWriteError(w, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("update subscriptions error")
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msgf("update subscriptions error: %s", err)
 	} else {
 		w.WriteHeader(http.StatusOK)
 	}

@@ -77,9 +77,9 @@ func (a authenticator) handle(next http.Handler) http.Handler {
 
 			_, err := a.usersSrv.LoginUser(ctx, username, password)
 			if errors.Is(err, common.ErrUnauthorized) || errors.Is(err, common.ErrUnknownUser) {
-				logger.Warn().Err(err).Str(common.LogKeyUserName, username).
+				logger.Info().Err(err).Str(common.LogKeyUserName, username).
 					Str(common.LogKeyAuthResult, common.LogAuthResultFailed).
-					Msg("auth failed")
+					Msgf("user %q authentication failed: %s", username, err)
 				w.Header().Add("WWW-Authenticate", "Basic realm=\"go-gpo\"")
 
 				sess.Flush()
@@ -90,7 +90,7 @@ func (a authenticator) handle(next http.Handler) http.Handler {
 			} else if err != nil {
 				logger.Error().Err(err).
 					Str(common.LogKeyAuthResult, common.LogAuthResultError).
-					Msg("login user internal error")
+					Msgf("authenticate user %q internal error: %s ", username, err)
 				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 
 				return
@@ -99,7 +99,7 @@ func (a authenticator) handle(next http.Handler) http.Handler {
 			lloger := logger.With().Str(common.LogKeyUserName, username).Logger()
 			lloger.Info().
 				Str(common.LogKeyAuthResult, common.LogAuthResultSuccess).
-				Msg("user authenticated")
+				Msgf("user %q authenticated", username)
 
 			ctx = lloger.WithContext(ctx)
 			r = r.WithContext(common.ContextWithUser(ctx, username))
@@ -156,38 +156,27 @@ func newSimpleLogMiddleware(next http.Handler) http.Handler {
 			Str("remote", request.RemoteAddr).
 			Str("method", request.Method).
 			Str("req_user", user).
-			Msg("webhandler: request start")
+			Msgf("webhandler: request start %s %s", request.Method, request.URL.Redacted())
 
 		lrw := &logResponseWriter{ResponseWriter: writer, status: 0, size: 0}
 
 		defer func() {
-			loglevel := zerolog.InfoLevel
-			if lrw.status >= 500 { //nolint: mnd
-				loglevel = zerolog.ErrorLevel
-				// always log headers on error
-				llog.Info().Interface(common.LogKeyRequestHeaders, request.Header).
-					Msg("webhandler: request data")
-				llog.Info().Interface(common.LogKeyResponseHeaders, lrw.Header()).
-					Msg("webhandler: response data")
-			} else if lrw.status >= 400 && lrw.status != http.StatusNotFound {
-				loglevel = zerolog.WarnLevel
-			}
+			loglevel, dloglevel := mapStatusToLogLevel(lrw.status)
 
-			// log headers as debug if not error
-			if lrw.status < 500 { //nolint: mnd
-				llog.Debug().Interface(common.LogKeyRequestHeaders, request.Header).
-					Msg("webhandler: request data")
-				llog.Debug().Interface(common.LogKeyResponseHeaders, lrw.Header()).
-					Msg("webhandler: response data")
+			if e := llog.WithLevel(dloglevel); e.Enabled() {
+				e.Interface(common.LogKeyRequestHeaders, filterHeaders(request.Header)).
+					Msg("webhandler: request headers")
+				llog.WithLevel(dloglevel).Interface(common.LogKeyResponseHeaders, lrw.Header()).
+					Msg("webhandler: response headers")
 			}
 
 			llog.WithLevel(loglevel).
-				Str("url", request.RequestURI).
+				Str("url", request.URL.Redacted()).
 				Int("status", lrw.status).
 				Int("size", lrw.size).
 				Dur("duration", time.Since(start)).
 				Str("req_user", user).
-				Msg("webhandler: request finished")
+				Msgf("webhandler: request finished %s %s %d", request.Method, request.URL.Redacted(), lrw.status)
 		}()
 
 		next.ServeHTTP(lrw, request)
@@ -217,7 +206,7 @@ func newFullLogMiddleware(next http.Handler) http.Handler {
 			Str("remote", request.RemoteAddr).
 			Str("method", request.Method).
 			Str("req_user", user).
-			Msg("webhandler: request start")
+			Msgf("webhandler: request start %s %s", request.Method, request.URL.Redacted())
 
 		var reqBody, respBody bytes.Buffer
 
@@ -228,17 +217,17 @@ func newFullLogMiddleware(next http.Handler) http.Handler {
 
 		defer func() {
 			if shouldLogRequestBody(request) {
-				llog.Debug().
-					Interface(common.LogKeyRequestHeaders, request.Header).
-					Msg("request data: " + reqBody.String())
-				llog.Debug().
-					Interface(common.LogKeyResponseHeaders, lrw.Header()).
-					Msg("response data: " + respBody.String())
+				llog.Debug().Msg("request body: " + reqBody.String())
+				llog.Debug().Msg("response body: " + respBody.String())
 			}
 
-			loglevel := zerolog.InfoLevel
-			if lrw.Status() >= 400 && lrw.Status() != 404 {
-				loglevel = zerolog.ErrorLevel
+			loglevel, dloglevel := mapStatusToLogLevel(lrw.Status())
+
+			if e := llog.WithLevel(dloglevel); e.Enabled() {
+				e.Interface(common.LogKeyRequestHeaders, filterHeaders(request.Header)).
+					Msg("webhandler: request headers")
+				llog.WithLevel(dloglevel).Interface(common.LogKeyResponseHeaders, lrw.Header()).
+					Msg("webhandler: response headers")
 			}
 
 			llog.WithLevel(loglevel).
@@ -247,7 +236,7 @@ func newFullLogMiddleware(next http.Handler) http.Handler {
 				Int("size", lrw.BytesWritten()).
 				Str("req_user", user).
 				Dur("duration", time.Since(start)).
-				Msg("webhandler: request finished")
+				Msgf("webhandler: request finished %s %s %d", request.Method, request.URL.Redacted(), lrw.Status())
 		}()
 
 		next.ServeHTTP(lrw, request)
@@ -298,15 +287,15 @@ func newRecoverMiddleware(next http.Handler) http.Handler {
 
 			switch t := rec.(type) {
 			case error:
-				logger.Error().Err(t).Msg("panic when handling request")
+				logger.Error().Err(t).Msgf("panic when handling request: %s", rec)
 
 				if errors.Is(t, http.ErrAbortHandler) {
 					panic(t)
 				}
 			case string:
-				logger.Error().Str("err", t).Msg("panic when handling request")
+				logger.Error().Str("err", t).Msgf("panic when handling request: %s", rec)
 			default:
-				logger.Error().Str("err", "unknown error").Msg("panic when handling request")
+				logger.Error().Str("err", fmt.Sprintf("%v", rec)).Msg("panic when handling request: unknown error")
 			}
 
 			if req.Header.Get("Connection") != "Upgrade" {
@@ -345,4 +334,30 @@ func newSessionMiddleware(i do.Injector) (sessionMiddleware, error) {
 	}
 
 	return sess, nil
+}
+
+//-------------------------------------------------------------
+
+// filterHeaders remove sensitive data from request header for logging.
+func filterHeaders(h http.Header) http.Header {
+	if h.Get("Authorization") == "" {
+		return h
+	}
+
+	h = h.Clone()
+	h.Set("Authorization", "<redacted>")
+
+	return h
+}
+
+// mapStatusToLogLevel get http status and return level for regular logs and level for debug logs.
+func mapStatusToLogLevel(status int) (zerolog.Level, zerolog.Level) {
+	switch {
+	case status == http.StatusInternalServerError:
+		return zerolog.ErrorLevel, zerolog.ErrorLevel
+	case status >= 500: //nolint:mnd
+		return zerolog.WarnLevel, zerolog.WarnLevel
+	default:
+		return zerolog.InfoLevel, zerolog.DebugLevel
+	}
 }
