@@ -49,7 +49,7 @@ func (u *UsersSrv) LoginUser(ctx context.Context, username, password string) (*m
 	})
 
 	if errors.Is(err, common.ErrNoData) {
-		return nil, common.ErrUnknownUser
+		return nil, common.ErrUserNotFound
 	} else if err != nil {
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
@@ -60,6 +60,29 @@ func (u *UsersSrv) LoginUser(ctx context.Context, username, password string) (*m
 
 	if !u.passHasher.CheckPassword(password, user.Password) {
 		return nil, common.ErrUnauthorized
+	}
+
+	return user, nil
+}
+
+// CheckUser check is user account valid; return user.
+func (u *UsersSrv) CheckUser(ctx context.Context, username string) (*model.User, error) {
+	if username == "" {
+		return nil, common.ErrEmptyUsername
+	}
+
+	user, err := db.InConnectionR(ctx, u.dbi, func(ctx context.Context) (*model.User, error) {
+		return u.usersRepo.GetUser(ctx, username)
+	})
+
+	if errors.Is(err, common.ErrNoData) {
+		return nil, common.ErrUserNotFound
+	} else if err != nil {
+		return nil, aerr.ApplyFor(ErrRepositoryError, err)
+	}
+
+	if user.Password == model.UserLockedPassword {
+		return nil, common.ErrUserAccountLocked
 	}
 
 	return user, nil

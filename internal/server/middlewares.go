@@ -38,7 +38,8 @@ func AuthenticatedOnly(next http.Handler) http.Handler {
 		sess := session.GetSession(r)
 		user := srvsupport.SessionUser(sess)
 
-		logger.Debug().Str("session_user", user).Msg("authenticated only check")
+		logger.Debug().Str("session_user", user).Str("sid", sess.ID()).
+			Msgf("AuthenticatedOnly: check user_name=%s sid=%s", user, sess.ID())
 
 		if user != "" {
 			ctx := common.ContextWithUser(r.Context(), user)
@@ -69,44 +70,52 @@ func newAuthenticator(i do.Injector) (authenticator, error) {
 
 func (a authenticator) handle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		username, password, ok := r.BasicAuth()
-		if ok && password != "" && username != "" {
-			ctx := r.Context()
-			logger := hlog.FromRequest(r)
-			sess := session.GetSession(r)
+		username, password, basicAuthOk := r.BasicAuth()
+		ctx := r.Context()
+		sess := session.GetSession(r)
+		sessionuser, _ := sess.Get("user").(string)
+		logger := hlog.FromRequest(r).With().
+			Str("sid", sess.ID()).Str(common.LogKeyUserName, common.Coalesce(username, sessionuser)).Logger()
 
-			_, err := a.usersSrv.LoginUser(ctx, username, password)
-			if errors.Is(err, common.ErrUnauthorized) || errors.Is(err, common.ErrUnknownUser) {
-				logger.Info().Err(err).Str(common.LogKeyUserName, username).
-					Str(common.LogKeyAuthResult, common.LogAuthResultFailed).
-					Msgf("user %q authentication failed: %s", username, err)
-				w.Header().Add("WWW-Authenticate", "Basic realm=\"go-gpo\"")
+		if sessionuser == "" && !basicAuthOk {
+			// no valid session, no auth, continue to next handler
+			next.ServeHTTP(w, r.WithContext(common.ContextWithUser(logger.WithContext(ctx), username)))
 
-				sess.Flush()
-				sess.Destroy(w, r) //nolint:errcheck
-				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-
-				return
-			} else if err != nil {
-				logger.Error().Err(err).
-					Str(common.LogKeyAuthResult, common.LogAuthResultError).
-					Msgf("authenticate user %q internal error: %s ", username, err)
-				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-
-				return
-			}
-
-			lloger := logger.With().Str(common.LogKeyUserName, username).Logger()
-			lloger.Info().
-				Str(common.LogKeyAuthResult, common.LogAuthResultSuccess).
-				Msgf("user %q authenticated", username)
-
-			ctx = lloger.WithContext(ctx)
-			r = r.WithContext(common.ContextWithUser(ctx, username))
-			_ = sess.Set("user", username)
+			return
 		}
 
-		next.ServeHTTP(w, r)
+		var err error
+		// if session is valid and (there is no auth or auth is with the same username)
+		if sessionuser != "" && (!basicAuthOk || username == sessionuser) {
+			_, err = a.usersSrv.CheckUser(ctx, sessionuser)
+			username = sessionuser
+		} else {
+			_, err = a.usersSrv.LoginUser(ctx, username, password)
+		}
+
+		switch {
+		case err == nil:
+			// no error login/check user - continue
+			logger.Info().Str(common.LogKeyAuthResult, common.LogAuthResultSuccess).
+				Msgf("Authenticator: user authenticated user_name=%s", username)
+
+			_ = sess.Set("user", username)
+
+			next.ServeHTTP(w, r)
+		case aerr.HasTag(err, common.AuthenticationError):
+			logger.Info().Err(err).Str(common.LogKeyUserName, username).
+				Str(common.LogKeyAuthResult, common.LogAuthResultFailed).
+				Msgf("Authenticator: user authentication failed user_name=%s: %s", username, err)
+			// destroy session
+			sess.Flush()
+			_ = sess.Destroy(w, r)
+
+			w.Header().Add("WWW-Authenticate", "Basic realm=\"go-gpo\"")
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		default:
+			logger.Error().Err(err).Msgf("Authenticator: internal error user_name=%s error=%q", username, err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		}
 	})
 }
 
@@ -156,7 +165,7 @@ func newSimpleLogMiddleware(next http.Handler) http.Handler {
 			Str("remote", request.RemoteAddr).
 			Str("method", request.Method).
 			Str("req_user", user).
-			Msgf("webhandler: request start %s %s", request.Method, request.URL.Redacted())
+			Msgf("webhandler: request start method=%s url=%s", request.Method, request.URL.Redacted())
 
 		lrw := &logResponseWriter{ResponseWriter: writer, status: 0, size: 0}
 
@@ -176,7 +185,7 @@ func newSimpleLogMiddleware(next http.Handler) http.Handler {
 				Int("size", lrw.size).
 				Dur("duration", time.Since(start)).
 				Str("req_user", user).
-				Msgf("webhandler: request finished %s %s %d", request.Method, request.URL.Redacted(), lrw.status)
+				Msgf("webhandler: request finished method=%s url=%s status=%d", request.Method, request.URL.Redacted(), lrw.status)
 		}()
 
 		next.ServeHTTP(lrw, request)
@@ -206,7 +215,7 @@ func newFullLogMiddleware(next http.Handler) http.Handler {
 			Str("remote", request.RemoteAddr).
 			Str("method", request.Method).
 			Str("req_user", user).
-			Msgf("webhandler: request start %s %s", request.Method, request.URL.Redacted())
+			Msgf("webhandler: request start method=%s url=%s", request.Method, request.URL.Redacted())
 
 		var reqBody, respBody bytes.Buffer
 
@@ -236,7 +245,8 @@ func newFullLogMiddleware(next http.Handler) http.Handler {
 				Int("size", lrw.BytesWritten()).
 				Str("req_user", user).
 				Dur("duration", time.Since(start)).
-				Msgf("webhandler: request finished %s %s %d", request.Method, request.URL.Redacted(), lrw.Status())
+				Msgf("webhandler: request finished method=%s url=%s status=%d",
+					request.Method, request.URL.Redacted(), lrw.Status())
 		}()
 
 		next.ServeHTTP(lrw, request)
@@ -287,15 +297,15 @@ func newRecoverMiddleware(next http.Handler) http.Handler {
 
 			switch t := rec.(type) {
 			case error:
-				logger.Error().Err(t).Msgf("panic when handling request: %s", rec)
+				logger.Error().Err(t).Msgf("RecoveryMW: panic when handling request: %s", rec)
 
 				if errors.Is(t, http.ErrAbortHandler) {
 					panic(t)
 				}
 			case string:
-				logger.Error().Str("err", t).Msgf("panic when handling request: %s", rec)
+				logger.Error().Str("err", t).Msgf("RecoveryMW: panic when handling request: %s", rec)
 			default:
-				logger.Error().Str("err", fmt.Sprintf("%v", rec)).Msg("panic when handling request: unknown error")
+				logger.Error().Str("err", fmt.Sprintf("%v", rec)).Msg("RecoveryMW: panic when handling request: unknown error")
 			}
 
 			if req.Header.Get("Connection") != "Upgrade" {
