@@ -58,7 +58,7 @@ func New(injector do.Injector) (*Server, error) {
 	router := chi.NewRouter()
 	router.Use(middleware.Heartbeat(cfg.WebRoot + "/ping"))
 	router.Use(middleware.RealIP)
-	router.Get(cfg.WebRoot+"/health", newHealthChecker(injector))
+	router.Get(cfg.WebRoot+"/health", newHealthChecker(injector, cfg))
 
 	router.Group(func(group chi.Router) {
 		group.Use(hlog.RequestIDHandler("req_id", "Request-Id"))
@@ -95,9 +95,14 @@ func New(injector do.Injector) (*Server, error) {
 	}
 
 	if cfg.DebugFlags.HasFlag(config.DebugGo) {
-		router.Mount(cfg.WebRoot+"/debug", middleware.Profiler())
-		router.Get(cfg.WebRoot+"/debug/requests", trace.Traces)
-		router.Get(cfg.WebRoot+"/debug/events", trace.Events)
+		router.Group(func(group chi.Router) {
+			group.Use(newAuthDebugMiddleware(cfg))
+			group.Mount(cfg.WebRoot+"/debug", middleware.Profiler())
+			group.Get(cfg.WebRoot+"/debug/requests", trace.Traces)
+			group.Get(cfg.WebRoot+"/debug/events", trace.Events)
+
+			trace.AuthRequest = cfg.authDebugRequest
+		})
 	}
 
 	if cfg.EnableMetrics {
@@ -227,11 +232,14 @@ func (s *Server) newListener(ctx context.Context) (net.Listener, error) {
 }
 
 // newHealthChecker create new handler for /health endpoint. Accept only connection from localhost.
-func newHealthChecker(injector do.Injector) http.HandlerFunc {
+func newHealthChecker(injector do.Injector, cfg *Configuration) http.HandlerFunc {
 	rootscope := injector.RootScope()
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !strings.HasPrefix(r.RemoteAddr, "localhost") && !strings.HasPrefix(r.RemoteAddr, "127.0.0.1") {
+		log.Logger.Debug().Msgf("remote %v", r.RemoteAddr)
+
+		// access to /health only from localhost
+		if _, access := cfg.authDebugRequest(r); !access {
 			w.WriteHeader(http.StatusForbidden)
 
 			return

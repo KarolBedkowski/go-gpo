@@ -8,6 +8,9 @@ package server
 //
 
 import (
+	"net"
+	"net/http"
+
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/config"
 )
@@ -40,4 +43,32 @@ func (c *Configuration) tlsEnabled() bool {
 
 func (c *Configuration) useSecureCookie() bool {
 	return c.TLSKey != "" || c.CookieSecure
+}
+
+// authDebugRequest check request remote address is it allowed to access
+// to debug data and sensitive information.
+// Return:
+//   - bool - is access allowed
+//   - bool - is access to sensitive data allowed.
+//
+// Used for /debug (also traces and events) and /vars endpoint.
+func (c *Configuration) authDebugRequest(req *http.Request) (bool, bool) {
+	host, _, err := net.SplitHostPort(req.RemoteAddr)
+	if err != nil {
+		host = req.RemoteAddr
+	}
+
+	if host == "localhost" {
+		return true, true
+	}
+
+	ip := net.ParseIP(host)
+	switch {
+	case ip == nil:
+		return false, false
+	case ip.IsLoopback():
+		return true, true
+	default:
+		return ip.IsPrivate(), false
+	}
 }

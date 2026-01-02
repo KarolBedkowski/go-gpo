@@ -480,3 +480,17 @@ func newTracingMiddleware(next http.Handler) http.Handler {
 		next.ServeHTTP(writer, request)
 	})
 }
+
+//-------------------------------------------------------------
+
+func newAuthDebugMiddleware(c *Configuration) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if allow, _ := c.authDebugRequest(r); allow {
+				next.ServeHTTP(w, r)
+			} else {
+				http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+			}
+		})
+	}
+}
