@@ -37,16 +37,19 @@ func newTracingMiddleware(cfg *Configuration) func(http.Handler) http.Handler {
 				return
 			}
 
-			tr := xtrace.New("server", request.URL.Path)
-			defer tr.Finish()
-
 			ctx := request.Context()
-			ctx = xtrace.NewContext(ctx, tr)
-			request = request.WithContext(ctx)
+			reqid := "?"
 
 			if id, ok := hlog.IDFromCtx(ctx); ok {
-				pprof.SetGoroutineLabels(pprof.WithLabels(ctx, pprof.Labels("reqid", id.String())))
+				reqid = id.String()
+				pprof.SetGoroutineLabels(pprof.WithLabels(ctx, pprof.Labels("reqid", reqid)))
 			}
+
+			tr := xtrace.New("server", request.URL.Path+" req_id="+reqid)
+			defer tr.Finish()
+
+			ctx = xtrace.NewContext(ctx, tr)
+			request = request.WithContext(ctx)
 
 			next.ServeHTTP(writer, request)
 		})
