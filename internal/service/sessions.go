@@ -40,7 +40,7 @@ func (s *SessionStore) Set(key, value any) error {
 	defer s.lock.Unlock()
 
 	log.Logger.Debug().Str("sid", s.sid).
-		Msgf("SessionStore: set session sid=%q key=%v value=%#+v", s.sid, key, &value)
+		Msgf("SessionStore: set session sid=%q key=%v value=%v", s.sid, key, value)
 
 	s.data[key] = value
 
@@ -57,6 +57,8 @@ func (s *SessionStore) Get(key any) any {
 
 // Delete delete a key from session.
 func (s *SessionStore) Delete(key any) error {
+	log.Logger.Debug().Str("sid", s.sid).Msgf("SessionStore: delete key=%v sid=%q", key, s.sid)
+
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -73,7 +75,7 @@ func (s *SessionStore) ID() string {
 // Release save session values to database.
 // must call this method to save values to database.
 func (s *SessionStore) Release() error {
-	log.Logger.Debug().Str("sid", s.sid).Msgf("SessionStore: session release sid=%q %v", s.sid, &s.data)
+	log.Logger.Debug().Str("sid", s.sid).Msgf("SessionStore: session release sid=%q", s.sid)
 
 	ctx := log.Logger.WithContext(context.Background())
 
@@ -89,6 +91,8 @@ func (s *SessionStore) Release() error {
 
 // Flush deletes all session data.
 func (s *SessionStore) Flush() error {
+	log.Logger.Debug().Str("sid", s.sid).Msgf("SessionStore: flush session sid=%q", s.sid)
+
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -222,12 +226,14 @@ func (p *SessionProvider) Count() (int, error) {
 		return 0, fmt.Errorf("error counting records: %w", err)
 	}
 
+	p.logger.Debug().Msgf("SessionProvider: total sessions count=%d", total)
+
 	return total, nil
 }
 
 // GC calls GC to clean expired sessions.
 func (p *SessionProvider) GC() {
-	p.logger.Debug().Msg("SessionProvider: gc sessions")
+	p.logger.Debug().Msg("SessionProvider: gc sessions start")
 
 	ctx := p.logger.WithContext(context.Background())
 
@@ -237,4 +243,6 @@ func (p *SessionProvider) GC() {
 	if err != nil {
 		p.logger.Error().Err(err).Msgf("SessionProvider: gc sessions error: %s", err)
 	}
+
+	p.logger.Debug().Msg("SessionProvider: gc sessions finished")
 }
