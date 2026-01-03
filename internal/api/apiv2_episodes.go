@@ -55,7 +55,7 @@ func (er episodesResource) uploadEpisodeActions(
 	var reqData []episode
 
 	if err := render.DecodeJSON(r.Body, &reqData); err != nil {
-		logger.Debug().Err(err).Msgf("parse json error: %s", err)
+		logger.Debug().Err(err).Msgf("EpisodeResource: parse json error=%s", err)
 		http.Error(w, "invalid reqData data", http.StatusBadRequest)
 
 		return
@@ -71,13 +71,14 @@ func (er episodesResource) uploadEpisodeActions(
 
 		// skip invalid (non http*) podcasts)
 		if reqEpisode.Podcast == "" {
-			logger.Debug().Interface("req", reqEpisode).Msg("skipped episode")
+			logger.Debug().Interface("req", reqEpisode).Msg("EpisodeResource: skipped episode - empty podcast")
 
 			continue
 		}
 
 		if err := reqEpisode.validate(); err != nil {
-			logger.Debug().Err(err).Interface("req", reqEpisode).Msgf("validate error: %s", err)
+			logger.Debug().Err(err).Interface("req", reqEpisode).
+				Msgf("EpisodeResource: validate episode error=%s", err)
 			http.Error(w, "validate reqData data failed", http.StatusBadRequest)
 
 			return
@@ -86,7 +87,7 @@ func (er episodesResource) uploadEpisodeActions(
 		actions = append(actions, reqEpisode.toModel())
 	}
 
-	logger.Debug().Msgf("uploadEpisodeActions: count=%d, changedurls=%d", len(actions), len(changedurls))
+	logger.Debug().Msgf("EpisodeResource: actions to add count=%d changedurls=%d", len(actions), len(changedurls))
 
 	cmd := command.AddActionCmd{
 		UserName: common.ContextUser(ctx),
@@ -94,7 +95,7 @@ func (er episodesResource) uploadEpisodeActions(
 	}
 	if err := er.episodesSrv.AddAction(ctx, &cmd); err != nil {
 		checkAndWriteError(w, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msgf("save episodes error: %s", err)
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msgf("EpisodeResource: save episodes error=%q", err)
 
 		return
 	}
@@ -123,7 +124,8 @@ func (er episodesResource) getEpisodeActions(
 
 	since, err := getSinceParameter(r)
 	if err != nil {
-		logger.Debug().Err(err).Msgf("parse since parameter %q to time error: %s", r.URL.Query().Get("since"), err)
+		logger.Debug().Err(err).
+			Msgf("EpisodeResource: parse since=%q to time error=%q", r.URL.Query().Get("since"), err)
 		writeError(w, r, http.StatusBadRequest)
 
 		return
@@ -140,7 +142,8 @@ func (er episodesResource) getEpisodeActions(
 	res, err := er.episodesSrv.GetEpisodes(ctx, &query)
 	if err != nil {
 		checkAndWriteError(w, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msgf("get episodes actions error: %s", err)
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
+			Msgf("EpisodeResource: get episodes actions error=%q", err)
 
 		return
 	}

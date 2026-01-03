@@ -153,7 +153,8 @@ func (s Repository) GetLastEpisodeAction(ctx context.Context,
 ) (*model.Episode, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Int64("podcast_id", podcastid).
-		Msgf("pg.Repository: get last episode action excludeDelete=%v", excludeDelete)
+		Msgf("pg.Repository: get last episode action userid=%d podcastid=%d excludeDelete=%v",
+			userid, podcastid, excludeDelete)
 
 	query := `
 		SELECT e.id, e.podcast_id, e.url, e.title, e.action, e.started, e.position, e.total,
@@ -181,7 +182,7 @@ func (s Repository) GetLastEpisodeAction(ctx context.Context,
 		return nil, aerr.Wrapf(err, "query episode failed").WithTag(aerr.InternalError)
 	}
 
-	logger.Debug().Object("episode", &res).Msg("pg.Repository: loaded episode")
+	logger.Debug().Object("episode", &res).Msgf("pg.Repository: loaded episode episodeid=%d", res.ID)
 
 	return res.toModel(), nil
 }

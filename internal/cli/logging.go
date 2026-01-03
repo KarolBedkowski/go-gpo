@@ -54,7 +54,7 @@ func initializeLogger(level, format string) error {
 	if l, err := zerolog.ParseLevel(level); err == nil {
 		zerolog.SetGlobalLevel(l)
 	} else {
-		log.Error().Msgf("logger: unknown log level %q; using debug", level)
+		log.Error().Msgf("Logger: unknown log level=%q; using debug", level)
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
 
@@ -71,7 +71,7 @@ func checkFormat(format string) string {
 	}
 
 	if format != "" {
-		log.Error().Msgf("logger: unknown log format %q; using default", format)
+		log.Error().Msgf("Logger: unknown log format=%q; using default", format)
 	}
 
 	if outputIsConsole() {

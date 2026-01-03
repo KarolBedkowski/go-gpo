@@ -98,7 +98,7 @@ func (s SettingsSrv) SaveSettings(ctx context.Context, cmd *command.ChangeSettin
 	})
 }
 
-func (s SettingsSrv) load( //nolint:cyclop
+func (s SettingsSrv) load( //nolint:cyclop,funlen
 	ctx context.Context,
 	username, scope, devicename, podcast, episode string,
 ) (model.SettingsKey, error) {

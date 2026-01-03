@@ -89,7 +89,7 @@ func InConnectionR[T any](ctx context.Context, database repository.Database, //n
 
 	defer func() {
 		if err := database.CloseConnection(ctx, conn); err != nil {
-			logger.Error().Err(err).Msg("close connection failed")
+			logger.Error().Err(err).Msgf("db.InConnectionR: close connection failed error=%q", err)
 		}
 	}()
 
@@ -116,7 +116,7 @@ func InTransaction(ctx context.Context, database repository.Database, fun func(c
 
 	defer func() {
 		if err := database.CloseConnection(ctx, conn); err != nil {
-			logger.Error().Err(err).Msg("close connection failed")
+			logger.Error().Err(err).Msgf("db.InTransaction: close connection failed error=%q", err)
 		}
 	}()
 
@@ -159,7 +159,7 @@ func InTransactionR[T any](ctx context.Context, database repository.Database, //
 
 	defer func() {
 		if err := database.CloseConnection(ctx, conn); err != nil {
-			logger.Error().Err(err).Msg("close connection failed")
+			logger.Error().Err(err).Msgf("db.InTransactionR: close connection failed error=%q", err)
 		}
 	}()
 

@@ -117,7 +117,7 @@ func (s Repository) CleanSessions(
 	oldestEmpty := time.Now().UTC().Add(-maxLifeTimeForEmpty)
 
 	logger := log.Ctx(ctx)
-	logger.Debug().Msgf("pg.Repository: clean sessions oldest_used=%s oldest_empty=%s", oldestUsed, oldestEmpty)
+	logger.Debug().Msgf("pg.Repository: clean sessions oldest_used=%q oldest_empty=%q", oldestUsed, oldestEmpty)
 
 	dbctx := db.MustCtx(ctx)
 
@@ -127,7 +127,7 @@ func (s Repository) CleanSessions(
 	} else if res != nil {
 		affected, err := res.RowsAffected()
 		if err != nil {
-			log.Logger.Error().Err(err).Msgf("pg.Repository: error delete old sessions - get affected rows: %s", err)
+			logger.Error().Err(err).Msgf("pg.Repository: error delete old sessions - get affected rows: %s", err)
 		} else {
 			logger.Debug().Msgf("pg.Repository: session removed count=%d", affected)
 		}
@@ -140,7 +140,7 @@ func (s Repository) CleanSessions(
 	} else if res != nil {
 		affected, err := res.RowsAffected()
 		if err != nil {
-			log.Logger.Error().Err(err).Msgf("pg.Repository: error delete old empty sessions - get affected rows: %s", err)
+			logger.Error().Err(err).Msgf("pg.Repository: error delete old empty sessions - get affected rows: %s", err)
 		} else {
 			logger.Debug().Msgf("pg.Repository: empty session removed count=%d", affected)
 		}
@@ -155,7 +155,7 @@ func (s Repository) ReadOrCreate(
 	maxLifeTime time.Duration,
 ) (*model.Session, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Str("sid", sid).Msg("pg.Repository: read or create session")
+	logger.Debug().Str("sid", sid).Msgf("pg.Repository: read or create session sid=%s", sid)
 
 	session := model.Session{
 		SID:       sid,

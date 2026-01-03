@@ -96,7 +96,7 @@ func (e *EpisodesSrv) GetEpisodesByPodcast(ctx context.Context, query *query.Get
 
 // AddAction save new actions.
 // Podcasts and devices are cached and - if not exists for requested action - created.
-func (e *EpisodesSrv) AddAction(ctx context.Context, cmd *command.AddActionCmd) error { //nolint:cyclop
+func (e *EpisodesSrv) AddAction(ctx context.Context, cmd *command.AddActionCmd) error { //nolint:cyclop,funlen
 	logger := zerolog.Ctx(ctx)
 	logger.Debug().Str("username", cmd.UserName).
 		Msgf("EpisodesSrv: add actions user_name=%s num_actions=%d", cmd.UserName, len(cmd.Actions))

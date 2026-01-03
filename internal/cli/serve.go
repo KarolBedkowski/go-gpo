@@ -163,9 +163,9 @@ func (s *Server) start(ctx context.Context, injector do.Injector, cfg *server.Co
 
 func (*Server) startSystemdWatchdog(logger *zerolog.Logger) {
 	if ok, dur, err := systemd.AutoWatchdog(); ok {
-		logger.Info().Msgf("systemd autowatchdog started; duration=%s", dur)
+		logger.Info().Msgf("Systemd: autowatchdog started; duration=%s", dur)
 	} else if err != nil {
-		logger.Warn().Err(err).Msg("systemd autowatchdog start error")
+		logger.Warn().Err(err).Msgf("Systemd: autowatchdog start error=%q", err)
 	}
 }
 
@@ -173,7 +173,7 @@ func (s *Server) podcastDownloadTask(ctx context.Context, injector do.Injector,
 	interval time.Duration, loadepisodes bool,
 ) {
 	logger := log.Ctx(ctx)
-	logger.Info().Msgf("start background podcast downloader; interval=%s", interval)
+	logger.Info().Msgf("PodcastDownloader: start background podcast downloader; interval=%s", interval)
 
 	podcastSrv := do.MustInvoke[*service.PodcastsSrv](injector)
 	since := time.Now().Add(-24 * time.Hour).UTC()
@@ -188,7 +188,7 @@ func (s *Server) podcastDownloadTask(ctx context.Context, injector do.Injector,
 		start := time.Now()
 
 		if err := podcastSrv.DownloadPodcastsInfo(ctx, since, loadepisodes); err != nil {
-			logger.Error().Err(err).Msgf("download podcast info job failed: %s", err)
+			logger.Error().Err(err).Msgf("PodcastDownloader: download podcast info job error=%q", err)
 		}
 
 		since = start
@@ -199,7 +199,7 @@ func (s *Server) runBackgroundMaintenance(ctx context.Context, maintSrv *service
 	const startHour = 4
 
 	logger := log.Ctx(ctx)
-	logger.Info().Msg("start background maintenance task")
+	logger.Info().Msg("Maintenance: start background maintenance task")
 
 	for {
 		now := time.Now().UTC()
@@ -211,7 +211,7 @@ func (s *Server) runBackgroundMaintenance(ctx context.Context, maintSrv *service
 
 		wait := nextRun.Sub(now)
 
-		logger.Debug().Msgf("maintenance task - next run %s wait %s", nextRun, wait)
+		logger.Debug().Msgf("Maintenance: next_run=%q wait=%q", nextRun, wait)
 
 		select {
 		case <-ctx.Done():
@@ -221,7 +221,7 @@ func (s *Server) runBackgroundMaintenance(ctx context.Context, maintSrv *service
 			llog := logger.With().Str("task_id", taskid.String()).Logger() //nolint:nilaway
 
 			if err := maintSrv.MaintainDatabase(hlog.CtxWithID(ctx, taskid)); err != nil {
-				llog.Error().Err(err).Msgf("run database maintenance task failed: %s", err)
+				llog.Error().Err(err).Msgf("Maintenance: run database maintenance task error=%q", err)
 			}
 		}
 	}

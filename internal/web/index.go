@@ -55,7 +55,8 @@ func (i indexPage) indexPage(ctx context.Context, writer http.ResponseWriter, r 
 	lastactions, err := i.episodeSrv.GetLastActions(ctx, &query)
 	if err != nil {
 		srvsupport.CheckAndWriteError(writer, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msgf("get last actions error: %s", err)
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
+			Msgf("web.Index: get last actions for user_name=%s error=%q", user, err)
 
 		return
 	}

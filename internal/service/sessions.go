@@ -40,7 +40,7 @@ func (s *SessionStore) Set(key, value any) error {
 	defer s.lock.Unlock()
 
 	log.Logger.Debug().Str("sid", s.sid).
-		Msgf("SessionStore: set session sid=%q key=%v value=%v", s.sid, key, &value)
+		Msgf("SessionStore: set session sid=%q key=%v value=%#+v", s.sid, key, &value)
 
 	s.data[key] = value
 

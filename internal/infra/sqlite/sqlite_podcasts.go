@@ -23,7 +23,9 @@ import (
 func (Repository) ListSubscribedPodcasts(ctx context.Context, userid int64, since time.Time,
 ) (model.Podcasts, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Int64("user_id", userid).Msgf("get subscribed podcasts user_id=%d since=%s", userid, since)
+	logger.Debug().
+		Int64("user_id", userid).
+		Msgf("sqlite.Repository: get subscribed podcasts user_id=%d since=%s", userid, since)
 
 	res := []PodcastDB{}
 	dbctx := db.MustCtx(ctx)
@@ -53,7 +55,8 @@ func (Repository) ListSubscribedPodcasts(ctx context.Context, userid int64, sinc
 func (Repository) ListPodcasts(ctx context.Context, userid int64, since time.Time,
 ) (model.Podcasts, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Int64("user_id", userid).Msgf("get all podcasts user_id=%d since=%s", userid, since)
+	logger.Debug().Int64("user_id", userid).Msgf("sqlite.Repository: get all podcasts user_id=%d since=%s",
+		userid, since)
 
 	res := []PodcastDB{}
 	dbctx := db.MustCtx(ctx)
@@ -86,7 +89,7 @@ func (Repository) GetPodcastByID(
 ) (*model.Podcast, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Int64("podcast_id", podcastid).
-		Msgf("get podcast for user_id=%d podcast_id=%d", userid, podcastid)
+		Msgf("sqlite.Repository: get podcast for user_id=%d podcast_id=%d", userid, podcastid)
 
 	dbctx := db.MustCtx(ctx)
 	podcast := PodcastDB{}
@@ -113,7 +116,7 @@ func (Repository) GetPodcast(
 ) (*model.Podcast, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Str("podcast_url", podcasturl).
-		Msgf("get podcast for user_id=%d podcast_url=%q", userid, podcasturl)
+		Msgf("sqlite.Repository: get podcast for user_id=%d podcast_url=%q", userid, podcasturl)
 
 	dbctx := db.MustCtx(ctx)
 	podcast := PodcastDB{}
@@ -148,7 +151,7 @@ func (Repository) SavePodcast(ctx context.Context, podcast *model.Podcast) (int6
 
 	if podcast.ID == 0 {
 		logger.Debug().Object("podcast", podcast).
-			Msgf("insert podcast user_id=%d podcast_url=%q", podcast.User.ID, podcast.URL)
+			Msgf("sqlite.Repository: insert podcast user_id=%d podcast_url=%q", podcast.User.ID, podcast.URL)
 
 		res, err := dbctx.ExecContext(
 			ctx,
@@ -175,14 +178,16 @@ func (Repository) SavePodcast(ctx context.Context, podcast *model.Podcast) (int6
 		}
 
 		logger.Debug().Object("podcast", podcast).
-			Msgf("podcast created user_id=%d podcast_id=%d, podcast_url=%q", podcast.User.ID, id, podcast.URL)
+			Msgf("sqlite.Repository: podcast created user_id=%d podcast_id=%d, podcast_url=%q",
+				podcast.User.ID, id, podcast.URL)
 
 		return id, nil
 	}
 
 	// update
 	logger.Debug().Object("podcast", podcast).
-		Msgf("update podcast user_id=%d podcast_id=%d podcast_url=%q", podcast.User.ID, podcast.ID, podcast.URL)
+		Msgf("sqlite.Repository: update podcast user_id=%d podcast_id=%d podcast_url=%q",
+			podcast.User.ID, podcast.ID, podcast.URL)
 
 	_, err := dbctx.ExecContext(ctx,
 		"UPDATE podcasts SET subscribed=?, title=?, url=?, updated_at=? WHERE id=?",
@@ -229,7 +234,7 @@ func (Repository) UpdatePodcastsInfo(ctx context.Context, update *model.PodcastM
 	dbctx := db.MustCtx(ctx)
 	logger := log.Ctx(ctx)
 
-	logger.Debug().Object("update", update).Msgf("update podcast info podcast_url=%q", update.URL)
+	logger.Debug().Object("update", update).Msgf("sqlite.Repository: update podcast info podcast_url=%q", update.URL)
 
 	var err error
 
@@ -254,7 +259,7 @@ func (Repository) DeletePodcast(ctx context.Context, podcastid int64) error {
 	dbctx := db.MustCtx(ctx)
 	logger := log.Ctx(ctx)
 
-	logger.Debug().Int64("podcast_id", podcastid).Msgf("delete podcast podcast_id=%d", podcastid)
+	logger.Debug().Int64("podcast_id", podcastid).Msgf("sqlite.Repository: delete podcast podcast_id=%d", podcastid)
 
 	_, err := dbctx.ExecContext(ctx, "DELETE  FROM podcasts WHERE id=?", podcastid)
 	if err != nil {

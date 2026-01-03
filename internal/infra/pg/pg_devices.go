@@ -119,7 +119,7 @@ func (s Repository) ListDevices(ctx context.Context, userid int64) ([]model.Devi
 		return nil, aerr.Wrapf(err, "count subscriptions error").WithMeta("user_id", userid)
 	}
 
-	logger.Debug().Int64("user_id", userid).Msgf("list devices for user_id=%d", userid)
+	logger.Debug().Int64("user_id", userid).Msgf("pg.Repository: list devices for user_id=%d", userid)
 
 	devices := []DeviceDB{}
 

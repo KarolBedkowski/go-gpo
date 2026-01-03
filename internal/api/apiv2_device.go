@@ -62,7 +62,9 @@ func (d deviceResource) updateDevice(
 	}
 
 	if err := render.DecodeJSON(r.Body, &reqData); err != nil {
-		logger.Debug().Err(err).Msg("error decoding json payload")
+		logger.Debug().Err(err).
+			Msgf("DeviceResource: error decoding json payload user_name=%s devicename=%s error=%q",
+				user, devicename, err)
 		writeError(w, r, http.StatusBadRequest)
 
 		return
@@ -76,7 +78,8 @@ func (d deviceResource) updateDevice(
 	}
 	if err := d.deviceSrv.UpdateDevice(ctx, &cmd); err != nil {
 		checkAndWriteError(w, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msgf("update device error: %s", err)
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
+			Msgf("DeviceResource: update device device_name=%s error=%q", devicename, err)
 
 		return
 	}
@@ -96,7 +99,8 @@ func (d deviceResource) listDevices(
 	devices, err := d.deviceSrv.ListDevices(ctx, &query.GetDevicesQuery{UserName: user})
 	if err != nil {
 		checkAndWriteError(w, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msgf("get devices error: %s", err)
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
+			Msgf("DeviceResource: get devices user_name=%s error=%q", user, err)
 
 		return
 	}

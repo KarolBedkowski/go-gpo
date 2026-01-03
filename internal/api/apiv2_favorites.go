@@ -36,12 +36,12 @@ func (u favoritesResource) Routes() *chi.Mux {
 	r := chi.NewRouter()
 
 	r.With(checkUserMiddleware).
-		Get(`/{user:[\w+.-]+}.json`, srvsupport.WrapNamed(u.getFafovites, "api_favorites"))
+		Get(`/{user:[\w+.-]+}.json`, srvsupport.WrapNamed(u.getFavorites, "api_favorites"))
 
 	return r
 }
 
-func (u favoritesResource) getFafovites(
+func (u favoritesResource) getFavorites(
 	ctx context.Context,
 	w http.ResponseWriter,
 	r *http.Request,
@@ -52,7 +52,8 @@ func (u favoritesResource) getFafovites(
 	favorites, err := u.episodesSrv.GetFavorites(ctx, user)
 	if err != nil {
 		checkAndWriteError(w, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msgf("get episodes updates error: %s", err)
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
+			Msgf("FavoritesResource: get favorites user_name=%s error=%s", user, err)
 
 		return
 	}

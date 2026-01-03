@@ -29,7 +29,7 @@ func (Repository) GetEpisode(
 ) (*model.Episode, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Int64("podcast_id", podcastid).Str("episode", episode).
-		Msgf("get episode")
+		Msgf("sqlite.Repository: get episode user_id=%d podcast_id=%d episode=%q", userid, podcastid, episode)
 
 	query := `
 		SELECT e.id, e.podcast_id, e.url, e.title, e.action, e.started, e.position, e.total,
@@ -66,7 +66,7 @@ func (Repository) ListEpisodeActions(
 ) ([]model.Episode, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Any("podcast_id", podcastid).Any("device_id", deviceid).
-		Msgf("get episodes since=%s aggregated=%v", since, aggregated)
+		Msgf("sqlite.Repository: get episodes since=%s aggregated=%v", since, aggregated)
 
 	query := `
 		SELECT e.id, e.podcast_id, e.url, e.title, e.action, e.started, e.position, e.total, e.guid,
@@ -109,13 +109,13 @@ func (Repository) ListEpisodeActions(
 			WithMeta("sql", query, "args", args)
 	}
 
-	logger.Debug().Msgf("get episodes - found %d episodes", len(res))
+	logger.Debug().Msgf("sqlite.Repository: get episodes - found=%d", len(res))
 
 	if aggregated {
 		// aggregation is rarely use so it's ok to get all episodes and aggregate it outside db.
 		res = aggregateEpisodes(res)
 
-		logger.Debug().Msgf("get episodes - aggregate %d episodes", len(res))
+		logger.Debug().Msgf("sqlite.Repository: get episodes - aggregated=%d", len(res))
 	}
 
 	// sorting by ts asc
@@ -153,7 +153,8 @@ func (Repository) GetLastEpisodeAction(ctx context.Context,
 ) (*model.Episode, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Int64("podcast_id", podcastid).
-		Msgf("get last episode action excludeDelete=%v", excludeDelete)
+		Msgf("sqlite.Repository: get last episode action userid=%d podcastid=%d excludeDelete=%v",
+			userid, podcastid, excludeDelete)
 
 	query := `
 		SELECT e.id, e.podcast_id, e.url, e.title, e.action, e.started, e.position, e.total,
@@ -182,14 +183,15 @@ func (Repository) GetLastEpisodeAction(ctx context.Context,
 		return nil, aerr.Wrapf(err, "query episode failed").WithTag(aerr.InternalError)
 	}
 
-	logger.Debug().Object("episode", &res).Msg("loaded episode")
+	logger.Debug().Object("episode", &res).Msgf("sqlite.Repository: loaded episode episodeid=%d", res.ID)
 
 	return res.toModel(), nil
 }
 
 func (Repository) SaveEpisode(ctx context.Context, userid int64, episodes ...model.Episode) error {
 	logger := log.Ctx(ctx)
-	logger.Debug().Int64("user_id", userid).Msg("save episode")
+	logger.Debug().Int64("user_id", userid).
+		Msgf("sqlite.Repository: save episodes user_id=%d count=%d", userid, len(episodes))
 
 	dbctx := db.MustCtx(ctx)
 
@@ -205,7 +207,8 @@ func (Repository) SaveEpisode(ctx context.Context, userid int64, episodes ...mod
 	defer stmt.Close()
 
 	for _, episode := range episodes {
-		logger.Debug().Object("episode", &episode).Msg("save episode")
+		logger.Debug().Object("episode", &episode).
+			Msgf("sqlite.Repository: save episode podcast_id=%d episode_url=%q", episode.Podcast.ID, episode.URL)
 
 		deviceid := sql.NullInt64{}
 		if episode.Device != nil {
@@ -242,7 +245,7 @@ func (Repository) SaveEpisode(ctx context.Context, userid int64, episodes ...mod
 
 func (Repository) UpdateEpisodeInfo(ctx context.Context, episodes ...model.Episode) error {
 	logger := log.Ctx(ctx)
-	logger.Debug().Int("num", len(episodes)).Msg("update episode meta")
+	logger.Debug().Msgf("sqlite.Repository: update episode meta count=%d", len(episodes))
 
 	dbctx := db.MustCtx(ctx)
 
@@ -261,7 +264,7 @@ func (Repository) UpdateEpisodeInfo(ctx context.Context, episodes ...model.Episo
 		logger.Debug().Str("episode_url", episode.URL).
 			Str("episode_title", episode.Title).
 			Any("episode_guid", episode.GUID).
-			Msg("update episode")
+			Msgf("sqlite.Repository: update episode episode_url=%q episode_title=%q", episode.URL, episode.Title)
 
 		_, err := stmt.ExecContext(ctx, episode.Title, episode.GUID, episode.URL)
 		if err != nil {

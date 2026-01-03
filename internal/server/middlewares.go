@@ -116,6 +116,7 @@ func (a authenticator) handle(next http.Handler) http.Handler {
 			sess.Flush()
 			_ = sess.Destroy(w, r)
 
+			common.TraceLazyPrintf(ctx, "authentication failed")
 			w.Header().Add("WWW-Authenticate", "Basic realm=\"go-gpo\"")
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		default:
@@ -171,7 +172,7 @@ func newSimpleLogMiddleware(next http.Handler) http.Handler {
 			Str("remote", request.RemoteAddr).
 			Str("method", request.Method).
 			Str("req_user", user).
-			Msgf("webhandler: request start method=%s url=%s", request.Method, request.URL.Redacted())
+			Msgf("Server: request start method=%s url=%s", request.Method, request.URL.Redacted())
 
 		lrw := &logResponseWriter{ResponseWriter: writer, status: 0, size: 0}
 
@@ -180,9 +181,9 @@ func newSimpleLogMiddleware(next http.Handler) http.Handler {
 
 			if e := llog.WithLevel(dloglevel); e.Enabled() {
 				e.Interface(common.LogKeyRequestHeaders, filterHeaders(request.Header)).
-					Msg("webhandler: request headers")
+					Msg("Server: request headers")
 				llog.WithLevel(dloglevel).Interface(common.LogKeyResponseHeaders, lrw.Header()).
-					Msg("webhandler: response headers")
+					Msg("Server: response headers")
 			}
 
 			llog.WithLevel(loglevel).
@@ -191,7 +192,7 @@ func newSimpleLogMiddleware(next http.Handler) http.Handler {
 				Int("size", lrw.size).
 				Dur("duration", time.Since(start)).
 				Str("req_user", user).
-				Msgf("webhandler: request finished method=%s url=%s status=%d", request.Method, request.URL.Redacted(), lrw.status)
+				Msgf("Server: request finished method=%s url=%s status=%d", request.Method, request.URL.Redacted(), lrw.status)
 		}()
 
 		next.ServeHTTP(lrw, request)
@@ -221,7 +222,7 @@ func newFullLogMiddleware(next http.Handler) http.Handler {
 			Str("remote", request.RemoteAddr).
 			Str("method", request.Method).
 			Str("req_user", user).
-			Msgf("webhandler: request start method=%s url=%s", request.Method, request.URL.Redacted())
+			Msgf("Server: request start method=%s url=%s", request.Method, request.URL.Redacted())
 
 		var reqBody, respBody bytes.Buffer
 
@@ -240,9 +241,9 @@ func newFullLogMiddleware(next http.Handler) http.Handler {
 
 			if e := llog.WithLevel(dloglevel); e.Enabled() {
 				e.Interface(common.LogKeyRequestHeaders, filterHeaders(request.Header)).
-					Msg("webhandler: request headers")
+					Msg("Server: request headers")
 				llog.WithLevel(dloglevel).Interface(common.LogKeyResponseHeaders, lrw.Header()).
-					Msg("webhandler: response headers")
+					Msg("Server: response headers")
 			}
 
 			llog.WithLevel(loglevel).
@@ -251,7 +252,7 @@ func newFullLogMiddleware(next http.Handler) http.Handler {
 				Int("size", lrw.BytesWritten()).
 				Str("req_user", user).
 				Dur("duration", time.Since(start)).
-				Msgf("webhandler: request finished method=%s url=%s status=%d",
+				Msgf("Server: request finished method=%s url=%s status=%d",
 					request.Method, request.URL.Redacted(), lrw.Status())
 		}()
 
@@ -456,7 +457,7 @@ func (f *frMiddleware) captureSnapshot(ctx context.Context) {
 
 func newTracingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		// skip tracing for the reuest to statics etc.
+		// skip tracing for the request to statics etc.
 		if shouldSkipLogRequest(request) {
 			next.ServeHTTP(writer, request)
 

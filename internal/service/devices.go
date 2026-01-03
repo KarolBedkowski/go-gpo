@@ -71,7 +71,7 @@ func (d *DevicesSrv) UpdateDevice(ctx context.Context, cmd *command.UpdateDevice
 			return aerr.Wrapf(err, "save device failed")
 		}
 
-		common.TraceLazyPrintf(ctx, "device saveed")
+		common.TraceLazyPrintf(ctx, "device saved")
 
 		return nil
 	})
