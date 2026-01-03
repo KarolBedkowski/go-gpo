@@ -32,29 +32,19 @@ func checkUserMiddleware(next http.Handler) http.Handler {
 		}
 
 		sess := session.GetSession(req)
-		// when auth is enabled authenticator always set session user or block request to get here.
-		if suser := srvsupport.SessionUser(sess); suser != "" {
-			// auth enabled
-			if suser != user {
-				logger.Warn().Msgf("api.CheckUser: user_name=%s not match session_user=%s", user, suser)
-				w.WriteHeader(http.StatusBadRequest)
+		suser := srvsupport.SessionUser(sess)
 
-				return
-			}
-		} else {
-			// TODO: remove
-			// auth disabled; put user into session
-			if err := sess.Set("user", user); err != nil {
-				logger.Error().Err(err).Msgf("api.CheckUser: set session for user_name=%s error=%q", user, err)
-			}
+		switch {
+		case suser == "":
+			logger.Warn().Msgf("api.CheckUser: missing authentication for user_name=%s", user)
+			w.WriteHeader(http.StatusForbidden)
+		case suser != user:
+			logger.Warn().Msgf("api.CheckUser: user_name=%s not match session_user=%s", user, suser)
+			w.WriteHeader(http.StatusBadRequest)
+		default:
+			ctx := common.ContextWithUser(req.Context(), user)
+			next.ServeHTTP(w, req.WithContext(ctx))
 		}
-
-		ctx := common.ContextWithUser(req.Context(), user)
-		// handled by authenticator
-		// llogger := logger.With().Str(common.LogKeyUserName, user).Logger()
-		// ctx = llogger.WithContext(ctx)
-
-		next.ServeHTTP(w, req.WithContext(ctx))
 	})
 }
 
