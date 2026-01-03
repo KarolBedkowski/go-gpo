@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"os"
 	"runtime/debug"
+	"runtime/pprof"
 	"runtime/trace"
 	"strings"
 	"sync"
@@ -33,6 +34,7 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/repository"
 	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
+	xtrace "golang.org/x/net/trace"
 )
 
 func AuthenticatedOnly(next http.Handler) http.Handler {
@@ -104,6 +106,7 @@ func (a authenticator) handle(next http.Handler) http.Handler {
 
 			_ = sess.Set("user", username)
 
+			common.TraceLazyPrintf(ctx, "user authorized")
 			next.ServeHTTP(w, r)
 		case aerr.HasTag(err, common.AuthenticationError):
 			logger.Info().Err(err).Str(common.LogKeyUserName, username).
@@ -296,6 +299,11 @@ func newRecoverMiddleware(next http.Handler) http.Handler {
 				return
 			}
 
+			common.WithTrace(ctx, func(tr xtrace.Trace) {
+				tr.LazyPrintf("panic: %v", rec)
+				tr.SetError()
+			})
+
 			logger := log.Ctx(ctx).With().Str("stack", string(debug.Stack())).Logger()
 
 			switch t := rec.(type) {
@@ -444,5 +452,31 @@ func (f *frMiddleware) captureSnapshot(ctx context.Context) {
 		f.fr.Stop()
 		logger.Warn().Str(common.LogKeyReqID, reqid).
 			Msgf("captured a flight recorder snapshot to %q for req_id=%s", fout.Name(), reqid)
+	})
+}
+
+//-------------------------------------------------------------
+
+func newTracingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		// skip tracing for the reuest to statics etc.
+		if shouldSkipLogRequest(request) {
+			next.ServeHTTP(writer, request)
+
+			return
+		}
+
+		tr := xtrace.New("server", request.URL.Path)
+		defer tr.Finish()
+
+		ctx := request.Context()
+		ctx = xtrace.NewContext(ctx, tr)
+		request = request.WithContext(ctx)
+
+		if id, ok := hlog.IDFromCtx(ctx); ok {
+			pprof.SetGoroutineLabels(pprof.WithLabels(ctx, pprof.Labels("reqid", id.String())))
+		}
+
+		next.ServeHTTP(writer, request)
 	})
 }

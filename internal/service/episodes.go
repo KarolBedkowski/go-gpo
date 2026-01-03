@@ -80,11 +80,15 @@ func (e *EpisodesSrv) GetEpisodesByPodcast(ctx context.Context, query *query.Get
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
+		common.TraceLazyPrintf(ctx, "user loaded")
+
 		episodes, err := e.episodesRepo.ListEpisodeActions(ctx, user.ID, nil,
 			&query.PodcastID, query.Since, query.Aggregated, query.Limit)
 		if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
+
+		common.TraceLazyPrintf(ctx, "episodes loaded")
 
 		return episodes, nil
 	})
@@ -110,16 +114,22 @@ func (e *EpisodesSrv) AddAction(ctx context.Context, cmd *command.AddActionCmd) 
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
+		common.TraceLazyPrintf(ctx, "user loaded")
+
 		// cache devices and podcasts
 		podcastscache, err := e.createPodcastsCache(ctx, user)
 		if err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
+		common.TraceLazyPrintf(ctx, "podcasts cache filled")
+
 		devicescache, err := e.createDevicesCache(ctx, user)
 		if err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
+
+		common.TraceLazyPrintf(ctx, "device cache filled")
 
 		episodes := make([]model.Episode, len(cmd.Actions))
 		for idx, act := range cmd.Actions {
@@ -142,9 +152,13 @@ func (e *EpisodesSrv) AddAction(ctx context.Context, cmd *command.AddActionCmd) 
 			episodes[idx] = episode
 		}
 
+		common.TraceLazyPrintf(ctx, "episodes prepared")
+
 		if err = e.episodesRepo.SaveEpisode(ctx, user.ID, episodes...); err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
+
+		common.TraceLazyPrintf(ctx, "episodes saved")
 
 		return nil
 	})
@@ -210,10 +224,14 @@ func (e *EpisodesSrv) GetFavorites(ctx context.Context, username string) ([]mode
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
+		common.TraceLazyPrintf(ctx, "user loaded")
+
 		episodes, err := e.episodesRepo.ListFavorites(ctx, user.ID)
 		if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
+
+		common.TraceLazyPrintf(ctx, "favorite episodes loaded")
 
 		return episodes, nil
 	})
@@ -240,22 +258,30 @@ func (e *EpisodesSrv) getEpisodes(
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
+	common.TraceLazyPrintf(ctx, "user loaded")
+
 	// check device
 	deviceid, err := e.getDeviceID(ctx, user.ID, devicename)
 	if err != nil {
 		return nil, err
 	}
 
+	common.TraceLazyPrintf(ctx, "found device %v", deviceid)
+
 	podcastid, err := e.getPodcastID(ctx, user.ID, podcast)
 	if err != nil {
 		return nil, err
 	}
+
+	common.TraceLazyPrintf(ctx, "found podcastid %v", podcastid)
 
 	episodes, err := e.episodesRepo.ListEpisodeActions(ctx, user.ID, deviceid, podcastid, since, aggregated,
 		limit)
 	if err != nil {
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
+
+	common.TraceLazyPrintf(ctx, "episodes loaded")
 
 	return episodes, nil
 }

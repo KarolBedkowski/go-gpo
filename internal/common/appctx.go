@@ -2,6 +2,8 @@ package common
 
 import (
 	"context"
+
+	"golang.org/x/net/trace"
 )
 
 //nolint:gochecknoglobals
@@ -40,4 +42,18 @@ func ContextDevice(ctx context.Context) string {
 // ContextWithDevice create context with device name.
 func ContextWithDevice(ctx context.Context, devicename string) context.Context {
 	return context.WithValue(ctx, ctxDeviceKey, devicename)
+}
+
+// ------------------------------------------------------
+
+func WithTrace(ctx context.Context, callback func(trace.Trace)) {
+	if tr, ok := trace.FromContext(ctx); ok {
+		callback(tr)
+	}
+}
+
+func TraceLazyPrintf(ctx context.Context, format string, a ...any) {
+	if tr, ok := trace.FromContext(ctx); ok && tr != nil {
+		tr.LazyPrintf(format, a...)
+	}
 }

@@ -111,6 +111,8 @@ func (s SettingsSrv) load( //nolint:cyclop
 		return skey, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
+	common.TraceLazyPrintf(ctx, "user loaded")
+
 	skey.UserID = user.ID
 
 	switch scope {
@@ -122,6 +124,8 @@ func (s SettingsSrv) load( //nolint:cyclop
 			return skey, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
+		common.TraceLazyPrintf(ctx, "device loaded")
+
 		skey.DeviceID = &device.ID
 
 	case "podcast":
@@ -131,6 +135,8 @@ func (s SettingsSrv) load( //nolint:cyclop
 		} else if err != nil {
 			return skey, aerr.ApplyFor(ErrRepositoryError, err)
 		}
+
+		common.TraceLazyPrintf(ctx, "podcast loaded")
 
 		skey.PodcastID = &p.ID
 
@@ -142,6 +148,8 @@ func (s SettingsSrv) load( //nolint:cyclop
 			return skey, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
+		common.TraceLazyPrintf(ctx, "podcast loaded")
+
 		skey.PodcastID = &p.ID
 
 		e, err := s.episodesRepo.GetEpisode(ctx, user.ID, p.ID, episode)
@@ -150,6 +158,8 @@ func (s SettingsSrv) load( //nolint:cyclop
 		} else if err != nil {
 			return skey, aerr.ApplyFor(ErrRepositoryError, err)
 		}
+
+		common.TraceLazyPrintf(ctx, "episode loaded")
 
 		skey.EpisodeID = &e.ID
 	case "account":

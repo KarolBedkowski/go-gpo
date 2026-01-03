@@ -48,6 +48,8 @@ func (u *UsersSrv) LoginUser(ctx context.Context, username, password string) (*m
 		return u.usersRepo.GetUser(ctx, username)
 	})
 
+	common.TraceLazyPrintf(ctx, "user loaded")
+
 	if errors.Is(err, common.ErrNoData) {
 		return nil, common.ErrUserNotFound
 	} else if err != nil {
@@ -62,6 +64,8 @@ func (u *UsersSrv) LoginUser(ctx context.Context, username, password string) (*m
 		return nil, common.ErrUnauthorized
 	}
 
+	common.TraceLazyPrintf(ctx, "password verified")
+
 	return user, nil
 }
 
@@ -74,6 +78,8 @@ func (u *UsersSrv) CheckUser(ctx context.Context, username string) (*model.User,
 	user, err := db.InConnectionR(ctx, u.dbi, func(ctx context.Context) (*model.User, error) {
 		return u.usersRepo.GetUser(ctx, username)
 	})
+
+	common.TraceLazyPrintf(ctx, "user loaded")
 
 	if errors.Is(err, common.ErrNoData) {
 		return nil, common.ErrUserNotFound

@@ -28,6 +28,7 @@ import (
 	gpoapi "gitlab.com/kabes/go-gpo/internal/api"
 	"gitlab.com/kabes/go-gpo/internal/config"
 	gpoweb "gitlab.com/kabes/go-gpo/internal/web"
+	"golang.org/x/net/trace"
 )
 
 const (
@@ -66,6 +67,10 @@ func New(injector do.Injector) (*Server, error) {
 			group.Use(newFRMiddleware().handle)
 		}
 
+		if cfg.DebugFlags.HasFlag(config.DebugGo) {
+			group.Use(newTracingMiddleware)
+		}
+
 		group.Use(logMW)
 		group.Use(newRecoverMiddleware)
 		group.Use(middleware.CleanPath)
@@ -91,6 +96,8 @@ func New(injector do.Injector) (*Server, error) {
 
 	if cfg.DebugFlags.HasFlag(config.DebugGo) {
 		router.Mount(cfg.WebRoot+"/debug", middleware.Profiler())
+		router.Get(cfg.WebRoot+"/debug/requests", trace.Traces)
+		router.Get(cfg.WebRoot+"/debug/events", trace.Events)
 	}
 
 	if cfg.EnableMetrics {
