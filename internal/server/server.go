@@ -28,7 +28,6 @@ import (
 	gpoapi "gitlab.com/kabes/go-gpo/internal/api"
 	"gitlab.com/kabes/go-gpo/internal/config"
 	gpoweb "gitlab.com/kabes/go-gpo/internal/web"
-	"golang.org/x/net/trace"
 )
 
 const (
@@ -67,8 +66,8 @@ func New(injector do.Injector) (*Server, error) { //nolint:funlen
 			group.Use(newFRMiddleware())
 		}
 
-		if cfg.DebugFlags.HasFlag(config.DebugGo) {
-			group.Use(newTracingMiddleware)
+		if cfg.DebugFlags.HasFlag(config.DebugTrace) {
+			group.Use(newTracingMiddleware(cfg))
 		}
 
 		group.Use(logMW)
@@ -90,20 +89,21 @@ func New(injector do.Injector) (*Server, error) { //nolint:funlen
 			})
 	})
 
-	if cfg.DebugFlags.HasFlag(config.DebugDo) {
-		dochi.Use(router, cfg.WebRoot+"/debug/do", injector)
-	}
+	router.Group(func(group chi.Router) {
+		group.Use(newAuthDebugMiddleware(cfg))
 
-	if cfg.DebugFlags.HasFlag(config.DebugGo) {
-		router.Group(func(group chi.Router) {
-			group.Use(newAuthDebugMiddleware(cfg))
+		if cfg.DebugFlags.HasFlag(config.DebugDo) {
+			dochi.Use(router, cfg.WebRoot+"/debug/do", injector)
+		}
+
+		if cfg.DebugFlags.HasFlag(config.DebugGo) {
 			group.Mount(cfg.WebRoot+"/debug", middleware.Profiler())
-			group.Get(cfg.WebRoot+"/debug/requests", trace.Traces)
-			group.Get(cfg.WebRoot+"/debug/events", trace.Events)
+		}
 
-			trace.AuthRequest = cfg.authDebugRequest
-		})
-	}
+		if cfg.DebugFlags.HasFlag(config.DebugTrace) {
+			mountXTrace(group, cfg)
+		}
+	})
 
 	if cfg.EnableMetrics {
 		router.Method("GET", cfg.WebRoot+"/metrics", newMetricsHandler())

@@ -1,16 +1,19 @@
 package config
 
-import (
-	"slices"
-	"strings"
-)
-
 //
 // debugflags.go
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
 //
 // Distributed under terms of the GPLv3 license.
 //
+
+import (
+	"slices"
+	"strings"
+
+	"github.com/rs/zerolog/log"
+	"gitlab.com/kabes/go-gpo/internal/common"
+)
 
 //-------------------------------------------------------------
 
@@ -29,6 +32,8 @@ const (
 	DebugDBQueryMetrics = DebugFlag("querymetrics")
 	// DebugFlightRecorder enable flight recorder for long server queries.
 	DebugFlightRecorder = DebugFlag("flighrecorder")
+	// DebugTrace enable tracing with net/trace.
+	DebugTrace = DebugFlag("trace")
 
 	// DebugAll enable all debug flags.
 	DebugAll = DebugFlag("all")
@@ -39,7 +44,13 @@ const (
 type DebugFlags []string
 
 func NewDebugFLags(flags string) DebugFlags {
-	return DebugFlags(strings.Split(flags, ","))
+	df := DebugFlags(strings.Split(flags, ","))
+
+	if !common.TracingAvailable && (df.HasFlag(DebugTrace) || df.HasFlag(DebugFlightRecorder)) {
+		log.Logger.Warn().Msg("FlightRecorder and tracing disabled due to compilation tag")
+	}
+
+	return df
 }
 
 func (d DebugFlags) HasFlag(flag DebugFlag) bool {

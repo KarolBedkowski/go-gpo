@@ -131,6 +131,7 @@ func (s *Server) start(ctx context.Context, injector do.Injector, cfg *server.Co
 ) error {
 	logger := log.Ctx(ctx)
 	logger.Log().Msgf("Starting go-gpo (%s)...", config.VersionString)
+	logger.Debug().Msgf("Server: debug_flags=%q", cfg.DebugFlags)
 
 	s.startSystemdWatchdog(logger)
 

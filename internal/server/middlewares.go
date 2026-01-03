@@ -14,12 +14,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"runtime/debug"
-	"runtime/pprof"
-	"runtime/trace"
 	"strings"
-	"sync"
 	"time"
 
 	"gitea.com/go-chi/session"
@@ -34,7 +30,6 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/repository"
 	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
-	xtrace "golang.org/x/net/trace"
 )
 
 func AuthenticatedOnly(next http.Handler) http.Handler {
@@ -300,10 +295,7 @@ func newRecoverMiddleware(next http.Handler) http.Handler {
 				return
 			}
 
-			common.WithTrace(ctx, func(tr xtrace.Trace) {
-				tr.LazyPrintf("panic: %v", rec)
-				tr.SetError()
-			})
+			common.TraceErrorLazyPrintf(ctx, "RecoveryMW: panic: %v", rec)
 
 			logger := log.Ctx(ctx).With().Str("stack", string(debug.Stack())).Logger()
 
@@ -386,107 +378,16 @@ func mapStatusToLogLevel(status int) (zerolog.Level, zerolog.Level) {
 
 //-------------------------------------------------------------
 
-const FlightRecorderThreshold = 200 * time.Millisecond
-
-type frMiddleware struct {
-	once sync.Once
-	fr   *trace.FlightRecorder
-}
-
-func newFRMiddleware() func(http.Handler) http.Handler {
-	frm := &frMiddleware{}
-
-	frm.fr = trace.NewFlightRecorder(trace.FlightRecorderConfig{
-		MinAge:   FlightRecorderThreshold,
-		MaxBytes: 1 << 20, //nolint:mnd  // 1MB
-	})
-
-	if err := frm.fr.Start(); err != nil {
-		log.Logger.Error().Err(err).Msgf("start flight recorder failed: %s", err)
-
-		frm.once.Do(func() {})
-	}
-
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			start := time.Now()
-
-			next.ServeHTTP(w, r)
-
-			if frm.fr.Enabled() && time.Since(start) > FlightRecorderThreshold {
-				go frm.captureSnapshot(r.Context())
-			}
-		})
-	}
-}
-
-func (f *frMiddleware) captureSnapshot(ctx context.Context) {
-	// once.Do ensures that the provided function is executed only once.
-	f.once.Do(func() {
-		logger := log.Logger
-		fname := time.Now().Format(time.RFC3339)
-
-		reqid := "unk"
-		if id, ok := hlog.IDFromCtx(ctx); ok {
-			reqid = id.String()
-		}
-
-		fout, err := os.Create("snapshot" + fname + reqid + ".trace")
-		if err != nil {
-			logger.Error().Err(err).Msgf("opening snapshot file %q failed: %s", fout.Name(), err)
-
-			return
-		}
-		defer fout.Close()
-
-		// WriteTo writes the flight recorder data to the provided io.Writer.
-		if _, err = f.fr.WriteTo(fout); err != nil {
-			logger.Error().Err(err).Msgf("writing snapshot to file %q failed: %s", fout.Name(), err)
-
-			return
-		}
-
-		// Stop the flight recorder after the snapshot has been taken.
-		f.fr.Stop()
-		logger.Warn().Str(common.LogKeyReqID, reqid).
-			Msgf("captured a flight recorder snapshot to %q for req_id=%s", fout.Name(), reqid)
-	})
-}
-
-//-------------------------------------------------------------
-
-func newTracingMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		// skip tracing for the request to statics etc.
-		if shouldSkipLogRequest(request) {
-			next.ServeHTTP(writer, request)
-
-			return
-		}
-
-		tr := xtrace.New("server", request.URL.Path)
-		defer tr.Finish()
-
-		ctx := request.Context()
-		ctx = xtrace.NewContext(ctx, tr)
-		request = request.WithContext(ctx)
-
-		if id, ok := hlog.IDFromCtx(ctx); ok {
-			pprof.SetGoroutineLabels(pprof.WithLabels(ctx, pprof.Labels("reqid", id.String())))
-		}
-
-		next.ServeHTTP(writer, request)
-	})
-}
-
-//-------------------------------------------------------------
-
 func newAuthDebugMiddleware(c *Configuration) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			log := zerolog.Ctx(r.Context())
+
 			if allow, _ := c.authDebugRequest(r); allow {
+				log.Debug().Msgf("AuthDebug: access to url=%q from remote=%q allowed", r.URL.Redacted(), r.RemoteAddr)
 				next.ServeHTTP(w, r)
 			} else {
+				log.Debug().Msgf("AuthDebug: access to url=%q from remote=%q forbidden", r.URL.Redacted(), r.RemoteAddr)
 				http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 			}
 		})

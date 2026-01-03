@@ -4,7 +4,7 @@ tmp_dir = "tmp"
 
 [build]
   entrypoint = ["./go-gpo"]
-  args_bin = ["--log.level=debug", "--debug=querymetrics,do", "serve", "--enable-metrics"]
+  args_bin = ["--log.level=debug", "--debug=querymetrics,do,flightrecorder,go,trace", "serve", "--enable-metrics"]
   cmd = "make build"
   delay = 1000
   exclude_dir = ["assets", "tmp", "vendor", "testdata"]
