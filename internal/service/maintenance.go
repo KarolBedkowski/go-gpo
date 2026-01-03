@@ -105,7 +105,7 @@ func (m *MaintenanceSrv) ImportAll(ctx context.Context, data []model.ExportStruc
 
 	err := db.InTransaction(ctx, m.dbi, func(ctx context.Context) error {
 		for _, record := range data {
-			logger.Info().Msgf("loading user %q", record.User.UserName)
+			logger.Info().Msgf("MaintenanceSrv: loading user %q", record.User.UserName)
 
 			record.User.ID = 0
 
@@ -114,21 +114,21 @@ func (m *MaintenanceSrv) ImportAll(ctx context.Context, data []model.ExportStruc
 				return aerr.Wrapf(err, "save users error").WithMeta("username", record.User.Name)
 			}
 
-			logger.Debug().Msgf("loading user %q - devices...", record.User.UserName)
+			logger.Debug().Msgf("MaintenanceSrv: loading user %q - devices...", record.User.UserName)
 
 			devmap, err := m.importDevices(ctx, record.Devices, uid)
 			if err != nil {
 				return err
 			}
 
-			logger.Debug().Msgf("loading user %q - podcasts...", record.User.UserName)
+			logger.Debug().Msgf("MaintenanceSrv: loading user %q - podcasts...", record.User.UserName)
 
 			podcastsmap, err := m.importPodcasts(ctx, record.Podcasts, uid)
 			if err != nil {
 				return err
 			}
 
-			logger.Debug().Msgf("loading user %q - episodes...", record.User.UserName)
+			logger.Debug().Msgf("MaintenanceSrv: loading user %q - episodes...", record.User.UserName)
 
 			ep := remapEpisodes(record.Episodes, podcastsmap, devmap)
 

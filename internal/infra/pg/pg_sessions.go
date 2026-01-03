@@ -27,7 +27,7 @@ var ErrDuplicatedSID = errors.New("sid already exists")
 
 func (s Repository) DeleteSession(ctx context.Context, sid string) error {
 	logger := log.Ctx(ctx)
-	logger.Debug().Str("sid", sid).Msg("delete session")
+	logger.Debug().Str("sid", sid).Msgf("pg.Repository: delete session sid=%s", sid)
 
 	dbctx := db.MustCtx(ctx)
 
@@ -41,7 +41,7 @@ func (s Repository) DeleteSession(ctx context.Context, sid string) error {
 
 func (s Repository) SaveSession(ctx context.Context, sid string, data map[any]any) error {
 	logger := log.Ctx(ctx)
-	logger.Debug().Str("sid", sid).Msg("save session")
+	logger.Debug().Str("sid", sid).Msgf("pg.Repository: save session sid=%s", sid)
 
 	dbctx := db.MustCtx(ctx)
 
@@ -62,7 +62,8 @@ func (s Repository) SaveSession(ctx context.Context, sid string, data map[any]an
 
 func (s Repository) RegenerateSession(ctx context.Context, oldsid, newsid string) error {
 	logger := log.Ctx(ctx)
-	logger.Debug().Str("sid", newsid).Str("old_sid", oldsid).Msg("regenerate session")
+	logger.Debug().Str("sid", newsid).Str("old_sid", oldsid).
+		Msgf("pg.Repository: regenerate session old_sid=%s new_sid=%s", oldsid, newsid)
 
 	dbctx := db.MustCtx(ctx)
 
@@ -95,7 +96,7 @@ func (s Repository) RegenerateSession(ctx context.Context, oldsid, newsid string
 
 func (s Repository) CountSessions(ctx context.Context) (int, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Msg("count sessions")
+	logger.Debug().Msg("pg.Repository: count sessions")
 
 	var total int
 
@@ -116,32 +117,32 @@ func (s Repository) CleanSessions(
 	oldestEmpty := time.Now().UTC().Add(-maxLifeTimeForEmpty)
 
 	logger := log.Ctx(ctx)
-	logger.Debug().Msgf("clean sessions (%s, %s)", oldestUsed, oldestEmpty)
+	logger.Debug().Msgf("pg.Repository: clean sessions oldest_used=%s oldest_empty=%s", oldestUsed, oldestEmpty)
 
 	dbctx := db.MustCtx(ctx)
 
 	res, err := dbctx.ExecContext(ctx, "DELETE FROM sessions WHERE created_at < $1", oldestUsed)
 	if err != nil {
-		logger.Err(err).Msg("error delete old sessions")
+		logger.Err(err).Msgf("pg.Repository: error delete old sessions: %s", err)
 	} else if res != nil {
 		affected, err := res.RowsAffected()
 		if err != nil {
-			log.Logger.Error().Err(err).Msg("error delete old sessions - get affected rows")
+			log.Logger.Error().Err(err).Msgf("pg.Repository: error delete old sessions - get affected rows: %s", err)
 		} else {
-			logger.Debug().Msgf("session removed: %d", affected)
+			logger.Debug().Msgf("pg.Repository: session removed count=%d", affected)
 		}
 	}
 
 	// remove empty session older than 2 hour
 	res, err = dbctx.ExecContext(ctx, "DELETE FROM sessions WHERE created_at < $1 AND data is null", oldestEmpty)
 	if err != nil {
-		logger.Error().Err(err).Msg("error delete old sessions")
+		logger.Error().Err(err).Msgf("pg.Repository: error delete old sessions: %s", err)
 	} else if res != nil {
 		affected, err := res.RowsAffected()
 		if err != nil {
-			log.Logger.Error().Err(err).Msg("error delete old empty sessions - get affected rows")
+			log.Logger.Error().Err(err).Msgf("pg.Repository: error delete old empty sessions - get affected rows: %s", err)
 		} else {
-			logger.Debug().Msgf("empty session removed: %d", affected)
+			logger.Debug().Msgf("pg.Repository: empty session removed count=%d", affected)
 		}
 	}
 
@@ -154,7 +155,7 @@ func (s Repository) ReadOrCreate(
 	maxLifeTime time.Duration,
 ) (*model.Session, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Str("sid", sid).Msg("read or create session")
+	logger.Debug().Str("sid", sid).Msg("pg.Repository: read or create session")
 
 	session := model.Session{
 		SID:       sid,
@@ -183,7 +184,7 @@ func (s Repository) ReadOrCreate(
 			return nil, err
 		}
 	} else {
-		logger.Debug().Str("sid", sid).Object("session", &session).Msg("session expired")
+		logger.Debug().Str("sid", sid).Object("session", &session).Msgf("pg.Repository: session expired sid=%s", sid)
 
 		session.Data = make(map[any]any)
 	}
@@ -193,7 +194,7 @@ func (s Repository) ReadOrCreate(
 
 func (s Repository) SessionExists(ctx context.Context, sid string) (bool, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Str("sid", sid).Msg("check session exists")
+	logger.Debug().Str("sid", sid).Msgf("pg.Repository: check session exists sid=%s", sid)
 
 	dbctx := db.MustCtx(ctx)
 

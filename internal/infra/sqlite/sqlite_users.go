@@ -22,7 +22,7 @@ import (
 
 func (Repository) GetUser(ctx context.Context, username string) (*model.User, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Str("user_name", username).Msg("get user")
+	logger.Debug().Str("user_name", username).Msgf("get user user_name=%s", username)
 
 	dbctx := db.MustCtx(ctx)
 	user := UserDB{}
@@ -47,7 +47,7 @@ func (Repository) SaveUser(ctx context.Context, user *model.User) (int64, error)
 	dbctx := db.MustCtx(ctx)
 
 	if user.ID == 0 {
-		logger.Debug().Object("user", user).Msg("insert user")
+		logger.Debug().Object("user", user).Msgf("insert user user_name=%s", user.UserName)
 
 		res, err := dbctx.ExecContext(ctx,
 			"INSERT INTO users (username, password, email, name, created_at, updated_at) "+
@@ -66,7 +66,7 @@ func (Repository) SaveUser(ctx context.Context, user *model.User) (int64, error)
 	}
 
 	// update
-	logger.Debug().Object("user", user).Msg("update user")
+	logger.Debug().Object("user", user).Msgf("update user user_name=%s", user.UserName)
 
 	_, err := dbctx.ExecContext(ctx,
 		"UPDATE users SET password=?, email=?, name=?, updated_at=? WHERE id=?",
@@ -105,7 +105,7 @@ func (Repository) ListUsers(ctx context.Context, activeOnly bool) ([]model.User,
 // DeleteUser and all related objects.
 func (Repository) DeleteUser(ctx context.Context, userid int64) error {
 	logger := log.Ctx(ctx)
-	logger.Debug().Int64("user_id", userid).Msg("delete user")
+	logger.Debug().Int64("user_id", userid).Msgf("delete user user_id=%d", userid)
 
 	dbctx := db.MustCtx(ctx)
 

@@ -22,7 +22,7 @@ import (
 
 func (s Repository) GetUser(ctx context.Context, username string) (*model.User, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Str("user_name", username).Msg("get user")
+	logger.Debug().Str("user_name", username).Msgf("pg.Repository: get user user_name=%s", username)
 
 	dbctx := db.MustCtx(ctx)
 	user := UserDB{}
@@ -48,7 +48,7 @@ func (s Repository) SaveUser(ctx context.Context, user *model.User) (int64, erro
 	dbctx := db.MustCtx(ctx)
 
 	if user.ID == 0 {
-		logger.Debug().Object("user", user).Msg("insert user")
+		logger.Debug().Object("user", user).Msgf("pg.Repository: insert user user_name=%s", user.UserName)
 
 		var id int64
 
@@ -65,7 +65,7 @@ func (s Repository) SaveUser(ctx context.Context, user *model.User) (int64, erro
 	}
 
 	// update
-	logger.Debug().Object("user", user).Msg("update user")
+	logger.Debug().Object("user", user).Msgf("pg.Repository: update user user_name=%s", user.UserName)
 
 	_, err := dbctx.ExecContext(ctx,
 		"UPDATE users SET password=$1, email=$2, name=$3, updated_at=$4 WHERE id=$5",
@@ -80,7 +80,7 @@ func (s Repository) SaveUser(ctx context.Context, user *model.User) (int64, erro
 // ListUsers get all users from database.
 func (s Repository) ListUsers(ctx context.Context, activeOnly bool) ([]model.User, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Msgf("list users, active_only=%v", activeOnly)
+	logger.Debug().Msgf("pg.Repository: list users, active_only=%v", activeOnly)
 
 	var users []UserDB
 
@@ -104,7 +104,7 @@ func (s Repository) ListUsers(ctx context.Context, activeOnly bool) ([]model.Use
 // DeleteUser and all related objects.
 func (s Repository) DeleteUser(ctx context.Context, userid int64) error {
 	logger := log.Ctx(ctx)
-	logger.Debug().Int64("user_id", userid).Msg("delete user")
+	logger.Debug().Int64("user_id", userid).Msgf("pg.Repository: delete user user_id=%d", userid)
 
 	dbctx := db.MustCtx(ctx)
 

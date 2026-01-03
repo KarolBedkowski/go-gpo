@@ -24,7 +24,7 @@ func (Repository) Maintenance(ctx context.Context) error {
 	dbi := db.MustCtx(ctx)
 
 	for idx, sql := range maintScripts {
-		logger.Debug().Msgf("run maintenance script[%d]: %q", idx, sql)
+		logger.Debug().Msgf("pg.Repository: run maintenance script=%d sql=%q", idx, sql)
 
 		res, err := dbi.ExecContext(ctx, sql)
 		if err != nil {
@@ -38,7 +38,7 @@ func (Repository) Maintenance(ctx context.Context) error {
 				WithMeta("sql", sql)
 		}
 
-		logger.Debug().Msgf("run maintenance script[%d] finished; row affected: %d", idx, rowsaffected)
+		logger.Debug().Msgf("pg.Repository: run maintenance script=%d finished; affected=%d", idx, rowsaffected)
 	}
 
 	// print some stats
@@ -51,7 +51,8 @@ func (Repository) Maintenance(ctx context.Context) error {
 		return aerr.ApplyFor(aerr.ErrDatabase, err, "execute maintenance - count podcasts failed")
 	}
 
-	logger.Info().Msgf("database maintenance finished; podcasts: %d; episodes: %d", numPodcasts, numEpisodes)
+	logger.Info().Msgf("pg.Repository: database maintenance finished; podcasts=%d; episodes=%d",
+		numPodcasts, numEpisodes)
 
 	return nil
 }

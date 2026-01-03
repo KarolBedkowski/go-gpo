@@ -25,7 +25,7 @@ func RenderJSON(w http.ResponseWriter, r *http.Request, v any) {
 
 	if err := enc.Encode(v); err != nil {
 		logger := zerolog.Ctx(ctx)
-		logger.Error().Err(err).Msg("encode json failed")
+		logger.Error().Err(err).Msgf("encode json failed: %s", err)
 
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}

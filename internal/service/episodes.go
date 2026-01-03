@@ -45,7 +45,8 @@ func NewEpisodesSrv(i do.Injector) (*EpisodesSrv, error) {
 // GetEpisodes return list of episodes for `username`, `podcast` and `devicename` (ignored).
 // Return last action.
 func (e *EpisodesSrv) GetEpisodes(ctx context.Context, query *query.GetEpisodesQuery) ([]model.Episode, error) {
-	log.Ctx(ctx).Debug().Object("query", query).Msg("get episodes")
+	log.Ctx(ctx).Debug().Object("query", query).
+		Msgf("EpisodesSrv: get episodes user_name=%s device_name=%s", query.UserName, query.DeviceName)
 
 	if err := query.Validate(); err != nil {
 		return nil, aerr.Wrapf(err, "validate query failed")
@@ -93,7 +94,8 @@ func (e *EpisodesSrv) GetEpisodesByPodcast(ctx context.Context, query *query.Get
 // Podcasts and devices are cached and - if not exists for requested action - created.
 func (e *EpisodesSrv) AddAction(ctx context.Context, cmd *command.AddActionCmd) error { //nolint:cyclop
 	logger := zerolog.Ctx(ctx)
-	logger.Debug().Str("username", cmd.UserName).Msgf("add actions: %d", len(cmd.Actions))
+	logger.Debug().Str("username", cmd.UserName).
+		Msgf("EpisodesSrv: add actions user_name=%s num_actions=%d", cmd.UserName, len(cmd.Actions))
 
 	if err := cmd.Validate(); err != nil {
 		return aerr.Wrapf(err, "validate command failed")
@@ -154,7 +156,8 @@ func (e *EpisodesSrv) AddAction(ctx context.Context, cmd *command.AddActionCmd) 
 // Used by /api/2/updates.
 func (e *EpisodesSrv) GetUpdates(ctx context.Context, query *query.GetEpisodeUpdatesQuery,
 ) ([]model.EpisodeUpdate, error) {
-	log.Ctx(ctx).Debug().Object("query", query).Msg("get episodes updates")
+	log.Ctx(ctx).Debug().Object("query", query).
+		Msgf("EpisodesSrv: get episodes updates username=%s device_name=%s", query.UserName, query.DeviceName)
 
 	if err := query.Validate(); err != nil {
 		return nil, aerr.Wrapf(err, "validate query failed")
@@ -178,7 +181,7 @@ func (e *EpisodesSrv) GetUpdates(ctx context.Context, query *query.GetEpisodeUpd
 // GetLastActions return last `limit` actions for `username`.
 func (e *EpisodesSrv) GetLastActions(ctx context.Context, query *query.GetLastEpisodesActionsQuery,
 ) ([]model.EpisodeLastAction, error) {
-	log.Ctx(ctx).Debug().Object("query", query).Msg("get episodes")
+	log.Ctx(ctx).Debug().Object("query", query).Msgf("EpisodesSrv: get episodes updates username=%s", query.UserName)
 
 	if err := query.Validate(); err != nil {
 		return nil, aerr.Wrapf(err, "validate query failed")

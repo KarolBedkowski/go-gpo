@@ -19,7 +19,7 @@ import (
 
 func (s Repository) GetSettings(ctx context.Context, key *model.SettingsKey) (model.Settings, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Object("key", key).Msg("get settings")
+	logger.Debug().Object("key", key).Msgf("pg.Repository: get settings user_id=%d", key.UserID)
 
 	res := []SettingsDB{}
 	dbctx := db.MustCtx(ctx)
@@ -50,7 +50,7 @@ func (s Repository) GetSettings(ctx context.Context, key *model.SettingsKey) (mo
 func (s Repository) SaveSettings(ctx context.Context, key *model.SettingsKey, value string,
 ) error {
 	logger := log.Ctx(ctx)
-	logger.Debug().Object("key", key).Str("value", value).Msg("save settings")
+	logger.Debug().Object("key", key).Str("value", value).Msgf("pg.Repository: save settings user_id=%d", key.UserID)
 
 	dbctx := db.MustCtx(ctx)
 
@@ -88,7 +88,7 @@ func (s Repository) SaveSettings(ctx context.Context, key *model.SettingsKey, va
 
 func (Repository) GetAllSettings(ctx context.Context, userid int64) ([]model.UserSettings, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Int64("userid", userid).Msg("get all user settings")
+	logger.Debug().Int64("userid", userid).Msgf("pg.Repository: get all user settings user_id=%d", userid)
 
 	dbctx := db.MustCtx(ctx)
 	dbsettings := make([]SettingsDB, 0)

@@ -145,7 +145,8 @@ func (p *PodcastsSrv) GetPodcastsWithLastEpisode(ctx context.Context, username s
 
 func (p *PodcastsSrv) DeletePodcast(ctx context.Context, username string, podcastid int64) error {
 	logger := zerolog.Ctx(ctx)
-	logger.Debug().Int64("podcast_id", podcastid).Msg("delete podcast")
+	logger.Debug().Int64("podcast_id", podcastid).
+		Msgf("PodcastsSrv: delete podcast user_name=%s podcast_id=%d", username, podcastid)
 
 	//nolint:wrapcheck
 	return db.InTransaction(ctx, p.dbi, func(ctx context.Context) error {
@@ -171,7 +172,7 @@ func (p *PodcastsSrv) DeletePodcast(ctx context.Context, username string, podcas
 
 func (p *PodcastsSrv) ResolvePodcastsURL(ctx context.Context, urls []string) map[string]model.ResolvedPodcastURL {
 	logger := zerolog.Ctx(ctx)
-	logger.Debug().Strs("urls", urls).Msgf("start resolving podcasts url")
+	logger.Debug().Strs("urls", urls).Msgf("PodcastsSrv: start resolving podcasts url")
 
 	if len(urls) == 0 {
 		return nil
@@ -202,7 +203,7 @@ func (p *PodcastsSrv) ResolvePodcastsURL(ctx context.Context, urls []string) map
 		resolved[r.URL] = r
 	}
 
-	logger.Info().Msgf("resolving podcasts url finished, count: %d", len(urls))
+	logger.Info().Msgf("PodcastsSrv: resolving podcasts url finished, count=%d", len(urls))
 
 	return resolved
 }
@@ -211,7 +212,7 @@ func (p *PodcastsSrv) ResolvePodcastsURL(ctx context.Context, urls []string) map
 
 func (p *PodcastsSrv) DownloadPodcastsInfo(ctx context.Context, since time.Time, loadepisodes bool) error {
 	logger := zerolog.Ctx(ctx)
-	logger.Debug().Msgf("start downloading podcasts info; since=%s", since)
+	logger.Debug().Msgf("PodcastsSrv: start downloading podcasts info; since=%s", since)
 
 	// get podcasts to update
 	urls, err := db.InConnectionR(ctx, p.dbi, func(ctx context.Context) ([]model.PodcastToUpdate, error) {
@@ -222,12 +223,12 @@ func (p *PodcastsSrv) DownloadPodcastsInfo(ctx context.Context, since time.Time,
 	}
 
 	if len(urls) == 0 {
-		logger.Debug().Msg("start downloading podcasts finished; no url to update found")
+		logger.Debug().Msg("PodcastsSrv: start downloading podcasts finished; no url to update found")
 
 		return nil
 	}
 
-	logger.Debug().Msgf("start downloading podcasts finished; found %d", len(urls))
+	logger.Debug().Msgf("PodcastsSrv: start downloading podcasts finished; found %d", len(urls))
 
 	tasks := make(chan model.PodcastToUpdate, len(urls))
 
@@ -244,7 +245,7 @@ func (p *PodcastsSrv) DownloadPodcastsInfo(ctx context.Context, since time.Time,
 
 	wg.Wait()
 
-	logger.Info().Msgf("downloading podcasts info finished, count: %d", len(urls))
+	logger.Info().Msgf("PodcastsSrv: downloading podcasts info finished, count=%d", len(urls))
 
 	return nil
 }
@@ -269,7 +270,7 @@ func (p *PodcastsSrv) downloadPodcastInfoWorker(
 
 		err := p.downloadPodcastInfo(lctx, fp, since, &task, loadepisodes)
 		if err != nil {
-			llogger.Error().Err(err).Msg("update podcast info failed")
+			llogger.Error().Err(err).Msgf("PodcastsSrv: update podcast info failed: %s", err)
 		}
 	}
 }
@@ -282,7 +283,7 @@ func (p *PodcastsSrv) downloadPodcastInfo(ctx context.Context, //nolint: cyclop
 		panic("missing logger in ctx")
 	}
 
-	logger.Debug().Msg("downloading podcast info")
+	logger.Debug().Msg("PodcastsSrv: downloading podcast info")
 
 	var (
 		update   model.PodcastMetaUpdate
@@ -294,15 +295,15 @@ func (p *PodcastsSrv) downloadPodcastInfo(ctx context.Context, //nolint: cyclop
 	case err != nil:
 		return err
 	case status == http.StatusNotModified:
-		logger.Debug().Err(err).Msg("podcast not modified")
+		logger.Debug().Err(err).Msg("PodcastsSrv: podcast not modified")
 
 		update.NotModified = true
 	case feed != nil:
-		logger.Debug().Msgf("got podcast title: %q; published: %s, updated: %s",
+		logger.Debug().Msgf("PodcastsSrv: got podcast title=%q published=%s updated=%s",
 			feed.Title, feed.UpdatedParsed, feed.PublishedParsed)
 
 		if !feedNeedToBeUpdated(feed, task.MetaUpdatedAt) {
-			logger.Debug().Msg("not updated, skipping")
+			logger.Debug().Msg("PodcastsSrv: not updated, skipping")
 
 			return nil
 		}
@@ -312,7 +313,7 @@ func (p *PodcastsSrv) downloadPodcastInfo(ctx context.Context, //nolint: cyclop
 			episodes = episodesToUpdate(feed, since, task.MetaUpdatedAt)
 		}
 	default:
-		logger.Info().Int("status_code", status).Msg("download podcast unknown state")
+		logger.Info().Int("status_code", status).Msgf("PodcastsSrv: download podcast unknown status=%d", status)
 
 		return nil
 	}
@@ -465,7 +466,7 @@ func resolvePodcastsURLTask(
 
 	for url := range urls {
 		logger := tlogger.With().Str("podcast_url", url).Logger()
-		logger.Debug().Msg("downloading podcast info")
+		logger.Debug().Msg("PodcastsSrv: downloading podcast info")
 
 		dctx, cancel := context.WithTimeout(ctx, downloadPodcastInfoTimeout)
 		resolvedurl, err := ResolvePodcastURL(dctx, url)

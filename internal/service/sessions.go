@@ -39,7 +39,8 @@ func (s *SessionStore) Set(key, value any) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	log.Logger.Debug().Msgf("set session: %v=%v", key, &value)
+	log.Logger.Debug().Str("sid", s.sid).
+		Msgf("SessionStore: set session sid=%q key=%v value=%v", s.sid, key, &value)
 
 	s.data[key] = value
 
@@ -72,7 +73,7 @@ func (s *SessionStore) ID() string {
 // Release save session values to database.
 // must call this method to save values to database.
 func (s *SessionStore) Release() error {
-	log.Logger.Debug().Msgf("session release: %+v", &s.data)
+	log.Logger.Debug().Str("sid", s.sid).Msgf("SessionStore: session release sid=%q %v", s.sid, &s.data)
 
 	ctx := log.Logger.WithContext(context.Background())
 
@@ -181,7 +182,8 @@ func (p *SessionProvider) Destroy(sid string) error {
 
 // Regenerate regenerates a session store from old session ID to new one.
 func (p *SessionProvider) Regenerate(oldsid, sid string) (session.RawStore, error) { //nolint:ireturn,nolintlint
-	p.logger.Debug().Str("sid", sid).Str("old_sid", oldsid).Msg("regenerate session")
+	p.logger.Debug().Str("sid", sid).Str("old_sid", oldsid).
+		Msgf("SessionProvider: regenerate session old_sid=%q sid=%q", oldsid, sid)
 
 	ctx := p.logger.WithContext(context.Background())
 
@@ -225,7 +227,7 @@ func (p *SessionProvider) Count() (int, error) {
 
 // GC calls GC to clean expired sessions.
 func (p *SessionProvider) GC() {
-	p.logger.Debug().Msg("gc sessions")
+	p.logger.Debug().Msg("SessionProvider: gc sessions")
 
 	ctx := p.logger.WithContext(context.Background())
 
@@ -233,6 +235,6 @@ func (p *SessionProvider) GC() {
 		return p.repo.CleanSessions(ctx, p.maxlifetime, 2*time.Hour) //nolint:mnd
 	})
 	if err != nil {
-		p.logger.Error().Err(err).Msg("gc sessions error")
+		p.logger.Error().Err(err).Msgf("SessionProvider: gc sessions error: %s", err)
 	}
 }

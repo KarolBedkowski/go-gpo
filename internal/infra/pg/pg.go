@@ -53,7 +53,7 @@ func NewDatabaseI(i do.Injector) (*Database, error) {
 
 func (d *Database) Open(ctx context.Context) (*sqlx.DB, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Msgf("connecting to postgresql")
+	logger.Debug().Msgf("pg.Database:: connecting to postgresql")
 
 	var err error
 
@@ -81,7 +81,7 @@ func (d *Database) Shutdown(ctx context.Context) error {
 	}
 
 	logger := log.Ctx(ctx)
-	logger.Debug().Msg("closing database...")
+	logger.Debug().Msg("pg.Database:: closing database...")
 
 	if err := d.db.Close(); err != nil {
 		d.db = nil
@@ -137,12 +137,12 @@ func (d *Database) Migrate(ctx context.Context) error {
 		return aerr.ApplyFor(aerr.ErrDatabase, err, "", "failed to check current database version")
 	}
 
-	logger.Info().Msgf("current database version: %d", ver)
+	logger.Info().Msgf("pg.Database:: current database version: %d", ver)
 
 	for {
 		res, err := provider.UpByOne(ctx)
 		if res != nil {
-			logger.Debug().Msgf("migration: %s", res)
+			logger.Debug().Msgf("pg.Database:: migration: %s", res)
 		}
 
 		if errors.Is(err, goose.ErrNoNextVersion) {
@@ -157,7 +157,7 @@ func (d *Database) Migrate(ctx context.Context) error {
 		return aerr.ApplyFor(aerr.ErrDatabase, err, "", "failed to check current database version")
 	}
 
-	logger.Info().Msgf("migrated database version: %d", ver)
+	logger.Info().Msgf("pg.Database: migrated database version: %d", ver)
 
 	return nil
 }

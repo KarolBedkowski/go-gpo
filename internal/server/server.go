@@ -129,11 +129,11 @@ func (s *Server) Start(ctx context.Context) error {
 		return aerr.Wrapf(err, "start listen error")
 	}
 
-	logger.Log().Msgf("Listen on %s (https=%v)...", s.cfg.Listen, s.cfg.tlsEnabled())
+	logger.Log().Msgf("Server: listen on address=%s https=%v", s.cfg.Listen, s.cfg.tlsEnabled())
 
 	go func() {
 		if err := s.s.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			logger.Log().Err(err).Msg("serve error")
+			logger.Log().Err(err).Msgf("Server: serve error: %s", err)
 		}
 	}()
 
@@ -147,21 +147,21 @@ func (s *Server) Stop(_ error) {
 	defer cancel()
 
 	if err := s.s.Shutdown(shutdownCtx); err != nil {
-		logger.Error().Err(err).Msg("shutdown server failed")
+		logger.Error().Err(err).Msgf("Server: shutdown server failed: %s", err)
 	} else {
-		logger.Debug().Msg("server stopped")
+		logger.Debug().Msg("Server: stopped")
 	}
 }
 
 func (s *Server) Shutdown(ctx context.Context) error {
 	logger := log.Ctx(ctx)
-	logger.Debug().Msg("server stopping...")
+	logger.Debug().Msg("Server: stopping...")
 
 	if err := s.s.Shutdown(ctx); err != nil {
 		return aerr.Wrapf(err, "shutdown server failed")
 	}
 
-	logger.Debug().Msg("server stopped")
+	logger.Debug().Msg("Server: stopped")
 
 	return nil
 }
@@ -173,13 +173,13 @@ func logRoutes(ctx context.Context, r chi.Routes) {
 		_ = handler
 		_ = middlewares
 		route = strings.ReplaceAll(route, "/*/", "/")
-		logger.Debug().Msgf("ROUTE: %s %s", method, route)
+		logger.Debug().Msgf("Server: ROUTE: %s %s", method, route)
 
 		return nil
 	}
 
 	if err := chi.Walk(r, walkFunc); err != nil {
-		logger.Error().Err(err).Msg("routers walk error")
+		logger.Error().Err(err).Msgf("Server: routers walk error: %s", err)
 	}
 }
 
@@ -219,8 +219,6 @@ func newHealthChecker(injector do.Injector) http.HandlerFunc {
 	rootscope := injector.RootScope()
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		log.Logger.Debug().Msgf("remote %v", r.RemoteAddr)
-
 		if !strings.HasPrefix(r.RemoteAddr, "localhost") && !strings.HasPrefix(r.RemoteAddr, "127.0.0.1") {
 			w.WriteHeader(http.StatusForbidden)
 
@@ -231,7 +229,8 @@ func newHealthChecker(injector do.Injector) http.HandlerFunc {
 
 		for service, err := range rootscope.HealthCheckWithContext(r.Context()) {
 			if err != nil {
-				log.Logger.Error().Err(err).Str("service", service).Msgf("service %q failed on healthcheck", service)
+				log.Logger.Error().Err(err).Str("service", service).
+					Msgf("HealthChecker: service=%q failed on healthcheck: %s", service, err)
 
 				response = "error"
 			}

@@ -44,7 +44,8 @@ func NewSettingsSrv(i do.Injector) (*SettingsSrv, error) {
 }
 
 func (s SettingsSrv) GetSettings(ctx context.Context, query *query.SettingsQuery) (model.Settings, error) {
-	log.Ctx(ctx).Debug().Object("query", query).Msg("get settings")
+	log.Ctx(ctx).Debug().Object("query", query).
+		Msgf("SettingsSrv: get settings user_name=%s scope=%s", query.UserName, query.Scope)
 
 	// validate
 	if err := query.Validate(); err != nil {
@@ -69,7 +70,8 @@ func (s SettingsSrv) GetSettings(ctx context.Context, query *query.SettingsQuery
 
 // SaveSettings for `key` and values in `set`. If value is set to "" for given key - delete it.
 func (s SettingsSrv) SaveSettings(ctx context.Context, cmd *command.ChangeSettingsCmd) error {
-	log.Ctx(ctx).Debug().Object("cmd", cmd).Msg("save settings")
+	log.Ctx(ctx).Debug().Object("cmd", cmd).
+		Msgf("SettingsSrv: save settings user_name=%s scope=%s", cmd.UserName, cmd.Scope)
 
 	if err := cmd.Validate(); err != nil {
 		return aerr.Wrapf(err, "validate settings key to save failed")

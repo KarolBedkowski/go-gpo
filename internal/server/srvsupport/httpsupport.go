@@ -17,14 +17,11 @@ import (
 	"github.com/go-chi/render"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/hlog"
-	"github.com/rs/zerolog/log"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/common"
 )
 
 func SessionUser(store session.Store) string {
-	log.Debug().Str("session_id", store.ID()).Msg("session id")
-
 	suserint := store.Get("user")
 	if username, ok := suserint.(string); ok {
 		return username
@@ -72,7 +69,7 @@ func WriteError(w http.ResponseWriter, r *http.Request, code int, msg string) {
 		}{msg}
 
 		render.Status(r, code)
-		render.JSON(w, r, &res)
+		RenderJSON(w, r, &res)
 
 		return
 	}
