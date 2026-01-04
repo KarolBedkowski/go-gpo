@@ -129,7 +129,7 @@ func newHealthChecker(injector do.Injector, cfg *config.ServerConf) http.Handler
 		log.Logger.Debug().Msgf("remote %v", r.RemoteAddr)
 
 		// access to /health only from localhost
-		if _, access := cfg.AuthDebugRequest(r); !access {
+		if _, access := cfg.AuthMgmtRequest(r); !access {
 			w.WriteHeader(http.StatusForbidden)
 
 			return

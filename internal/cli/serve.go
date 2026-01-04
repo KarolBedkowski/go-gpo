@@ -94,6 +94,14 @@ func newStartServerCmd() *cli.Command { //nolint:funlen
 				Sources: cli.EnvVars("GOGPO_MGMT_SERVER_ADDRESS"),
 				Config:  cli.StringConfig{TrimSpace: true},
 			},
+			&cli.StringFlag{
+				Name:    "mgmt-access-list",
+				Value:   "",
+				Usage:   "list of ip or networks separated by ',' allowed to connected to mgmt endpoints.",
+				Aliases: []string{"m"},
+				Sources: cli.EnvVars("GOGPO_MGMT_SERVER_ACCESS_LIST"),
+				Config:  cli.StringConfig{TrimSpace: true},
+			},
 		},
 		Action: wrap(startServerCmd),
 	}
@@ -118,8 +126,9 @@ func startServerCmd(ctx context.Context, clicmd *cli.Command, rootInjector do.In
 			Address: strings.TrimSpace(clicmd.String("mgmt-address")),
 			// mgmt not use for now tls/webroot/cookie
 		},
-		DebugFlags:    config.NewDebugFLags(clicmd.String("debug")),
-		EnableMetrics: clicmd.Bool("enable-metrics"),
+		DebugFlags:     config.NewDebugFLags(clicmd.String("debug")),
+		EnableMetrics:  clicmd.Bool("enable-metrics"),
+		MgmtAccessList: clicmd.String("mgmt-access-list"),
 	}
 
 	if err := serverConf.Validate(); err != nil {

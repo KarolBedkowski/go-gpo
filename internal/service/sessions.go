@@ -133,7 +133,7 @@ func (p *SessionProvider) Init(gclifetime int64, config string) error {
 }
 
 // Read returns raw session store by session ID.
-func (p *SessionProvider) Read(sid string) (session.RawStore, error) { //nolint:ireturn
+func (p *SessionProvider) Read(sid string) (session.RawStore, error) { //nolint:ireturn,nolintlint
 	ctx := p.logger.WithContext(context.Background())
 
 	storedSession, err := db.InTransactionR(ctx, p.dbi, func(ctx context.Context) (*model.Session, error) {

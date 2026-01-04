@@ -383,7 +383,7 @@ func newAuthDebugMiddleware(c *config.ServerConf) func(http.Handler) http.Handle
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			log := zerolog.Ctx(r.Context())
 
-			if allow, _ := c.AuthDebugRequest(r); allow {
+			if allow, _ := c.AuthMgmtRequest(r); allow {
 				log.Debug().Msgf("AuthDebug: access to url=%q from remote=%q allowed", r.URL.Redacted(), r.RemoteAddr)
 				next.ServeHTTP(w, r)
 			} else {

@@ -27,7 +27,7 @@ import (
 )
 
 func newTracingMiddleware(cfg *config.ServerConf) func(http.Handler) http.Handler {
-	xtrace.AuthRequest = cfg.AuthDebugRequest
+	xtrace.AuthRequest = cfg.AuthMgmtRequest
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
