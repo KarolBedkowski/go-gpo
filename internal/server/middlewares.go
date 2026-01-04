@@ -255,6 +255,34 @@ func newFullLogMiddleware(next http.Handler) http.Handler {
 
 //-------------------------------------------------------------
 
+// newVerySimpleLogMiddleware create basic log middleware that log only result request.
+func newVerySimpleLogMiddleware(name string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+			start := time.Now().UTC()
+			ctx := request.Context()
+			requestID, _ := hlog.IDFromCtx(ctx)
+			llog := log.With().Str(common.LogKeyReqID, requestID.String()).Logger()
+			request = request.WithContext(llog.WithContext(ctx))
+			lrw := &logResponseWriter{ResponseWriter: writer, status: 0, size: 0}
+
+			defer func() {
+				loglevel, _ := mapStatusToLogLevel(lrw.status)
+				llog.WithLevel(loglevel).
+					Str("url", request.URL.Redacted()).
+					Int("status", lrw.status).
+					Int("size", lrw.size).
+					Dur("duration", time.Since(start)).
+					Msgf(name+": request finished method=%s url=%s status=%d", request.Method, request.URL.Redacted(), lrw.status)
+			}()
+
+			next.ServeHTTP(lrw, request)
+		})
+	}
+}
+
+//-------------------------------------------------------------
+
 // shouldSkipLogRequest determine which request should not be logged.
 func shouldSkipLogRequest(request *http.Request) bool {
 	path := request.URL.Path

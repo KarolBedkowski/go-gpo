@@ -15,6 +15,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
+	"github.com/rs/zerolog/hlog"
 	"github.com/rs/zerolog/log"
 	dochi "github.com/samber/do/http/chi/v2"
 	"github.com/samber/do/v2"
@@ -36,6 +37,7 @@ func NewMgmt(injector do.Injector) (*MgmtServer, error) {
 	router := chi.NewRouter()
 	router.Use(middleware.Heartbeat(cfg.MgmtServer.WebRoot + "/ping"))
 	router.Use(middleware.RealIP)
+	router.Use(newRecoverMiddleware)
 
 	createMgmtRouters(injector, router, cfg, cfg.MgmtServer)
 
@@ -80,13 +82,13 @@ func (s *MgmtServer) Start(ctx context.Context) error {
 
 func (s *MgmtServer) Shutdown(ctx context.Context) error {
 	logger := log.Ctx(ctx)
-	logger.Debug().Msg("Server: stopping...")
+	logger.Debug().Msg("MgmtServer: stopping...")
 
 	if err := s.s.Shutdown(ctx); err != nil {
 		return aerr.Wrapf(err, "shutdown server failed")
 	}
 
-	logger.Debug().Msg("Server: stopped")
+	logger.Debug().Msg("MgmtServer: stopped")
 
 	return nil
 }
@@ -99,6 +101,8 @@ func createMgmtRouters(injector do.Injector, router *chi.Mux, cfg *config.Server
 	router.Get(webroot+"/health", newHealthChecker(injector, cfg))
 
 	router.Group(func(group chi.Router) {
+		group.Use(hlog.RequestIDHandler("req_id", "Request-Id"))
+		group.Use(newVerySimpleLogMiddleware("MgmtServer"))
 		group.Use(newAuthDebugMiddleware(cfg))
 
 		if cfg.DebugFlags.HasFlag(config.DebugDo) {
