@@ -107,21 +107,26 @@ func startServerCmd(ctx context.Context, clicmd *cli.Command, rootInjector do.In
 	)
 
 	serverConf := server.Configuration{
-		Listen:        strings.TrimSpace(clicmd.String("address")),
+		MainServer: server.ListenConfiguration{
+			Address:      strings.TrimSpace(clicmd.String("address")),
+			WebRoot:      strings.TrimSuffix(clicmd.String("web-root"), "/"),
+			TLSKey:       clicmd.String("key"),
+			TLSCert:      clicmd.String("cert"),
+			CookieSecure: clicmd.Bool("secure-cookie"),
+		},
+		MgmtServer: server.ListenConfiguration{
+			Address: strings.TrimSpace(clicmd.String("mgmt-address")),
+			// mgmt not use for now tls/webroot/cookie
+		},
 		DebugFlags:    config.NewDebugFLags(clicmd.String("debug")),
-		WebRoot:       strings.TrimSuffix(clicmd.String("web-root"), "/"),
 		EnableMetrics: clicmd.Bool("enable-metrics"),
-		TLSKey:        clicmd.String("key"),
-		TLSCert:       clicmd.String("cert"),
-		CookieSecure:  clicmd.Bool("secure-cookie"),
-		MgmtListen:    strings.TrimSpace(clicmd.String("mgmt-address")),
 	}
 
 	if err := serverConf.Validate(); err != nil {
 		return aerr.Wrapf(err, "server config validation failed")
 	}
 
-	do.ProvideNamedValue(injector, "server.webroot", serverConf.WebRoot)
+	do.ProvideNamedValue(injector, "server.webroot", serverConf.MainServer.WebRoot)
 	do.ProvideValue(injector, &serverConf)
 
 	if serverConf.DebugFlags.HasFlag(config.DebugDo) {

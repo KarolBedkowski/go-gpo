@@ -340,8 +340,8 @@ func newSessionMiddleware(i do.Injector) (sessionMiddleware, error) {
 		CookieName:     "sessionid",
 		SameSite:       http.SameSiteLaxMode,
 		Maxlifetime:    int64(sessionMaxLifetime.Seconds()),
-		Secure:         cfg.useSecureCookie(),
-		CookiePath:     cfg.WebRoot,
+		Secure:         cfg.MainServer.useSecureCookie(),
+		CookiePath:     cfg.MainServer.WebRoot,
 	})
 	if err != nil {
 		return nil, aerr.Wrapf(err, "start session manager failed")

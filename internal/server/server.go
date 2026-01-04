@@ -49,9 +49,11 @@ func New(injector do.Injector) (*Server, error) {
 	sessionMW := do.MustInvoke[sessionMiddleware](injector)
 	logMW := do.MustInvoke[logMiddleware](injector)
 
+	webroot := cfg.MainServer.WebRoot
+
 	// routes
 	router := chi.NewRouter()
-	router.Use(middleware.Heartbeat(cfg.WebRoot + "/ping"))
+	router.Use(middleware.Heartbeat(webroot + "/ping"))
 	router.Use(middleware.RealIP)
 
 	router.Group(func(group chi.Router) {
@@ -74,25 +76,24 @@ func New(injector do.Injector) (*Server, error) {
 		group.
 			With(newPromMiddleware("api", nil)).
 			With(middleware.NoCache).
-			Mount(cfg.WebRoot+"/", api.Routes())
+			Mount(webroot+"/", api.Routes())
 		group.
 			With(newPromMiddleware("web", nil)).
-			Mount(cfg.WebRoot+"/web", web.Routes())
-		group.
-			Get(cfg.WebRoot+"/", func(w http.ResponseWriter, r *http.Request) {
-				http.Redirect(w, r, cfg.WebRoot+"/web", http.StatusMovedPermanently)
-			})
+			Mount(webroot+"/web", web.Routes())
+		group.Get(webroot+"/", func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, webroot+"/web", http.StatusMovedPermanently)
+		})
 	})
 
 	if cfg.mgmtEnabledOnMainServer() {
-		createMgmtRouters(injector, router, cfg, cfg.WebRoot)
+		createMgmtRouters(injector, router, cfg, cfg.MainServer)
 	}
 
 	return &Server{
 		router: router,
 		cfg:    cfg,
 		s: &http.Server{
-			Addr:           cfg.Listen,
+			Addr:           cfg.MainServer.Address,
 			Handler:        router,
 			ReadTimeout:    defaultReadTimeout,
 			WriteTimeout:   defaultWriteTimeout,
@@ -108,13 +109,15 @@ func (s *Server) Start(ctx context.Context) error {
 		logRoutes(ctx, "Server", s.router)
 	}
 
-	listener, err := newListener(ctx, s.cfg.Listen, s.cfg.TLSKey, s.cfg.TLSCert)
+	scfg := s.cfg.MainServer
+
+	listener, err := newListener(ctx, scfg)
 	if err != nil {
 		return aerr.Wrapf(err, "start listen error")
 	}
 
 	logger.Log().Msgf("Server: listen on address=%s https=%v webroot=%q",
-		s.cfg.Listen, s.cfg.tlsEnabled(), s.cfg.WebRoot)
+		scfg.Address, scfg.tlsEnabled(), scfg.WebRoot)
 
 	if s.cfg.mgmtEnabledOnMainServer() {
 		logger.Warn().Msg("Server: management endpoints enabled on main server")
@@ -161,22 +164,22 @@ func logRoutes(ctx context.Context, name string, r chi.Routes) {
 	}
 }
 
-func newListener(ctx context.Context, address, tlskey, tlscert string) (net.Listener, error) {
-	if tlskey == "" || tlscert == "" {
+func newListener(ctx context.Context, scfg ListenConfiguration) (net.Listener, error) {
+	if scfg.TLSKey == "" || scfg.TLSCert == "" {
 		lc := net.ListenConfig{}
 
-		l, err := lc.Listen(ctx, "tcp", address)
+		l, err := lc.Listen(ctx, "tcp", scfg.Address)
 		if err != nil {
-			return nil, aerr.Wrapf(err, "listen failed").WithMeta("address", address)
+			return nil, aerr.Wrapf(err, "listen failed").WithMeta("address", scfg.Address)
 		}
 
 		return l, nil
 	}
 
-	cert, err := tls.LoadX509KeyPair(tlscert, tlskey)
+	cert, err := tls.LoadX509KeyPair(scfg.TLSCert, scfg.TLSKey)
 	if err != nil {
 		return nil, aerr.Wrapf(err, "load certificates failed").
-			WithMeta("cert", tlscert, "key", tlskey)
+			WithMeta("cert", scfg.TLSCert, "key", scfg.TLSKey)
 	}
 
 	cfg := tls.Config{
@@ -184,9 +187,9 @@ func newListener(ctx context.Context, address, tlskey, tlscert string) (net.List
 		MinVersion:   tls.VersionTLS12,
 	}
 
-	l, err := tls.Listen("tcp", address, &cfg)
+	l, err := tls.Listen("tcp", scfg.Address, &cfg)
 	if err != nil {
-		return nil, aerr.Wrapf(err, "tls listen failed").WithMeta("address", address)
+		return nil, aerr.Wrapf(err, "tls listen failed").WithMeta("address", scfg.Address)
 	}
 
 	return l, nil

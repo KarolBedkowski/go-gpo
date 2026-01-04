@@ -34,16 +34,16 @@ func NewMgmt(injector do.Injector) (*MgmtServer, error) {
 
 	// routes
 	router := chi.NewRouter()
-	router.Use(middleware.Heartbeat(cfg.MgmtWebRoot + "/ping"))
+	router.Use(middleware.Heartbeat(cfg.MgmtServer.WebRoot + "/ping"))
 	router.Use(middleware.RealIP)
 
-	createMgmtRouters(injector, router, cfg, cfg.MgmtWebRoot)
+	createMgmtRouters(injector, router, cfg, cfg.MgmtServer)
 
 	return &MgmtServer{
 		router: router,
 		cfg:    cfg,
 		s: &http.Server{
-			Addr:           cfg.MgmtListen,
+			Addr:           cfg.MgmtServer.Address,
 			Handler:        router,
 			ReadTimeout:    defaultReadTimeout,
 			WriteTimeout:   defaultWriteTimeout,
@@ -59,13 +59,14 @@ func (s *MgmtServer) Start(ctx context.Context) error {
 		logRoutes(ctx, "MgmtServer", s.router)
 	}
 
-	listener, err := newListener(ctx, s.cfg.MgmtListen, s.cfg.MgmtTLSKey, s.cfg.MgmtTLSCert)
+	scfg := s.cfg.MgmtServer
+
+	listener, err := newListener(ctx, scfg)
 	if err != nil {
 		return aerr.Wrapf(err, "start listen error")
 	}
 
-	logger.Log().Msgf("MgmtServer: listen on address=%s https=%v webroot=%q",
-		s.cfg.MgmtListen, s.cfg.mgmtTLSEnabled(), s.cfg.MgmtWebRoot)
+	logger.Log().Msgf("MgmtServer: listen on address=%s https=%v webroot=%q", scfg.Address, scfg.tlsEnabled(), scfg.WebRoot)
 
 	go func() {
 		if err := s.s.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -91,8 +92,10 @@ func (s *MgmtServer) Shutdown(ctx context.Context) error {
 
 //-------------------------------------------------------------
 
-func createMgmtRouters(injector do.Injector, router *chi.Mux, cfg *Configuration, webroot string) {
-	router.Get(cfg.MgmtWebRoot+"/health", newHealthChecker(injector, cfg))
+func createMgmtRouters(injector do.Injector, router *chi.Mux, cfg *Configuration, scfg ListenConfiguration) {
+	webroot := scfg.WebRoot
+
+	router.Get(webroot+"/health", newHealthChecker(injector, cfg))
 
 	router.Group(func(group chi.Router) {
 		group.Use(newAuthDebugMiddleware(cfg))

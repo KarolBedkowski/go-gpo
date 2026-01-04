@@ -8,6 +8,7 @@ package server
 //
 
 import (
+	"fmt"
 	"net"
 	"net/http"
 
@@ -15,23 +16,16 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/config"
 )
 
-type Configuration struct {
-	Listen        string
-	WebRoot       string
-	TLSKey        string
-	TLSCert       string
-	DebugFlags    config.DebugFlags
-	EnableMetrics bool
-	CookieSecure  bool
-
-	MgmtListen  string
-	MgmtWebRoot string
-	MgmtTLSKey  string
-	MgmtTLSCert string
+type ListenConfiguration struct {
+	Address      string
+	WebRoot      string
+	TLSKey       string
+	TLSCert      string
+	CookieSecure bool
 }
 
-func (c *Configuration) Validate() error {
-	if c.Listen == "" {
+func (c *ListenConfiguration) Validate() error {
+	if c.Address == "" {
 		return aerr.ErrValidation.WithUserMsg("listen address can't be empty")
 	}
 
@@ -39,9 +33,35 @@ func (c *Configuration) Validate() error {
 		return aerr.ErrValidation.WithUserMsg("both tls key and cert must be defined")
 	}
 
-	if c.MgmtListen != "" {
-		if (c.MgmtTLSKey != "") != (c.MgmtTLSCert != "") {
-			return aerr.ErrValidation.WithUserMsg("both tls key and cert must be defined")
+	return nil
+}
+
+func (c *ListenConfiguration) tlsEnabled() bool {
+	return c.TLSKey != ""
+}
+
+func (c *ListenConfiguration) useSecureCookie() bool {
+	return c.TLSKey != "" || c.CookieSecure
+}
+
+//-------------------------------------------------------------
+
+type Configuration struct {
+	MainServer ListenConfiguration
+	MgmtServer ListenConfiguration
+
+	DebugFlags    config.DebugFlags
+	EnableMetrics bool
+}
+
+func (c *Configuration) Validate() error {
+	if err := c.MainServer.Validate(); err != nil {
+		return fmt.Errorf("validate main server configuration failed: %w", err)
+	}
+
+	if c.MgmtServer.Address != "" {
+		if err := c.MgmtServer.Validate(); err != nil {
+			return fmt.Errorf("validate mgmt server configuration failed: %w", err)
 		}
 	}
 
@@ -49,23 +69,11 @@ func (c *Configuration) Validate() error {
 }
 
 func (c *Configuration) SeparateMgmtEnabled() bool {
-	return c.MgmtListen != "" && c.MgmtListen != c.Listen
+	return c.MgmtServer.Address != "" && c.MgmtServer.Address != c.MainServer.Address
 }
 
 func (c *Configuration) mgmtEnabledOnMainServer() bool {
-	return c.MgmtListen != "" && c.MgmtListen == c.Listen
-}
-
-func (c *Configuration) tlsEnabled() bool {
-	return c.TLSKey != ""
-}
-
-func (c *Configuration) mgmtTLSEnabled() bool {
-	return c.MgmtTLSKey != ""
-}
-
-func (c *Configuration) useSecureCookie() bool {
-	return c.TLSKey != "" || c.CookieSecure
+	return c.MgmtServer.Address != "" && c.MgmtServer.Address == c.MainServer.Address
 }
 
 // authDebugRequest check request remote address is it allowed to access
