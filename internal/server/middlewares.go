@@ -42,8 +42,7 @@ func AuthenticatedOnly(next http.Handler) http.Handler {
 			Msgf("AuthenticatedOnly: check user_name=%s sid=%s", user, sess.ID())
 
 		if user != "" {
-			ctx := common.ContextWithUser(r.Context(), user)
-			next.ServeHTTP(w, r.WithContext(ctx))
+			next.ServeHTTP(w, r)
 
 			return
 		}
@@ -71,29 +70,27 @@ func newAuthenticator(i do.Injector) (authenticator, error) {
 func (a authenticator) handle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		username, password, basicAuthOk := r.BasicAuth()
-		ctx := r.Context()
 		sess := session.GetSession(r)
 		sessionuser, _ := sess.Get("user").(string)
 		logger := hlog.FromRequest(r).With().
 			Str("sid", sess.ID()).Str(common.LogKeyUserName, common.Coalesce(username, sessionuser)).Logger()
+		ctx := logger.WithContext(r.Context())
 
 		if sessionuser == "" && !basicAuthOk {
 			// no valid session, no auth, continue to next handler
-			next.ServeHTTP(w, r.WithContext(common.ContextWithUser(logger.WithContext(ctx), username)))
+			next.ServeHTTP(w, r.WithContext(common.ContextWithUser(ctx, username)))
 
 			return
 		}
 
-		var err error
-		// if session is valid and (there is no auth or auth is with the same username)
+		// if session is valid and (there is no new auth or there is auth but username is not changed) - continue
 		if sessionuser != "" && (!basicAuthOk || username == sessionuser) {
-			_, err = a.usersSrv.CheckUser(ctx, sessionuser)
-			username = sessionuser
-		} else {
-			_, err = a.usersSrv.LoginUser(ctx, username, password)
+			next.ServeHTTP(w, r.WithContext(common.ContextWithUser(ctx, sessionuser)))
+
+			return
 		}
 
-		switch {
+		switch _, err := a.usersSrv.LoginUser(ctx, username, password); {
 		case err == nil:
 			// no error login/check user - continue
 			logger.Info().Str(common.LogKeyAuthResult, common.LogAuthResultSuccess).
@@ -101,8 +98,8 @@ func (a authenticator) handle(next http.Handler) http.Handler {
 
 			_ = sess.Set("user", username)
 
-			common.TraceLazyPrintf(ctx, "user authorized")
-			next.ServeHTTP(w, r)
+			common.TraceLazyPrintf(ctx, "user authenticated")
+			next.ServeHTTP(w, r.WithContext(common.ContextWithUser(ctx, username)))
 		case aerr.HasTag(err, common.AuthenticationError):
 			logger.Info().Err(err).Str(common.LogKeyUserName, username).
 				Str(common.LogKeyAuthResult, common.LogAuthResultFailed).
@@ -115,6 +112,7 @@ func (a authenticator) handle(next http.Handler) http.Handler {
 			w.Header().Add("WWW-Authenticate", "Basic realm=\"go-gpo\"")
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		default:
+			common.TraceErrorLazyPrintf(ctx, "authentication error")
 			logger.Error().Err(err).Msgf("Authenticator: internal error user_name=%s error=%q", username, err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
