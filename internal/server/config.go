@@ -23,6 +23,11 @@ type Configuration struct {
 	DebugFlags    config.DebugFlags
 	EnableMetrics bool
 	CookieSecure  bool
+
+	MgmtListen  string
+	MgmtWebRoot string
+	MgmtTLSKey  string
+	MgmtTLSCert string
 }
 
 func (c *Configuration) Validate() error {
@@ -34,11 +39,29 @@ func (c *Configuration) Validate() error {
 		return aerr.ErrValidation.WithUserMsg("both tls key and cert must be defined")
 	}
 
+	if c.MgmtListen != "" {
+		if (c.MgmtTLSKey != "") != (c.MgmtTLSCert != "") {
+			return aerr.ErrValidation.WithUserMsg("both tls key and cert must be defined")
+		}
+	}
+
 	return nil
+}
+
+func (c *Configuration) SeparateMgmtEnabled() bool {
+	return c.MgmtListen != "" && c.MgmtListen != c.Listen
+}
+
+func (c *Configuration) mgmtEnabledOnMainServer() bool {
+	return c.MgmtListen != "" && c.MgmtListen == c.Listen
 }
 
 func (c *Configuration) tlsEnabled() bool {
 	return c.TLSKey != ""
+}
+
+func (c *Configuration) mgmtTLSEnabled() bool {
+	return c.MgmtTLSKey != ""
 }
 
 func (c *Configuration) useSecureCookie() bool {

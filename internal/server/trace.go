@@ -56,9 +56,9 @@ func newTracingMiddleware(cfg *Configuration) func(http.Handler) http.Handler {
 	}
 }
 
-func mountXTrace(group chi.Router, cfg *Configuration) {
-	group.Get(cfg.WebRoot+"/debug/requests", xtrace.Traces)
-	group.Get(cfg.WebRoot+"/debug/events", xtrace.Events)
+func mountXTrace(group chi.Router, webroot string) {
+	group.Get(webroot+"/debug/requests", xtrace.Traces)
+	group.Get(webroot+"/debug/events", xtrace.Events)
 }
 
 //-------------------------------------------------------------

@@ -29,7 +29,7 @@ import (
 	gpoweb "gitlab.com/kabes/go-gpo/internal/web"
 )
 
-func newStartServerCmd() *cli.Command {
+func newStartServerCmd() *cli.Command { //nolint:funlen
 	return &cli.Command{
 		Name:  "serve",
 		Usage: "start server",
@@ -86,6 +86,14 @@ func newStartServerCmd() *cli.Command {
 				Usage:   "When loading podcast, load also episodes title.",
 				Sources: cli.EnvVars("GOGPO_SERVER_PODCAST_LOAD_EPISODES"),
 			},
+			&cli.StringFlag{
+				Name:    "mgmt-address",
+				Value:   "",
+				Usage:   "listen address for management endpoints; empty disable management; may be the same as main 'address'",
+				Aliases: []string{"m"},
+				Sources: cli.EnvVars("GOGPO_MGMT_SERVER_ADDRESS"),
+				Config:  cli.StringConfig{TrimSpace: true},
+			},
 		},
 		Action: wrap(startServerCmd),
 	}
@@ -106,6 +114,7 @@ func startServerCmd(ctx context.Context, clicmd *cli.Command, rootInjector do.In
 		TLSKey:        clicmd.String("key"),
 		TLSCert:       clicmd.String("cert"),
 		CookieSecure:  clicmd.Bool("secure-cookie"),
+		MgmtListen:    strings.TrimSpace(clicmd.String("mgmt-address")),
 	}
 
 	if err := serverConf.Validate(); err != nil {
@@ -143,6 +152,13 @@ func (s *Server) start(ctx context.Context, injector do.Injector, cfg *server.Co
 	srv := do.MustInvoke[*server.Server](injector)
 	if err := srv.Start(ctx); err != nil {
 		return aerr.Wrapf(err, "start server failed")
+	}
+
+	if cfg.SeparateMgmtEnabled() {
+		msrv := do.MustInvoke[*server.MgmtServer](injector)
+		if err := msrv.Start(ctx); err != nil {
+			return aerr.Wrapf(err, "start server failed")
+		}
 	}
 
 	maintSrv := do.MustInvoke[*service.MaintenanceSrv](injector)

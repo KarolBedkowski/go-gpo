@@ -11,7 +11,6 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
-	"fmt"
 	"net"
 	"net/http"
 	"strings"
@@ -19,10 +18,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/go-chi/render"
 	"github.com/rs/zerolog/hlog"
 	"github.com/rs/zerolog/log"
-	dochi "github.com/samber/do/http/chi/v2"
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	gpoapi "gitlab.com/kabes/go-gpo/internal/api"
@@ -35,7 +32,6 @@ const (
 	defaultReadTimeout    = 60 * time.Second
 	defaultWriteTimeout   = 60 * time.Second
 	defaultMaxHeaderBytes = 1 << 20
-	shutdownTimeout       = 10 * time.Second
 )
 
 type Server struct {
@@ -45,7 +41,7 @@ type Server struct {
 	s   *http.Server
 }
 
-func New(injector do.Injector) (*Server, error) { //nolint:funlen
+func New(injector do.Injector) (*Server, error) {
 	cfg := do.MustInvoke[*Configuration](injector)
 	authMW := do.MustInvoke[authenticator](injector)
 	api := do.MustInvoke[gpoapi.API](injector)
@@ -57,7 +53,6 @@ func New(injector do.Injector) (*Server, error) { //nolint:funlen
 	router := chi.NewRouter()
 	router.Use(middleware.Heartbeat(cfg.WebRoot + "/ping"))
 	router.Use(middleware.RealIP)
-	router.Get(cfg.WebRoot+"/health", newHealthChecker(injector, cfg))
 
 	router.Group(func(group chi.Router) {
 		group.Use(hlog.RequestIDHandler("req_id", "Request-Id"))
@@ -89,24 +84,8 @@ func New(injector do.Injector) (*Server, error) { //nolint:funlen
 			})
 	})
 
-	router.Group(func(group chi.Router) {
-		group.Use(newAuthDebugMiddleware(cfg))
-
-		if cfg.DebugFlags.HasFlag(config.DebugDo) {
-			dochi.Use(router, cfg.WebRoot+"/debug/do", injector)
-		}
-
-		if cfg.DebugFlags.HasFlag(config.DebugGo) {
-			group.Mount(cfg.WebRoot+"/debug", middleware.Profiler())
-		}
-
-		if cfg.DebugFlags.HasFlag(config.DebugTrace) {
-			mountXTrace(group, cfg)
-		}
-	})
-
-	if cfg.EnableMetrics {
-		router.Method("GET", cfg.WebRoot+"/metrics", newMetricsHandler())
+	if cfg.mgmtEnabledOnMainServer() {
+		createMgmtRouters(injector, router, cfg, cfg.WebRoot)
 	}
 
 	return &Server{
@@ -122,31 +101,24 @@ func New(injector do.Injector) (*Server, error) { //nolint:funlen
 	}, nil
 }
 
-func (s *Server) Run(ctx context.Context) error {
-	if s.cfg.DebugFlags.HasFlag(config.DebugRouter) {
-		logRoutes(ctx, s.router)
-	}
-
-	if err := s.s.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		return fmt.Errorf("listen error: %w", err)
-	}
-
-	return nil
-}
-
 func (s *Server) Start(ctx context.Context) error {
 	logger := log.Logger
 
 	if s.cfg.DebugFlags.HasFlag(config.DebugRouter) {
-		logRoutes(ctx, s.router)
+		logRoutes(ctx, "Server", s.router)
 	}
 
-	listener, err := s.newListener(ctx)
+	listener, err := newListener(ctx, s.cfg.Listen, s.cfg.TLSKey, s.cfg.TLSCert)
 	if err != nil {
 		return aerr.Wrapf(err, "start listen error")
 	}
 
-	logger.Log().Msgf("Server: listen on address=%s https=%v", s.cfg.Listen, s.cfg.tlsEnabled())
+	logger.Log().Msgf("Server: listen on address=%s https=%v webroot=%q",
+		s.cfg.Listen, s.cfg.tlsEnabled(), s.cfg.WebRoot)
+
+	if s.cfg.mgmtEnabledOnMainServer() {
+		logger.Warn().Msg("Server: management endpoints enabled on main server")
+	}
 
 	go func() {
 		if err := s.s.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -155,19 +127,6 @@ func (s *Server) Start(ctx context.Context) error {
 	}()
 
 	return nil
-}
-
-func (s *Server) Stop(_ error) {
-	logger := log.Logger
-
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
-	defer cancel()
-
-	if err := s.s.Shutdown(shutdownCtx); err != nil {
-		logger.Error().Err(err).Msgf("Server: shutdown server failed: %s", err)
-	} else {
-		logger.Debug().Msg("Server: stopped")
-	}
 }
 
 func (s *Server) Shutdown(ctx context.Context) error {
@@ -183,14 +142,16 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func logRoutes(ctx context.Context, r chi.Routes) {
+//-------------------------------------------------------------
+
+func logRoutes(ctx context.Context, name string, r chi.Routes) {
 	logger := log.Ctx(ctx)
 
 	walkFunc := func(method, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
 		_ = handler
 		_ = middlewares
 		route = strings.ReplaceAll(route, "/*/", "/")
-		logger.Debug().Msgf("Server: ROUTE: %s %s", method, route)
+		logger.Debug().Msgf("%s: ROUTE: %s %s", name, method, route)
 
 		return nil
 	}
@@ -200,22 +161,22 @@ func logRoutes(ctx context.Context, r chi.Routes) {
 	}
 }
 
-func (s *Server) newListener(ctx context.Context) (net.Listener, error) {
-	if s.cfg.TLSKey == "" || s.cfg.TLSCert == "" {
+func newListener(ctx context.Context, address, tlskey, tlscert string) (net.Listener, error) {
+	if tlskey == "" || tlscert == "" {
 		lc := net.ListenConfig{}
 
-		l, err := lc.Listen(ctx, "tcp", s.cfg.Listen)
+		l, err := lc.Listen(ctx, "tcp", address)
 		if err != nil {
-			return nil, aerr.Wrapf(err, "listen failed").WithMeta("address", s.cfg.Listen)
+			return nil, aerr.Wrapf(err, "listen failed").WithMeta("address", address)
 		}
 
 		return l, nil
 	}
 
-	cert, err := tls.LoadX509KeyPair(s.cfg.TLSCert, s.cfg.TLSKey)
+	cert, err := tls.LoadX509KeyPair(tlscert, tlskey)
 	if err != nil {
 		return nil, aerr.Wrapf(err, "load certificates failed").
-			WithMeta("cert", s.cfg.TLSCert, "key", s.cfg.TLSKey)
+			WithMeta("cert", tlscert, "key", tlskey)
 	}
 
 	cfg := tls.Config{
@@ -223,39 +184,10 @@ func (s *Server) newListener(ctx context.Context) (net.Listener, error) {
 		MinVersion:   tls.VersionTLS12,
 	}
 
-	l, err := tls.Listen("tcp", s.cfg.Listen, &cfg)
+	l, err := tls.Listen("tcp", address, &cfg)
 	if err != nil {
-		return nil, aerr.Wrapf(err, "tls listen failed").WithMeta("address", s.cfg.Listen)
+		return nil, aerr.Wrapf(err, "tls listen failed").WithMeta("address", address)
 	}
 
 	return l, nil
-}
-
-// newHealthChecker create new handler for /health endpoint. Accept only connection from localhost.
-func newHealthChecker(injector do.Injector, cfg *Configuration) http.HandlerFunc {
-	rootscope := injector.RootScope()
-
-	return func(w http.ResponseWriter, r *http.Request) {
-		log.Logger.Debug().Msgf("remote %v", r.RemoteAddr)
-
-		// access to /health only from localhost
-		if _, access := cfg.authDebugRequest(r); !access {
-			w.WriteHeader(http.StatusForbidden)
-
-			return
-		}
-
-		response := "ok"
-
-		for service, err := range rootscope.HealthCheckWithContext(r.Context()) {
-			if err != nil {
-				log.Logger.Error().Err(err).Str("service", service).
-					Msgf("HealthChecker: service=%q failed on healthcheck: %s", service, err)
-
-				response = "error"
-			}
-		}
-
-		render.PlainText(w, r, response)
-	}
 }

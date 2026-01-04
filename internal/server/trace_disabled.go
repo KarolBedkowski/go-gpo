@@ -23,7 +23,7 @@ func newTracingMiddleware(cfg *Configuration) func(http.Handler) http.Handler {
 	}
 }
 
-func mountXTrace(group chi.Router, cfg *Configuration) {
+func mountXTrace(group chi.Router, webroot string) {
 }
 
 //-------------------------------------------------------------
