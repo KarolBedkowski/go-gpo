@@ -156,13 +156,17 @@ func (s *Server) start(ctx context.Context, injector do.Injector, cfg *config.Se
 
 	srv := do.MustInvoke[*server.Server](injector)
 	if err := srv.Start(ctx); err != nil {
-		return aerr.Wrapf(err, "start server failed")
+		logger.Fatal().Err(err).Msgf("start server failed error=%q", err)
+
+		return aerr.New("failed start server")
 	}
 
 	if cfg.SeparateMgmtEnabled() {
 		msrv := do.MustInvoke[*server.MgmtServer](injector)
 		if err := msrv.Start(ctx); err != nil {
-			return aerr.Wrapf(err, "start server failed")
+			logger.Fatal().Err(err).Msgf("start mgmt server failed error=%q", err)
+
+			return aerr.New("failed start mgmt server")
 		}
 	}
 
