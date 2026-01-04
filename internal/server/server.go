@@ -37,12 +37,12 @@ const (
 type Server struct {
 	router chi.Router
 
-	cfg *Configuration
+	cfg *config.Configuration
 	s   *http.Server
 }
 
 func New(injector do.Injector) (*Server, error) {
-	cfg := do.MustInvoke[*Configuration](injector)
+	cfg := do.MustInvoke[*config.Configuration](injector)
 	authMW := do.MustInvoke[authenticator](injector)
 	api := do.MustInvoke[gpoapi.API](injector)
 	web := do.MustInvoke[gpoweb.WEB](injector)
@@ -85,7 +85,7 @@ func New(injector do.Injector) (*Server, error) {
 		})
 	})
 
-	if cfg.mgmtEnabledOnMainServer() {
+	if cfg.MgmtEnabledOnMainServer() {
 		createMgmtRouters(injector, router, cfg, cfg.MainServer)
 	}
 
@@ -117,9 +117,9 @@ func (s *Server) Start(ctx context.Context) error {
 	}
 
 	logger.Log().Msgf("Server: listen on address=%s https=%v webroot=%q",
-		scfg.Address, scfg.tlsEnabled(), scfg.WebRoot)
+		scfg.Address, scfg.TLSEnabled(), scfg.WebRoot)
 
-	if s.cfg.mgmtEnabledOnMainServer() {
+	if s.cfg.MgmtEnabledOnMainServer() {
 		logger.Warn().Msg("Server: management endpoints enabled on main server")
 	}
 
@@ -164,7 +164,7 @@ func logRoutes(ctx context.Context, name string, r chi.Routes) {
 	}
 }
 
-func newListener(ctx context.Context, scfg ListenConfiguration) (net.Listener, error) {
+func newListener(ctx context.Context, scfg config.ListenConfiguration) (net.Listener, error) {
 	if scfg.TLSKey == "" || scfg.TLSCert == "" {
 		lc := net.ListenConfig{}
 

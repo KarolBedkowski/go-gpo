@@ -25,12 +25,12 @@ import (
 type MgmtServer struct {
 	router chi.Router
 
-	cfg *Configuration
+	cfg *config.Configuration
 	s   *http.Server
 }
 
 func NewMgmt(injector do.Injector) (*MgmtServer, error) {
-	cfg := do.MustInvoke[*Configuration](injector)
+	cfg := do.MustInvoke[*config.Configuration](injector)
 
 	// routes
 	router := chi.NewRouter()
@@ -66,7 +66,7 @@ func (s *MgmtServer) Start(ctx context.Context) error {
 		return aerr.Wrapf(err, "start listen error")
 	}
 
-	logger.Log().Msgf("MgmtServer: listen on address=%s https=%v webroot=%q", scfg.Address, scfg.tlsEnabled(), scfg.WebRoot)
+	logger.Log().Msgf("MgmtServer: listen on address=%s https=%v webroot=%q", scfg.Address, scfg.TLSEnabled(), scfg.WebRoot)
 
 	go func() {
 		if err := s.s.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -92,7 +92,7 @@ func (s *MgmtServer) Shutdown(ctx context.Context) error {
 
 //-------------------------------------------------------------
 
-func createMgmtRouters(injector do.Injector, router *chi.Mux, cfg *Configuration, scfg ListenConfiguration) {
+func createMgmtRouters(injector do.Injector, router *chi.Mux, cfg *config.Configuration, scfg config.ListenConfiguration) {
 	webroot := scfg.WebRoot
 
 	router.Get(webroot+"/health", newHealthChecker(injector, cfg))
@@ -121,14 +121,14 @@ func createMgmtRouters(injector do.Injector, router *chi.Mux, cfg *Configuration
 //-------------------------------------------------------------
 
 // newHealthChecker create new handler for /health endpoint. Accept only connection from localhost.
-func newHealthChecker(injector do.Injector, cfg *Configuration) http.HandlerFunc {
+func newHealthChecker(injector do.Injector, cfg *config.Configuration) http.HandlerFunc {
 	rootscope := injector.RootScope()
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Logger.Debug().Msgf("remote %v", r.RemoteAddr)
 
 		// access to /health only from localhost
-		if _, access := cfg.authDebugRequest(r); !access {
+		if _, access := cfg.AuthDebugRequest(r); !access {
 			w.WriteHeader(http.StatusForbidden)
 
 			return

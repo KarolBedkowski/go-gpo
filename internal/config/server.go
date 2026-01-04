@@ -1,7 +1,7 @@
-package server
+package config
 
 //
-// config.go
+// server.go
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
 //
 // Distributed under terms of the GPLv3 license.
@@ -13,7 +13,6 @@ import (
 	"net/http"
 
 	"gitlab.com/kabes/go-gpo/internal/aerr"
-	"gitlab.com/kabes/go-gpo/internal/config"
 )
 
 type ListenConfiguration struct {
@@ -36,11 +35,11 @@ func (c *ListenConfiguration) Validate() error {
 	return nil
 }
 
-func (c *ListenConfiguration) tlsEnabled() bool {
+func (c *ListenConfiguration) TLSEnabled() bool {
 	return c.TLSKey != ""
 }
 
-func (c *ListenConfiguration) useSecureCookie() bool {
+func (c *ListenConfiguration) UseSecureCookie() bool {
 	return c.TLSKey != "" || c.CookieSecure
 }
 
@@ -50,7 +49,7 @@ type Configuration struct {
 	MainServer ListenConfiguration
 	MgmtServer ListenConfiguration
 
-	DebugFlags    config.DebugFlags
+	DebugFlags    DebugFlags
 	EnableMetrics bool
 }
 
@@ -72,18 +71,20 @@ func (c *Configuration) SeparateMgmtEnabled() bool {
 	return c.MgmtServer.Address != "" && c.MgmtServer.Address != c.MainServer.Address
 }
 
-func (c *Configuration) mgmtEnabledOnMainServer() bool {
+func (c *Configuration) MgmtEnabledOnMainServer() bool {
 	return c.MgmtServer.Address != "" && c.MgmtServer.Address == c.MainServer.Address
 }
 
-// authDebugRequest check request remote address is it allowed to access
+//-------------------------------------------------------------
+
+// AuthDebugRequest check request remote address is it allowed to access
 // to debug data and sensitive information.
 // Return:
 //   - bool - is access allowed
 //   - bool - is access to sensitive data allowed.
 //
 // Used for /debug (also traces and events) and /vars endpoint.
-func (c *Configuration) authDebugRequest(req *http.Request) (bool, bool) {
+func (c *Configuration) AuthDebugRequest(req *http.Request) (bool, bool) {
 	host, _, err := net.SplitHostPort(req.RemoteAddr)
 	if err != nil {
 		host = req.RemoteAddr

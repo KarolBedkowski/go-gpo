@@ -276,7 +276,7 @@ func shouldLogRequestBody(request *http.Request) bool {
 type logMiddleware func(http.Handler) http.Handler
 
 func newLogMiddleware(i do.Injector) (logMiddleware, error) {
-	cfg := do.MustInvoke[*Configuration](i)
+	cfg := do.MustInvoke[*config.Configuration](i)
 
 	if cfg.DebugFlags.HasFlag(config.DebugMsgBody) {
 		return newFullLogMiddleware, nil
@@ -328,7 +328,7 @@ type sessionMiddleware func(http.Handler) http.Handler
 func newSessionMiddleware(i do.Injector) (sessionMiddleware, error) {
 	dbi := do.MustInvoke[repository.Database](i)
 	repo := do.MustInvoke[repository.Sessions](i)
-	cfg := do.MustInvoke[*Configuration](i)
+	cfg := do.MustInvoke[*config.Configuration](i)
 
 	session.RegisterFn("db", func() session.Provider {
 		return service.NewSessionProvider(dbi, repo, sessionMaxLifetime)
@@ -340,7 +340,7 @@ func newSessionMiddleware(i do.Injector) (sessionMiddleware, error) {
 		CookieName:     "sessionid",
 		SameSite:       http.SameSiteLaxMode,
 		Maxlifetime:    int64(sessionMaxLifetime.Seconds()),
-		Secure:         cfg.MainServer.useSecureCookie(),
+		Secure:         cfg.MainServer.UseSecureCookie(),
 		CookiePath:     cfg.MainServer.WebRoot,
 	})
 	if err != nil {
@@ -378,12 +378,12 @@ func mapStatusToLogLevel(status int) (zerolog.Level, zerolog.Level) {
 
 //-------------------------------------------------------------
 
-func newAuthDebugMiddleware(c *Configuration) func(http.Handler) http.Handler {
+func newAuthDebugMiddleware(c *config.Configuration) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			log := zerolog.Ctx(r.Context())
 
-			if allow, _ := c.authDebugRequest(r); allow {
+			if allow, _ := c.AuthDebugRequest(r); allow {
 				log.Debug().Msgf("AuthDebug: access to url=%q from remote=%q allowed", r.URL.Redacted(), r.RemoteAddr)
 				next.ServeHTTP(w, r)
 			} else {

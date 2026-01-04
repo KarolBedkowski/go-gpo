@@ -22,11 +22,12 @@ import (
 	"github.com/rs/zerolog/hlog"
 	"github.com/rs/zerolog/log"
 	"gitlab.com/kabes/go-gpo/internal/common"
+	"gitlab.com/kabes/go-gpo/internal/config"
 	xtrace "golang.org/x/net/trace"
 )
 
-func newTracingMiddleware(cfg *Configuration) func(http.Handler) http.Handler {
-	xtrace.AuthRequest = cfg.authDebugRequest
+func newTracingMiddleware(cfg *config.Configuration) func(http.Handler) http.Handler {
+	xtrace.AuthRequest = cfg.AuthDebugRequest
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
