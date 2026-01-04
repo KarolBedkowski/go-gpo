@@ -13,9 +13,10 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"gitlab.com/kabes/go-gpo/internal/config"
 )
 
-func newTracingMiddleware(cfg *Configuration) func(http.Handler) http.Handler {
+func newTracingMiddleware(cfg *config.ServerConf) func(http.Handler) http.Handler {
 	_ = cfg
 
 	return func(next http.Handler) http.Handler {

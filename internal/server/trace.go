@@ -26,7 +26,7 @@ import (
 	xtrace "golang.org/x/net/trace"
 )
 
-func newTracingMiddleware(cfg *config.Configuration) func(http.Handler) http.Handler {
+func newTracingMiddleware(cfg *config.ServerConf) func(http.Handler) http.Handler {
 	xtrace.AuthRequest = cfg.AuthDebugRequest
 
 	return func(next http.Handler) http.Handler {

@@ -106,15 +106,15 @@ func startServerCmd(ctx context.Context, clicmd *cli.Command, rootInjector do.In
 		server.Package,
 	)
 
-	serverConf := config.Configuration{
-		MainServer: config.ListenConfiguration{
+	serverConf := config.ServerConf{
+		MainServer: config.ListenConf{
 			Address:      strings.TrimSpace(clicmd.String("address")),
 			WebRoot:      strings.TrimSuffix(clicmd.String("web-root"), "/"),
 			TLSKey:       clicmd.String("key"),
 			TLSCert:      clicmd.String("cert"),
 			CookieSecure: clicmd.Bool("secure-cookie"),
 		},
-		MgmtServer: config.ListenConfiguration{
+		MgmtServer: config.ListenConf{
 			Address: strings.TrimSpace(clicmd.String("mgmt-address")),
 			// mgmt not use for now tls/webroot/cookie
 		},
@@ -140,7 +140,7 @@ func startServerCmd(ctx context.Context, clicmd *cli.Command, rootInjector do.In
 
 type Server struct{}
 
-func (s *Server) start(ctx context.Context, injector do.Injector, cfg *config.Configuration,
+func (s *Server) start(ctx context.Context, injector do.Injector, cfg *config.ServerConf,
 	clicmd *cli.Command,
 ) error {
 	logger := log.Ctx(ctx)

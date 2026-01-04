@@ -25,12 +25,12 @@ import (
 type MgmtServer struct {
 	router chi.Router
 
-	cfg *config.Configuration
+	cfg *config.ServerConf
 	s   *http.Server
 }
 
 func NewMgmt(injector do.Injector) (*MgmtServer, error) {
-	cfg := do.MustInvoke[*config.Configuration](injector)
+	cfg := do.MustInvoke[*config.ServerConf](injector)
 
 	// routes
 	router := chi.NewRouter()
@@ -66,7 +66,8 @@ func (s *MgmtServer) Start(ctx context.Context) error {
 		return aerr.Wrapf(err, "start listen error")
 	}
 
-	logger.Log().Msgf("MgmtServer: listen on address=%s https=%v webroot=%q", scfg.Address, scfg.TLSEnabled(), scfg.WebRoot)
+	logger.Log().
+		Msgf("MgmtServer: listen on address=%s https=%v webroot=%q", scfg.Address, scfg.TLSEnabled(), scfg.WebRoot)
 
 	go func() {
 		if err := s.s.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -92,7 +93,7 @@ func (s *MgmtServer) Shutdown(ctx context.Context) error {
 
 //-------------------------------------------------------------
 
-func createMgmtRouters(injector do.Injector, router *chi.Mux, cfg *config.Configuration, scfg config.ListenConfiguration) {
+func createMgmtRouters(injector do.Injector, router *chi.Mux, cfg *config.ServerConf, scfg config.ListenConf) {
 	webroot := scfg.WebRoot
 
 	router.Get(webroot+"/health", newHealthChecker(injector, cfg))
@@ -121,7 +122,7 @@ func createMgmtRouters(injector do.Injector, router *chi.Mux, cfg *config.Config
 //-------------------------------------------------------------
 
 // newHealthChecker create new handler for /health endpoint. Accept only connection from localhost.
-func newHealthChecker(injector do.Injector, cfg *config.Configuration) http.HandlerFunc {
+func newHealthChecker(injector do.Injector, cfg *config.ServerConf) http.HandlerFunc {
 	rootscope := injector.RootScope()
 
 	return func(w http.ResponseWriter, r *http.Request) {

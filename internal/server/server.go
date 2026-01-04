@@ -37,12 +37,12 @@ const (
 type Server struct {
 	router chi.Router
 
-	cfg *config.Configuration
+	cfg *config.ServerConf
 	s   *http.Server
 }
 
 func New(injector do.Injector) (*Server, error) {
-	cfg := do.MustInvoke[*config.Configuration](injector)
+	cfg := do.MustInvoke[*config.ServerConf](injector)
 	authMW := do.MustInvoke[authenticator](injector)
 	api := do.MustInvoke[gpoapi.API](injector)
 	web := do.MustInvoke[gpoweb.WEB](injector)
@@ -164,7 +164,7 @@ func logRoutes(ctx context.Context, name string, r chi.Routes) {
 	}
 }
 
-func newListener(ctx context.Context, scfg config.ListenConfiguration) (net.Listener, error) {
+func newListener(ctx context.Context, scfg config.ListenConf) (net.Listener, error) {
 	if scfg.TLSKey == "" || scfg.TLSCert == "" {
 		lc := net.ListenConfig{}
 

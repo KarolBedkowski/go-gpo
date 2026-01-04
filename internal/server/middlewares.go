@@ -276,7 +276,7 @@ func shouldLogRequestBody(request *http.Request) bool {
 type logMiddleware func(http.Handler) http.Handler
 
 func newLogMiddleware(i do.Injector) (logMiddleware, error) {
-	cfg := do.MustInvoke[*config.Configuration](i)
+	cfg := do.MustInvoke[*config.ServerConf](i)
 
 	if cfg.DebugFlags.HasFlag(config.DebugMsgBody) {
 		return newFullLogMiddleware, nil
@@ -328,7 +328,7 @@ type sessionMiddleware func(http.Handler) http.Handler
 func newSessionMiddleware(i do.Injector) (sessionMiddleware, error) {
 	dbi := do.MustInvoke[repository.Database](i)
 	repo := do.MustInvoke[repository.Sessions](i)
-	cfg := do.MustInvoke[*config.Configuration](i)
+	cfg := do.MustInvoke[*config.ServerConf](i)
 
 	session.RegisterFn("db", func() session.Provider {
 		return service.NewSessionProvider(dbi, repo, sessionMaxLifetime)
@@ -378,7 +378,7 @@ func mapStatusToLogLevel(status int) (zerolog.Level, zerolog.Level) {
 
 //-------------------------------------------------------------
 
-func newAuthDebugMiddleware(c *config.Configuration) func(http.Handler) http.Handler {
+func newAuthDebugMiddleware(c *config.ServerConf) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			log := zerolog.Ctx(r.Context())

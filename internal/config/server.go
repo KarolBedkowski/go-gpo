@@ -15,7 +15,8 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 )
 
-type ListenConfiguration struct {
+// ListenConf configure one address on server.
+type ListenConf struct {
 	Address      string
 	WebRoot      string
 	TLSKey       string
@@ -23,7 +24,7 @@ type ListenConfiguration struct {
 	CookieSecure bool
 }
 
-func (c *ListenConfiguration) Validate() error {
+func (c *ListenConf) Validate() error {
 	if c.Address == "" {
 		return aerr.ErrValidation.WithUserMsg("listen address can't be empty")
 	}
@@ -35,25 +36,26 @@ func (c *ListenConfiguration) Validate() error {
 	return nil
 }
 
-func (c *ListenConfiguration) TLSEnabled() bool {
+func (c *ListenConf) TLSEnabled() bool {
 	return c.TLSKey != ""
 }
 
-func (c *ListenConfiguration) UseSecureCookie() bool {
+func (c *ListenConf) UseSecureCookie() bool {
 	return c.TLSKey != "" || c.CookieSecure
 }
 
 //-------------------------------------------------------------
 
-type Configuration struct {
-	MainServer ListenConfiguration
-	MgmtServer ListenConfiguration
+// ServerConf configure all web/api/mgmt servers.
+type ServerConf struct {
+	MainServer ListenConf
+	MgmtServer ListenConf
 
 	DebugFlags    DebugFlags
 	EnableMetrics bool
 }
 
-func (c *Configuration) Validate() error {
+func (c *ServerConf) Validate() error {
 	if err := c.MainServer.Validate(); err != nil {
 		return fmt.Errorf("validate main server configuration failed: %w", err)
 	}
@@ -67,11 +69,11 @@ func (c *Configuration) Validate() error {
 	return nil
 }
 
-func (c *Configuration) SeparateMgmtEnabled() bool {
+func (c *ServerConf) SeparateMgmtEnabled() bool {
 	return c.MgmtServer.Address != "" && c.MgmtServer.Address != c.MainServer.Address
 }
 
-func (c *Configuration) MgmtEnabledOnMainServer() bool {
+func (c *ServerConf) MgmtEnabledOnMainServer() bool {
 	return c.MgmtServer.Address != "" && c.MgmtServer.Address == c.MainServer.Address
 }
 
@@ -84,7 +86,7 @@ func (c *Configuration) MgmtEnabledOnMainServer() bool {
 //   - bool - is access to sensitive data allowed.
 //
 // Used for /debug (also traces and events) and /vars endpoint.
-func (c *Configuration) AuthDebugRequest(req *http.Request) (bool, bool) {
+func (c *ServerConf) AuthDebugRequest(req *http.Request) (bool, bool) {
 	host, _, err := net.SplitHostPort(req.RemoteAddr)
 	if err != nil {
 		host = req.RemoteAddr
