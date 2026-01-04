@@ -111,7 +111,7 @@ func (p *PodcastDB) toModel() *model.Podcast {
 		Website:     p.Website,
 		UpdatedAt:   p.UpdatedAt,
 		Subscribed:  p.Subscribed,
-		User:        model.User{ID: p.UserID},
+		User:        &model.User{ID: p.UserID},
 	}
 }
 

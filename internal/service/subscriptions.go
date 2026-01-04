@@ -104,7 +104,7 @@ func (s *SubscriptionsSrv) ReplaceSubscriptions( //nolint:cyclop
 		for _, sub := range cmd.Subscriptions {
 			podcast, ok := subscribed.FindPodcastByURL(sub)
 			if !ok {
-				podcast = model.Podcast{User: *user, URL: sub}
+				podcast = model.Podcast{User: user, URL: sub}
 			} else if podcast.Subscribed {
 				continue
 			}
@@ -173,7 +173,7 @@ func (s *SubscriptionsSrv) ChangeSubscriptions( //nolint:cyclop,gocognit,funlen
 		for _, sub := range cmd.Add {
 			podcast, ok := userpodcasts.FindPodcastByURL(sub)
 			if !ok { // new
-				podcast = model.Podcast{User: *user, URL: sub}
+				podcast = model.Podcast{User: user, URL: sub}
 			} else if podcast.Subscribed {
 				continue
 			}

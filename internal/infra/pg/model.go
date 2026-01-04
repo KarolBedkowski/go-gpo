@@ -64,13 +64,30 @@ func (d *DeviceDB) toModel() *model.Device {
 //------------------------------------------------------------------------------
 
 func devicesFromDBSetSubs(devices []DeviceDB, subs int) []model.Device {
+	users := make(map[int64]*model.User)
+
 	res := make([]model.Device, len(devices))
-	for i, r := range devices {
-		v := *r.toModel()
+	for idx, dbdev := range devices {
+		var user *model.User
+		if dbdev.User != nil {
+			user := users[dbdev.User.ID]
+			if user == nil {
+				user = dbdev.User.toModel()
+				users[dbdev.User.ID] = user
+			}
+		}
 
-		v.Subscriptions = subs
+		device := model.Device{
+			ID:            dbdev.ID,
+			Name:          dbdev.Name,
+			DevType:       dbdev.DevType,
+			Caption:       dbdev.Caption,
+			Subscriptions: subs,
+			UpdatedAt:     dbdev.UpdatedAt,
+			User:          user,
+		}
 
-		res[i] = v
+		res[idx] = device
 	}
 
 	return res
@@ -114,14 +131,31 @@ func (p *PodcastDB) toModel() *model.Podcast {
 		Website:     p.Website,
 		UpdatedAt:   p.UpdatedAt,
 		Subscribed:  p.Subscribed,
-		User:        model.User{ID: p.UserID},
+		User:        &model.User{ID: p.UserID},
 	}
 }
 
 func podcastsFromDB(podcasts []PodcastDB) []model.Podcast {
+	users := make(map[int64]*model.User)
+
 	res := make([]model.Podcast, len(podcasts))
-	for i, r := range podcasts {
-		res[i] = *r.toModel()
+	for idx, dbpodcast := range podcasts {
+		user := users[dbpodcast.UserID]
+		if user == nil {
+			user = &model.User{ID: dbpodcast.UserID}
+			users[dbpodcast.UserID] = user
+		}
+
+		res[idx] = model.Podcast{
+			ID:          dbpodcast.ID,
+			Title:       dbpodcast.Title,
+			URL:         dbpodcast.URL,
+			Description: dbpodcast.Description,
+			Website:     dbpodcast.Website,
+			UpdatedAt:   dbpodcast.UpdatedAt,
+			Subscribed:  dbpodcast.Subscribed,
+			User:        user,
+		}
 	}
 
 	return res
@@ -199,9 +233,50 @@ func (e *EpisodeDB) toModel() *model.Episode {
 //------------------------------------------------------------------------------
 
 func episodesFromDB(episodes []EpisodeDB) []model.Episode {
+	podcasts := make(map[int64]*model.Podcast)
+	devices := make(map[int64]*model.Device)
+
 	res := make([]model.Episode, len(episodes))
-	for i, r := range episodes {
-		res[i] = *r.toModel()
+	for idx, dbepisode := range episodes {
+		var device *model.Device
+		if dbepisode.Device != nil {
+			device = devices[dbepisode.Device.ID]
+			if device == nil {
+				device = dbepisode.Device.toModel()
+				devices[dbepisode.Device.ID] = device
+			}
+		}
+
+		podcast := podcasts[dbepisode.Podcast.ID]
+		if podcast == nil {
+			podcast = dbepisode.Podcast.toModel()
+			podcasts[dbepisode.Podcast.ID] = podcast
+		}
+
+		episode := model.Episode{
+			ID:        dbepisode.ID,
+			Podcast:   podcast,
+			Device:    device,
+			URL:       dbepisode.URL,
+			Action:    dbepisode.Action,
+			Timestamp: dbepisode.UpdatedAt,
+			Title:     dbepisode.Title,
+			Started:   nil,
+			Position:  nil,
+			Total:     nil,
+		}
+
+		if dbepisode.GUID.Valid {
+			episode.GUID = &dbepisode.GUID.String
+		}
+
+		if dbepisode.Action == "play" {
+			episode.Started = &dbepisode.Started.Int32
+			episode.Position = &dbepisode.Position.Int32
+			episode.Total = &dbepisode.Total.Int32
+		}
+
+		res[idx] = episode
 	}
 
 	return res

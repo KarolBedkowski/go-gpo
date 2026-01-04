@@ -310,7 +310,7 @@ func (e *EpisodesSrv) createPodcastsCache(ctx context.Context, user *model.User)
 				podcast = p
 			case errors.Is(err, common.ErrNoData):
 				// new podcast
-				podcast = &model.Podcast{User: *user, URL: key, Subscribed: true}
+				podcast = &model.Podcast{User: user, URL: key, Subscribed: true}
 			default:
 				return 0, aerr.Wrapf(err, "load podcast failed").WithMeta("podcast_url", key, "user_id", user.ID)
 			}
