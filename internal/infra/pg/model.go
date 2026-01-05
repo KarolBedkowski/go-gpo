@@ -70,7 +70,7 @@ func devicesFromDBSetSubs(devices []DeviceDB, subs int) []model.Device {
 	for idx, dbdev := range devices {
 		var user *model.User
 		if dbdev.User != nil {
-			user := users[dbdev.User.ID]
+			user = users[dbdev.User.ID]
 			if user == nil {
 				user = dbdev.User.toModel()
 				users[dbdev.User.ID] = user
