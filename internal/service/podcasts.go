@@ -290,15 +290,21 @@ func (p *PodcastsSrv) downloadPodcastInfoWorker(
 		llogger := logger.With().Str("podcast_url", task.URL).Str("taskid", taskid.String()).Logger()
 		lctx := hlog.CtxWithID(llogger.WithContext(ctx), taskid)
 
-		err := p.downloadPodcastInfo(lctx, fp, since, &task, loadepisodes)
+		eventlog := common.NewEventLog("srv.podcasts.downloadPodcastInfoWorker", "podcast_url="+task.URL)
+
+		err := p.downloadPodcastInfo(lctx, fp, since, &task, loadepisodes, eventlog)
 		if err != nil {
+			eventlog.Errorf("update failed: error=%q", err)
 			llogger.Warn().Err(err).Msgf("PodcastsSrv: update podcast info failed: %s", err)
 		}
+
+		eventlog.Close()
 	}
 }
 
 func (p *PodcastsSrv) downloadPodcastInfo(ctx context.Context, //nolint: cyclop
 	feedparser *gofeed.Parser, since time.Time, task *model.PodcastToUpdate, loadepisodes bool,
+	eventlog *common.EventLog,
 ) error {
 	logger := zerolog.Ctx(ctx)
 	if logger == nil {
@@ -313,6 +319,8 @@ func (p *PodcastsSrv) downloadPodcastInfo(ctx context.Context, //nolint: cyclop
 	)
 
 	feed, status, err := parseFeedURLWithContext(ctx, feedparser, task)
+	eventlog.Printf("download %q got status=%q error=%q", task.URL, status, err)
+
 	switch {
 	case err != nil:
 		return err

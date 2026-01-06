@@ -25,3 +25,18 @@ func TraceLazyPrintf(ctx context.Context, format string, a ...any) {
 
 func TraceErrorLazyPrintf(ctx context.Context, format string, a ...any) {
 }
+
+type EventLog struct{}
+
+func NewEventLog(pkg, domain string) *EventLog {
+	return &EventLog{}
+}
+
+func (e *EventLog) Printf(format string, a ...any) {
+}
+
+func (e *EventLog) Errorf(format string, a ...any) {
+}
+
+func (f *EventLog) Close() {
+}
