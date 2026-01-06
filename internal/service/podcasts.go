@@ -319,7 +319,7 @@ func (p *PodcastsSrv) downloadPodcastInfo(ctx context.Context, //nolint: cyclop
 	case status == http.StatusNotModified:
 		logger.Debug().Err(err).Msg("PodcastsSrv: podcast not modified")
 
-		update.NotModified = true
+		update = model.PodcastMetaUpdate{URL: task.URL, MetaUpdatedAt: time.Now().UTC(), NotModified: true}
 	case feed != nil:
 		logger.Debug().Msgf("PodcastsSrv: got podcast title=%q published=%s updated=%s",
 			feed.Title, feed.UpdatedParsed, feed.PublishedParsed)
