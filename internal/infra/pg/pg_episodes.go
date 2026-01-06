@@ -119,19 +119,25 @@ func (s Repository) listEpisodeActions(
 		query += " LIMIT " + strconv.FormatUint(uint64(lastelements), 10)
 	}
 
-	res := []EpisodeDB{}
-
-	err := dbctx.SelectContext(ctx, &res, sqlx.Rebind(sqlx.DOLLAR, query), args...)
+	rows, err := dbctx.QueryxContext(ctx, sqlx.Rebind(sqlx.DOLLAR, query), args...)
 	if err != nil {
 		return nil, aerr.Wrapf(err, "query episodes failed").WithTag(aerr.InternalError).
 			WithMeta("sql", query, "args", args)
 	}
 
-	logger.Debug().Msgf("pg.Repository: get episodes - found=%d", len(res))
+	defer rows.Close()
 
-	slices.Reverse(res)
+	res := newEpisodeCollector()
+	if err := res.loadRows(rows); err != nil {
+		return nil, aerr.Wrapf(err, "query episodes failed, load rows error").WithTag(aerr.InternalError).
+			WithMeta("sql", query, "args", args)
+	}
 
-	return episodesFromDB(res), nil
+	logger.Debug().Msgf("pg.Repository: get episodes - found=%d", len(res.Episodes))
+
+	slices.Reverse(res.Episodes)
+
+	return res.Episodes, nil
 }
 
 // listEpisodeActionsAggregated return list of last action for each podcast for user, and optionally
@@ -198,17 +204,24 @@ func (s Repository) listEpisodeActionsAggregated( //nolint:funlen
 	logger.Debug().Msgf("pg.Repository: get episodes - sql=%s args=%v", query, args)
 
 	dbctx := db.MustCtx(ctx)
-	res := []EpisodeDB{}
 
-	err := dbctx.SelectContext(ctx, &res, sqlx.Rebind(sqlx.DOLLAR, query), args...)
+	rows, err := dbctx.QueryxContext(ctx, sqlx.Rebind(sqlx.DOLLAR, query), args...)
 	if err != nil {
 		return nil, aerr.Wrapf(err, "query episodes failed").WithTag(aerr.InternalError).
 			WithMeta("sql", query, "args", args)
 	}
 
-	logger.Debug().Msgf("pg.Repository: get episodes - found=%d", len(res))
+	defer rows.Close()
 
-	return episodesFromDB(res), nil
+	res := newEpisodeCollector()
+	if err := res.loadRows(rows); err != nil {
+		return nil, aerr.Wrapf(err, "query episodes failed, load rows error").WithTag(aerr.InternalError).
+			WithMeta("sql", query, "args", args)
+	}
+
+	logger.Debug().Msgf("pg.Repository: get episodes - found=%d", len(res.Episodes))
+
+	return res.Episodes, nil
 }
 
 func (s Repository) ListFavorites(ctx context.Context, userid int64) ([]model.Episode, error) {
