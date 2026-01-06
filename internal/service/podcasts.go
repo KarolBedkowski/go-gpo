@@ -292,7 +292,7 @@ func (p *PodcastsSrv) downloadPodcastInfoWorker(
 
 		err := p.downloadPodcastInfo(lctx, fp, since, &task, loadepisodes)
 		if err != nil {
-			llogger.Error().Err(err).Msgf("PodcastsSrv: update podcast info failed: %s", err)
+			llogger.Warn().Err(err).Msgf("PodcastsSrv: update podcast info failed: %s", err)
 		}
 	}
 }
