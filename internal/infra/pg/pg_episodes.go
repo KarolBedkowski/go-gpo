@@ -168,24 +168,24 @@ func (s Repository) listEpisodeActionsAggregated( //nolint:funlen
 
 	query := `
 		WITH pe AS (
-			SELECT p.id, (
+			SELECT e.podcast_id, (
 				SELECT e2.id
 				FROM episodes e2
-				WHERE e2.podcast_id = p.id AND e2.url = e.url
+				WHERE e2.podcast_id = e.podcast_id AND e2.url = e.url
 				ORDER BY e2.updated_at
 				DESC LIMIT 1
 			) AS episode_id
 			FROM podcasts p
 			JOIN episodes e ON p.id = e.podcast_id
 			WHERE p.user_id=? ` + epArgs + `
-			GROUP BY p.id, e.url
+			GROUP BY e.podcast_id, e.url
 		)
 		SELECT p.url AS "podcast.url", p.title AS "podcast.title", p.id AS "podcast.id",
 			e.id, e.podcast_id, e.url, e.title, e.action, e.started, e.position, e.total, e.guid,
 			e.created_at, e.updated_at, e.device_id,
 			d.name AS "device.name", d.id AS "device.id"
 		FROM pe
-		JOIN podcasts p ON p.id = pe.id
+		JOIN podcasts p ON p.id = pe.podcast_id
 		JOIN episodes e ON e.id = pe.episode_id
 		LEFT JOIN devices d ON d.id=e.device_id
 		ORDER BY e.updated_at
