@@ -252,14 +252,14 @@ func (e *episodeCollector) loadRows(rows *sqlx.Rows) error {
 	for rows.Next() {
 		var row EpisodeDB
 		if err := rows.StructScan(&row); err != nil {
-			return aerr.Wrapf(err, "query episodes failed, scan error").WithTag(aerr.InternalError)
+			return aerr.Wrapf(err, "scan error").WithTag(aerr.InternalError)
 		}
 
 		e.add(&row)
 	}
 
 	if err := rows.Err(); err != nil {
-		return aerr.Wrapf(err, "query episodes failed, rows error").WithTag(aerr.InternalError)
+		return aerr.Wrapf(err, "rows error").WithTag(aerr.InternalError)
 	}
 
 	return nil
