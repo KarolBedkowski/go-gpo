@@ -57,25 +57,43 @@ func (Repository) GetEpisode(
 // If deviceid is given, return actions from OTHER than given devices.
 // Episodes are sorted by updated_at asc.
 // When aggregate get only last action for each episode.
-func (Repository) ListEpisodeActions(
+func (s Repository) ListEpisodeActions(
 	ctx context.Context,
 	userid int64, deviceid, podcastid *int64,
 	since time.Time,
 	aggregated bool,
 	lastelements uint,
 ) ([]model.Episode, error) {
+	if aggregated {
+		return s.listEpisodeActionsAggregated(ctx, userid, deviceid, podcastid, since, lastelements)
+	}
+
+	return s.listEpisodeActions(ctx, userid, deviceid, podcastid, since, lastelements)
+}
+
+// ListEpisodeActions return list of all actions for podcasts of user, and optionally for device
+// and podcastid.
+// If deviceid is given, return actions from OTHER than given devices.
+// Episodes are sorted by updated_at asc.
+func (s Repository) listEpisodeActions(
+	ctx context.Context,
+	userid int64, deviceid, podcastid *int64,
+	since time.Time,
+	lastelements uint,
+) ([]model.Episode, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Any("podcast_id", podcastid).Any("device_id", deviceid).
-		Msgf("sqlite.Repository: get episodes since=%s aggregated=%v", since, aggregated)
+		Msgf("sqlite.Repository: get episodes since=%s", since)
 
+	// ? because of rebind
 	query := `
 		SELECT e.id, e.podcast_id, e.url, e.title, e.action, e.started, e.position, e.total, e.guid,
 			e.created_at, e.updated_at, e.device_id,
-			p.url as "podcast.url", p.title as "podcast.title", p.id as "podcast.id",
-			d.name as "device.name", d.id as "device.id"
+			p.url AS "podcast.url", p.title AS "podcast.title", p.id AS "podcast.id",
+			d.name AS "device.name", d.id AS "device.id"
 		FROM episodes e
-		JOIN podcasts p on p.id = e.podcast_id
-		LEFT JOIN devices d on d.id=e.device_id
+		JOIN podcasts p ON p.id = e.podcast_id
+		LEFT JOIN devices d ON d.id=e.device_id
 		WHERE p.user_id=?`
 	args := []any{userid}
 	dbctx := db.MustCtx(ctx)
@@ -101,27 +119,108 @@ func (Repository) ListEpisodeActions(
 		query += " LIMIT " + strconv.FormatUint(uint64(lastelements), 10)
 	}
 
-	res := []EpisodeDB{}
-
-	err := dbctx.SelectContext(ctx, &res, query, args...)
+	rows, err := dbctx.QueryxContext(ctx, query, args...)
 	if err != nil {
 		return nil, aerr.Wrapf(err, "query episodes failed").WithTag(aerr.InternalError).
 			WithMeta("sql", query, "args", args)
 	}
 
-	logger.Debug().Msgf("sqlite.Repository: get episodes - found=%d", len(res))
+	defer rows.Close()
 
-	if aggregated {
-		// aggregation is rarely use so it's ok to get all episodes and aggregate it outside db.
-		res = aggregateEpisodes(res)
-
-		logger.Debug().Msgf("sqlite.Repository: get episodes - aggregated=%d", len(res))
+	res := newEpisodeCollector()
+	if err := res.loadRows(rows); err != nil {
+		return nil, aerr.Wrapf(err, "query episodes failed, load rows error").WithTag(aerr.InternalError).
+			WithMeta("sql", query, "args", args)
 	}
 
-	// sorting by ts asc
-	slices.Reverse(res)
+	logger.Debug().Msgf("sqlite.Repository: get episodes - found=%d", len(res.Episodes))
 
-	return episodesFromDB(res), nil
+	slices.Reverse(res.Episodes)
+
+	return res.Episodes, nil
+}
+
+// listEpisodeActionsAggregated return list of last action for each podcast for user, and optionally
+// for device and podcastid. If deviceid is given, return actions from OTHER than given devices.
+// Episodes are sorted by updated_at asc.
+func (s Repository) listEpisodeActionsAggregated( //nolint:funlen
+	ctx context.Context,
+	userid int64, deviceid, podcastid *int64,
+	since time.Time,
+	lastelements uint,
+) ([]model.Episode, error) {
+	logger := log.Ctx(ctx)
+	logger.Debug().Int64("user_id", userid).Any("podcast_id", podcastid).Any("device_id", deviceid).
+		Msgf("sqlite.Repository: get episodes since=%s aggregated=true", since)
+
+	epArgs := ""
+	args := []any{userid}
+
+	if !since.IsZero() {
+		epArgs += " AND e.updated_at > ? "
+		args = append(args, since) //nolint:wsl_v5
+	}
+
+	if deviceid != nil {
+		epArgs += " AND (e.device_id != ? OR e.device_id is NULL) "
+		args = append(args, *deviceid) //nolint:wsl_v5
+	}
+
+	if podcastid != nil {
+		epArgs += " AND e.podcast_id = ?"
+		args = append(args, *podcastid) //nolint:wsl_v5
+	}
+
+	query := `
+		WITH pe AS (
+			SELECT e.podcast_id, (
+				SELECT e2.id
+				FROM episodes e2
+				WHERE e2.podcast_id = e.podcast_id AND e2.url = e.url
+				ORDER BY e2.updated_at
+				DESC LIMIT 1
+			) AS episode_id
+			FROM podcasts p
+			JOIN episodes e ON p.id = e.podcast_id
+			WHERE p.user_id=? ` + epArgs + `
+			GROUP BY e.podcast_id, e.url
+		)
+		SELECT p.url AS "podcast.url", p.title AS "podcast.title", p.id AS "podcast.id",
+			e.id, e.podcast_id, e.url, e.title, e.action, e.started, e.position, e.total, e.guid,
+			e.created_at, e.updated_at, e.device_id,
+			d.name AS "device.name", d.id AS "device.id"
+		FROM pe
+		JOIN podcasts p ON p.id = pe.podcast_id
+		JOIN episodes e ON e.id = pe.episode_id
+		LEFT JOIN devices d ON d.id=e.device_id
+		ORDER BY e.updated_at
+		`
+
+	if lastelements > 0 {
+		query += " LIMIT " + strconv.FormatUint(uint64(lastelements), 10)
+	}
+
+	logger.Debug().Msgf("sqlite.Repository: get episodes - sql=%s args=%v", query, args)
+
+	dbctx := db.MustCtx(ctx)
+
+	rows, err := dbctx.QueryxContext(ctx, query, args...)
+	if err != nil {
+		return nil, aerr.Wrapf(err, "query episodes failed").WithTag(aerr.InternalError).
+			WithMeta("sql", query, "args", args)
+	}
+
+	defer rows.Close()
+
+	res := newEpisodeCollector()
+	if err := res.loadRows(rows); err != nil {
+		return nil, aerr.Wrapf(err, "query episodes failed, load rows error").WithTag(aerr.InternalError).
+			WithMeta("sql", query, "args", args)
+	}
+
+	logger.Debug().Msgf("sqlite.Repository: get episodes - found=%d", len(res.Episodes))
+
+	return res.Episodes, nil
 }
 
 func (Repository) ListFavorites(ctx context.Context, userid int64) ([]model.Episode, error) {
@@ -274,19 +373,4 @@ func (Repository) UpdateEpisodeInfo(ctx context.Context, episodes ...model.Episo
 	}
 
 	return nil
-}
-
-func aggregateEpisodes(episodes []EpisodeDB) []EpisodeDB {
-	res := make([]EpisodeDB, 0, len(episodes))
-	seen := make(map[string]struct{})
-
-	// episodes are sorted by ts desc, so get last first
-	for _, e := range episodes {
-		if _, ok := seen[e.URL]; !ok {
-			res = append(res, e)
-			seen[e.URL] = struct{}{}
-		}
-	}
-
-	return res
 }

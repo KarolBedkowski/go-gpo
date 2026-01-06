@@ -10,7 +10,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog"
+	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/model"
 )
 
@@ -140,8 +142,8 @@ type EpisodeDB struct {
 	Position  sql.NullInt32  `db:"position"`
 	Total     sql.NullInt32  `db:"total"`
 
-	Podcast *PodcastDB
-	Device  *DeviceDB
+	Podcast *PodcastDB `db:"podcast"`
+	Device  *DeviceDB  `db:"device"`
 }
 
 func (e *EpisodeDB) MarshalZerologObject(event *zerolog.Event) {
@@ -191,6 +193,81 @@ func (e *EpisodeDB) toModel() *model.Episode {
 	}
 
 	return episode
+}
+
+//------------------------------------------------------------------------------
+
+type episodeCollector struct {
+	Episodes []model.Episode
+	podcasts map[int64]*model.Podcast
+	devices  map[int64]*model.Device
+}
+
+func newEpisodeCollector() episodeCollector {
+	return episodeCollector{
+		Episodes: make([]model.Episode, 0),
+		podcasts: make(map[int64]*model.Podcast),
+		devices:  make(map[int64]*model.Device),
+	}
+}
+
+func (e *episodeCollector) loadRows(rows *sqlx.Rows) error {
+	for rows.Next() {
+		var row EpisodeDB
+		if err := rows.StructScan(&row); err != nil {
+			return aerr.Wrapf(err, "scan error").WithTag(aerr.InternalError)
+		}
+
+		e.add(&row)
+	}
+
+	if err := rows.Err(); err != nil {
+		return aerr.Wrapf(err, "rows error").WithTag(aerr.InternalError)
+	}
+
+	return nil
+}
+
+func (e *episodeCollector) add(dbepisode *EpisodeDB) {
+	var device *model.Device
+	if dbepisode.Device != nil {
+		device = e.devices[dbepisode.Device.ID]
+		if device == nil {
+			device = dbepisode.Device.toModel()
+			e.devices[dbepisode.Device.ID] = device
+		}
+	}
+
+	podcast := e.podcasts[dbepisode.Podcast.ID]
+	if podcast == nil {
+		podcast = dbepisode.Podcast.toModel()
+		e.podcasts[dbepisode.Podcast.ID] = podcast
+	}
+
+	episode := model.Episode{
+		ID:        dbepisode.ID,
+		Podcast:   podcast,
+		Device:    device,
+		URL:       dbepisode.URL,
+		Action:    dbepisode.Action,
+		Timestamp: dbepisode.UpdatedAt,
+		Title:     dbepisode.Title,
+		Started:   nil,
+		Position:  nil,
+		Total:     nil,
+	}
+
+	if dbepisode.GUID.Valid {
+		episode.GUID = &dbepisode.GUID.String
+	}
+
+	if dbepisode.Action == "play" {
+		episode.Started = &dbepisode.Started.Int32
+		episode.Position = &dbepisode.Position.Int32
+		episode.Total = &dbepisode.Total.Int32
+	}
+
+	e.Episodes = append(e.Episodes, episode)
 }
 
 //------------------------------------------------------------------------------
