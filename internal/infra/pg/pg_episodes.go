@@ -11,7 +11,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"slices"
 	"strconv"
 	"time"
 
@@ -62,13 +61,13 @@ func (s Repository) ListEpisodeActions(
 	userid int64, deviceid, podcastid *int64,
 	since time.Time,
 	aggregated bool,
-	lastelements uint,
+	limit uint,
 ) ([]model.Episode, error) {
 	if aggregated {
-		return s.listEpisodeActionsAggregated(ctx, userid, deviceid, podcastid, since, lastelements)
+		return s.listEpisodeActionsAggregated(ctx, userid, deviceid, podcastid, since, limit)
 	}
 
-	return s.listEpisodeActions(ctx, userid, deviceid, podcastid, since, lastelements)
+	return s.listEpisodeActions(ctx, userid, deviceid, podcastid, since, limit)
 }
 
 // ListEpisodeActions return list of all actions for podcasts of user, and optionally for device
@@ -79,7 +78,7 @@ func (s Repository) listEpisodeActions(
 	ctx context.Context,
 	userid int64, deviceid, podcastid *int64,
 	since time.Time,
-	lastelements uint,
+	limit uint,
 ) ([]model.Episode, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Any("podcast_id", podcastid).Any("device_id", deviceid).
@@ -113,10 +112,10 @@ func (s Repository) listEpisodeActions(
 		args = append(args, *podcastid) //nolint:wsl_v5
 	}
 
-	query += " ORDER BY e.updated_at DESC"
+	query += " ORDER BY e.updated_at"
 
-	if lastelements > 0 {
-		query += " LIMIT " + strconv.FormatUint(uint64(lastelements), 10)
+	if limit > 0 {
+		query += " LIMIT " + strconv.FormatUint(uint64(limit), 10)
 	}
 
 	rows, err := dbctx.QueryxContext(ctx, sqlx.Rebind(sqlx.DOLLAR, query), args...)
@@ -135,8 +134,6 @@ func (s Repository) listEpisodeActions(
 
 	logger.Debug().Msgf("pg.Repository: get episodes - found=%d", len(res.Episodes))
 
-	slices.Reverse(res.Episodes)
-
 	return res.Episodes, nil
 }
 
@@ -147,7 +144,7 @@ func (s Repository) listEpisodeActionsAggregated( //nolint:funlen
 	ctx context.Context,
 	userid int64, deviceid, podcastid *int64,
 	since time.Time,
-	lastelements uint,
+	limit uint,
 ) ([]model.Episode, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Any("podcast_id", podcastid).Any("device_id", deviceid).
@@ -197,8 +194,8 @@ func (s Repository) listEpisodeActionsAggregated( //nolint:funlen
 		ORDER BY e.updated_at
 		`
 
-	if lastelements > 0 {
-		query += " LIMIT " + strconv.FormatUint(uint64(lastelements), 10)
+	if limit > 0 {
+		query += " LIMIT " + strconv.FormatUint(uint64(limit), 10)
 	}
 
 	logger.Debug().Msgf("pg.Repository: get episodes - sql=%s args=%v", query, args)

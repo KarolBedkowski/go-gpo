@@ -27,6 +27,10 @@ import (
 
 // -----------------------------
 
+const maxEpisodesInResult = 500
+
+// -----------------------------
+
 // episodesResource handle request to /api/2/episodes/ resources.
 type episodesResource struct {
 	episodesSrv *service.EpisodesSrv
@@ -137,6 +141,7 @@ func (er episodesResource) getEpisodeActions(
 		DeviceName: device,
 		Since:      since,
 		Aggregated: aggregated,
+		Limit:      maxEpisodesInResult,
 	}
 
 	res, err := er.episodesSrv.GetEpisodes(ctx, &query)
@@ -148,12 +153,18 @@ func (er episodesResource) getEpisodeActions(
 		return
 	}
 
+	// get last episode timestamp if exists.
+	ts := time.Now()
+	if l := len(res); l > 0 {
+		ts = res[l-1].Timestamp
+	}
+
 	resp := struct {
 		Actions   []episode `json:"actions"`
 		Timestamp int64     `json:"timestamp"`
 	}{
 		Actions:   common.Map(res, newEpisodesFromModel),
-		Timestamp: time.Now().UTC().Unix(),
+		Timestamp: ts.UTC().Unix(),
 	}
 
 	srvsupport.RenderJSON(w, r, &resp)

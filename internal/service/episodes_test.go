@@ -297,12 +297,12 @@ func TestEpisodesServiceLastEpisodes(t *testing.T) {
 	actions, err := episodesSrv.GetLastActions(ctx, &q)
 	assert.NoErr(t, err)
 	assert.Equal(t, len(actions), 2)
-	assert.Equal(t, actions[0].Episode, episodeActions[2].URL)
-	assert.Equal(t, actions[0].PodcastURL, episodeActions[2].Podcast.URL)
-	assert.Equal(t, actions[0].Action, episodeActions[2].Action)
-	assert.Equal(t, actions[1].Episode, episodeActions[3].URL)
-	assert.Equal(t, actions[1].PodcastURL, episodeActions[3].Podcast.URL)
-	assert.Equal(t, actions[1].Action, episodeActions[3].Action)
+	assert.Equal(t, actions[0].Episode, episodeActions[0].URL)
+	assert.Equal(t, actions[0].PodcastURL, episodeActions[0].Podcast.URL)
+	assert.Equal(t, actions[0].Action, episodeActions[0].Action)
+	assert.Equal(t, actions[1].Episode, episodeActions[1].URL)
+	assert.Equal(t, actions[1].PodcastURL, episodeActions[1].Podcast.URL)
+	assert.Equal(t, actions[1].Action, episodeActions[1].Action)
 
 	q = query.GetLastEpisodesActionsQuery{
 		UserName: "user1",
@@ -329,9 +329,9 @@ func TestEpisodesServiceLastEpisodes(t *testing.T) {
 	actions, err = episodesSrv.GetLastActions(ctx, &q)
 	assert.NoErr(t, err)
 	assert.Equal(t, len(actions), 1)
-	assert.Equal(t, actions[0].Episode, episodeActions[3].URL)
-	assert.Equal(t, actions[0].PodcastURL, episodeActions[3].Podcast.URL)
-	assert.Equal(t, actions[0].Action, episodeActions[3].Action)
+	assert.Equal(t, actions[0].Episode, episodeActions[2].URL)
+	assert.Equal(t, actions[0].PodcastURL, episodeActions[2].Podcast.URL)
+	assert.Equal(t, actions[0].Action, episodeActions[2].Action)
 }
 
 func TestEpisodesServiceFavorites(t *testing.T) {

@@ -38,7 +38,7 @@ type Episodes interface {
 	GetEpisode(ctx context.Context, userid, podcastid int64, episode string) (*model.Episode, error)
 	ListEpisodeActions(
 		ctx context.Context, userid int64, deviceid, podcastid *int64, since time.Time, aggregated bool,
-		lastelements uint,
+		limit uint,
 	) ([]model.Episode, error)
 	SaveEpisode(ctx context.Context, userid int64, episode ...model.Episode) error
 	ListFavorites(ctx context.Context, userid int64) ([]model.Episode, error)
