@@ -61,6 +61,7 @@ func (e *EpisodesSrv) GetEpisodes(ctx context.Context, query *query.GetEpisodesQ
 			query.Podcast,
 			query.Since,
 			query.Aggregated,
+			false,
 			query.Limit,
 		)
 	})
@@ -83,7 +84,7 @@ func (e *EpisodesSrv) GetEpisodesByPodcast(ctx context.Context, query *query.Get
 		common.TraceLazyPrintf(ctx, "user loaded")
 
 		episodes, err := e.episodesRepo.ListEpisodeActions(ctx, user.ID, nil,
-			&query.PodcastID, query.Since, query.Aggregated, query.Limit)
+			&query.PodcastID, query.Since, query.Aggregated, false, query.Limit)
 		if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
@@ -178,7 +179,7 @@ func (e *EpisodesSrv) GetUpdates(ctx context.Context, query *query.GetEpisodeUpd
 	}
 
 	episodes, err := db.InConnectionR(ctx, e.dbi, func(ctx context.Context) ([]model.Episode, error) {
-		return e.getEpisodes(ctx, query.UserName, query.DeviceName, "", query.Since, true, 0)
+		return e.getEpisodes(ctx, query.UserName, query.DeviceName, "", query.Since, true, false, 0)
 	})
 	if err != nil {
 		return nil, err //nolint:wrapcheck
@@ -202,7 +203,7 @@ func (e *EpisodesSrv) GetLastActions(ctx context.Context, query *query.GetLastEp
 	}
 
 	episodes, err := db.InConnectionR(ctx, e.dbi, func(ctx context.Context) ([]model.Episode, error) {
-		return e.getEpisodes(ctx, query.UserName, "", "", query.Since, false, query.Limit)
+		return e.getEpisodes(ctx, query.UserName, "", "", query.Since, false, true, query.Limit)
 	})
 	if err != nil {
 		return nil, err //nolint:wrapcheck
@@ -248,7 +249,7 @@ func (e *EpisodesSrv) getEpisodes(
 	ctx context.Context,
 	username, devicename, podcast string,
 	since time.Time,
-	aggregated bool,
+	aggregated, inverse bool,
 	limit uint,
 ) ([]model.Episode, error) {
 	user, err := e.usersRepo.GetUser(ctx, username)
@@ -276,7 +277,7 @@ func (e *EpisodesSrv) getEpisodes(
 	common.TraceLazyPrintf(ctx, "found podcastid %v", podcastid)
 
 	episodes, err := e.episodesRepo.ListEpisodeActions(ctx, user.ID, deviceid, podcastid, since, aggregated,
-		limit)
+		inverse, limit)
 	if err != nil {
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}

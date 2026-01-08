@@ -78,7 +78,7 @@ func (m *MaintenanceSrv) ExportAll(ctx context.Context) ([]model.ExportStruct, e
 				return nil, aerr.Wrapf(err, "get user podcasts error").WithMeta("user_id", user.ID)
 			}
 
-			esu.Episodes, err = m.episodesRepo.ListEpisodeActions(ctx, user.ID, nil, nil, time.Time{}, false, 0)
+			esu.Episodes, err = m.episodesRepo.ListEpisodeActions(ctx, user.ID, nil, nil, time.Time{}, false, false, 0)
 			if err != nil {
 				return nil, aerr.Wrapf(err, "get user episodes error").WithMeta("user_id", user.ID)
 			}

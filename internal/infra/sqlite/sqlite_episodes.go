@@ -60,14 +60,14 @@ func (s Repository) ListEpisodeActions(
 	ctx context.Context,
 	userid int64, deviceid, podcastid *int64,
 	since time.Time,
-	aggregated bool,
+	aggregated, inverse bool,
 	limit uint,
 ) ([]model.Episode, error) {
 	if aggregated {
-		return s.listEpisodeActionsAggregated(ctx, userid, deviceid, podcastid, since, limit)
+		return s.listEpisodeActionsAggregated(ctx, userid, deviceid, podcastid, since, limit, inverse)
 	}
 
-	return s.listEpisodeActions(ctx, userid, deviceid, podcastid, since, limit)
+	return s.listEpisodeActions(ctx, userid, deviceid, podcastid, since, limit, inverse)
 }
 
 // ListEpisodeActions return list of all actions for podcasts of user, and optionally for device
@@ -78,7 +78,7 @@ func (s Repository) listEpisodeActions(
 	ctx context.Context,
 	userid int64, deviceid, podcastid *int64,
 	since time.Time,
-	limit uint,
+	limit uint, inverse bool,
 ) ([]model.Episode, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Any("podcast_id", podcastid).Any("device_id", deviceid).
@@ -113,6 +113,9 @@ func (s Repository) listEpisodeActions(
 	}
 
 	query += " ORDER BY e.updated_at"
+	if inverse {
+		query += " DESC"
+	}
 
 	if limit > 0 {
 		query += " LIMIT " + strconv.FormatUint(uint64(limit), 10)
@@ -144,7 +147,7 @@ func (s Repository) listEpisodeActionsAggregated( //nolint:funlen
 	ctx context.Context,
 	userid int64, deviceid, podcastid *int64,
 	since time.Time,
-	limit uint,
+	limit uint, inverse bool,
 ) ([]model.Episode, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Any("podcast_id", podcastid).Any("device_id", deviceid).
@@ -190,8 +193,10 @@ func (s Repository) listEpisodeActionsAggregated( //nolint:funlen
 		JOIN podcasts p ON p.id = pe.podcast_id
 		JOIN episodes e ON e.id = pe.episode_id
 		LEFT JOIN devices d ON d.id=e.device_id
-		ORDER BY e.updated_at
-		`
+		ORDER BY e.updated_at`
+	if inverse {
+		query += " DESC"
+	}
 
 	if limit > 0 {
 		query += " LIMIT " + strconv.FormatUint(uint64(limit), 10)

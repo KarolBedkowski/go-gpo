@@ -10,7 +10,6 @@ package web
 import (
 	"context"
 	"net/http"
-	"slices"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
@@ -60,8 +59,6 @@ func (i indexPage) indexPage(ctx context.Context, writer http.ResponseWriter, r 
 
 		return
 	}
-
-	slices.Reverse(lastactions)
 
 	i.renderer.WritePage(writer, &nt.IndexPage{LastActions: lastactions})
 }

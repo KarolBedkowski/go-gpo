@@ -37,7 +37,7 @@ type Episodes interface {
 	// GetEpisode from repository. episode can be episode url or guid.
 	GetEpisode(ctx context.Context, userid, podcastid int64, episode string) (*model.Episode, error)
 	ListEpisodeActions(
-		ctx context.Context, userid int64, deviceid, podcastid *int64, since time.Time, aggregated bool,
+		ctx context.Context, userid int64, deviceid, podcastid *int64, since time.Time, aggregated, inverse bool,
 		limit uint,
 	) ([]model.Episode, error)
 	SaveEpisode(ctx context.Context, userid int64, episode ...model.Episode) error
