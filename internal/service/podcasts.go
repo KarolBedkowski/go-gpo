@@ -245,18 +245,21 @@ func (p *PodcastsSrv) DownloadPodcastsInfo(ctx context.Context, since time.Time,
 	}
 
 	if len(urls) == 0 {
-		logger.Debug().Msg("PodcastsSrv: start downloading podcasts finished; no url to update found")
+		logger.Debug().Msg("PodcastsSrv: download podcasts finished; no url to update found")
 
 		return nil
 	}
 
-	logger.Debug().Msgf("PodcastsSrv: start downloading podcasts finished; found %d", len(urls))
+	logger.Debug().Msgf("PodcastsSrv: podcast_to_update=%d", len(urls))
+
+	eventlog := common.NewEventLog("srv.podcasts", "downloadPodcastInfo")
+	defer eventlog.Close()
 
 	tasks := make(chan model.PodcastToUpdate, len(urls))
 
 	var wg sync.WaitGroup
 	for range min(len(urls), 5) { //nolint:mnd
-		wg.Go(func() { p.downloadPodcastInfoWorker(ctx, tasks, since, loadepisodes) })
+		wg.Go(func() { p.downloadPodcastInfoWorker(ctx, tasks, since, loadepisodes, eventlog) })
 	}
 
 	for _, u := range urls {
@@ -267,7 +270,7 @@ func (p *PodcastsSrv) DownloadPodcastsInfo(ctx context.Context, since time.Time,
 
 	wg.Wait()
 
-	logger.Info().Msgf("PodcastsSrv: downloading podcasts info finished, count=%d", len(urls))
+	logger.Info().Msg("PodcastsSrv: downloading podcasts info finished")
 
 	return nil
 }
@@ -276,6 +279,7 @@ const downloadPodcastInfoTimeout = 10 * time.Second
 
 func (p *PodcastsSrv) downloadPodcastInfoWorker(
 	ctx context.Context, tasks <-chan model.PodcastToUpdate, since time.Time, loadepisodes bool,
+	eventlog *common.EventLog,
 ) {
 	logger := zerolog.Ctx(ctx)
 	if logger == nil {
@@ -290,15 +294,15 @@ func (p *PodcastsSrv) downloadPodcastInfoWorker(
 		llogger := logger.With().Str("podcast_url", task.URL).Str("taskid", taskid.String()).Logger()
 		lctx := hlog.CtxWithID(llogger.WithContext(ctx), taskid)
 
-		eventlog := common.NewEventLog("srv.podcasts.downloadPodcastInfoWorker", "podcast_url="+task.URL)
+		eventlog.Printf("processing %q", task.URL)
 
 		err := p.downloadPodcastInfo(lctx, fp, since, &task, loadepisodes, eventlog)
 		if err != nil {
 			eventlog.Errorf("update failed: error=%q", err)
-			llogger.Warn().Err(err).Msgf("PodcastsSrv: update podcast info failed: %s", err)
+			llogger.Warn().Err(err).Msgf("PodcastsSrv: update podcast_url=%q error=%q", task.URL, err)
+		} else {
+			eventlog.Errorf("update %q finished", task.URL)
 		}
-
-		eventlog.Close()
 	}
 }
 
@@ -311,7 +315,7 @@ func (p *PodcastsSrv) downloadPodcastInfo(ctx context.Context, //nolint: cyclop
 		panic("missing logger in ctx")
 	}
 
-	logger.Debug().Msg("PodcastsSrv: downloading podcast info")
+	logger.Debug().Msgf("PodcastsSrv: downloading podcast_url=%q", task.URL)
 
 	var (
 		update   model.PodcastMetaUpdate
@@ -325,15 +329,15 @@ func (p *PodcastsSrv) downloadPodcastInfo(ctx context.Context, //nolint: cyclop
 	case err != nil:
 		return err
 	case status == http.StatusNotModified:
-		logger.Debug().Err(err).Msg("PodcastsSrv: podcast not modified")
+		logger.Debug().Err(err).Msgf("PodcastsSrv: podcast_url=%q not modified", task.URL)
 
 		update = model.PodcastMetaUpdate{URL: task.URL, MetaUpdatedAt: time.Now().UTC(), NotModified: true}
 	case feed != nil:
-		logger.Debug().Msgf("PodcastsSrv: got podcast title=%q published=%s updated=%s",
-			feed.Title, feed.UpdatedParsed, feed.PublishedParsed)
+		logger.Debug().Msgf("PodcastsSrv: for podcast_url=%q got podcast title=%q published=%s updated=%s",
+			task.URL, feed.Title, feed.UpdatedParsed, feed.PublishedParsed)
 
 		if !feedNeedToBeUpdated(feed, task.MetaUpdatedAt) {
-			logger.Debug().Msg("PodcastsSrv: not updated, skipping")
+			logger.Debug().Msgf("PodcastsSrv: podcast_url=%q not updated, skipping", task.URL)
 
 			return nil
 		}
@@ -343,7 +347,8 @@ func (p *PodcastsSrv) downloadPodcastInfo(ctx context.Context, //nolint: cyclop
 			episodes = episodesToUpdate(feed, since, task.MetaUpdatedAt)
 		}
 	default:
-		logger.Info().Int("status_code", status).Msgf("PodcastsSrv: download podcast unknown status=%d", status)
+		logger.Info().Int("status_code", status).
+			Msgf("PodcastsSrv: download podcast_url=%q unknown status=%d", task.URL, status)
 
 		return nil
 	}
