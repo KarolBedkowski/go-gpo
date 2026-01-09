@@ -40,3 +40,13 @@ func (e *EventLog) Errorf(format string, a ...any) {
 
 func (f *EventLog) Close() {
 }
+
+// -------------------------------------------------------------
+type Region struct{}
+
+func NewRegion(ctx context.Context, regionType string) Region {
+	return Region{}
+}
+
+func (r Region) End() {
+}

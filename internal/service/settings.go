@@ -111,7 +111,7 @@ func (s SettingsSrv) load( //nolint:cyclop,funlen
 		return skey, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
-	common.TraceLazyPrintf(ctx, "user loaded")
+	common.TraceLazyPrintf(ctx, "load: user loaded")
 
 	skey.UserID = user.ID
 
@@ -124,7 +124,7 @@ func (s SettingsSrv) load( //nolint:cyclop,funlen
 			return skey, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		common.TraceLazyPrintf(ctx, "device loaded")
+		common.TraceLazyPrintf(ctx, "load: device loaded")
 
 		skey.DeviceID = &device.ID
 
@@ -136,7 +136,7 @@ func (s SettingsSrv) load( //nolint:cyclop,funlen
 			return skey, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		common.TraceLazyPrintf(ctx, "podcast loaded")
+		common.TraceLazyPrintf(ctx, "load: podcast loaded")
 
 		skey.PodcastID = &p.ID
 
@@ -148,7 +148,7 @@ func (s SettingsSrv) load( //nolint:cyclop,funlen
 			return skey, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		common.TraceLazyPrintf(ctx, "podcast loaded")
+		common.TraceLazyPrintf(ctx, "load: podcast loaded")
 
 		skey.PodcastID = &p.ID
 
@@ -159,7 +159,7 @@ func (s SettingsSrv) load( //nolint:cyclop,funlen
 			return skey, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		common.TraceLazyPrintf(ctx, "episode loaded")
+		common.TraceLazyPrintf(ctx, "load: episode loaded")
 
 		skey.EpisodeID = &e.ID
 	case "account":

@@ -19,6 +19,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
@@ -82,8 +83,12 @@ func InConnectionR[T any](ctx context.Context, database repository.Database, //n
 	start := time.Now()
 	defer observer.observeQueryDuration(start)
 
+	defer common.NewRegion(ctx, "InConnectionR").End()
+
 	conn, err := database.GetConnection(ctx)
 	if err != nil {
+		common.TraceErrorLazyPrintf(ctx, "DB: get connection error=%q", err)
+
 		return *new(T), aerr.ApplyFor(aerr.ErrDatabase, err, "failed open connection")
 	}
 
@@ -93,12 +98,18 @@ func InConnectionR[T any](ctx context.Context, database repository.Database, //n
 		}
 	}()
 
+	common.TraceLazyPrintf(ctx, "DB: got connection")
+
 	ctx = WithCtx(ctx, conn)
 
 	res, err := fun(ctx)
 	if err != nil {
+		common.TraceErrorLazyPrintf(ctx, "DB: exec func error=%q", err)
+
 		return res, err
 	}
+
+	common.TraceLazyPrintf(ctx, "DB: finished")
 
 	return res, nil
 }
@@ -109,10 +120,16 @@ func InTransaction(ctx context.Context, database repository.Database, fun func(c
 	start := time.Now()
 	defer observer.observeQueryDuration(start)
 
+	defer common.NewRegion(ctx, "InTransaction").End()
+
 	conn, err := database.GetConnection(ctx)
 	if err != nil {
+		common.TraceErrorLazyPrintf(ctx, "DB: got connection error=%q", err)
+
 		return aerr.ApplyFor(aerr.ErrDatabase, err, "failed open connection")
 	}
+
+	common.TraceLazyPrintf(ctx, "DB: got connection")
 
 	defer func() {
 		if err := database.CloseConnection(ctx, conn); err != nil {
@@ -122,13 +139,19 @@ func InTransaction(ctx context.Context, database repository.Database, fun func(c
 
 	tx, err := conn.BeginTxx(ctx, nil)
 	if err != nil {
+		common.TraceErrorLazyPrintf(ctx, "DB: begin tx error=%q", err)
+
 		return aerr.ApplyFor(aerr.ErrDatabase, err, "begin tx failed")
 	}
+
+	common.TraceLazyPrintf(ctx, "DB: got tx")
 
 	ctx = WithCtx(ctx, tx)
 
 	err = fun(ctx)
 	if err != nil {
+		common.TraceErrorLazyPrintf(ctx, "DB: exec func error=%q", err)
+
 		if err := tx.Rollback(); err != nil {
 			return errors.Join(err, aerr.ApplyFor(aerr.ErrDatabase, err, "execute func and rollback error"))
 		}
@@ -136,9 +159,15 @@ func InTransaction(ctx context.Context, database repository.Database, fun func(c
 		return err
 	}
 
+	common.TraceLazyPrintf(ctx, "DB: exec func success")
+
 	if err := tx.Commit(); err != nil {
+		common.TraceErrorLazyPrintf(ctx, "DB: commit error=%q", err)
+
 		return aerr.ApplyFor(aerr.ErrDatabase, err, "commit tx failed")
 	}
+
+	common.TraceLazyPrintf(ctx, "DB: committed")
 
 	return nil
 }
@@ -152,10 +181,18 @@ func InTransactionR[T any](ctx context.Context, database repository.Database, //
 	start := time.Now()
 	defer observer.observeQueryDuration(start)
 
+	defer common.NewRegion(ctx, "InTransactionR").End()
+
+	common.TraceLazyPrintf(ctx, "DB: start")
+
 	conn, err := database.GetConnection(ctx)
 	if err != nil {
+		common.TraceErrorLazyPrintf(ctx, "DB: get connection error=%q", err)
+
 		return *new(T), aerr.ApplyFor(aerr.ErrDatabase, err, "failed open connection")
 	}
+
+	common.TraceLazyPrintf(ctx, "DB: got connection")
 
 	defer func() {
 		if err := database.CloseConnection(ctx, conn); err != nil {
@@ -165,13 +202,19 @@ func InTransactionR[T any](ctx context.Context, database repository.Database, //
 
 	tx, err := conn.BeginTxx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
+		common.TraceErrorLazyPrintf(ctx, "DB: begin tx error=%q", err)
+
 		return *new(T), aerr.ApplyFor(aerr.ErrDatabase, err, "begin tx failed")
 	}
+
+	common.TraceLazyPrintf(ctx, "DB: got tx")
 
 	ctx = WithCtx(ctx, tx)
 
 	res, err := fun(ctx)
 	if err != nil {
+		common.TraceErrorLazyPrintf(ctx, "DB: exec func error=%q", err)
+
 		if err := tx.Rollback(); err != nil {
 			return res, errors.Join(err, aerr.ApplyFor(aerr.ErrDatabase, err, "execute func and rollback error"))
 		}
@@ -179,9 +222,15 @@ func InTransactionR[T any](ctx context.Context, database repository.Database, //
 		return res, err
 	}
 
+	common.TraceLazyPrintf(ctx, "DB: exec func success")
+
 	if err := tx.Commit(); err != nil {
+		common.TraceErrorLazyPrintf(ctx, "DB: commit error=%q", err)
+
 		return res, aerr.ApplyFor(aerr.ErrDatabase, err, "commit tx failed")
 	}
+
+	common.TraceLazyPrintf(ctx, "DB: committed")
 
 	return res, nil
 }

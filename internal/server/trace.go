@@ -49,6 +49,11 @@ func newTracingMiddleware(cfg *config.ServerConf) func(http.Handler) http.Handle
 			tr := xtrace.New("server", request.URL.Path+" req_id="+reqid)
 			defer tr.Finish()
 
+			defer trace.StartRegion(ctx, "Request").End()
+
+			ctx, task := trace.NewTask(ctx, "handle request")
+			defer task.End()
+
 			ctx = xtrace.NewContext(ctx, tr)
 			request = request.WithContext(ctx)
 

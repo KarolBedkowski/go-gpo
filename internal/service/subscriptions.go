@@ -114,7 +114,7 @@ func (s *SubscriptionsSrv) ReplaceSubscriptions( //nolint:cyclop
 			}
 		}
 
-		common.TraceLazyPrintf(ctx, "changes prepared")
+		common.TraceLazyPrintf(ctx, "ReplaceSubscriptions: changes prepared")
 
 		for _, p := range changes {
 			if _, err := s.podcastsRepo.SavePodcast(ctx, &p); err != nil {
@@ -122,7 +122,7 @@ func (s *SubscriptionsSrv) ReplaceSubscriptions( //nolint:cyclop
 			}
 		}
 
-		common.TraceLazyPrintf(ctx, "podcasts saved")
+		common.TraceLazyPrintf(ctx, "ReplaceSubscriptions: podcasts saved")
 
 		return nil
 	})
@@ -157,7 +157,7 @@ func (s *SubscriptionsSrv) ChangeSubscriptions( //nolint:cyclop,gocognit,funlen
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		common.TraceLazyPrintf(ctx, "podcasts loaded")
+		common.TraceLazyPrintf(ctx, "ChangeSubscriptions: podcasts loaded")
 
 		podchanges := make([]model.Podcast, 0, len(cmd.Add)+len(cmd.Remove))
 
@@ -183,7 +183,7 @@ func (s *SubscriptionsSrv) ChangeSubscriptions( //nolint:cyclop,gocognit,funlen
 			}
 		}
 
-		common.TraceLazyPrintf(ctx, "changes prepared")
+		common.TraceLazyPrintf(ctx, "ChangeSubscriptions: changes prepared")
 
 		for _, p := range podchanges {
 			if _, err := s.podcastsRepo.SavePodcast(ctx, &p); err != nil {
@@ -191,7 +191,7 @@ func (s *SubscriptionsSrv) ChangeSubscriptions( //nolint:cyclop,gocognit,funlen
 			}
 		}
 
-		common.TraceLazyPrintf(ctx, "podcast saved")
+		common.TraceLazyPrintf(ctx, "ChangeSubscriptions: podcast saved")
 
 		return nil
 	})
@@ -211,7 +211,7 @@ func (s *SubscriptionsSrv) GetSubscriptionChanges(ctx context.Context, query *qu
 		return model.SubscriptionState{}, err
 	}
 
-	common.TraceLazyPrintf(ctx, "podcasts loaded")
+	common.TraceLazyPrintf(ctx, "GetSubscriptionChanges: podcasts loaded")
 
 	state := model.SubscriptionState{
 		Added:   make([]model.Podcast, 0, len(podcasts)),
@@ -242,7 +242,7 @@ func (s *SubscriptionsSrv) getSubsctiptions(ctx context.Context, username, devic
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		common.TraceLazyPrintf(ctx, "user loaded")
+		common.TraceLazyPrintf(ctx, "getSubsctiptions: user loaded")
 
 		if devicename != "" {
 			// validate is device exists when device name is given and mark is seen.
@@ -257,7 +257,7 @@ func (s *SubscriptionsSrv) getSubsctiptions(ctx context.Context, username, devic
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		common.TraceLazyPrintf(ctx, "podcasts loaded")
+		common.TraceLazyPrintf(ctx, "getSubsctiptions: podcasts loaded")
 
 		return podcasts, nil
 	})
@@ -271,7 +271,7 @@ func (s *SubscriptionsSrv) getUser(ctx context.Context, username string) (*model
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
-	common.TraceLazyPrintf(ctx, "user loaded")
+	common.TraceLazyPrintf(ctx, "getUser: user loaded")
 
 	return user, nil
 }
@@ -289,7 +289,7 @@ func (s *SubscriptionsSrv) getUserDevice(
 		return device, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
-	common.TraceLazyPrintf(ctx, "devices loaded")
+	common.TraceLazyPrintf(ctx, "getUserDevice: devices loaded")
 
 	return device, nil
 }
@@ -309,7 +309,7 @@ func (s *SubscriptionsSrv) createUserDevice(
 		return nil, aerr.ApplyFor(ErrRepositoryError, err, "save device failed")
 	}
 
-	common.TraceLazyPrintf(ctx, "device created")
+	common.TraceLazyPrintf(ctx, "createUserDevice: device created")
 
 	return s.getUserDevice(ctx, user.ID, devicename)
 }

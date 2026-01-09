@@ -50,7 +50,7 @@ func (d *DevicesSrv) UpdateDevice(ctx context.Context, cmd *command.UpdateDevice
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		common.TraceLazyPrintf(ctx, "user loaded")
+		common.TraceLazyPrintf(ctx, "UpdateDevice: user loaded")
 
 		device, err := d.devicesRepo.GetDevice(ctx, user.ID, cmd.DeviceName)
 		if errors.Is(err, common.ErrNoData) {
@@ -60,7 +60,7 @@ func (d *DevicesSrv) UpdateDevice(ctx context.Context, cmd *command.UpdateDevice
 			return aerr.Wrapf(err, "get device from repo failed")
 		}
 
-		common.TraceLazyPrintf(ctx, "device loaded")
+		common.TraceLazyPrintf(ctx, "UpdateDevice: device loaded")
 
 		device.Caption = cmd.Caption
 		device.DevType = cmd.DeviceType
@@ -71,7 +71,7 @@ func (d *DevicesSrv) UpdateDevice(ctx context.Context, cmd *command.UpdateDevice
 			return aerr.Wrapf(err, "save device failed")
 		}
 
-		common.TraceLazyPrintf(ctx, "device saved")
+		common.TraceLazyPrintf(ctx, "UpdateDevice: device saved")
 
 		return nil
 	})
@@ -91,14 +91,14 @@ func (d *DevicesSrv) ListDevices(ctx context.Context, query *query.GetDevicesQue
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		common.TraceLazyPrintf(ctx, "user loaded")
+		common.TraceLazyPrintf(ctx, "ListDevices: user loaded")
 
 		devices, err := d.devicesRepo.ListDevices(ctx, user.ID)
 		if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err, "get devices from db failed")
 		}
 
-		common.TraceLazyPrintf(ctx, "devices loaded")
+		common.TraceLazyPrintf(ctx, "ListDevices: devices loaded")
 
 		return devices, nil
 	})
@@ -123,8 +123,6 @@ func (d *DevicesSrv) DeleteDevice(ctx context.Context, cmd *command.DeleteDevice
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		common.TraceLazyPrintf(ctx, "user loaded")
-
 		device, err := d.devicesRepo.GetDevice(ctx, user.ID, cmd.DeviceName)
 		if errors.Is(err, common.ErrNoData) {
 			return common.ErrUnknownDevice
@@ -132,13 +130,9 @@ func (d *DevicesSrv) DeleteDevice(ctx context.Context, cmd *command.DeleteDevice
 			return aerr.Wrapf(err, "get device from repo failed")
 		}
 
-		common.TraceLazyPrintf(ctx, "device loaded")
-
 		if err = d.devicesRepo.DeleteDevice(ctx, device.ID); err != nil {
 			return aerr.Wrapf(err, "save device failed")
 		}
-
-		common.TraceLazyPrintf(ctx, "device deleted")
 
 		return nil
 	})

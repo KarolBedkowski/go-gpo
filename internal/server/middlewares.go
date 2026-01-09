@@ -76,6 +76,8 @@ func (a authenticator) handle(next http.Handler) http.Handler {
 			Str("sid", sess.ID()).Str(common.LogKeyUserName, common.Coalesce(username, sessionuser)).Logger()
 		ctx := logger.WithContext(r.Context())
 
+		common.NewRegion(ctx, "authenticator handle").End()
+
 		if sessionuser == "" && !basicAuthOk {
 			// no valid session, no auth, continue to next handler
 			next.ServeHTTP(w, r.WithContext(common.ContextWithUser(ctx, username)))
@@ -98,7 +100,7 @@ func (a authenticator) handle(next http.Handler) http.Handler {
 
 			_ = sess.Set("user", username)
 
-			common.TraceLazyPrintf(ctx, "user authenticated")
+			common.TraceLazyPrintf(ctx, "AuthenticationError: user authenticated")
 			next.ServeHTTP(w, r.WithContext(common.ContextWithUser(ctx, username)))
 		case aerr.HasTag(err, common.AuthenticationError):
 			logger.Info().Err(err).Str(common.LogKeyUserName, username).
@@ -108,11 +110,11 @@ func (a authenticator) handle(next http.Handler) http.Handler {
 			sess.Flush()
 			_ = sess.Destroy(w, r)
 
-			common.TraceLazyPrintf(ctx, "authentication failed")
+			common.TraceLazyPrintf(ctx, "Authenticator: auth failed")
 			w.Header().Add("WWW-Authenticate", "Basic realm=\"go-gpo\"")
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		default:
-			common.TraceErrorLazyPrintf(ctx, "authentication error")
+			common.TraceErrorLazyPrintf(ctx, "Authenticator: auth error")
 			logger.Error().Err(err).Msgf("Authenticator: internal error user_name=%s error=%q", username, err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
