@@ -58,6 +58,7 @@ func (sr subscriptionsResource) devSubscriptions(
 ) {
 	user := common.ContextUser(ctx)
 	devicename := common.ContextDevice(ctx)
+	now := time.Now()
 
 	sinceTS, err := getSinceParameter(r)
 	if err != nil {
@@ -87,7 +88,7 @@ func (sr subscriptionsResource) devSubscriptions(
 	}{
 		Add:       state.AddedURLs(),
 		Remove:    state.RemovedURLs(),
-		Timestamp: time.Now().UTC().Unix(),
+		Timestamp: now.UTC().Unix(),
 	}
 
 	if e := logger.Debug(); e.Enabled() {
@@ -136,7 +137,7 @@ func (sr subscriptionsResource) uploadSubscriptionChanges(
 ) {
 	user := common.ContextUser(ctx)
 	devicename := common.ContextDevice(ctx)
-
+	now := time.Now()
 	changes := struct {
 		Add    []string `json:"add"`
 		Remove []string `json:"remove"`
@@ -154,7 +155,7 @@ func (sr subscriptionsResource) uploadSubscriptionChanges(
 		DeviceName: devicename,
 		Add:        changes.Add,
 		Remove:     changes.Remove,
-		Timestamp:  time.Now().UTC(),
+		Timestamp:  now.UTC(),
 	}
 
 	if e := logger.Debug(); e.Enabled() {
@@ -174,7 +175,7 @@ func (sr subscriptionsResource) uploadSubscriptionChanges(
 		UpdatedURLs [][]string `json:"update_urls"`
 		Timestamp   int64      `json:"timestamp"`
 	}{
-		Timestamp:   time.Now().UTC().Unix(),
+		Timestamp:   now.Unix(),
 		UpdatedURLs: res.ChangedURLs,
 	}
 

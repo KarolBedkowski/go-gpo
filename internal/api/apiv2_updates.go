@@ -52,6 +52,7 @@ func (u updatesResource) getUpdates(
 	user := common.ContextUser(ctx)
 	devicename := common.ContextDevice(ctx)
 	includeActions := r.URL.Query().Get("include_actions") == "true"
+	now := time.Now()
 
 	since, err := getSinceParameter(r)
 	if err != nil {
@@ -99,7 +100,7 @@ func (u updatesResource) getUpdates(
 		Add:        common.Map(state.Added, newPodcastFromModel),
 		Remove:     state.RemovedURLs(),
 		Updates:    common.Map(updates, newEpisodeUpdateFromModel),
-		Timestamps: time.Now().UTC().Unix(),
+		Timestamps: now.UTC().Unix(),
 	}
 
 	srvsupport.RenderJSON(w, r, &result)
