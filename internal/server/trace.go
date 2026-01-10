@@ -113,16 +113,15 @@ func (f *frMiddleware) captureSnapshot(ctx context.Context) {
 	// once.Do ensures that the provided function is executed only once.
 	f.once.Do(func() {
 		logger := log.Logger
-		fname := time.Now().Format(time.RFC3339)
 
 		reqid := "unk"
 		if id, ok := hlog.IDFromCtx(ctx); ok {
 			reqid = id.String()
 		}
 
-		fout, err := os.Create("snapshot" + fname + reqid + ".trace")
+		fout, err := os.Create("snapshot" + time.Now().Format(time.RFC3339) + reqid + ".trace")
 		if err != nil {
-			logger.Error().Err(err).Msgf("FlightRecorder: opening snapshot file %q error=%q", fout.Name(), err)
+			logger.Error().Err(err).Msgf("FlightRecorder: opening snapshot file=%q error=%q", fout.Name(), err)
 
 			return
 		}
@@ -130,7 +129,7 @@ func (f *frMiddleware) captureSnapshot(ctx context.Context) {
 
 		// WriteTo writes the flight recorder data to the provided io.Writer.
 		if _, err = f.fr.WriteTo(fout); err != nil {
-			logger.Error().Err(err).Msgf("FlightRecorder: writing snapshot to file %q error=%q", fout.Name(), err)
+			logger.Error().Err(err).Msgf("FlightRecorder: writing snapshot file=%q error=%q", fout.Name(), err)
 
 			return
 		}
@@ -138,6 +137,6 @@ func (f *frMiddleware) captureSnapshot(ctx context.Context) {
 		// Stop the flight recorder after the snapshot has been taken.
 		f.fr.Stop()
 		logger.Warn().Str(common.LogKeyReqID, reqid).
-			Msgf("FlightRecorder: captured snapshot to %q for req_id=%s", fout.Name(), reqid)
+			Msgf("FlightRecorder: captured snapshot file=%q req_id=%s", fout.Name(), reqid)
 	})
 }

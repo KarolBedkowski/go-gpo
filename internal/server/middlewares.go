@@ -337,7 +337,9 @@ func newRecoverMiddleware(next http.Handler) http.Handler {
 			case string:
 				logger.Error().Str("err", t).Msgf("RecoveryMW: panic when handling request: %s", rec)
 			default:
-				logger.Error().Str("err", fmt.Sprintf("%v", rec)).Msg("RecoveryMW: panic when handling request: unknown error")
+				logger.Error().
+					Str("err", fmt.Sprintf("%v", rec)).
+					Msg("RecoveryMW: panic when handling request: unknown error")
 			}
 
 			if req.Header.Get("Connection") != "Upgrade" {

@@ -140,7 +140,9 @@ func (Repository) CleanSessions(
 	} else if res != nil {
 		affected, err := res.RowsAffected()
 		if err != nil {
-			logger.Error().Err(err).Msgf("sqlite.Repository: error delete old empty sessions - get affected rows: %s", err)
+			logger.Error().
+				Err(err).
+				Msgf("sqlite.Repository: error delete old empty sessions - get affected rows: %s", err)
 		} else {
 			logger.Debug().Msgf("sqlite.Repository: empty session removed count=%d", affected)
 		}
@@ -184,7 +186,10 @@ func (Repository) ReadOrCreate(
 			return nil, err
 		}
 	} else {
-		logger.Debug().Str("sid", sid).Object("session", &session).Msgf("sqlite.Repository: session expired sid=%s", sid)
+		logger.Debug().
+			Str("sid", sid).
+			Object("session", &session).
+			Msgf("sqlite.Repository: session expired sid=%s", sid)
 
 		session.Data = make(map[any]any)
 	}
