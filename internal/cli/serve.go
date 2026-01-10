@@ -22,6 +22,7 @@ import (
 	"github.com/urfave/cli/v3"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	gpoapi "gitlab.com/kabes/go-gpo/internal/api"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/config"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/server"
@@ -213,6 +214,11 @@ func (s *Server) podcastDownloadTask(ctx context.Context, injector do.Injector,
 	podcastSrv := do.MustInvoke[*service.PodcastsSrv](injector)
 	since := time.Now().Add(-24 * time.Hour).UTC()
 
+	eventlog := common.NewEventLog("download podcast info", "worker")
+	defer eventlog.Close()
+
+	ctx = common.ContextWithEventLog(ctx, eventlog)
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -222,8 +228,13 @@ func (s *Server) podcastDownloadTask(ctx context.Context, injector do.Injector,
 
 		start := time.Now()
 
+		eventlog.Printf("start processing")
+
 		if err := podcastSrv.DownloadPodcastsInfo(ctx, since, loadepisodes); err != nil {
 			logger.Error().Err(err).Msgf("PodcastDownloader: download podcast info job error=%q", err)
+			eventlog.Errorf("processing error=%q", err)
+		} else {
+			eventlog.Printf("processing finished")
 		}
 
 		since = start
@@ -236,6 +247,11 @@ func (s *Server) runBackgroundMaintenance(ctx context.Context, maintSrv *service
 	logger := log.Ctx(ctx)
 	logger.Info().Msg("Maintenance: start background maintenance task")
 
+	eventlog := common.NewEventLog("db maintenance", "worker")
+	defer eventlog.Close()
+
+	ctx = common.ContextWithEventLog(ctx, eventlog)
+
 	for {
 		now := time.Now().UTC()
 		nextRun := time.Date(now.Year(), now.Month(), now.Day(), startHour, 0, 0, 0, time.UTC)
@@ -247,6 +263,7 @@ func (s *Server) runBackgroundMaintenance(ctx context.Context, maintSrv *service
 		wait := nextRun.Sub(now)
 
 		logger.Debug().Msgf("Maintenance: next_run=%q wait=%q", nextRun, wait)
+		eventlog.Printf("maintenance next_run=%q wait=%q", nextRun, wait)
 
 		select {
 		case <-ctx.Done():
@@ -254,9 +271,13 @@ func (s *Server) runBackgroundMaintenance(ctx context.Context, maintSrv *service
 		case <-time.After(wait):
 			taskid := xid.New()
 			llog := logger.With().Str("task_id", taskid.String()).Logger() //nolint:nilaway
+			eventlog.Printf("start maintenance task_id=%s", taskid.String())
 
 			if err := maintSrv.MaintainDatabase(hlog.CtxWithID(ctx, taskid)); err != nil {
 				llog.Error().Err(err).Msgf("Maintenance: run database maintenance task error=%q", err)
+				eventlog.Errorf("maintenance error task_id=%s error=%q", taskid.String(), err)
+			} else {
+				eventlog.Printf("maintenance finished task_id=%s", taskid.String())
 			}
 		}
 	}

@@ -244,16 +244,17 @@ func (p *PodcastsSrv) DownloadPodcastsInfo(ctx context.Context, since time.Time,
 		return aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
+	eventlog := common.ContextEventLog(ctx)
+
 	if len(urls) == 0 {
 		logger.Debug().Msg("PodcastsSrv: download podcasts finished; no url to update found")
+		eventlog.Printf("no podcast to update")
 
 		return nil
 	}
 
 	logger.Debug().Msgf("PodcastsSrv: podcast_to_update=%d", len(urls))
-
-	eventlog := common.NewEventLog("srv.podcasts", "downloadPodcastInfo")
-	defer eventlog.Close()
+	eventlog.Printf("start downloading tasks=%d", len(urls))
 
 	tasks := make(chan model.PodcastToUpdate, len(urls))
 
@@ -270,7 +271,7 @@ func (p *PodcastsSrv) DownloadPodcastsInfo(ctx context.Context, since time.Time,
 
 	wg.Wait()
 
-	logger.Info().Msg("PodcastsSrv: downloading podcasts info finished")
+	logger.Info().Msgf("PodcastsSrv: downloading podcasts info finished; podcast_to_update=%d", len(urls))
 
 	return nil
 }
@@ -294,14 +295,14 @@ func (p *PodcastsSrv) downloadPodcastInfoWorker(
 		llogger := logger.With().Str("podcast_url", task.URL).Str("taskid", taskid.String()).Logger()
 		lctx := hlog.CtxWithID(llogger.WithContext(ctx), taskid)
 
-		eventlog.Printf("processing %q", task.URL)
+		eventlog.Printf("processing url=%q", task.URL)
 
 		err := p.downloadPodcastInfo(lctx, fp, since, &task, loadepisodes, eventlog)
 		if err != nil {
 			eventlog.Errorf("update failed: error=%q", err)
 			llogger.Warn().Err(err).Msgf("PodcastsSrv: update podcast_url=%q error=%q", task.URL, err)
 		} else {
-			eventlog.Errorf("update %q finished", task.URL)
+			eventlog.Printf("update finished url=%q ", task.URL)
 		}
 	}
 }
@@ -323,7 +324,7 @@ func (p *PodcastsSrv) downloadPodcastInfo(ctx context.Context, //nolint: cyclop
 	)
 
 	feed, status, err := parseFeedURLWithContext(ctx, feedparser, task)
-	eventlog.Printf("download %q got status=%q error=%q", task.URL, status, err)
+	eventlog.Printf("download url=%q got status=%d error=%q", task.URL, status, err)
 
 	switch {
 	case err != nil:

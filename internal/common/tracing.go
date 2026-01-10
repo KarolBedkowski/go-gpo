@@ -67,11 +67,15 @@ func NewEventLog(pkg, domain string) *EventLog {
 }
 
 func (e *EventLog) Printf(format string, a ...any) {
-	e.events.Printf(format, a...)
+	if e != nil && e.events != nil {
+		e.events.Printf(format, a...)
+	}
 }
 
 func (e *EventLog) Errorf(format string, a ...any) {
-	e.events.Errorf(format, a...)
+	if e != nil && e.events != nil {
+		e.events.Errorf(format, a...)
+	}
 }
 
 func (f *EventLog) Close() {

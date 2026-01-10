@@ -43,3 +43,23 @@ func ContextWithDevice(ctx context.Context, devicename string) context.Context {
 }
 
 // ------------------------------------------------------
+
+//nolint:gochecknoglobals
+var ctxEventLogKey = any("ctxEventLogKey")
+
+// ContextEventLog return device name from context.
+func ContextEventLog(ctx context.Context) *EventLog {
+	value, ok := ctx.Value(ctxEventLogKey).(*EventLog)
+	if ok {
+		return value
+	}
+
+	return nil
+}
+
+// ContextWithEventLog create context with device name.
+func ContextWithEventLog(ctx context.Context, eventlog *EventLog) context.Context {
+	return context.WithValue(ctx, ctxEventLogKey, eventlog)
+}
+
+// ------------------------------------------------------
