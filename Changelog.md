@@ -1,5 +1,49 @@
 # Changelog
 
+## v1.2.0 2026-01-11
+
+### Bug Fixes
+
+- Always set synchronous and journal_mode sqlite connection parameters
+- Skip check user password when session is valid; check only account
+- Limit access to debug endpoint
+- Fix logging error on failed server start
+- Fix update podcast metadata when podcast not modified
+- Return max 1000 episodes via /api/2/episodes/
+- Timestamp retuned in api is set to begin of request
+
+### Features
+
+- Add export data command
+- Import data command
+- Implement /health endpoint and healthcheck for databases
+- Support postgresql database
+- Management and web/api endpoins may run on different addresses
+- Configurable access list for mgmt endpoints
+
+### Miscellaneous Tasks
+
+- Improve logging; add task_id to background task logs
+- Tracing & flight recorder must be enabled by build tag `trace`
+
+### Refactor
+
+- Migrate to github.com/jackc/pgx driver
+- Move db-implementation to infra/database repository
+- Drop db.DB layer
+- Add sql.DB to di
+- Fix errors returned by function in db package
+- Close database via do.ShutdownerWithContextAndError
+- Move db config to config package
+- Simplify middlewares
+- Move server configuration to config package
+- Fix name server configuration objects
+- Reduce allocated object when creating models
+- Aggregate episodes in database
+- Refactor tracing; set log for runtime/trace
+
+
+
 ## v1.1.3 2025-12-28
 
 - Fix broken save settings
