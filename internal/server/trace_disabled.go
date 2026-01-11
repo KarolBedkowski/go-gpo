@@ -3,7 +3,7 @@
 package server
 
 //
-// tracing.go
+// trace_disabled.go
 // Copyright (C) 2026 Karol Będkowski <Karol Będkowski@kkomp>
 //
 // Distributed under terms of the GPLv3 license.
@@ -24,8 +24,7 @@ func newTracingMiddleware(cfg *config.ServerConf) func(http.Handler) http.Handle
 	}
 }
 
-func mountXTrace(group chi.Router, webroot string) {
-}
+func mountXTrace(group chi.Router, webroot string) {}
 
 //-------------------------------------------------------------
 

@@ -3,7 +3,7 @@
 package server
 
 //
-// tracing.go
+// trace.go
 // Copyright (C) 2026 Karol Będkowski <Karol Będkowski@kkomp>
 //
 // Distributed under terms of the GPLv3 license.
@@ -57,6 +57,7 @@ func newTracingMiddleware(cfg *config.ServerConf) func(http.Handler) http.Handle
 			ctx = xtrace.NewContext(ctx, tr)
 			request = request.WithContext(ctx)
 
+			trace.Logf(ctx, "Request", "req_id=%s url=%q", reqid, request.URL.Redacted())
 			next.ServeHTTP(writer, request)
 		})
 	}
@@ -69,8 +70,6 @@ func mountXTrace(group chi.Router, webroot string) {
 
 //-------------------------------------------------------------
 
-const FlightRecorderThreshold = 200 * time.Millisecond
-
 type frMiddleware struct {
 	once sync.Once
 	fr   *trace.FlightRecorder
@@ -79,8 +78,10 @@ type frMiddleware struct {
 func newFRMiddleware() func(http.Handler) http.Handler {
 	frm := &frMiddleware{}
 
+	threshold := getFRthreadshold()
+
 	frm.fr = trace.NewFlightRecorder(trace.FlightRecorderConfig{
-		MinAge:   FlightRecorderThreshold,
+		MinAge:   threshold,
 		MaxBytes: 1 << 20, //nolint:mnd  // 1MB
 	})
 
@@ -94,7 +95,7 @@ func newFRMiddleware() func(http.Handler) http.Handler {
 		}
 	}
 
-	log.Logger.Warn().Msgf("FlightRecorder: enabled; threshold=%s", FlightRecorderThreshold)
+	log.Logger.Warn().Msgf("FlightRecorder: enabled; threshold=%s", threshold)
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -102,7 +103,7 @@ func newFRMiddleware() func(http.Handler) http.Handler {
 
 			next.ServeHTTP(w, r)
 
-			if frm.fr.Enabled() && time.Since(start) > FlightRecorderThreshold {
+			if frm.fr.Enabled() && time.Since(start) > threshold {
 				go frm.captureSnapshot(r.Context())
 			}
 		})
@@ -139,4 +140,23 @@ func (f *frMiddleware) captureSnapshot(ctx context.Context) {
 		logger.Warn().Str(common.LogKeyReqID, reqid).
 			Msgf("FlightRecorder: captured snapshot file=%q req_id=%s", fout.Name(), reqid)
 	})
+}
+
+const defaultFlightRecorderThreshold = 1000 * time.Millisecond
+
+func getFRthreadshold() time.Duration {
+	envth := os.Getenv("GO_GPO_DEBUG_FLIGHTRECORDER_THREADSHOLD")
+	if envth == "" {
+		return defaultFlightRecorderThreshold
+	}
+
+	t, err := time.ParseDuration(envth)
+	if err != nil {
+		log.Logger.Error().Msgf("invalid GO_GPO_DEBUG_FLIGHTRECORDER_THREADSHOLD value=%q err=%q",
+			envth, err)
+
+		return defaultFlightRecorderThreshold
+	}
+
+	return t
 }

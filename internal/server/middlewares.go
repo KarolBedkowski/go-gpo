@@ -76,7 +76,7 @@ func (a authenticator) handle(next http.Handler) http.Handler {
 			Str("sid", sess.ID()).Str(common.LogKeyUserName, common.Coalesce(username, sessionuser)).Logger()
 		ctx := logger.WithContext(r.Context())
 
-		common.NewRegion(ctx, "authenticator handle").End()
+		defer common.NewRegion(ctx, "authenticator handle").End()
 
 		if sessionuser == "" && !basicAuthOk {
 			// no valid session, no auth, continue to next handler
@@ -92,6 +92,8 @@ func (a authenticator) handle(next http.Handler) http.Handler {
 			return
 		}
 
+		common.TraceLazyPrintf(ctx, "Authenticator: start login user")
+
 		switch _, err := a.usersSrv.LoginUser(ctx, username, password); {
 		case err == nil:
 			// no error login/check user - continue
@@ -100,7 +102,7 @@ func (a authenticator) handle(next http.Handler) http.Handler {
 
 			_ = sess.Set("user", username)
 
-			common.TraceLazyPrintf(ctx, "AuthenticationError: user authenticated")
+			common.TraceLazyPrintf(ctx, "Authenticator: user authenticated")
 			next.ServeHTTP(w, r.WithContext(common.ContextWithUser(ctx, username)))
 		case aerr.HasTag(err, common.AuthenticationError):
 			logger.Info().Err(err).Str(common.LogKeyUserName, username).

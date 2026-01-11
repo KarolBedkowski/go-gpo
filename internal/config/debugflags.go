@@ -31,7 +31,7 @@ const (
 	// DebugDBQueryMetrics enable metrics for query metrics.
 	DebugDBQueryMetrics = DebugFlag("querymetrics")
 	// DebugFlightRecorder enable flight recorder for long server queries.
-	DebugFlightRecorder = DebugFlag("flighrecorder")
+	DebugFlightRecorder = DebugFlag("flightrecorder")
 	// DebugTrace enable tracing with net/trace.
 	DebugTrace = DebugFlag("trace")
 

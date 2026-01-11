@@ -11,20 +11,16 @@ package common
 
 import (
 	"context"
-
-	"golang.org/x/net/trace"
 )
 
 const TracingAvailable = false
 
-func WithTrace(ctx context.Context, callback func(trace.Trace)) {
-}
+//-------------------------------------------------------------
 
-func TraceLazyPrintf(ctx context.Context, format string, a ...any) {
-}
+func TraceLazyPrintf(ctx context.Context, format string, a ...any)      {}
+func TraceErrorLazyPrintf(ctx context.Context, format string, a ...any) {}
 
-func TraceErrorLazyPrintf(ctx context.Context, format string, a ...any) {
-}
+//-------------------------------------------------------------
 
 type EventLog struct{}
 
@@ -32,14 +28,30 @@ func NewEventLog(pkg, domain string) *EventLog {
 	return &EventLog{}
 }
 
-func (e *EventLog) Printf(format string, a ...any) {
+func (e *EventLog) Printf(format string, a ...any) {}
+func (e *EventLog) Errorf(format string, a ...any) {}
+func (f *EventLog) Close()                         {}
+
+//-------------------------------------------------------------
+
+// ContextEventLog return device name from context.
+func ContextEventLog(ctx context.Context) *EventLog {
+	return nil
 }
 
-func (e *EventLog) Errorf(format string, a ...any) {
+// ContextWithEventLog create context with device name.
+func ContextWithEventLog(ctx context.Context, eventlog *EventLog) context.Context {
+	return ctx
 }
 
-func (f *EventLog) Close() {
+// ------------------------------------------------------
+
+func NewCtxEventLog(ctx context.Context, pkg, domain string) (context.Context, func()) {
+	return ctx, func() {}
 }
+
+func EventLogPrintf(ctx context.Context, format string, a ...any)  {}
+func EventLogErrorff(ctx context.Context, format string, a ...any) {}
 
 // -------------------------------------------------------------
 type Region struct{}
@@ -48,5 +60,8 @@ func NewRegion(ctx context.Context, regionType string) Region {
 	return Region{}
 }
 
-func (r Region) End() {
+func (r Region) End() {}
+
+func NewTask(ctx context.Context, taskType string) (context.Context, func()) {
+	return ctx, func() {}
 }

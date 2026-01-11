@@ -36,6 +36,9 @@ func NewUsersSrv(i do.Injector) (*UsersSrv, error) {
 }
 
 func (u *UsersSrv) LoginUser(ctx context.Context, username, password string) (*model.User, error) {
+	ctx, end := common.NewTask(ctx, "LoginUser")
+	defer end()
+
 	if username == "" {
 		return nil, common.ErrEmptyUsername
 	}
