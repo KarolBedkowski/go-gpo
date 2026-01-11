@@ -78,7 +78,7 @@ type frMiddleware struct {
 func newFRMiddleware() func(http.Handler) http.Handler {
 	frm := &frMiddleware{}
 
-	threshold := getFRthreadshold()
+	threshold := getFRthreshold()
 
 	frm.fr = trace.NewFlightRecorder(trace.FlightRecorderConfig{
 		MinAge:   threshold,
@@ -144,15 +144,15 @@ func (f *frMiddleware) captureSnapshot(ctx context.Context) {
 
 const defaultFlightRecorderThreshold = 1000 * time.Millisecond
 
-func getFRthreadshold() time.Duration {
-	envth := os.Getenv("GO_GPO_DEBUG_FLIGHTRECORDER_THREADSHOLD")
+func getFRthreshold() time.Duration {
+	envth := os.Getenv("GO_GPO_DEBUG_FLIGHTRECORDER_THRESHOLD")
 	if envth == "" {
 		return defaultFlightRecorderThreshold
 	}
 
 	t, err := time.ParseDuration(envth)
 	if err != nil {
-		log.Logger.Error().Msgf("invalid GO_GPO_DEBUG_FLIGHTRECORDER_THREADSHOLD value=%q err=%q",
+		log.Logger.Error().Msgf("invalid GO_GPO_DEBUG_FLIGHTRECORDER_THRESHOLD value=%q err=%q",
 			envth, err)
 
 		return defaultFlightRecorderThreshold
