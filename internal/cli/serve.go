@@ -14,12 +14,15 @@ import (
 	"time"
 
 	"github.com/Merovius/systemd"
+	"github.com/rs/xid"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/hlog"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/do/v2"
 	"github.com/urfave/cli/v3"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	gpoapi "gitlab.com/kabes/go-gpo/internal/api"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/config"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/server"
@@ -27,7 +30,7 @@ import (
 	gpoweb "gitlab.com/kabes/go-gpo/internal/web"
 )
 
-func newStartServerCmd() *cli.Command {
+func newStartServerCmd() *cli.Command { //nolint:funlen
 	return &cli.Command{
 		Name:  "serve",
 		Usage: "start server",
@@ -73,9 +76,8 @@ func newStartServerCmd() *cli.Command {
 				Sources: cli.EnvVars("GOGPO_SERVER_SECURE_COOKIE"),
 			},
 			&cli.DurationFlag{
-				Name: "podcast-load-interval",
-				Usage: "Enable background worker that download podcast information in given intervals. " +
-					"This may eat a lot of memory....",
+				Name:    "podcast-load-interval",
+				Usage:   "Enable background worker that download podcast information in given intervals. ",
 				Sources: cli.EnvVars("GOGPO_SERVER_PODCAST_LOAD_INTERVAL"),
 				Value:   0,
 			},
@@ -83,6 +85,22 @@ func newStartServerCmd() *cli.Command {
 				Name:    "podcast-load-episodes",
 				Usage:   "When loading podcast, load also episodes title.",
 				Sources: cli.EnvVars("GOGPO_SERVER_PODCAST_LOAD_EPISODES"),
+			},
+			&cli.StringFlag{
+				Name:    "mgmt-address",
+				Value:   "",
+				Usage:   "listen address for management endpoints; empty disable management; may be the same as main 'address'",
+				Aliases: []string{"m"},
+				Sources: cli.EnvVars("GOGPO_MGMT_SERVER_ADDRESS"),
+				Config:  cli.StringConfig{TrimSpace: true},
+			},
+			&cli.StringFlag{
+				Name:    "mgmt-access-list",
+				Value:   "",
+				Usage:   "list of ip or networks separated by ',' allowed to connected to mgmt endpoints.",
+				Aliases: []string{"m"},
+				Sources: cli.EnvVars("GOGPO_MGMT_SERVER_ACCESS_LIST"),
+				Config:  cli.StringConfig{TrimSpace: true},
 			},
 		},
 		Action: wrap(startServerCmd),
@@ -96,21 +114,28 @@ func startServerCmd(ctx context.Context, clicmd *cli.Command, rootInjector do.In
 		server.Package,
 	)
 
-	serverConf := server.Configuration{
-		Listen:        strings.TrimSpace(clicmd.String("address")),
-		DebugFlags:    config.NewDebugFLags(clicmd.String("debug")),
-		WebRoot:       strings.TrimSuffix(clicmd.String("web-root"), "/"),
-		EnableMetrics: clicmd.Bool("enable-metrics"),
-		TLSKey:        clicmd.String("key"),
-		TLSCert:       clicmd.String("cert"),
-		CookieSecure:  clicmd.Bool("secure-cookie"),
+	serverConf := config.ServerConf{
+		MainServer: config.ListenConf{
+			Address:      strings.TrimSpace(clicmd.String("address")),
+			WebRoot:      strings.TrimSuffix(clicmd.String("web-root"), "/"),
+			TLSKey:       clicmd.String("key"),
+			TLSCert:      clicmd.String("cert"),
+			CookieSecure: clicmd.Bool("secure-cookie"),
+		},
+		MgmtServer: config.ListenConf{
+			Address: strings.TrimSpace(clicmd.String("mgmt-address")),
+			// mgmt not use for now tls/webroot/cookie
+		},
+		DebugFlags:     config.NewDebugFLags(clicmd.String("debug")),
+		EnableMetrics:  clicmd.Bool("enable-metrics"),
+		MgmtAccessList: clicmd.String("mgmt-access-list"),
 	}
 
 	if err := serverConf.Validate(); err != nil {
 		return aerr.Wrapf(err, "server config validation failed")
 	}
 
-	do.ProvideNamedValue(injector, "server.webroot", serverConf.WebRoot)
+	do.ProvideNamedValue(injector, "server.webroot", serverConf.MainServer.WebRoot)
 	do.ProvideValue(injector, &serverConf)
 
 	if serverConf.DebugFlags.HasFlag(config.DebugDo) {
@@ -124,23 +149,34 @@ func startServerCmd(ctx context.Context, clicmd *cli.Command, rootInjector do.In
 
 type Server struct{}
 
-func (s *Server) start(ctx context.Context, injector do.Injector, cfg *server.Configuration,
+func (s *Server) start(ctx context.Context, injector do.Injector, cfg *config.ServerConf,
 	clicmd *cli.Command,
 ) error {
 	logger := log.Ctx(ctx)
 	logger.Log().Msgf("Starting go-gpo (%s)...", config.VersionString)
+	logger.Debug().Msgf("Server: debug_flags=%q", cfg.DebugFlags)
 
 	s.startSystemdWatchdog(logger)
 
-	database := do.MustInvoke[*db.Database](injector)
-	database.RegisterMetrics(cfg.DebugFlags.HasFlag(config.DebugDBQueryMetrics))
+	db.RegisterMetrics(injector, cfg.DebugFlags.HasFlag(config.DebugDBQueryMetrics))
 
 	ctx, cancel := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGINT)
 	defer cancel()
 
 	srv := do.MustInvoke[*server.Server](injector)
 	if err := srv.Start(ctx); err != nil {
-		return aerr.Wrapf(err, "start server failed")
+		logger.Fatal().Err(err).Msgf("start server failed error=%q", err)
+
+		return aerr.New("failed start server")
+	}
+
+	if cfg.SeparateMgmtEnabled() {
+		msrv := do.MustInvoke[*server.MgmtServer](injector)
+		if err := msrv.Start(ctx); err != nil {
+			logger.Fatal().Err(err).Msgf("start mgmt server failed error=%q", err)
+
+			return aerr.New("failed start mgmt server")
+		}
 	}
 
 	maintSrv := do.MustInvoke[*service.MaintenanceSrv](injector)
@@ -162,9 +198,9 @@ func (s *Server) start(ctx context.Context, injector do.Injector, cfg *server.Co
 
 func (*Server) startSystemdWatchdog(logger *zerolog.Logger) {
 	if ok, dur, err := systemd.AutoWatchdog(); ok {
-		logger.Info().Msgf("systemd autowatchdog started; duration=%s", dur)
+		logger.Info().Msgf("Systemd: autowatchdog started; duration=%s", dur)
 	} else if err != nil {
-		logger.Warn().Err(err).Msg("systemd autowatchdog start error")
+		logger.Warn().Err(err).Msgf("Systemd: autowatchdog start error=%q", err)
 	}
 }
 
@@ -172,10 +208,15 @@ func (s *Server) podcastDownloadTask(ctx context.Context, injector do.Injector,
 	interval time.Duration, loadepisodes bool,
 ) {
 	logger := log.Ctx(ctx)
-	logger.Info().Msgf("start background podcast downloader; interval=%s", interval)
+	logger.Info().Msgf("PodcastDownloader: start background podcast downloader; interval=%s", interval)
 
 	podcastSrv := do.MustInvoke[*service.PodcastsSrv](injector)
 	since := time.Now().Add(-24 * time.Hour).UTC()
+
+	eventlog := common.NewEventLog("download podcast info", "worker")
+	defer eventlog.Close()
+
+	ctx = common.ContextWithEventLog(ctx, eventlog)
 
 	for {
 		select {
@@ -186,8 +227,13 @@ func (s *Server) podcastDownloadTask(ctx context.Context, injector do.Injector,
 
 		start := time.Now()
 
+		eventlog.Printf("start processing")
+
 		if err := podcastSrv.DownloadPodcastsInfo(ctx, since, loadepisodes); err != nil {
-			logger.Error().Err(err).Msg("download podcast info failed")
+			logger.Error().Err(err).Msgf("PodcastDownloader: download podcast info job error=%q", err)
+			eventlog.Errorf("processing error=%q", err)
+		} else {
+			eventlog.Printf("processing finished")
 		}
 
 		since = start
@@ -198,7 +244,12 @@ func (s *Server) runBackgroundMaintenance(ctx context.Context, maintSrv *service
 	const startHour = 4
 
 	logger := log.Ctx(ctx)
-	logger.Info().Msg("start background maintenance task")
+	logger.Info().Msg("Maintenance: start background maintenance task")
+
+	eventlog := common.NewEventLog("db maintenance", "worker")
+	defer eventlog.Close()
+
+	ctx = common.ContextWithEventLog(ctx, eventlog)
 
 	for {
 		now := time.Now().UTC()
@@ -210,14 +261,22 @@ func (s *Server) runBackgroundMaintenance(ctx context.Context, maintSrv *service
 
 		wait := nextRun.Sub(now)
 
-		logger.Debug().Msgf("maintenance task - next run %s wait %s", nextRun, wait)
+		logger.Debug().Msgf("Maintenance: next_run=%q wait=%q", nextRun, wait)
+		eventlog.Printf("maintenance next_run=%q wait=%q", nextRun, wait)
 
 		select {
 		case <-ctx.Done():
 			return
 		case <-time.After(wait):
-			if err := maintSrv.MaintainDatabase(ctx); err != nil {
-				logger.Error().Err(err).Msg("run database maintenance failed")
+			taskid := xid.New()
+			llog := logger.With().Str("task_id", taskid.String()).Logger() //nolint:nilaway
+			eventlog.Printf("start maintenance task_id=%s", taskid.String())
+
+			if err := maintSrv.MaintainDatabase(hlog.CtxWithID(ctx, taskid)); err != nil {
+				llog.Error().Err(err).Msgf("Maintenance: run database maintenance task error=%q", err)
+				eventlog.Errorf("maintenance error task_id=%s error=%q", taskid.String(), err)
+			} else {
+				eventlog.Printf("maintenance finished task_id=%s", taskid.String())
 			}
 		}
 	}

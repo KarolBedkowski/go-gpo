@@ -54,7 +54,7 @@ func initializeLogger(level, format string) error {
 	if l, err := zerolog.ParseLevel(level); err == nil {
 		zerolog.SetGlobalLevel(l)
 	} else {
-		log.Error().Msgf("logger: unknown log level %q; using debug", level)
+		log.Error().Msgf("Logger: unknown log level=%q; using debug", level)
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
 
@@ -71,7 +71,7 @@ func checkFormat(format string) string {
 	}
 
 	if format != "" {
-		log.Error().Msgf("logger: unknown log format %q; using default", format)
+		log.Error().Msgf("Logger: unknown log format=%q; using default", format)
 	}
 
 	if outputIsConsole() {
@@ -112,36 +112,31 @@ func setupLogfmtConsoleWriter() io.Writer {
 		FormatLevel: func(i any) string {
 			if i == nil {
 				return ""
-			} else {
-				return fmt.Sprintf("level=%s", i)
 			}
-		},
-		FormatTimestamp: func(i any) string { return fmt.Sprintf("ts=%s", i) },
-		FormatMessage: func(i any) string {
-			if i == nil {
-				return "msg=<nil>"
-			} else {
-				return "msg=" + strconv.Quote(fmt.Sprintf("%s", i))
-			}
-		},
-		FormatCaller: func(i any) string {
-			if i == nil {
-				return "UNKNOWN"
-			} else {
-				c := fmt.Sprintf("%s", i)
-				if strings.ContainsAny(c, " \"") {
-					c = strconv.Quote(c)
-				}
 
-				return "caller=" + c
-			}
+			return fmt.Sprintf("level=%s", i)
 		},
-		FormatErrFieldValue: func(i any) string {
-			if i == nil {
-				return "<nil>"
-			} else {
-				return strconv.Quote(fmt.Sprintf("%s", i))
-			}
-		},
+		FormatTimestamp:     func(i any) string { return fmt.Sprintf("ts=%s", i) },
+		FormatMessage:       func(i any) string { return "msg=" + formatLogfmtField(i) },
+		FormatCaller:        func(i any) string { return "caller=" + formatLogfmtField(i) },
+		FormatFieldValue:    formatLogfmtField,
+		FormatErrFieldValue: func(i any) string { return strconv.Quote(fmt.Sprintf("%s", i)) },
 	}
+}
+
+func formatLogfmtField(i any) string {
+	if i == nil {
+		return "\"<nil>\""
+	}
+
+	c := fmt.Sprintf("%s", i)
+	if c == "" {
+		return "\"\""
+	}
+
+	if strings.ContainsAny(c, " \"") {
+		c = strconv.Quote(c)
+	}
+
+	return c
 }

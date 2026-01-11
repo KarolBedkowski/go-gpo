@@ -24,7 +24,7 @@ import (
 )
 
 type SettingsSrv struct {
-	db           *db.Database
+	dbi          repository.Database
 	settRepo     repository.Settings
 	usersRepo    repository.Users
 	episodesRepo repository.Episodes
@@ -34,7 +34,7 @@ type SettingsSrv struct {
 
 func NewSettingsSrv(i do.Injector) (*SettingsSrv, error) {
 	return &SettingsSrv{
-		db:           do.MustInvoke[*db.Database](i),
+		dbi:          do.MustInvoke[repository.Database](i),
 		settRepo:     do.MustInvoke[repository.Settings](i),
 		usersRepo:    do.MustInvoke[repository.Users](i),
 		episodesRepo: do.MustInvoke[repository.Episodes](i),
@@ -44,7 +44,8 @@ func NewSettingsSrv(i do.Injector) (*SettingsSrv, error) {
 }
 
 func (s SettingsSrv) GetSettings(ctx context.Context, query *query.SettingsQuery) (model.Settings, error) {
-	log.Ctx(ctx).Debug().Object("query", query).Msg("get settings")
+	log.Ctx(ctx).Debug().Object("query", query).
+		Msgf("SettingsSrv: get settings user_name=%s scope=%s", query.UserName, query.Scope)
 
 	// validate
 	if err := query.Validate(); err != nil {
@@ -52,7 +53,7 @@ func (s SettingsSrv) GetSettings(ctx context.Context, query *query.SettingsQuery
 	}
 
 	//nolint:wrapcheck
-	return db.InConnectionR(ctx, s.db, func(ctx context.Context) (model.Settings, error) {
+	return db.InConnectionR(ctx, s.dbi, func(ctx context.Context) (model.Settings, error) {
 		key, err := s.load(ctx, query.UserName, query.Scope, query.DeviceName, query.Podcast, query.Episode)
 		if err != nil {
 			return nil, err
@@ -69,7 +70,8 @@ func (s SettingsSrv) GetSettings(ctx context.Context, query *query.SettingsQuery
 
 // SaveSettings for `key` and values in `set`. If value is set to "" for given key - delete it.
 func (s SettingsSrv) SaveSettings(ctx context.Context, cmd *command.ChangeSettingsCmd) error {
-	log.Ctx(ctx).Debug().Object("cmd", cmd).Msg("save settings")
+	log.Ctx(ctx).Debug().Object("cmd", cmd).
+		Msgf("SettingsSrv: save settings user_name=%s scope=%s", cmd.UserName, cmd.Scope)
 
 	if err := cmd.Validate(); err != nil {
 		return aerr.Wrapf(err, "validate settings key to save failed")
@@ -78,7 +80,7 @@ func (s SettingsSrv) SaveSettings(ctx context.Context, cmd *command.ChangeSettin
 	settings := cmd.CombinedSetting()
 
 	//nolint:wrapcheck
-	return db.InTransaction(ctx, s.db, func(ctx context.Context) error {
+	return db.InTransaction(ctx, s.dbi, func(ctx context.Context) error {
 		key, err := s.load(ctx, cmd.UserName, cmd.Scope, cmd.DeviceName, cmd.Podcast, cmd.Episode)
 		if err != nil {
 			return err
@@ -96,7 +98,7 @@ func (s SettingsSrv) SaveSettings(ctx context.Context, cmd *command.ChangeSettin
 	})
 }
 
-func (s SettingsSrv) load( //nolint:cyclop
+func (s SettingsSrv) load( //nolint:cyclop,funlen
 	ctx context.Context,
 	username, scope, devicename, podcast, episode string,
 ) (model.SettingsKey, error) {
@@ -109,6 +111,8 @@ func (s SettingsSrv) load( //nolint:cyclop
 		return skey, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
+	common.TraceLazyPrintf(ctx, "load: user loaded")
+
 	skey.UserID = user.ID
 
 	switch scope {
@@ -120,6 +124,8 @@ func (s SettingsSrv) load( //nolint:cyclop
 			return skey, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
+		common.TraceLazyPrintf(ctx, "load: device loaded")
+
 		skey.DeviceID = &device.ID
 
 	case "podcast":
@@ -129,6 +135,8 @@ func (s SettingsSrv) load( //nolint:cyclop
 		} else if err != nil {
 			return skey, aerr.ApplyFor(ErrRepositoryError, err)
 		}
+
+		common.TraceLazyPrintf(ctx, "load: podcast loaded")
 
 		skey.PodcastID = &p.ID
 
@@ -140,6 +148,8 @@ func (s SettingsSrv) load( //nolint:cyclop
 			return skey, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
+		common.TraceLazyPrintf(ctx, "load: podcast loaded")
+
 		skey.PodcastID = &p.ID
 
 		e, err := s.episodesRepo.GetEpisode(ctx, user.ID, p.ID, episode)
@@ -148,6 +158,8 @@ func (s SettingsSrv) load( //nolint:cyclop
 		} else if err != nil {
 			return skey, aerr.ApplyFor(ErrRepositoryError, err)
 		}
+
+		common.TraceLazyPrintf(ctx, "load: episode loaded")
 
 		skey.EpisodeID = &e.ID
 	case "account":

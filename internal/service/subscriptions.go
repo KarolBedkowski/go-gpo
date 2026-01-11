@@ -24,7 +24,7 @@ import (
 )
 
 type SubscriptionsSrv struct {
-	db           *db.Database
+	dbi          repository.Database
 	podcastsRepo repository.Podcasts
 	usersRepo    repository.Users
 	devicesRepo  repository.Devices
@@ -32,7 +32,7 @@ type SubscriptionsSrv struct {
 
 func NewSubscriptionsSrv(i do.Injector) (*SubscriptionsSrv, error) {
 	return &SubscriptionsSrv{
-		db:           do.MustInvoke[*db.Database](i),
+		dbi:          do.MustInvoke[repository.Database](i),
 		podcastsRepo: do.MustInvoke[repository.Podcasts](i),
 		usersRepo:    do.MustInvoke[repository.Users](i),
 		devicesRepo:  do.MustInvoke[repository.Devices](i),
@@ -69,7 +69,7 @@ func (s *SubscriptionsSrv) ReplaceSubscriptions( //nolint:cyclop
 	}
 
 	//nolint:wrapcheck
-	return db.InTransaction(ctx, s.db, func(ctx context.Context) error {
+	return db.InTransaction(ctx, s.dbi, func(ctx context.Context) error {
 		user, err := s.getUser(ctx, cmd.UserName)
 		if err != nil {
 			return err
@@ -104,7 +104,7 @@ func (s *SubscriptionsSrv) ReplaceSubscriptions( //nolint:cyclop
 		for _, sub := range cmd.Subscriptions {
 			podcast, ok := subscribed.FindPodcastByURL(sub)
 			if !ok {
-				podcast = model.Podcast{User: *user, URL: sub}
+				podcast = model.Podcast{User: user, URL: sub}
 			} else if podcast.Subscribed {
 				continue
 			}
@@ -114,17 +114,21 @@ func (s *SubscriptionsSrv) ReplaceSubscriptions( //nolint:cyclop
 			}
 		}
 
+		common.TraceLazyPrintf(ctx, "ReplaceSubscriptions: changes prepared")
+
 		for _, p := range changes {
 			if _, err := s.podcastsRepo.SavePodcast(ctx, &p); err != nil {
 				return aerr.ApplyFor(ErrRepositoryError, err)
 			}
 		}
 
+		common.TraceLazyPrintf(ctx, "ReplaceSubscriptions: podcasts saved")
+
 		return nil
 	})
 }
 
-func (s *SubscriptionsSrv) ChangeSubscriptions( //nolint:cyclop,gocognit
+func (s *SubscriptionsSrv) ChangeSubscriptions( //nolint:cyclop,gocognit,funlen
 	ctx context.Context, cmd *command.ChangeSubscriptionsCmd,
 ) (command.ChangeSubscriptionsCmdResult, error) {
 	res := command.ChangeSubscriptionsCmdResult{
@@ -135,7 +139,7 @@ func (s *SubscriptionsSrv) ChangeSubscriptions( //nolint:cyclop,gocognit
 		return res, aerr.Wrapf(err, "validate command failed")
 	}
 
-	err := db.InTransaction(ctx, s.db, func(ctx context.Context) error {
+	err := db.InTransaction(ctx, s.dbi, func(ctx context.Context) error {
 		user, err := s.getUser(ctx, cmd.UserName)
 		if err != nil {
 			return err
@@ -153,6 +157,8 @@ func (s *SubscriptionsSrv) ChangeSubscriptions( //nolint:cyclop,gocognit
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
+		common.TraceLazyPrintf(ctx, "ChangeSubscriptions: podcasts loaded")
+
 		podchanges := make([]model.Podcast, 0, len(cmd.Add)+len(cmd.Remove))
 
 		// removed
@@ -167,7 +173,7 @@ func (s *SubscriptionsSrv) ChangeSubscriptions( //nolint:cyclop,gocognit
 		for _, sub := range cmd.Add {
 			podcast, ok := userpodcasts.FindPodcastByURL(sub)
 			if !ok { // new
-				podcast = model.Podcast{User: *user, URL: sub}
+				podcast = model.Podcast{User: user, URL: sub}
 			} else if podcast.Subscribed {
 				continue
 			}
@@ -177,11 +183,15 @@ func (s *SubscriptionsSrv) ChangeSubscriptions( //nolint:cyclop,gocognit
 			}
 		}
 
+		common.TraceLazyPrintf(ctx, "ChangeSubscriptions: changes prepared")
+
 		for _, p := range podchanges {
 			if _, err := s.podcastsRepo.SavePodcast(ctx, &p); err != nil {
 				return aerr.ApplyFor(ErrRepositoryError, err)
 			}
 		}
+
+		common.TraceLazyPrintf(ctx, "ChangeSubscriptions: podcast saved")
 
 		return nil
 	})
@@ -200,6 +210,8 @@ func (s *SubscriptionsSrv) GetSubscriptionChanges(ctx context.Context, query *qu
 	if err != nil {
 		return model.SubscriptionState{}, err
 	}
+
+	common.TraceLazyPrintf(ctx, "GetSubscriptionChanges: podcasts loaded")
 
 	state := model.SubscriptionState{
 		Added:   make([]model.Podcast, 0, len(podcasts)),
@@ -222,13 +234,15 @@ func (s *SubscriptionsSrv) GetSubscriptionChanges(ctx context.Context, query *qu
 func (s *SubscriptionsSrv) getSubsctiptions(ctx context.Context, username, devicename string, since time.Time,
 ) (model.Podcasts, error) {
 	//nolint:wrapcheck
-	return db.InConnectionR(ctx, s.db, func(ctx context.Context) (model.Podcasts, error) {
+	return db.InConnectionR(ctx, s.dbi, func(ctx context.Context) (model.Podcasts, error) {
 		user, err := s.usersRepo.GetUser(ctx, username)
 		if errors.Is(err, common.ErrNoData) {
 			return nil, common.ErrUnknownUser
 		} else if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
+
+		common.TraceLazyPrintf(ctx, "getSubsctiptions: user loaded")
 
 		if devicename != "" {
 			// validate is device exists when device name is given and mark is seen.
@@ -243,6 +257,8 @@ func (s *SubscriptionsSrv) getSubsctiptions(ctx context.Context, username, devic
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
+		common.TraceLazyPrintf(ctx, "getSubsctiptions: podcasts loaded")
+
 		return podcasts, nil
 	})
 }
@@ -254,6 +270,8 @@ func (s *SubscriptionsSrv) getUser(ctx context.Context, username string) (*model
 	} else if err != nil {
 		return nil, aerr.ApplyFor(ErrRepositoryError, err)
 	}
+
+	common.TraceLazyPrintf(ctx, "getUser: user loaded")
 
 	return user, nil
 }
@@ -270,6 +288,8 @@ func (s *SubscriptionsSrv) getUserDevice(
 	} else if err != nil {
 		return device, aerr.ApplyFor(ErrRepositoryError, err)
 	}
+
+	common.TraceLazyPrintf(ctx, "getUserDevice: devices loaded")
 
 	return device, nil
 }
@@ -289,6 +309,8 @@ func (s *SubscriptionsSrv) createUserDevice(
 		return nil, aerr.ApplyFor(ErrRepositoryError, err, "save device failed")
 	}
 
+	common.TraceLazyPrintf(ctx, "createUserDevice: device created")
+
 	return s.getUserDevice(ctx, user.ID, devicename)
 }
 
@@ -300,7 +322,7 @@ func (s *SubscriptionsSrv) getPodcasts(
 	[]model.Podcast, error,
 ) {
 	//nolint:wrapcheck
-	return db.InConnectionR(ctx, s.db, func(ctx context.Context) ([]model.Podcast, error) {
+	return db.InConnectionR(ctx, s.dbi, func(ctx context.Context) ([]model.Podcast, error) {
 		user, err := s.getUser(ctx, username)
 		if err != nil {
 			return nil, err

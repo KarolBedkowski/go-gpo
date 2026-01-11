@@ -23,7 +23,7 @@ func TestUsers(t *testing.T) {
 	usersSrv := do.MustInvoke[*UsersSrv](i)
 
 	_, err := usersSrv.LoginUser(ctx, "test", "test123")
-	assert.ErrSpec(t, err, common.ErrUnknownUser)
+	assert.ErrSpec(t, err, common.ErrUserNotFound)
 
 	newuser := command.NewUserCmd{UserName: "test", Password: "test123", Email: "test@example.com", Name: "test user 1"}
 	res, err := usersSrv.AddUser(ctx, &newuser)

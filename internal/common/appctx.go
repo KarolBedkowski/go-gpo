@@ -41,3 +41,5 @@ func ContextDevice(ctx context.Context) string {
 func ContextWithDevice(ctx context.Context, devicename string) context.Context {
 	return context.WithValue(ctx, ctxDeviceKey, devicename)
 }
+
+// ------------------------------------------------------

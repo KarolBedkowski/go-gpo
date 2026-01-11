@@ -50,7 +50,8 @@ func (d devicePages) list(ctx context.Context, w http.ResponseWriter, r *http.Re
 	devices, err := d.deviceSrv.ListDevices(ctx, &query.GetDevicesQuery{UserName: user})
 	if err != nil {
 		srvsupport.CheckAndWriteError(w, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("list devices error")
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
+			Msgf("web.Devices: list user_name=%s devices error=%q", user, err)
 
 		return
 	}
@@ -85,7 +86,8 @@ func (d devicePages) deletePost(ctx context.Context, w http.ResponseWriter, r *h
 	err := d.deviceSrv.DeleteDevice(ctx, &cmd)
 	if err != nil {
 		srvsupport.CheckAndWriteError(w, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Object("cmd", &cmd).Msg("delete device error")
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Object("cmd", &cmd).
+			Msgf("web.Devices: delete device_name=%s for user_name=%s error=%q", devicename, cmd.UserName, err)
 
 		return
 	}

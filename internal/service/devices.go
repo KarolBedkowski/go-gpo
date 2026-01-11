@@ -22,14 +22,14 @@ import (
 )
 
 type DevicesSrv struct {
-	db          *db.Database
+	dbi         repository.Database
 	usersRepo   repository.Users
 	devicesRepo repository.Devices
 }
 
 func NewDevicesSrv(i do.Injector) (*DevicesSrv, error) {
 	return &DevicesSrv{
-		db:          do.MustInvoke[*db.Database](i),
+		dbi:         do.MustInvoke[repository.Database](i),
 		usersRepo:   do.MustInvoke[repository.Users](i),
 		devicesRepo: do.MustInvoke[repository.Devices](i),
 	}, nil
@@ -42,13 +42,15 @@ func (d *DevicesSrv) UpdateDevice(ctx context.Context, cmd *command.UpdateDevice
 	}
 
 	//nolint:wrapcheck
-	return db.InTransaction(ctx, d.db, func(ctx context.Context) error {
+	return db.InTransaction(ctx, d.dbi, func(ctx context.Context) error {
 		user, err := d.usersRepo.GetUser(ctx, cmd.UserName)
 		if errors.Is(err, common.ErrNoData) {
 			return common.ErrUnknownUser
 		} else if err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
+
+		common.TraceLazyPrintf(ctx, "UpdateDevice: user loaded")
 
 		device, err := d.devicesRepo.GetDevice(ctx, user.ID, cmd.DeviceName)
 		if errors.Is(err, common.ErrNoData) {
@@ -58,6 +60,8 @@ func (d *DevicesSrv) UpdateDevice(ctx context.Context, cmd *command.UpdateDevice
 			return aerr.Wrapf(err, "get device from repo failed")
 		}
 
+		common.TraceLazyPrintf(ctx, "UpdateDevice: device loaded")
+
 		device.Caption = cmd.Caption
 		device.DevType = cmd.DeviceType
 		device.User = user
@@ -66,6 +70,8 @@ func (d *DevicesSrv) UpdateDevice(ctx context.Context, cmd *command.UpdateDevice
 		if err != nil {
 			return aerr.Wrapf(err, "save device failed")
 		}
+
+		common.TraceLazyPrintf(ctx, "UpdateDevice: device saved")
 
 		return nil
 	})
@@ -77,7 +83,7 @@ func (d *DevicesSrv) ListDevices(ctx context.Context, query *query.GetDevicesQue
 		return nil, aerr.Wrapf(err, "validate query failed")
 	}
 
-	devices, err := db.InConnectionR(ctx, d.db, func(ctx context.Context) ([]model.Device, error) {
+	devices, err := db.InConnectionR(ctx, d.dbi, func(ctx context.Context) ([]model.Device, error) {
 		user, err := d.usersRepo.GetUser(ctx, query.UserName)
 		if errors.Is(err, common.ErrNoData) {
 			return nil, common.ErrUnknownUser
@@ -85,10 +91,14 @@ func (d *DevicesSrv) ListDevices(ctx context.Context, query *query.GetDevicesQue
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
+		common.TraceLazyPrintf(ctx, "ListDevices: user loaded")
+
 		devices, err := d.devicesRepo.ListDevices(ctx, user.ID)
 		if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err, "get devices from db failed")
 		}
+
+		common.TraceLazyPrintf(ctx, "ListDevices: devices loaded")
 
 		return devices, nil
 	})
@@ -105,7 +115,7 @@ func (d *DevicesSrv) DeleteDevice(ctx context.Context, cmd *command.DeleteDevice
 	}
 
 	//nolint:wrapcheck
-	return db.InTransaction(ctx, d.db, func(ctx context.Context) error {
+	return db.InTransaction(ctx, d.dbi, func(ctx context.Context) error {
 		user, err := d.usersRepo.GetUser(ctx, cmd.UserName)
 		if errors.Is(err, common.ErrNoData) {
 			return common.ErrUnknownUser

@@ -24,7 +24,7 @@ type Podcast struct {
 	LogoURL       string
 	Website       string
 	MygpoLink     string
-	User          User
+	User          *User
 	Subscribers   int
 	Subscribed    bool
 }

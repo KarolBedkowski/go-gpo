@@ -27,7 +27,7 @@ var ErrDuplicatedSID = errors.New("sid already exists")
 
 func (Repository) DeleteSession(ctx context.Context, sid string) error {
 	logger := log.Ctx(ctx)
-	logger.Debug().Str("sid", sid).Msg("delete session")
+	logger.Debug().Str("sid", sid).Msgf("sqlite.Repository: delete session sid=%s", sid)
 
 	dbctx := db.MustCtx(ctx)
 
@@ -41,7 +41,7 @@ func (Repository) DeleteSession(ctx context.Context, sid string) error {
 
 func (Repository) SaveSession(ctx context.Context, sid string, data map[any]any) error {
 	logger := log.Ctx(ctx)
-	logger.Debug().Str("sid", sid).Msg("save session")
+	logger.Debug().Str("sid", sid).Msgf("sqlite.Repository: save session sid=%s", sid)
 
 	dbctx := db.MustCtx(ctx)
 
@@ -62,7 +62,8 @@ func (Repository) SaveSession(ctx context.Context, sid string, data map[any]any)
 
 func (Repository) RegenerateSession(ctx context.Context, oldsid, newsid string) error {
 	logger := log.Ctx(ctx)
-	logger.Debug().Str("sid", newsid).Str("old_sid", oldsid).Msg("regenerate session")
+	logger.Debug().Str("sid", newsid).Str("old_sid", oldsid).
+		Msgf("sqlite.Repository: regenerate session old_sid=%s new_sid=%s", oldsid, newsid)
 
 	dbctx := db.MustCtx(ctx)
 
@@ -95,7 +96,7 @@ func (Repository) RegenerateSession(ctx context.Context, oldsid, newsid string) 
 
 func (Repository) CountSessions(ctx context.Context) (int, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Msg("count sessions")
+	logger.Debug().Msg("sqlite.Repository: count sessions")
 
 	var total int
 
@@ -116,19 +117,19 @@ func (Repository) CleanSessions(
 	oldestEmpty := time.Now().UTC().Add(-maxLifeTimeForEmpty)
 
 	logger := log.Ctx(ctx)
-	logger.Debug().Msgf("clean sessions (%s, %s)", oldestUsed, oldestEmpty)
+	logger.Debug().Msgf("sqlite.Repository: clean sessions oldest_used=%q oldest_empty=%q", oldestUsed, oldestEmpty)
 
 	dbctx := db.MustCtx(ctx)
 
 	res, err := dbctx.ExecContext(ctx, "DELETE FROM sessions WHERE created_at < ?", oldestUsed)
 	if err != nil {
-		logger.Err(err).Msg("error delete old sessions")
+		logger.Err(err).Msgf("sqlite.Repository: error delete old sessions: %s", err)
 	} else if res != nil {
 		affected, err := res.RowsAffected()
 		if err != nil {
-			log.Logger.Error().Err(err).Msg("error delete old sessions - get affected rows")
+			logger.Error().Err(err).Msgf("sqlite.Repository: error delete old sessions - get affected rows: %s", err)
 		} else {
-			logger.Debug().Msgf("session removed: %d", affected)
+			logger.Debug().Msgf("sqlite.Repository: session removed count=%d", affected)
 		}
 	}
 
@@ -139,9 +140,11 @@ func (Repository) CleanSessions(
 	} else if res != nil {
 		affected, err := res.RowsAffected()
 		if err != nil {
-			log.Logger.Error().Err(err).Msg("error delete old empty sessions - get affected rows")
+			logger.Error().
+				Err(err).
+				Msgf("sqlite.Repository: error delete old empty sessions - get affected rows: %s", err)
 		} else {
-			logger.Debug().Msgf("empty session removed: %d", affected)
+			logger.Debug().Msgf("sqlite.Repository: empty session removed count=%d", affected)
 		}
 	}
 
@@ -154,7 +157,7 @@ func (Repository) ReadOrCreate(
 	maxLifeTime time.Duration,
 ) (*model.Session, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Str("sid", sid).Msg("read or create session")
+	logger.Debug().Str("sid", sid).Msgf("sqlite.Repository: read or create session sid=%s", sid)
 
 	session := model.Session{
 		SID:       sid,
@@ -183,7 +186,10 @@ func (Repository) ReadOrCreate(
 			return nil, err
 		}
 	} else {
-		logger.Debug().Str("sid", sid).Object("session", &session).Msg("session expired")
+		logger.Debug().
+			Str("sid", sid).
+			Object("session", &session).
+			Msgf("sqlite.Repository: session expired sid=%s", sid)
 
 		session.Data = make(map[any]any)
 	}
@@ -193,7 +199,7 @@ func (Repository) ReadOrCreate(
 
 func (Repository) SessionExists(ctx context.Context, sid string) (bool, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Str("sid", sid).Msg("check session exists")
+	logger.Debug().Str("sid", sid).Msgf("sqlite.Repository: check session exists sid=%s", sid)
 
 	dbctx := db.MustCtx(ctx)
 

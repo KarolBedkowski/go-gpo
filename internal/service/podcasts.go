@@ -15,7 +15,9 @@ import (
 	"time"
 
 	"github.com/mmcdole/gofeed"
+	"github.com/rs/xid"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/hlog"
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/common"
@@ -26,7 +28,7 @@ import (
 )
 
 type PodcastsSrv struct {
-	db           *db.Database
+	dbi          repository.Database
 	usersRepo    repository.Users
 	podcastsRepo repository.Podcasts
 	episodesRepo repository.Episodes
@@ -34,7 +36,7 @@ type PodcastsSrv struct {
 
 func NewPodcastsSrv(i do.Injector) (*PodcastsSrv, error) {
 	return &PodcastsSrv{
-		db:           do.MustInvoke[*db.Database](i),
+		dbi:          do.MustInvoke[repository.Database](i),
 		usersRepo:    do.MustInvoke[repository.Users](i),
 		podcastsRepo: do.MustInvoke[repository.Podcasts](i),
 		episodesRepo: do.MustInvoke[repository.Episodes](i),
@@ -47,7 +49,7 @@ func (p *PodcastsSrv) GetPodcast(ctx context.Context, username string, podcastid
 	}
 
 	//nolint:wrapcheck
-	return db.InConnectionR(ctx, p.db, func(ctx context.Context) (*model.Podcast, error) {
+	return db.InConnectionR(ctx, p.dbi, func(ctx context.Context) (*model.Podcast, error) {
 		user, err := p.usersRepo.GetUser(ctx, username)
 		if errors.Is(err, common.ErrNoData) {
 			return nil, common.ErrUnknownUser
@@ -55,12 +57,16 @@ func (p *PodcastsSrv) GetPodcast(ctx context.Context, username string, podcastid
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
+		common.TraceLazyPrintf(ctx, "GetPodcast: user loaded")
+
 		podcast, err := p.podcastsRepo.GetPodcastByID(ctx, user.ID, podcastid)
 		if errors.Is(err, common.ErrNoData) {
 			return nil, common.ErrUnknownPodcast
 		} else if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
+
+		common.TraceLazyPrintf(ctx, "GetPodcast: podcast loaded")
 
 		return podcast, nil
 	})
@@ -71,7 +77,7 @@ func (p *PodcastsSrv) GetPodcasts(ctx context.Context, username string) ([]model
 		return nil, common.ErrEmptyUsername
 	}
 	//nolint:wrapcheck
-	return db.InConnectionR(ctx, p.db, func(ctx context.Context) ([]model.Podcast, error) {
+	return db.InConnectionR(ctx, p.dbi, func(ctx context.Context) ([]model.Podcast, error) {
 		user, err := p.usersRepo.GetUser(ctx, username)
 		if errors.Is(err, common.ErrNoData) {
 			return nil, common.ErrUnknownUser
@@ -79,10 +85,14 @@ func (p *PodcastsSrv) GetPodcasts(ctx context.Context, username string) ([]model
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
+		common.TraceLazyPrintf(ctx, "GetPodcasts: user loaded")
+
 		subs, err := p.podcastsRepo.ListSubscribedPodcasts(ctx, user.ID, time.Time{})
 		if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
+
+		common.TraceLazyPrintf(ctx, "GetPodcasts: podcasts loaded")
 
 		return subs, nil
 	})
@@ -95,13 +105,15 @@ func (p *PodcastsSrv) GetPodcastsWithLastEpisode(ctx context.Context, username s
 	}
 
 	//nolint:wrapcheck
-	return db.InConnectionR(ctx, p.db, func(ctx context.Context) ([]model.PodcastWithLastEpisode, error) {
+	return db.InConnectionR(ctx, p.dbi, func(ctx context.Context) ([]model.PodcastWithLastEpisode, error) {
 		user, err := p.usersRepo.GetUser(ctx, username)
 		if errors.Is(err, common.ErrNoData) {
 			return nil, common.ErrUnknownUser
 		} else if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
+
+		common.TraceLazyPrintf(ctx, "GetPodcastsWithLastEpisode: user loaded")
 
 		var subs model.Podcasts
 		if subscribedOnly {
@@ -113,6 +125,8 @@ func (p *PodcastsSrv) GetPodcastsWithLastEpisode(ctx context.Context, username s
 		if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
+
+		common.TraceLazyPrintf(ctx, "GetPodcastsWithLastEpisode: podcasts loaded")
 
 		podcasts := make([]model.PodcastWithLastEpisode, len(subs))
 		for idx, s := range subs {
@@ -135,6 +149,8 @@ func (p *PodcastsSrv) GetPodcastsWithLastEpisode(ctx context.Context, username s
 			podcasts[idx].LastEpisode = lastEpisode
 		}
 
+		common.TraceLazyPrintf(ctx, "GetPodcastsWithLastEpisode: model prepared")
+
 		return podcasts, nil
 	})
 }
@@ -143,16 +159,19 @@ func (p *PodcastsSrv) GetPodcastsWithLastEpisode(ctx context.Context, username s
 
 func (p *PodcastsSrv) DeletePodcast(ctx context.Context, username string, podcastid int64) error {
 	logger := zerolog.Ctx(ctx)
-	logger.Debug().Int64("podcast_id", podcastid).Msg("delete podcast")
+	logger.Debug().Int64("podcast_id", podcastid).
+		Msgf("PodcastsSrv: delete podcast user_name=%s podcast_id=%d", username, podcastid)
 
 	//nolint:wrapcheck
-	return db.InTransaction(ctx, p.db, func(ctx context.Context) error {
+	return db.InTransaction(ctx, p.dbi, func(ctx context.Context) error {
 		user, err := p.usersRepo.GetUser(ctx, username)
 		if errors.Is(err, common.ErrNoData) {
 			return common.ErrUnknownUser
 		} else if err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
+
+		common.TraceLazyPrintf(ctx, "DeletePodcast: user loaded")
 
 		podcast, err := p.podcastsRepo.GetPodcastByID(ctx, user.ID, podcastid)
 		if errors.Is(err, common.ErrNoData) {
@@ -161,7 +180,13 @@ func (p *PodcastsSrv) DeletePodcast(ctx context.Context, username string, podcas
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		return p.podcastsRepo.DeletePodcast(ctx, podcast.ID)
+		common.TraceLazyPrintf(ctx, "DeletePodcast: podcast loaded")
+
+		err = p.podcastsRepo.DeletePodcast(ctx, podcast.ID)
+
+		common.TraceLazyPrintf(ctx, "DeletePodcast: podcast deleted")
+
+		return err
 	})
 }
 
@@ -169,7 +194,7 @@ func (p *PodcastsSrv) DeletePodcast(ctx context.Context, username string, podcas
 
 func (p *PodcastsSrv) ResolvePodcastsURL(ctx context.Context, urls []string) map[string]model.ResolvedPodcastURL {
 	logger := zerolog.Ctx(ctx)
-	logger.Debug().Strs("urls", urls).Msgf("start resolving podcasts url")
+	logger.Debug().Strs("urls", urls).Msgf("PodcastsSrv: start resolving podcasts url")
 
 	if len(urls) == 0 {
 		return nil
@@ -200,7 +225,7 @@ func (p *PodcastsSrv) ResolvePodcastsURL(ctx context.Context, urls []string) map
 		resolved[r.URL] = r
 	}
 
-	logger.Info().Msgf("resolving podcasts url finished, count: %d", len(urls))
+	logger.Info().Msgf("PodcastsSrv: resolving podcasts url finished, count=%d", len(urls))
 
 	return resolved
 }
@@ -209,29 +234,33 @@ func (p *PodcastsSrv) ResolvePodcastsURL(ctx context.Context, urls []string) map
 
 func (p *PodcastsSrv) DownloadPodcastsInfo(ctx context.Context, since time.Time, loadepisodes bool) error {
 	logger := zerolog.Ctx(ctx)
-	logger.Debug().Msgf("start downloading podcasts info; since=%s", since)
+	logger.Debug().Msgf("PodcastsSrv: start downloading podcasts info; since=%s", since)
 
 	// get podcasts to update
-	urls, err := db.InConnectionR(ctx, p.db, func(ctx context.Context) ([]model.PodcastToUpdate, error) {
+	urls, err := db.InConnectionR(ctx, p.dbi, func(ctx context.Context) ([]model.PodcastToUpdate, error) {
 		return p.podcastsRepo.ListPodcastsToUpdate(ctx, since)
 	})
 	if err != nil {
 		return aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
+	eventlog := common.ContextEventLog(ctx)
+
 	if len(urls) == 0 {
-		logger.Debug().Msg("start downloading podcasts finished; no url to update found")
+		logger.Debug().Msg("PodcastsSrv: download podcasts finished; no url to update found")
+		eventlog.Printf("no podcast to update")
 
 		return nil
 	}
 
-	logger.Debug().Msgf("start downloading podcasts finished; found %d", len(urls))
+	logger.Debug().Msgf("PodcastsSrv: podcast_to_update=%d", len(urls))
+	eventlog.Printf("start downloading tasks=%d", len(urls))
 
 	tasks := make(chan model.PodcastToUpdate, len(urls))
 
 	var wg sync.WaitGroup
 	for range min(len(urls), 5) { //nolint:mnd
-		wg.Go(func() { p.downloadPodcastInfoWorker(ctx, tasks, since, loadepisodes) })
+		wg.Go(func() { p.downloadPodcastInfoWorker(ctx, tasks, since, loadepisodes, eventlog) })
 	}
 
 	for _, u := range urls {
@@ -242,7 +271,7 @@ func (p *PodcastsSrv) DownloadPodcastsInfo(ctx context.Context, since time.Time,
 
 	wg.Wait()
 
-	logger.Info().Msgf("downloading podcasts info finished, count: %d", len(urls))
+	logger.Info().Msgf("PodcastsSrv: downloading podcasts info finished; podcast_to_update=%d", len(urls))
 
 	return nil
 }
@@ -251,6 +280,7 @@ const downloadPodcastInfoTimeout = 10 * time.Second
 
 func (p *PodcastsSrv) downloadPodcastInfoWorker(
 	ctx context.Context, tasks <-chan model.PodcastToUpdate, since time.Time, loadepisodes bool,
+	eventlog *common.EventLog,
 ) {
 	logger := zerolog.Ctx(ctx)
 	if logger == nil {
@@ -261,25 +291,32 @@ func (p *PodcastsSrv) downloadPodcastInfoWorker(
 	fp.UserAgent = "Mozilla/5.0 (X11; Linux x86_64; rv:146.0) Gecko/20100101 Firefox/146.0"
 
 	for task := range tasks {
-		llogger := logger.With().Str("podcast_url", task.URL).Logger()
-		lctx := llogger.WithContext(ctx)
+		taskid := xid.New()
+		llogger := logger.With().Str("podcast_url", task.URL).Str("taskid", taskid.String()).Logger()
+		lctx := hlog.CtxWithID(llogger.WithContext(ctx), taskid)
 
-		err := p.downloadPodcastInfo(lctx, fp, since, &task, loadepisodes)
+		eventlog.Printf("processing url=%q", task.URL)
+
+		err := p.downloadPodcastInfo(lctx, fp, since, &task, loadepisodes, eventlog)
 		if err != nil {
-			llogger.Error().Err(err).Msg("update podcast info failed")
+			eventlog.Errorf("update failed: error=%q", err)
+			llogger.Warn().Err(err).Msgf("PodcastsSrv: update podcast_url=%q error=%q", task.URL, err)
+		} else {
+			eventlog.Printf("update finished url=%q ", task.URL)
 		}
 	}
 }
 
 func (p *PodcastsSrv) downloadPodcastInfo(ctx context.Context, //nolint: cyclop
 	feedparser *gofeed.Parser, since time.Time, task *model.PodcastToUpdate, loadepisodes bool,
+	eventlog *common.EventLog,
 ) error {
 	logger := zerolog.Ctx(ctx)
 	if logger == nil {
 		panic("missing logger in ctx")
 	}
 
-	logger.Debug().Msg("downloading podcast info")
+	logger.Debug().Msgf("PodcastsSrv: downloading podcast_url=%q", task.URL)
 
 	var (
 		update   model.PodcastMetaUpdate
@@ -287,19 +324,21 @@ func (p *PodcastsSrv) downloadPodcastInfo(ctx context.Context, //nolint: cyclop
 	)
 
 	feed, status, err := parseFeedURLWithContext(ctx, feedparser, task)
+	eventlog.Printf("download url=%q got status=%d error=%q", task.URL, status, err)
+
 	switch {
 	case err != nil:
 		return err
 	case status == http.StatusNotModified:
-		logger.Debug().Err(err).Msg("podcast not modified")
+		logger.Debug().Err(err).Msgf("PodcastsSrv: podcast_url=%q not modified", task.URL)
 
-		update.NotModified = true
+		update = model.PodcastMetaUpdate{URL: task.URL, MetaUpdatedAt: time.Now().UTC(), NotModified: true}
 	case feed != nil:
-		logger.Debug().Msgf("got podcast title: %q; published: %s, updated: %s",
-			feed.Title, feed.UpdatedParsed, feed.PublishedParsed)
+		logger.Debug().Msgf("PodcastsSrv: for podcast_url=%q got podcast title=%q published=%s updated=%s",
+			task.URL, feed.Title, feed.UpdatedParsed, feed.PublishedParsed)
 
 		if !feedNeedToBeUpdated(feed, task.MetaUpdatedAt) {
-			logger.Debug().Msg("not updated, skipping")
+			logger.Debug().Msgf("PodcastsSrv: podcast_url=%q not updated, skipping", task.URL)
 
 			return nil
 		}
@@ -309,13 +348,14 @@ func (p *PodcastsSrv) downloadPodcastInfo(ctx context.Context, //nolint: cyclop
 			episodes = episodesToUpdate(feed, since, task.MetaUpdatedAt)
 		}
 	default:
-		logger.Info().Int("status_code", status).Msg("download podcast unknown state")
+		logger.Info().Int("status_code", status).
+			Msgf("PodcastsSrv: download podcast_url=%q unknown status=%d", task.URL, status)
 
 		return nil
 	}
 
 	//nolint:wrapcheck
-	return db.InTransaction(ctx, p.db, func(ctx context.Context) error {
+	return db.InTransaction(ctx, p.dbi, func(ctx context.Context) error {
 		if err := p.podcastsRepo.UpdatePodcastsInfo(ctx, &update); err != nil {
 			return aerr.Wrapf(err, "update podcast info failed")
 		}
@@ -462,7 +502,7 @@ func resolvePodcastsURLTask(
 
 	for url := range urls {
 		logger := tlogger.With().Str("podcast_url", url).Logger()
-		logger.Debug().Msg("downloading podcast info")
+		logger.Debug().Msg("PodcastsSrv: downloading podcast info")
 
 		dctx, cancel := context.WithTimeout(ctx, downloadPodcastInfoTimeout)
 		resolvedurl, err := ResolvePodcastURL(dctx, url)

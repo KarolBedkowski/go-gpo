@@ -52,10 +52,12 @@ func (u updatesResource) getUpdates(
 	user := common.ContextUser(ctx)
 	devicename := common.ContextDevice(ctx)
 	includeActions := r.URL.Query().Get("include_actions") == "true"
+	now := time.Now()
 
 	since, err := getSinceParameter(r)
 	if err != nil {
-		logger.Debug().Err(err).Msg("parse since error")
+		logger.Debug().Err(err).Msgf("UpdatesResource: parse since=%q to time error=%`",
+			r.URL.Query().Get("since"), err)
 		writeError(w, r, http.StatusBadRequest)
 
 		return
@@ -66,7 +68,9 @@ func (u updatesResource) getUpdates(
 	state, err := u.subsSrv.GetSubscriptionChanges(ctx, &q)
 	if err != nil {
 		checkAndWriteError(w, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get subscription changes error")
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
+			Msgf("UpdatesResource: get subscription user_name=%s devicename=%s changes error=%q",
+				user, devicename, err)
 
 		return
 	}
@@ -81,7 +85,8 @@ func (u updatesResource) getUpdates(
 	updates, err := u.episodesSrv.GetUpdates(ctx, &query)
 	if err != nil {
 		checkAndWriteError(w, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get episodes updates error")
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
+			Msgf("UpdatesResource: get episodes updates user_name=%s devicename=%s error=%`", user, devicename, err)
 
 		return
 	}
@@ -95,7 +100,7 @@ func (u updatesResource) getUpdates(
 		Add:        common.Map(state.Added, newPodcastFromModel),
 		Remove:     state.RemovedURLs(),
 		Updates:    common.Map(updates, newEpisodeUpdateFromModel),
-		Timestamps: time.Now().UTC().Unix(),
+		Timestamps: now.UTC().Unix(),
 	}
 
 	srvsupport.RenderJSON(w, r, &result)

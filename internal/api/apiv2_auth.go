@@ -42,7 +42,8 @@ func (ar authResource) login(ctx context.Context, w http.ResponseWriter, r *http
 	case user:
 		w.WriteHeader(http.StatusOK)
 	default:
-		logger.Info().Msgf("user not match session user %q", u)
+		logger.Info().Str(common.LogKeyUserName, user).
+			Msgf("AuthResource: user to login %q not match session user %q", user, u)
 		w.WriteHeader(http.StatusBadRequest)
 	}
 }
@@ -52,10 +53,11 @@ func (ar authResource) logout(ctx context.Context, w http.ResponseWriter, r *htt
 	user := common.ContextUser(ctx)
 	username := srvsupport.SessionUser(sess)
 
-	logger.Info().Str("user", user).Msg("logout user")
+	logger.Info().Str(common.LogKeyUserName, user).Msgf("SimpleResource: logout user")
 
 	if username != "" && user != username {
-		logger.Info().Str("user", user).Msgf("logout user error; session user %q not match user", username)
+		logger.Info().Str(common.LogKeyUserName, user).
+			Msgf("SimpleResource: logout user error; session user %q not match user", username)
 		writeError(w, r, http.StatusBadRequest)
 
 		return

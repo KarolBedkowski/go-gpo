@@ -15,9 +15,12 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 )
 
+const AuthenticationError = "authorization error"
+
 var (
-	ErrUnauthorized      = aerr.New("unauthorized").WithUserMsg("authorization failed")
-	ErrUserAccountLocked = aerr.New("locked account").WithUserMsg("account is locked")
+	ErrUnauthorized      = aerr.New("unauthorized").WithUserMsg("authorization failed").WithTag(AuthenticationError)
+	ErrUserAccountLocked = aerr.New("locked account").WithUserMsg("account is locked").WithTag(AuthenticationError)
+	ErrUserNotFound      = aerr.New("user not found").WithUserMsg("user not found").WithTag(AuthenticationError)
 )
 
 // Validation errors.

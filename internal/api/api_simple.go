@@ -63,7 +63,9 @@ func (s *simpleResource) downloadUserSubscriptions(
 	subs, err := s.subServ.GetUserSubscriptions(ctx, &query.GetUserSubscriptionsQuery{UserName: user})
 	if err != nil {
 		checkAndWriteError(w, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get user subscriptions error")
+		logger.WithLevel(aerr.LogLevelForError(err)).
+			Err(err).
+			Msgf("SimpleResource: get user subscriptions error=%q", err)
 
 		return
 	}
@@ -92,7 +94,7 @@ func (s *simpleResource) downloadUserSubscriptions(
 		w.WriteHeader(http.StatusOK)
 		render.XML(w, r, &xmlsubs)
 	default:
-		logger.Info().Msgf("unknown format %q", format)
+		logger.Info().Msgf("SimpleResource: unknown format=%q", format)
 		writeError(w, r, http.StatusNotFound)
 	}
 }
@@ -109,7 +111,9 @@ func (s *simpleResource) downloadDevSubscriptions(
 	subs, err := s.subServ.GetSubscriptions(ctx, &query.GetSubscriptionsQuery{UserName: user, DeviceName: devicename})
 	if err != nil {
 		checkAndWriteError(w, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get device subscriptions error")
+		logger.WithLevel(aerr.LogLevelForError(err)).
+			Err(err).
+			Msgf("SimpleResource: get device subscriptions error=%q", err)
 
 		return
 	}
@@ -138,7 +142,7 @@ func (s *simpleResource) downloadDevSubscriptions(
 		w.WriteHeader(http.StatusOK)
 		render.PlainText(w, r, strings.Join(subs.ToURLs(), "\n"))
 	default:
-		logger.Info().Msgf("unknown format %q", format)
+		logger.Info().Msgf("SimpleResource: unknown format=%q", format)
 		writeError(w, r, http.StatusNotFound)
 	}
 }
@@ -166,14 +170,14 @@ func (s *simpleResource) uploadSubscriptions(
 	case "txt":
 		subs, err = parseTextSubs(r.Body)
 	default:
-		logger.Debug().Msgf("unknown format %q", format)
+		logger.Debug().Msgf("SimpleResource: unknown format=%q", format)
 		writeError(w, r, http.StatusNotFound)
 
 		return
 	}
 
 	if err != nil {
-		logger.Debug().Err(err).Msgf("parse %q error", format)
+		logger.Debug().Err(err).Msgf("SimpleResource: parse format=%q error=%q", format, err)
 		writeError(w, r, http.StatusBadRequest)
 
 		return
@@ -187,7 +191,7 @@ func (s *simpleResource) uploadSubscriptions(
 	}
 	if err := s.subServ.ReplaceSubscriptions(ctx, &cmd); err != nil {
 		checkAndWriteError(w, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("update subscriptions error")
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msgf("SimpleResource: update subscriptions error=%q", err)
 	} else {
 		w.WriteHeader(http.StatusOK)
 	}

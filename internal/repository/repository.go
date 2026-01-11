@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/model"
 )
 
@@ -36,8 +37,8 @@ type Episodes interface {
 	// GetEpisode from repository. episode can be episode url or guid.
 	GetEpisode(ctx context.Context, userid, podcastid int64, episode string) (*model.Episode, error)
 	ListEpisodeActions(
-		ctx context.Context, userid int64, deviceid, podcastid *int64, since time.Time, aggregated bool,
-		lastelements uint,
+		ctx context.Context, userid int64, deviceid, podcastid *int64, since time.Time, aggregated, inverse bool,
+		limit uint,
 	) ([]model.Episode, error)
 	SaveEpisode(ctx context.Context, userid int64, episode ...model.Episode) error
 	ListFavorites(ctx context.Context, userid int64) ([]model.Episode, error)
@@ -59,6 +60,7 @@ type Podcasts interface {
 }
 
 type Settings interface {
+	GetAllSettings(ctx context.Context, userid int64) ([]model.UserSettings, error)
 	GetSettings(ctx context.Context, key *model.SettingsKey) (model.Settings, error)
 	// save (insert or update) or delete settings
 	SaveSettings(ctx context.Context, key *model.SettingsKey, value string) error
@@ -85,7 +87,23 @@ type Repository interface {
 
 type Maintenance interface {
 	Maintenance(ctx context.Context) error
-	Migrate(ctx context.Context, db *sql.DB) error
-	OnOpenConn(ctx context.Context, db sqlx.ExecerContext) error
-	OnCloseConn(ctx context.Context, db sqlx.ExecerContext) error
+}
+
+//------------------------------------------------------------------------------
+
+type Database interface {
+	do.ShutdownerWithContextAndError
+
+	// Open and check database, return DB object and error.
+	Open(ctx context.Context) (*sqlx.DB, error)
+	// Clear database (remove all data). Used in tests.
+	Clear(ctx context.Context) error
+	// Migrate database to highest version.
+	Migrate(ctx context.Context) error
+	// GetConnection create and return new database connection.
+	GetConnection(ctx context.Context) (*sqlx.Conn, error)
+	// CloseConnection close connection.
+	CloseConnection(ctx context.Context, conn *sqlx.Conn) error
+	// GetDB return underlying sql.DB object.
+	GetDB() *sql.DB
 }

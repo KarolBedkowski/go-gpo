@@ -10,7 +10,6 @@ package web
 import (
 	"context"
 	"net/http"
-	"slices"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
@@ -55,12 +54,11 @@ func (i indexPage) indexPage(ctx context.Context, writer http.ResponseWriter, r 
 	lastactions, err := i.episodeSrv.GetLastActions(ctx, &query)
 	if err != nil {
 		srvsupport.CheckAndWriteError(writer, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get last actions error")
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
+			Msgf("web.Index: get last actions for user_name=%s error=%q", user, err)
 
 		return
 	}
-
-	slices.Reverse(lastactions)
 
 	i.renderer.WritePage(writer, &nt.IndexPage{LastActions: lastactions})
 }

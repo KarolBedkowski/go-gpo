@@ -27,7 +27,7 @@ import (
 // SessionStore represents a postgres session store implementation.
 type SessionStore struct {
 	repo repository.Sessions
-	db   *db.Database
+	dbi  repository.Database
 	data map[any]any
 	sid  string
 
@@ -39,7 +39,8 @@ func (s *SessionStore) Set(key, value any) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	log.Logger.Debug().Msgf("set session: %v=%v", key, &value)
+	log.Logger.Debug().Str("sid", s.sid).
+		Msgf("SessionStore: set session sid=%q key=%v value=%v", s.sid, key, value)
 
 	s.data[key] = value
 
@@ -56,6 +57,8 @@ func (s *SessionStore) Get(key any) any {
 
 // Delete delete a key from session.
 func (s *SessionStore) Delete(key any) error {
+	log.Logger.Debug().Str("sid", s.sid).Msgf("SessionStore: delete key=%v sid=%q", key, s.sid)
+
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -72,11 +75,11 @@ func (s *SessionStore) ID() string {
 // Release save session values to database.
 // must call this method to save values to database.
 func (s *SessionStore) Release() error {
-	log.Logger.Debug().Msgf("session release: %+v", &s.data)
+	log.Logger.Debug().Str("sid", s.sid).Msgf("SessionStore: session release sid=%q", s.sid)
 
 	ctx := log.Logger.WithContext(context.Background())
 
-	err := db.InTransaction(ctx, s.db, func(ctx context.Context) error {
+	err := db.InTransaction(ctx, s.dbi, func(ctx context.Context) error {
 		return s.repo.SaveSession(ctx, s.sid, s.data)
 	})
 	if err != nil {
@@ -88,6 +91,8 @@ func (s *SessionStore) Release() error {
 
 // Flush deletes all session data.
 func (s *SessionStore) Flush() error {
+	log.Logger.Debug().Str("sid", s.sid).Msgf("SessionStore: flush session sid=%q", s.sid)
+
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -102,17 +107,17 @@ func (s *SessionStore) Flush() error {
 type SessionProvider struct {
 	logger      zerolog.Logger
 	repo        repository.Sessions
-	db          *db.Database
+	dbi         repository.Database
 	maxlifetime time.Duration
 }
 
 func NewSessionProvider(
-	db *db.Database,
+	dbi repository.Database,
 	repo repository.Sessions,
 	maxlifetime time.Duration,
 ) *SessionProvider {
 	return &SessionProvider{
-		db:          db,
+		dbi:         dbi,
 		repo:        repo,
 		maxlifetime: maxlifetime,
 		logger:      log.Logger,
@@ -128,10 +133,10 @@ func (p *SessionProvider) Init(gclifetime int64, config string) error {
 }
 
 // Read returns raw session store by session ID.
-func (p *SessionProvider) Read(sid string) (session.RawStore, error) { //nolint:ireturn
+func (p *SessionProvider) Read(sid string) (session.RawStore, error) { //nolint:ireturn,nolintlint
 	ctx := p.logger.WithContext(context.Background())
 
-	storedSession, err := db.InTransactionR(ctx, p.db, func(ctx context.Context) (*model.Session, error) {
+	storedSession, err := db.InTransactionR(ctx, p.dbi, func(ctx context.Context) (*model.Session, error) {
 		stored, err := p.repo.ReadOrCreate(ctx, sid, p.maxlifetime)
 		if err != nil {
 			return nil, fmt.Errorf("read or create session %q from db error: %w", sid, err)
@@ -144,7 +149,7 @@ func (p *SessionProvider) Read(sid string) (session.RawStore, error) { //nolint:
 	}
 
 	return &SessionStore{
-		db:   p.db,
+		dbi:  p.dbi,
 		repo: p.repo,
 		sid:  storedSession.SID,
 		data: storedSession.Data,
@@ -155,7 +160,7 @@ func (p *SessionProvider) Read(sid string) (session.RawStore, error) { //nolint:
 func (p *SessionProvider) Exist(sid string) (bool, error) {
 	ctx := p.logger.WithContext(context.Background())
 
-	exists, err := db.InConnectionR(ctx, p.db, func(ctx context.Context) (bool, error) {
+	exists, err := db.InConnectionR(ctx, p.dbi, func(ctx context.Context) (bool, error) {
 		return p.repo.SessionExists(ctx, sid)
 	})
 	if err != nil {
@@ -169,7 +174,7 @@ func (p *SessionProvider) Exist(sid string) (bool, error) {
 func (p *SessionProvider) Destroy(sid string) error {
 	ctx := p.logger.WithContext(context.Background())
 
-	err := db.InTransaction(ctx, p.db, func(ctx context.Context) error {
+	err := db.InTransaction(ctx, p.dbi, func(ctx context.Context) error {
 		return p.repo.DeleteSession(ctx, sid)
 	})
 	if err != nil {
@@ -180,12 +185,13 @@ func (p *SessionProvider) Destroy(sid string) error {
 }
 
 // Regenerate regenerates a session store from old session ID to new one.
-func (p *SessionProvider) Regenerate(oldsid, sid string) (session.RawStore, error) { //nolint:ireturn
-	p.logger.Debug().Str("sid", sid).Str("old_sid", oldsid).Msg("regenerate session")
+func (p *SessionProvider) Regenerate(oldsid, sid string) (session.RawStore, error) { //nolint:ireturn,nolintlint
+	p.logger.Debug().Str("sid", sid).Str("old_sid", oldsid).
+		Msgf("SessionProvider: regenerate session old_sid=%q sid=%q", oldsid, sid)
 
 	ctx := p.logger.WithContext(context.Background())
 
-	session, err := db.InTransactionR(ctx, p.db, func(ctx context.Context) (*model.Session, error) {
+	session, err := db.InTransactionR(ctx, p.dbi, func(ctx context.Context) (*model.Session, error) {
 		if err := p.repo.RegenerateSession(ctx, oldsid, sid); err != nil {
 			return nil, fmt.Errorf("regenerate session error: %w", err)
 		}
@@ -202,7 +208,7 @@ func (p *SessionProvider) Regenerate(oldsid, sid string) (session.RawStore, erro
 	}
 
 	return &SessionStore{
-		db:   p.db,
+		dbi:  p.dbi,
 		repo: p.repo,
 		sid:  session.SID,
 		data: session.Data,
@@ -213,26 +219,30 @@ func (p *SessionProvider) Regenerate(oldsid, sid string) (session.RawStore, erro
 func (p *SessionProvider) Count() (int, error) {
 	ctx := p.logger.WithContext(context.Background())
 
-	total, err := db.InConnectionR(ctx, p.db, func(ctx context.Context) (int, error) {
+	total, err := db.InConnectionR(ctx, p.dbi, func(ctx context.Context) (int, error) {
 		return p.repo.CountSessions(ctx)
 	})
 	if err != nil {
 		return 0, fmt.Errorf("error counting records: %w", err)
 	}
 
+	p.logger.Debug().Msgf("SessionProvider: total sessions count=%d", total)
+
 	return total, nil
 }
 
 // GC calls GC to clean expired sessions.
 func (p *SessionProvider) GC() {
-	p.logger.Debug().Msg("gc sessions")
+	p.logger.Debug().Msg("SessionProvider: gc sessions start")
 
 	ctx := p.logger.WithContext(context.Background())
 
-	err := db.InTransaction(ctx, p.db, func(ctx context.Context) error {
+	err := db.InTransaction(ctx, p.dbi, func(ctx context.Context) error {
 		return p.repo.CleanSessions(ctx, p.maxlifetime, 2*time.Hour) //nolint:mnd
 	})
 	if err != nil {
-		p.logger.Error().Err(err).Msg("gc sessions error")
+		p.logger.Error().Err(err).Msgf("SessionProvider: gc sessions error: %s", err)
 	}
+
+	p.logger.Debug().Msg("SessionProvider: gc sessions finished")
 }

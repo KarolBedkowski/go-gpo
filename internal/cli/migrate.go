@@ -13,7 +13,7 @@ import (
 
 	"github.com/samber/do/v2"
 	"github.com/urfave/cli/v3"
-	"gitlab.com/kabes/go-gpo/internal/db"
+	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
 func newMigrateCmd() *cli.Command {
@@ -25,9 +25,9 @@ func newMigrateCmd() *cli.Command {
 }
 
 func migrateCmd(ctx context.Context, _ *cli.Command, injector do.Injector) error {
-	db := do.MustInvoke[*db.Database](injector)
+	rdb := do.MustInvoke[repository.Database](injector)
 
-	err := db.Migrate(ctx)
+	err := rdb.Migrate(ctx)
 	if err != nil {
 		return fmt.Errorf("migrate error: %w", err)
 	}

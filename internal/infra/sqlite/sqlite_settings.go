@@ -9,6 +9,7 @@ package sqlite
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/rs/zerolog/log"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
@@ -18,7 +19,7 @@ import (
 
 func (Repository) GetSettings(ctx context.Context, key *model.SettingsKey) (model.Settings, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Object("key", key).Msg("get settings")
+	logger.Debug().Object("key", key).Msgf("sqlite.Repository: get settings user_id=%d", key.UserID)
 
 	res := []SettingsDB{}
 	dbctx := db.MustCtx(ctx)
@@ -45,7 +46,10 @@ func (Repository) GetSettings(ctx context.Context, key *model.SettingsKey) (mode
 func (Repository) SaveSettings(ctx context.Context, key *model.SettingsKey, value string,
 ) error {
 	logger := log.Ctx(ctx)
-	logger.Debug().Object("key", key).Str("value", value).Msg("save settings")
+	logger.Debug().
+		Object("key", key).
+		Str("value", value).
+		Msgf("sqlite.Repository: save settings user_id=%d", key.UserID)
 
 	dbctx := db.MustCtx(ctx)
 
@@ -72,6 +76,46 @@ func (Repository) SaveSettings(ctx context.Context, key *model.SettingsKey, valu
 	)
 	if err != nil {
 		return aerr.Wrapf(err, "insert settings error")
+	}
+
+	return nil
+}
+
+func (Repository) GetAllSettings(ctx context.Context, userid int64) ([]model.UserSettings, error) {
+	logger := log.Ctx(ctx)
+	logger.Debug().Int64("userid", userid).Msgf("sqlite.Repository: get all user settings user_id=%d", userid)
+
+	dbctx := db.MustCtx(ctx)
+	dbsettings := make([]SettingsDB, 0)
+
+	query := `
+		SELECT user_id, podcast_id, episode_id, device_id, scope, key, value
+		FROM settings WHERE user_id=?`
+
+	err := dbctx.SelectContext(ctx, &dbsettings, query, userid)
+	if err != nil {
+		return nil, aerr.Wrapf(err, "select settings failed")
+	}
+
+	res := make([]model.UserSettings, len(dbsettings))
+	for i, s := range dbsettings {
+		res[i] = model.UserSettings{
+			UserID:    s.UserID,
+			PodcastID: sqlNullInt64ToPtr(s.PodcastID),
+			EpisodeID: sqlNullInt64ToPtr(s.EpisodeID),
+			DeviceID:  sqlNullInt64ToPtr(s.DeviceID),
+			Scope:     s.Scope,
+			Key:       s.Key,
+			Value:     s.Value,
+		}
+	}
+
+	return res, nil
+}
+
+func sqlNullInt64ToPtr(v sql.NullInt64) *int64 {
+	if v.Valid {
+		return &v.Int64
 	}
 
 	return nil

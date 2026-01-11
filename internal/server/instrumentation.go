@@ -23,7 +23,7 @@ type promMiddleware struct {
 	inFlight        prometheus.Gauge
 }
 
-func (m *promMiddleware) Handler(next http.Handler) http.Handler {
+func (m *promMiddleware) handler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		base := promhttp.InstrumentHandlerInFlight(m.inFlight, next)
 		base = promhttp.InstrumentHandlerResponseSize(m.responseSize, base)
@@ -36,7 +36,7 @@ func (m *promMiddleware) Handler(next http.Handler) http.Handler {
 }
 
 // New returns a Middleware interface.
-func newPromMiddleware(name string, buckets []float64) *promMiddleware {
+func newPromMiddleware(name string, buckets []float64) func(http.Handler) http.Handler {
 	if buckets == nil {
 		buckets = []float64{0.05, 0.1, 0.5, 1, 2, 5}
 	}
@@ -76,13 +76,15 @@ func newPromMiddleware(name string, buckets []float64) *promMiddleware {
 		Help: "A gauge of requests currently being served by the wrapped handler.",
 	})
 
-	return &promMiddleware{
+	mw := promMiddleware{
 		requestsTotal:   requestsTotal,
 		requestDuration: requestDuration,
 		requestSize:     requestSize,
 		responseSize:    responseSize,
 		inFlight:        inFlight,
 	}
+
+	return mw.handler
 }
 
 func newMetricsHandler() http.Handler {

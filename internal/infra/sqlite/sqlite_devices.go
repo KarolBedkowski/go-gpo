@@ -26,7 +26,8 @@ func (Repository) GetDevice(
 	devicename string,
 ) (*model.Device, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Int64("user_id", userid).Str("device_name", devicename).Msg("get device")
+	logger.Debug().Int64("user_id", userid).Str("device_name", devicename).
+		Msgf("sqlite.Repository: get device device_name=%s for user_id=%d", devicename, userid)
 
 	dbctx := db.MustCtx(ctx)
 
@@ -47,7 +48,8 @@ func (Repository) GetDevice(
 		return nil, aerr.Wrapf(err, "select device failed").WithMeta("user_id", userid, "device_name", devicename)
 	}
 
-	logger.Debug().Int64("user_id", userid).Str("device_name", devicename).Msg("count subscriptions")
+	logger.Debug().Int64("user_id", userid).Str("device_name", devicename).
+		Msgf("sqlite.Repository: count subscriptions for user_id=%d", userid)
 
 	err = dbctx.GetContext(ctx, &device.Subscriptions,
 		"SELECT count(*) FROM podcasts where user_id=? and subscribed",
@@ -57,7 +59,8 @@ func (Repository) GetDevice(
 		return nil, aerr.Wrapf(err, "count subscriptions failed").WithMeta("user_id", userid)
 	}
 
-	logger.Debug().Int("subs", device.Subscriptions).Object("device", &device).Msg("count subscriptions finished")
+	logger.Debug().Int("subs", device.Subscriptions).Object("device", &device).
+		Msgf("sqlite.Repository: device device_name=%s loaded", devicename)
 
 	return device.toModel(), nil
 }
@@ -66,14 +69,14 @@ func (Repository) SaveDevice(ctx context.Context, device *model.Device) (int64, 
 	logger := log.Ctx(ctx)
 	dbctx := db.MustCtx(ctx)
 
-	logger.Debug().Object("device", device).Msg("save device")
+	logger.Debug().Object("device", device).Msgf("save device device_name=%s", device.Name)
 
 	if device.UpdatedAt.IsZero() {
 		device.UpdatedAt = time.Now().UTC()
 	}
 
 	if device.ID == 0 {
-		logger.Debug().Object("device", device).Msg("insert device")
+		logger.Debug().Object("device", device).Msgf("sqlite.Repository: insert device device_name=%s", device.Name)
 
 		now := time.Now().UTC()
 
@@ -95,7 +98,7 @@ func (Repository) SaveDevice(ctx context.Context, device *model.Device) (int64, 
 	}
 
 	// update
-	logger.Debug().Object("device", device).Msg("update device")
+	logger.Debug().Object("device", device).Msgf("sqlite.Repository: update device device_name=%s", device.Name)
 
 	_, err := dbctx.ExecContext(ctx,
 		"UPDATE devices SET dev_type=?, caption=?, updated_at=? WHERE id=?",
@@ -109,7 +112,9 @@ func (Repository) SaveDevice(ctx context.Context, device *model.Device) (int64, 
 
 func (Repository) ListDevices(ctx context.Context, userid int64) ([]model.Device, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Int64("user_id", userid).Msg("list devices - count subscriptions")
+	logger.Debug().
+		Int64("user_id", userid).
+		Msgf("sqlite.Repository: list devices - count subscriptions user_id=%d", userid)
 
 	// all device have the same number of subscriptions
 	var subscriptions int
@@ -123,7 +128,7 @@ func (Repository) ListDevices(ctx context.Context, userid int64) ([]model.Device
 		return nil, aerr.Wrapf(err, "count subscriptions error").WithMeta("user_id", userid)
 	}
 
-	logger.Debug().Int64("user_id", userid).Msg("list devices")
+	logger.Debug().Int64("user_id", userid).Msgf("sqlite.Repository: list devices for user_id=%d", userid)
 
 	devices := []DeviceDB{}
 
@@ -145,7 +150,7 @@ func (Repository) ListDevices(ctx context.Context, userid int64) ([]model.Device
 
 func (Repository) DeleteDevice(ctx context.Context, deviceid int64) error {
 	logger := log.Ctx(ctx)
-	logger.Debug().Int64("device_id", deviceid).Msg("delete device")
+	logger.Debug().Int64("device_id", deviceid).Msgf("sqlite.Repository: delete device deviceid=%d", deviceid)
 
 	dbctx := db.MustCtx(ctx)
 

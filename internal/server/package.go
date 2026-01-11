@@ -13,6 +13,7 @@ import "github.com/samber/do/v2"
 var Package = do.Package(
 	do.Lazy(newAuthenticator),
 	do.Lazy(New),
+	do.Lazy(NewMgmt),
 	do.Lazy(newLogMiddleware),
 	do.Lazy(newSessionMiddleware),
 )

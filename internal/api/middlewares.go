@@ -25,35 +25,26 @@ func checkUserMiddleware(next http.Handler) http.Handler {
 
 		user := chi.URLParam(req, "user")
 		if user == "" {
-			logger.Debug().Msg("empty user")
+			logger.Debug().Msg("api.CheckUser: bad request - missing or empty user")
 			w.WriteHeader(http.StatusBadRequest)
 
 			return
 		}
 
 		sess := session.GetSession(req)
-		// when auth is enabled authenticator always set session user or block request to get here.
-		if suser := srvsupport.SessionUser(sess); suser != "" {
-			// auth enabled
-			if suser != user {
-				logger.Warn().Msgf("user %q not match session user: %q", user, suser)
-				w.WriteHeader(http.StatusBadRequest)
+		suser := srvsupport.SessionUser(sess)
 
-				return
-			}
-		} else {
-			// auth disabled; put user into session
-			if err := sess.Set("user", user); err != nil {
-				logger.Error().Err(err).Msg("set session failed")
-			}
+		switch {
+		case suser == "":
+			logger.Warn().Msgf("api.CheckUser: missing authentication for user_name=%s", user)
+			w.WriteHeader(http.StatusForbidden)
+		case suser != user:
+			logger.Warn().Msgf("api.CheckUser: user_name=%s not match session_user=%s", user, suser)
+			w.WriteHeader(http.StatusBadRequest)
+		default:
+			ctx := common.ContextWithUser(req.Context(), user)
+			next.ServeHTTP(w, req.WithContext(ctx))
 		}
-
-		ctx := common.ContextWithUser(req.Context(), user)
-		// handled by authenticator
-		// llogger := logger.With().Str(common.LogKeyUserName, user).Logger()
-		// ctx = llogger.WithContext(ctx)
-
-		next.ServeHTTP(w, req.WithContext(ctx))
 	})
 }
 
@@ -61,7 +52,7 @@ func checkDeviceMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		devicename := chi.URLParam(req, "devicename")
 		if devicename == "" {
-			hlog.FromRequest(req).Debug().Msg("empty devicename")
+			hlog.FromRequest(req).Debug().Msg("api.CheckDevice: bad request - missing or empty devicename")
 			w.WriteHeader(http.StatusBadRequest)
 
 			return

@@ -11,147 +11,26 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
-	"net/url"
 	"runtime"
 	"time"
 
-	"github.com/jmoiron/sqlx"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
+	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
-type Database struct {
-	db        *sqlx.DB
-	maintRepo repository.Maintenance
+//------------------------------------------------------------------------------
 
+type queryObserver struct {
 	queryDuration *prometheus.HistogramVec
 }
 
-func NewDatabaseI(i do.Injector) (*Database, error) {
-	return &Database{
-		maintRepo: do.MustInvoke[repository.Maintenance](i),
-	}, nil
-}
-
-func (r *Database) Connect(ctx context.Context, driver, connstr string) error {
-	var err error
-
-	// add some required parameters to connstr
-	connstr, err = prepareSqliteConnstr(connstr)
-	if err != nil {
-		return err
-	}
-
-	logger := log.Ctx(ctx)
-	logger.Info().Msgf("connecting to %q %q", driver, connstr)
-
-	r.db, err = sqlx.Open(driver, connstr)
-	if err != nil {
-		return aerr.Wrapf(err, "open database failed").WithTag(aerr.InternalError).WithMeta("connstr", connstr)
-	}
-
-	r.db.SetConnMaxIdleTime(30 * time.Second) //nolint:mnd
-	r.db.SetConnMaxLifetime(60 * time.Second) //nolint:mnd
-	r.db.SetMaxIdleConns(1)
-	r.db.SetMaxOpenConns(10) //nolint:mnd
-
-	if err := r.onConnect(ctx, r.db); err != nil {
-		return aerr.Wrapf(err, "call startup scripts error").WithTag(aerr.InternalError)
-	}
-
-	if err := r.db.PingContext(ctx); err != nil {
-		return aerr.Wrapf(err, "ping database failed").WithTag(aerr.InternalError)
-	}
-
-	return nil
-}
-
-func (r *Database) RegisterMetrics(queryTime bool) {
-	// gather stats from database
-	prometheus.DefaultRegisterer.MustRegister(collectors.NewDBStatsCollector(r.db.DB, "main"))
-
-	if queryTime {
-		r.queryDuration = prometheus.NewHistogramVec(
-			prometheus.HistogramOpts{
-				Name:    "database_query_duration_seconds",
-				Help:    "Tracks the latencies for database query.",
-				Buckets: []float64{0.05, 0.1, 0.2, 0.5, 1, 2, 5},
-			},
-			[]string{"caller"},
-		)
-
-		prometheus.DefaultRegisterer.MustRegister(r.queryDuration)
-	}
-}
-
-// Shutdown close database. Called by samber/do.
-func (r *Database) Shutdown(ctx context.Context) error {
-	if r.db == nil {
-		return nil
-	}
-
-	if err := r.db.Close(); err != nil {
-		return fmt.Errorf("close db error: %w", err)
-	}
-
-	logger := log.Ctx(ctx)
-	logger.Debug().Msg("db closed")
-
-	return nil
-}
-
-func (r *Database) Migrate(ctx context.Context) error {
-	logger := log.Ctx(ctx)
-	logger.Debug().Msg("migration start")
-
-	err := r.maintRepo.Migrate(ctx, r.db.DB)
-	if err != nil {
-		return aerr.ApplyFor(aerr.ErrDatabase, err, "migration error")
-	}
-
-	logger.Debug().Msg("migration finished")
-
-	return nil
-}
-
-func (r *Database) GetConnection(ctx context.Context) (*sqlx.Conn, error) {
-	conn, err := r.db.Connx(ctx)
-	if err != nil {
-		return nil, aerr.ApplyFor(aerr.ErrDatabase, err, "failed open connection")
-	}
-
-	if err := r.onConnect(ctx, conn); err != nil {
-		return nil, aerr.ApplyFor(aerr.ErrDatabase, err, "failed run onConnect scripts")
-	}
-
-	return conn, nil
-}
-
-func (r *Database) CloseConnection(ctx context.Context, conn *sqlx.Conn) {
-	if err := r.maintRepo.OnCloseConn(ctx, conn); err != nil {
-		log.Logger.Error().Err(err).Msg("run scripts onClose failed")
-	}
-
-	if err := conn.Close(); err != nil {
-		log.Logger.Error().Err(err).Msg("close connection failed")
-	}
-}
-
-func (r *Database) onConnect(ctx context.Context, db sqlx.ExecerContext) error {
-	if err := r.maintRepo.OnOpenConn(ctx, db); err != nil {
-		return aerr.ApplyFor(aerr.ErrDatabase, err, "execute onConnect script failed")
-	}
-
-	return nil
-}
-
-func (r *Database) observeQueryDuration(start time.Time) {
-	if r.queryDuration == nil {
+func (q *queryObserver) observeQueryDuration(start time.Time) {
+	if q.queryDuration == nil {
 		return
 	}
 
@@ -168,138 +47,192 @@ func (r *Database) observeQueryDuration(start time.Time) {
 	}
 
 	caller := frame.Function
-	r.queryDuration.WithLabelValues(caller).Observe(time.Since(start).Seconds())
+	q.queryDuration.WithLabelValues(caller).Observe(time.Since(start).Seconds())
 }
 
-//------------------------------------------------------------------------------
+var observer = queryObserver{} //nolint: gochecknoglobals
 
-func prepareSqliteConnstr(connstr string) (string, error) {
-	if connstr == "" {
-		return "", aerr.ErrInvalidConf.WithUserMsg("invalid (empty) database connection string")
+func RegisterMetrics(i do.Injector, queryTime bool) {
+	db := do.MustInvoke[*sql.DB](i)
+
+	// gather stats from database
+	prometheus.DefaultRegisterer.MustRegister(collectors.NewDBStatsCollector(db, "main"))
+
+	if queryTime {
+		observer.queryDuration = prometheus.NewHistogramVec(
+			prometheus.HistogramOpts{
+				Name:    "database_query_duration_seconds",
+				Help:    "Tracks the latencies for database query.",
+				Buckets: []float64{0.05, 0.1, 0.2, 0.5, 1, 2, 5},
+			},
+			[]string{"caller"},
+		)
+
+		prometheus.DefaultRegisterer.MustRegister(observer.queryDuration)
 	}
-
-	if connstr == ":memory:" {
-		return ":memory:?_fk=ON", nil
-	}
-
-	parsed, err := url.Parse(connstr)
-	if err != nil {
-		return "", aerr.ApplyFor(aerr.ErrInvalidConf, err, "", "failed to parse database connections string")
-	}
-
-	if parsed.Path == "" {
-		return "", aerr.ErrInvalidConf.WithUserMsg("invalid database connection string - missing path")
-	}
-
-	query := parsed.Query()
-	if !query.Has("_fk") && !query.Has("__foreign_keys") {
-		query.Set("_fk", "ON")
-	}
-
-	parsed.RawQuery = query.Encode()
-
-	return parsed.String(), err
 }
 
 //------------------------------------------------------------------------------
 
 // InConnectionR run `fun` in database context. Open/close connection. Return `fun` result and error.
-func InConnectionR[T any](ctx context.Context, r *Database, //nolint:ireturn
+func InConnectionR[T any](ctx context.Context, database repository.Database, //nolint:ireturn
 	fun func(context.Context) (T, error),
 ) (T, error) {
-	start := time.Now()
-	defer r.observeQueryDuration(start)
+	logger := log.Ctx(ctx)
 
-	conn, err := r.GetConnection(ctx)
+	start := time.Now()
+	defer observer.observeQueryDuration(start)
+
+	defer common.NewRegion(ctx, "InConnectionR").End()
+
+	conn, err := database.GetConnection(ctx)
 	if err != nil {
-		return *new(T), err
+		common.TraceErrorLazyPrintf(ctx, "DB: get connection error=%q", err)
+
+		return *new(T), aerr.ApplyFor(aerr.ErrDatabase, err, "failed open connection")
 	}
 
-	defer r.CloseConnection(ctx, conn)
+	defer func() {
+		if err := database.CloseConnection(ctx, conn); err != nil {
+			logger.Error().Err(err).Msgf("db.InConnectionR: close connection failed error=%q", err)
+		}
+	}()
+
+	common.TraceLazyPrintf(ctx, "DB: got connection")
 
 	ctx = WithCtx(ctx, conn)
 
 	res, err := fun(ctx)
 	if err != nil {
+		common.TraceErrorLazyPrintf(ctx, "DB: exec func error=%q", err)
+
 		return res, err
 	}
+
+	common.TraceLazyPrintf(ctx, "DB: finished")
 
 	return res, nil
 }
 
-func InTransaction(ctx context.Context, r *Database, fun func(context.Context) error) error {
-	start := time.Now()
-	defer r.observeQueryDuration(start)
+func InTransaction(ctx context.Context, database repository.Database, fun func(context.Context) error) error {
+	logger := log.Ctx(ctx)
 
-	conn, err := r.GetConnection(ctx)
+	start := time.Now()
+	defer observer.observeQueryDuration(start)
+
+	defer common.NewRegion(ctx, "InTransaction").End()
+
+	conn, err := database.GetConnection(ctx)
 	if err != nil {
-		return err
+		common.TraceErrorLazyPrintf(ctx, "DB: got connection error=%q", err)
+
+		return aerr.ApplyFor(aerr.ErrDatabase, err, "failed open connection")
 	}
 
-	defer r.CloseConnection(ctx, conn)
+	common.TraceLazyPrintf(ctx, "DB: got connection")
+
+	defer func() {
+		if err := database.CloseConnection(ctx, conn); err != nil {
+			logger.Error().Err(err).Msgf("db.InTransaction: close connection failed error=%q", err)
+		}
+	}()
 
 	tx, err := conn.BeginTxx(ctx, nil)
 	if err != nil {
+		common.TraceErrorLazyPrintf(ctx, "DB: begin tx error=%q", err)
+
 		return aerr.ApplyFor(aerr.ErrDatabase, err, "begin tx failed")
 	}
+
+	common.TraceLazyPrintf(ctx, "DB: got tx")
 
 	ctx = WithCtx(ctx, tx)
 
 	err = fun(ctx)
 	if err != nil {
-		if err := tx.Rollback(); err != nil {
-			merr := errors.Join(err, fmt.Errorf("rollback error: %w", err))
+		common.TraceErrorLazyPrintf(ctx, "DB: exec func error=%q", err)
 
-			return aerr.ApplyFor(aerr.ErrDatabase, merr, "execute func in trans and rollback error")
+		if err := tx.Rollback(); err != nil {
+			return errors.Join(err, aerr.ApplyFor(aerr.ErrDatabase, err, "execute func and rollback error"))
 		}
 
 		return err
 	}
 
+	common.TraceLazyPrintf(ctx, "DB: exec func success")
+
 	if err := tx.Commit(); err != nil {
+		common.TraceErrorLazyPrintf(ctx, "DB: commit error=%q", err)
+
 		return aerr.ApplyFor(aerr.ErrDatabase, err, "commit tx failed")
 	}
+
+	common.TraceLazyPrintf(ctx, "DB: committed")
 
 	return nil
 }
 
 // InTransactionR run `fun` in db transactions; return `fun` result and error.
-func InTransactionR[T any](ctx context.Context, r *Database, //nolint:ireturn
+func InTransactionR[T any](ctx context.Context, database repository.Database, //nolint:ireturn
 	fun func(context.Context) (T, error),
 ) (T, error) {
-	start := time.Now()
-	defer r.observeQueryDuration(start)
+	logger := log.Ctx(ctx)
 
-	conn, err := r.GetConnection(ctx)
+	start := time.Now()
+	defer observer.observeQueryDuration(start)
+
+	defer common.NewRegion(ctx, "InTransactionR").End()
+
+	common.TraceLazyPrintf(ctx, "DB: start")
+
+	conn, err := database.GetConnection(ctx)
 	if err != nil {
-		return *new(T), err
+		common.TraceErrorLazyPrintf(ctx, "DB: get connection error=%q", err)
+
+		return *new(T), aerr.ApplyFor(aerr.ErrDatabase, err, "failed open connection")
 	}
 
-	defer r.CloseConnection(ctx, conn)
+	common.TraceLazyPrintf(ctx, "DB: got connection")
+
+	defer func() {
+		if err := database.CloseConnection(ctx, conn); err != nil {
+			logger.Error().Err(err).Msgf("db.InTransactionR: close connection failed error=%q", err)
+		}
+	}()
 
 	tx, err := conn.BeginTxx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
+		common.TraceErrorLazyPrintf(ctx, "DB: begin tx error=%q", err)
+
 		return *new(T), aerr.ApplyFor(aerr.ErrDatabase, err, "begin tx failed")
 	}
+
+	common.TraceLazyPrintf(ctx, "DB: got tx")
 
 	ctx = WithCtx(ctx, tx)
 
 	res, err := fun(ctx)
 	if err != nil {
-		if err := tx.Rollback(); err != nil {
-			merr := errors.Join(err, fmt.Errorf("commit error: %w", err))
+		common.TraceErrorLazyPrintf(ctx, "DB: exec func error=%q", err)
 
-			return res, aerr.ApplyFor(aerr.ErrDatabase, merr, "execute func in trans and rollback error")
+		if err := tx.Rollback(); err != nil {
+			return res, errors.Join(err, aerr.ApplyFor(aerr.ErrDatabase, err, "execute func and rollback error"))
 		}
 
 		return res, err
 	}
 
+	common.TraceLazyPrintf(ctx, "DB: exec func success")
+
 	if err := tx.Commit(); err != nil {
+		common.TraceErrorLazyPrintf(ctx, "DB: commit error=%q", err)
+
 		return res, aerr.ApplyFor(aerr.ErrDatabase, err, "commit tx failed")
 	}
+
+	common.TraceLazyPrintf(ctx, "DB: committed")
 
 	return res, nil
 }
 
-// ------------------------------------------------------
+//------------------------------------------------------------------------------

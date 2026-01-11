@@ -23,7 +23,7 @@ const shutdownInjectorTimeout = 5 * time.Second
 
 func createInjector(ctx context.Context) *do.RootScope {
 	logger := log.Ctx(ctx)
-	logger.Debug().Msg("create injector")
+	logger.Debug().Msg("Do: create injector")
 
 	injector := do.NewWithOpts(
 		&do.InjectorOpts{
@@ -65,6 +65,6 @@ func shutdownInjector(ctx context.Context, injector do.Injector) {
 
 	logger := log.Ctx(ctx)
 	for k, err := range report.Errors {
-		logger.Debug().Msgf("service shutdown error %v: %s", k, err)
+		logger.Debug().Msgf("Do: service=%q shutdown error=%q", k, err)
 	}
 }

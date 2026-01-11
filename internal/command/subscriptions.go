@@ -31,7 +31,7 @@ func (s *ChangeSubscriptionsCmd) Sanitize() [][]string {
 	s.Add, chAdd = validators.SanitizeURLs(s.Add)
 	s.Remove, chRem = validators.SanitizeURLs(s.Remove)
 
-	changes := make([][]string, 0)
+	changes := make([][]string, 0, len(chAdd)+len(chRem))
 	changes = append(changes, chAdd...)
 	changes = append(changes, chRem...)
 

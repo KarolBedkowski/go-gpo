@@ -14,7 +14,8 @@ import (
 	"github.com/samber/do/v2"
 	"github.com/urfave/cli/v3"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
-	"gitlab.com/kabes/go-gpo/internal/db"
+	"gitlab.com/kabes/go-gpo/internal/config"
+	"gitlab.com/kabes/go-gpo/internal/repository"
 )
 
 func wrap(
@@ -27,15 +28,17 @@ func wrap(
 
 		ctx = log.Logger.WithContext(ctx)
 
-		database := clicmd.String("database")
-		if database == "" {
-			return aerr.New("database argument can't be empty").WithTag(aerr.ValidationError)
+		dbconf := config.NewDBConfig(clicmd.String("db.driver"), clicmd.String("db.connstr"))
+
+		if err := dbconf.Validate(); err != nil {
+			return aerr.Wrapf(err, "invalid database configuration")
 		}
 
 		injector := createInjector(ctx)
+		do.ProvideValue(injector, dbconf)
 
-		db := do.MustInvoke[*db.Database](injector)
-		if err := db.Connect(ctx, "sqlite3", database); err != nil {
+		db := do.MustInvoke[repository.Database](injector)
+		if _, err := db.Open(ctx); err != nil {
 			return aerr.Wrapf(err, "connect to database failed")
 		}
 

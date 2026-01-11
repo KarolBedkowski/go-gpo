@@ -27,6 +27,10 @@ import (
 
 // -----------------------------
 
+const maxEpisodesInResult = 500
+
+// -----------------------------
+
 // episodesResource handle request to /api/2/episodes/ resources.
 type episodesResource struct {
 	episodesSrv *service.EpisodesSrv
@@ -55,7 +59,7 @@ func (er episodesResource) uploadEpisodeActions(
 	var reqData []episode
 
 	if err := render.DecodeJSON(r.Body, &reqData); err != nil {
-		logger.Debug().Err(err).Msg("parse json error")
+		logger.Debug().Err(err).Msgf("EpisodeResource: parse json error=%s", err)
 		http.Error(w, "invalid reqData data", http.StatusBadRequest)
 
 		return
@@ -71,13 +75,14 @@ func (er episodesResource) uploadEpisodeActions(
 
 		// skip invalid (non http*) podcasts)
 		if reqEpisode.Podcast == "" {
-			logger.Debug().Interface("req", reqEpisode).Msg("skipped episode")
+			logger.Debug().Interface("req", reqEpisode).Msg("EpisodeResource: skipped episode - empty podcast")
 
 			continue
 		}
 
 		if err := reqEpisode.validate(); err != nil {
-			logger.Debug().Err(err).Interface("req", reqEpisode).Msg("validate error")
+			logger.Debug().Err(err).Interface("req", reqEpisode).
+				Msgf("EpisodeResource: validate episode error=%s", err)
 			http.Error(w, "validate reqData data failed", http.StatusBadRequest)
 
 			return
@@ -86,7 +91,7 @@ func (er episodesResource) uploadEpisodeActions(
 		actions = append(actions, reqEpisode.toModel())
 	}
 
-	logger.Debug().Msgf("uploadEpisodeActions: count=%d, changedurls=%d", len(actions), len(changedurls))
+	logger.Debug().Msgf("EpisodeResource: actions to add count=%d changedurls=%d", len(actions), len(changedurls))
 
 	cmd := command.AddActionCmd{
 		UserName: common.ContextUser(ctx),
@@ -94,8 +99,7 @@ func (er episodesResource) uploadEpisodeActions(
 	}
 	if err := er.episodesSrv.AddAction(ctx, &cmd); err != nil {
 		checkAndWriteError(w, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).
-			Err(err).Msg("save episodes error")
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msgf("EpisodeResource: save episodes error=%q", err)
 
 		return
 	}
@@ -124,7 +128,8 @@ func (er episodesResource) getEpisodeActions(
 
 	since, err := getSinceParameter(r)
 	if err != nil {
-		logger.Debug().Err(err).Msg("parse since parameter to time error")
+		logger.Debug().Err(err).
+			Msgf("EpisodeResource: parse since=%q to time error=%q", r.URL.Query().Get("since"), err)
 		writeError(w, r, http.StatusBadRequest)
 
 		return
@@ -136,14 +141,22 @@ func (er episodesResource) getEpisodeActions(
 		DeviceName: device,
 		Since:      since,
 		Aggregated: aggregated,
+		Limit:      maxEpisodesInResult,
 	}
 
 	res, err := er.episodesSrv.GetEpisodes(ctx, &query)
 	if err != nil {
 		checkAndWriteError(w, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get episodes actions error")
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
+			Msgf("EpisodeResource: get episodes actions error=%q", err)
 
 		return
+	}
+
+	// get last episode timestamp if exists.
+	ts := time.Now()
+	if l := len(res); l > 0 {
+		ts = res[l-1].Timestamp
 	}
 
 	resp := struct {
@@ -151,10 +164,8 @@ func (er episodesResource) getEpisodeActions(
 		Timestamp int64     `json:"timestamp"`
 	}{
 		Actions:   common.Map(res, newEpisodesFromModel),
-		Timestamp: time.Now().UTC().Unix(),
+		Timestamp: ts.UTC().Unix(),
 	}
-
-	logger.Debug().Msgf("getEpisodeActions: count=%d", len(resp.Actions))
 
 	srvsupport.RenderJSON(w, r, &resp)
 }

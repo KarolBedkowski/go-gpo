@@ -58,10 +58,12 @@ func (sr subscriptionsResource) devSubscriptions(
 ) {
 	user := common.ContextUser(ctx)
 	devicename := common.ContextDevice(ctx)
+	now := time.Now()
 
 	sinceTS, err := getSinceParameter(r)
 	if err != nil {
-		logger.Debug().Err(err).Msg("parse since failed")
+		logger.Debug().Err(err).Msgf("SubscriptionsResource: parse since=%q to time error=%q",
+			r.URL.Query().Get("since"), err)
 		w.WriteHeader(http.StatusBadRequest)
 
 		return
@@ -72,7 +74,9 @@ func (sr subscriptionsResource) devSubscriptions(
 	state, err := sr.subsSrv.GetSubscriptionChanges(ctx, &q)
 	if err != nil {
 		checkAndWriteError(w, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get device subscriptions changes error")
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
+			Msgf("SubscriptionsResource: get user_name=%s device_name=%s subscriptions changes error=%q",
+				user, devicename, err)
 
 		return
 	}
@@ -84,11 +88,13 @@ func (sr subscriptionsResource) devSubscriptions(
 	}{
 		Add:       state.AddedURLs(),
 		Remove:    state.RemovedURLs(),
-		Timestamp: time.Now().UTC().Unix(),
+		Timestamp: now.UTC().Unix(),
 	}
 
-	logger.Debug().Msgf("dev subscriptions result: added=%d, removed=%d, ts=%d",
-		len(res.Add), len(res.Remove), res.Timestamp)
+	if e := logger.Debug(); e.Enabled() {
+		e.Msgf("SubscriptionsResource: subscriptions result: added=%d removed=%d ts=%d",
+			len(res.Add), len(res.Remove), res.Timestamp)
+	}
 
 	w.WriteHeader(http.StatusOK)
 	render.JSON(w, r, &res)
@@ -106,12 +112,13 @@ func (sr subscriptionsResource) userSubscriptions(
 	subs, err := sr.subsSrv.GetUserSubscriptions(ctx, &query.GetUserSubscriptionsQuery{UserName: user})
 	if err != nil {
 		checkAndWriteError(w, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("get user subscriptions error")
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
+			Msgf("SubscriptionsResource: get user_name=%s subscriptions error=%q", user, err)
 
 		return
 	}
 
-	logger.Debug().Msgf("userSubscriptions: count=%d", len(subs))
+	logger.Debug().Msgf("SubscriptionsResource: subscriptions count=%d", len(subs))
 
 	o := formats.NewOPML("go-gpo")
 	for _, s := range subs {
@@ -130,14 +137,14 @@ func (sr subscriptionsResource) uploadSubscriptionChanges(
 ) {
 	user := common.ContextUser(ctx)
 	devicename := common.ContextDevice(ctx)
-
+	now := time.Now()
 	changes := struct {
 		Add    []string `json:"add"`
 		Remove []string `json:"remove"`
 	}{}
 
 	if err := render.DecodeJSON(r.Body, &changes); err != nil {
-		logger.Debug().Err(err).Msgf("parse json error")
+		logger.Debug().Err(err).Msgf("SubscriptionsResource: parse json error=%q", err)
 		writeError(w, r, http.StatusBadRequest)
 
 		return
@@ -148,15 +155,18 @@ func (sr subscriptionsResource) uploadSubscriptionChanges(
 		DeviceName: devicename,
 		Add:        changes.Add,
 		Remove:     changes.Remove,
-		Timestamp:  time.Now().UTC(),
+		Timestamp:  now.UTC(),
 	}
 
-	logger.Debug().Msgf("uploadSubscription: add=%d, remove=%d", len(cmd.Add), len(cmd.Remove))
+	if e := logger.Debug(); e.Enabled() {
+		e.Msgf("SubscriptionsResource: uploadSubscription add=%d, remove=%d", len(cmd.Add), len(cmd.Remove))
+	}
 
 	res, err := sr.subsSrv.ChangeSubscriptions(ctx, &cmd)
 	if err != nil {
 		checkAndWriteError(w, r, err)
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msg("update device subscription changes error")
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
+			Msgf("SubscriptionsResource: update device subscription changes error=%q", err)
 
 		return
 	}
@@ -165,7 +175,7 @@ func (sr subscriptionsResource) uploadSubscriptionChanges(
 		UpdatedURLs [][]string `json:"update_urls"`
 		Timestamp   int64      `json:"timestamp"`
 	}{
-		Timestamp:   time.Now().UTC().Unix(),
+		Timestamp:   now.Unix(),
 		UpdatedURLs: res.ChangedURLs,
 	}
 

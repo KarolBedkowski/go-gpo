@@ -27,7 +27,6 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/config"
-	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/repository"
 	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
@@ -39,11 +38,11 @@ func AuthenticatedOnly(next http.Handler) http.Handler {
 		sess := session.GetSession(r)
 		user := srvsupport.SessionUser(sess)
 
-		logger.Debug().Str("session_user", user).Msg("authenticated only check")
+		logger.Debug().Str("session_user", user).Str("sid", sess.ID()).
+			Msgf("AuthenticatedOnly: check user_name=%s sid=%s", user, sess.ID())
 
 		if user != "" {
-			ctx := common.ContextWithUser(r.Context(), user)
-			next.ServeHTTP(w, r.WithContext(ctx))
+			next.ServeHTTP(w, r)
 
 			return
 		}
@@ -70,44 +69,57 @@ func newAuthenticator(i do.Injector) (authenticator, error) {
 
 func (a authenticator) handle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		username, password, ok := r.BasicAuth()
-		if ok && password != "" && username != "" {
-			ctx := r.Context()
-			logger := hlog.FromRequest(r)
-			sess := session.GetSession(r)
+		username, password, basicAuthOk := r.BasicAuth()
+		sess := session.GetSession(r)
+		sessionuser, _ := sess.Get("user").(string)
+		logger := hlog.FromRequest(r).With().
+			Str("sid", sess.ID()).Str(common.LogKeyUserName, common.Coalesce(username, sessionuser)).Logger()
+		ctx := logger.WithContext(r.Context())
 
-			_, err := a.usersSrv.LoginUser(ctx, username, password)
-			if errors.Is(err, common.ErrUnauthorized) || errors.Is(err, common.ErrUnknownUser) {
-				logger.Warn().Err(err).Str(common.LogKeyUserName, username).
-					Str(common.LogKeyAuthResult, common.LogAuthResultFailed).
-					Msg("auth failed")
-				w.Header().Add("WWW-Authenticate", "Basic realm=\"go-gpo\"")
+		defer common.NewRegion(ctx, "authenticator handle").End()
 
-				sess.Flush()
-				sess.Destroy(w, r) //nolint:errcheck
-				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		if sessionuser == "" && !basicAuthOk {
+			// no valid session, no auth, continue to next handler
+			next.ServeHTTP(w, r.WithContext(common.ContextWithUser(ctx, username)))
 
-				return
-			} else if err != nil {
-				logger.Error().Err(err).
-					Str(common.LogKeyAuthResult, common.LogAuthResultError).
-					Msg("login user internal error")
-				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-
-				return
-			}
-
-			lloger := logger.With().Str(common.LogKeyUserName, username).Logger()
-			lloger.Info().
-				Str(common.LogKeyAuthResult, common.LogAuthResultSuccess).
-				Msg("user authenticated")
-
-			ctx = lloger.WithContext(ctx)
-			r = r.WithContext(common.ContextWithUser(ctx, username))
-			_ = sess.Set("user", username)
+			return
 		}
 
-		next.ServeHTTP(w, r)
+		// if session is valid and (there is no new auth or there is auth but username is not changed) - continue
+		if sessionuser != "" && (!basicAuthOk || username == sessionuser) {
+			next.ServeHTTP(w, r.WithContext(common.ContextWithUser(ctx, sessionuser)))
+
+			return
+		}
+
+		common.TraceLazyPrintf(ctx, "Authenticator: start login user")
+
+		switch _, err := a.usersSrv.LoginUser(ctx, username, password); {
+		case err == nil:
+			// no error login/check user - continue
+			logger.Info().Str(common.LogKeyAuthResult, common.LogAuthResultSuccess).
+				Msgf("Authenticator: user authenticated user_name=%s", username)
+
+			_ = sess.Set("user", username)
+
+			common.TraceLazyPrintf(ctx, "Authenticator: user authenticated")
+			next.ServeHTTP(w, r.WithContext(common.ContextWithUser(ctx, username)))
+		case aerr.HasTag(err, common.AuthenticationError):
+			logger.Info().Err(err).Str(common.LogKeyUserName, username).
+				Str(common.LogKeyAuthResult, common.LogAuthResultFailed).
+				Msgf("Authenticator: user authentication failed user_name=%s: %s", username, err)
+			// destroy session
+			sess.Flush()
+			_ = sess.Destroy(w, r)
+
+			common.TraceLazyPrintf(ctx, "Authenticator: auth failed")
+			w.Header().Add("WWW-Authenticate", "Basic realm=\"go-gpo\"")
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		default:
+			common.TraceErrorLazyPrintf(ctx, "Authenticator: auth error")
+			logger.Error().Err(err).Msgf("Authenticator: internal error user_name=%s error=%q", username, err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		}
 	})
 }
 
@@ -157,38 +169,29 @@ func newSimpleLogMiddleware(next http.Handler) http.Handler {
 			Str("remote", request.RemoteAddr).
 			Str("method", request.Method).
 			Str("req_user", user).
-			Msg("webhandler: request start")
+			Msgf("Server: request start method=%s url=%q", request.Method, request.URL.Redacted())
 
 		lrw := &logResponseWriter{ResponseWriter: writer, status: 0, size: 0}
 
 		defer func() {
-			loglevel := zerolog.InfoLevel
-			if lrw.status >= 500 { //nolint: mnd
-				loglevel = zerolog.ErrorLevel
-				// always log headers on error
-				llog.Info().Interface(common.LogKeyRequestHeaders, request.Header).
-					Msg("webhandler: request data")
-				llog.Info().Interface(common.LogKeyResponseHeaders, lrw.Header()).
-					Msg("webhandler: response data")
-			} else if lrw.status >= 400 && lrw.status != http.StatusNotFound {
-				loglevel = zerolog.WarnLevel
-			}
+			dur := time.Since(start)
+			loglevel, dloglevel := mapStatusToLogLevel(lrw.status)
 
-			// log headers as debug if not error
-			if lrw.status < 500 { //nolint: mnd
-				llog.Debug().Interface(common.LogKeyRequestHeaders, request.Header).
-					Msg("webhandler: request data")
-				llog.Debug().Interface(common.LogKeyResponseHeaders, lrw.Header()).
-					Msg("webhandler: response data")
+			if e := llog.WithLevel(dloglevel); e.Enabled() {
+				e.Interface(common.LogKeyRequestHeaders, filterHeaders(request.Header)).
+					Msg("Server: request headers")
+				llog.WithLevel(dloglevel).Interface(common.LogKeyResponseHeaders, lrw.Header()).
+					Msg("Server: response headers")
 			}
 
 			llog.WithLevel(loglevel).
-				Str("url", request.RequestURI).
+				Str("url", request.URL.Redacted()).
 				Int("status", lrw.status).
 				Int("size", lrw.size).
-				Dur("duration", time.Since(start)).
+				Int64("duration", dur.Milliseconds()).
 				Str("req_user", user).
-				Msg("webhandler: request finished")
+				Msgf("Server: request finished method=%s url=%q status=%d duration=%s",
+					request.Method, request.URL.Redacted(), lrw.status, dur)
 		}()
 
 		next.ServeHTTP(lrw, request)
@@ -218,7 +221,7 @@ func newFullLogMiddleware(next http.Handler) http.Handler {
 			Str("remote", request.RemoteAddr).
 			Str("method", request.Method).
 			Str("req_user", user).
-			Msg("webhandler: request start")
+			Msgf("Server: request start method=%s url=%q", request.Method, request.URL.Redacted())
 
 		var reqBody, respBody bytes.Buffer
 
@@ -228,18 +231,20 @@ func newFullLogMiddleware(next http.Handler) http.Handler {
 		lrw.Tee(&respBody)
 
 		defer func() {
+			dur := time.Since(start)
+
 			if shouldLogRequestBody(request) {
-				llog.Debug().
-					Interface(common.LogKeyRequestHeaders, request.Header).
-					Msg("request data: " + reqBody.String())
-				llog.Debug().
-					Interface(common.LogKeyResponseHeaders, lrw.Header()).
-					Msg("response data: " + respBody.String())
+				llog.Debug().Msg("request body: " + reqBody.String())
+				llog.Debug().Msg("response body: " + respBody.String())
 			}
 
-			loglevel := zerolog.InfoLevel
-			if lrw.Status() >= 400 && lrw.Status() != 404 {
-				loglevel = zerolog.ErrorLevel
+			loglevel, dloglevel := mapStatusToLogLevel(lrw.Status())
+
+			if e := llog.WithLevel(dloglevel); e.Enabled() {
+				e.Interface(common.LogKeyRequestHeaders, filterHeaders(request.Header)).
+					Msg("Server: request headers")
+				llog.WithLevel(dloglevel).Interface(common.LogKeyResponseHeaders, lrw.Header()).
+					Msg("Server: response headers")
 			}
 
 			llog.WithLevel(loglevel).
@@ -247,12 +252,44 @@ func newFullLogMiddleware(next http.Handler) http.Handler {
 				Int("status", lrw.Status()).
 				Int("size", lrw.BytesWritten()).
 				Str("req_user", user).
-				Dur("duration", time.Since(start)).
-				Msg("webhandler: request finished")
+				Int64("duration", dur.Milliseconds()).
+				Msgf("Server: request finished method=%s url=%q status=%d duration=%s",
+					request.Method, request.URL.Redacted(), lrw.Status(), dur)
 		}()
 
 		next.ServeHTTP(lrw, request)
 	})
+}
+
+//-------------------------------------------------------------
+
+// newVerySimpleLogMiddleware create basic log middleware that log only result request.
+func newVerySimpleLogMiddleware(name string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+			start := time.Now().UTC()
+			ctx := request.Context()
+			requestID, _ := hlog.IDFromCtx(ctx)
+			llog := log.With().Str(common.LogKeyReqID, requestID.String()).Logger()
+			request = request.WithContext(llog.WithContext(ctx))
+			lrw := &logResponseWriter{ResponseWriter: writer, status: 0, size: 0}
+
+			defer func() {
+				dur := time.Since(start)
+
+				loglevel, _ := mapStatusToLogLevel(lrw.status)
+				llog.WithLevel(loglevel).
+					Str("url", request.URL.Redacted()).
+					Int("status", lrw.status).
+					Int("size", lrw.size).
+					Int64("duration", dur.Milliseconds()).
+					Msgf(name+": request finished method=%s url=%q status=%d",
+						request.Method, request.URL.Redacted(), lrw.status, dur)
+			}()
+
+			next.ServeHTTP(lrw, request)
+		})
+	}
 }
 
 //-------------------------------------------------------------
@@ -276,7 +313,7 @@ func shouldLogRequestBody(request *http.Request) bool {
 type logMiddleware func(http.Handler) http.Handler
 
 func newLogMiddleware(i do.Injector) (logMiddleware, error) {
-	cfg := do.MustInvoke[*Configuration](i)
+	cfg := do.MustInvoke[*config.ServerConf](i)
 
 	if cfg.DebugFlags.HasFlag(config.DebugMsgBody) {
 		return newFullLogMiddleware, nil
@@ -295,19 +332,23 @@ func newRecoverMiddleware(next http.Handler) http.Handler {
 				return
 			}
 
+			common.TraceErrorLazyPrintf(ctx, "RecoveryMW: panic: %v", rec)
+
 			logger := log.Ctx(ctx).With().Str("stack", string(debug.Stack())).Logger()
 
 			switch t := rec.(type) {
 			case error:
-				logger.Error().Err(t).Msg("panic when handling request")
+				logger.Error().Err(t).Msgf("RecoveryMW: panic when handling request: %s", rec)
 
 				if errors.Is(t, http.ErrAbortHandler) {
 					panic(t)
 				}
 			case string:
-				logger.Error().Str("err", t).Msg("panic when handling request")
+				logger.Error().Str("err", t).Msgf("RecoveryMW: panic when handling request: %s", rec)
 			default:
-				logger.Error().Str("err", "unknown error").Msg("panic when handling request")
+				logger.Error().
+					Str("err", fmt.Sprintf("%v", rec)).
+					Msg("RecoveryMW: panic when handling request: unknown error")
 			}
 
 			if req.Header.Get("Connection") != "Upgrade" {
@@ -324,12 +365,12 @@ func newRecoverMiddleware(next http.Handler) http.Handler {
 type sessionMiddleware func(http.Handler) http.Handler
 
 func newSessionMiddleware(i do.Injector) (sessionMiddleware, error) {
-	db := do.MustInvoke[*db.Database](i)
+	dbi := do.MustInvoke[repository.Database](i)
 	repo := do.MustInvoke[repository.Sessions](i)
-	cfg := do.MustInvoke[*Configuration](i)
+	cfg := do.MustInvoke[*config.ServerConf](i)
 
 	session.RegisterFn("db", func() session.Provider {
-		return service.NewSessionProvider(db, repo, sessionMaxLifetime)
+		return service.NewSessionProvider(dbi, repo, sessionMaxLifetime)
 	})
 
 	sess, err := session.Sessioner(session.Options{
@@ -338,12 +379,56 @@ func newSessionMiddleware(i do.Injector) (sessionMiddleware, error) {
 		CookieName:     "sessionid",
 		SameSite:       http.SameSiteLaxMode,
 		Maxlifetime:    int64(sessionMaxLifetime.Seconds()),
-		Secure:         cfg.useSecureCookie(),
-		CookiePath:     cfg.WebRoot,
+		Secure:         cfg.MainServer.UseSecureCookie(),
+		CookiePath:     cfg.MainServer.WebRoot,
 	})
 	if err != nil {
 		return nil, aerr.Wrapf(err, "start session manager failed")
 	}
 
 	return sess, nil
+}
+
+//-------------------------------------------------------------
+
+// filterHeaders remove sensitive data from request header for logging.
+func filterHeaders(h http.Header) http.Header {
+	if h.Get("Authorization") == "" {
+		return h
+	}
+
+	h = h.Clone()
+	h.Set("Authorization", "<redacted>")
+
+	return h
+}
+
+// mapStatusToLogLevel get http status and return level for regular logs and level for debug logs.
+func mapStatusToLogLevel(status int) (zerolog.Level, zerolog.Level) {
+	switch {
+	case status == http.StatusInternalServerError:
+		return zerolog.ErrorLevel, zerolog.ErrorLevel
+	case status >= 500: //nolint:mnd
+		return zerolog.WarnLevel, zerolog.WarnLevel
+	default:
+		return zerolog.InfoLevel, zerolog.DebugLevel
+	}
+}
+
+//-------------------------------------------------------------
+
+func newAuthDebugMiddleware(c *config.ServerConf) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			log := zerolog.Ctx(r.Context())
+
+			if allow, _ := c.AuthMgmtRequest(r); allow {
+				log.Debug().Msgf("AuthDebug: access to url=%q from remote=%q allowed", r.URL.Redacted(), r.RemoteAddr)
+				next.ServeHTTP(w, r)
+			} else {
+				log.Debug().Msgf("AuthDebug: access to url=%q from remote=%q forbidden", r.URL.Redacted(), r.RemoteAddr)
+				http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+			}
+		})
+	}
 }
