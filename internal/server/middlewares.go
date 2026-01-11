@@ -169,11 +169,12 @@ func newSimpleLogMiddleware(next http.Handler) http.Handler {
 			Str("remote", request.RemoteAddr).
 			Str("method", request.Method).
 			Str("req_user", user).
-			Msgf("Server: request start method=%s url=%s", request.Method, request.URL.Redacted())
+			Msgf("Server: request start method=%s url=%q", request.Method, request.URL.Redacted())
 
 		lrw := &logResponseWriter{ResponseWriter: writer, status: 0, size: 0}
 
 		defer func() {
+			dur := time.Since(start)
 			loglevel, dloglevel := mapStatusToLogLevel(lrw.status)
 
 			if e := llog.WithLevel(dloglevel); e.Enabled() {
@@ -187,9 +188,10 @@ func newSimpleLogMiddleware(next http.Handler) http.Handler {
 				Str("url", request.URL.Redacted()).
 				Int("status", lrw.status).
 				Int("size", lrw.size).
-				Dur("duration", time.Since(start)).
+				Int64("duration", dur.Milliseconds()).
 				Str("req_user", user).
-				Msgf("Server: request finished method=%s url=%s status=%d", request.Method, request.URL.Redacted(), lrw.status)
+				Msgf("Server: request finished method=%s url=%q status=%d duration=%s",
+					request.Method, request.URL.Redacted(), lrw.status, dur)
 		}()
 
 		next.ServeHTTP(lrw, request)
@@ -219,7 +221,7 @@ func newFullLogMiddleware(next http.Handler) http.Handler {
 			Str("remote", request.RemoteAddr).
 			Str("method", request.Method).
 			Str("req_user", user).
-			Msgf("Server: request start method=%s url=%s", request.Method, request.URL.Redacted())
+			Msgf("Server: request start method=%s url=%q", request.Method, request.URL.Redacted())
 
 		var reqBody, respBody bytes.Buffer
 
@@ -229,6 +231,8 @@ func newFullLogMiddleware(next http.Handler) http.Handler {
 		lrw.Tee(&respBody)
 
 		defer func() {
+			dur := time.Since(start)
+
 			if shouldLogRequestBody(request) {
 				llog.Debug().Msg("request body: " + reqBody.String())
 				llog.Debug().Msg("response body: " + respBody.String())
@@ -248,9 +252,9 @@ func newFullLogMiddleware(next http.Handler) http.Handler {
 				Int("status", lrw.Status()).
 				Int("size", lrw.BytesWritten()).
 				Str("req_user", user).
-				Dur("duration", time.Since(start)).
-				Msgf("Server: request finished method=%s url=%s status=%d",
-					request.Method, request.URL.Redacted(), lrw.Status())
+				Int64("duration", dur.Milliseconds()).
+				Msgf("Server: request finished method=%s url=%q status=%d duration=%s",
+					request.Method, request.URL.Redacted(), lrw.Status(), dur)
 		}()
 
 		next.ServeHTTP(lrw, request)
@@ -271,13 +275,16 @@ func newVerySimpleLogMiddleware(name string) func(http.Handler) http.Handler {
 			lrw := &logResponseWriter{ResponseWriter: writer, status: 0, size: 0}
 
 			defer func() {
+				dur := time.Since(start)
+
 				loglevel, _ := mapStatusToLogLevel(lrw.status)
 				llog.WithLevel(loglevel).
 					Str("url", request.URL.Redacted()).
 					Int("status", lrw.status).
 					Int("size", lrw.size).
-					Dur("duration", time.Since(start)).
-					Msgf(name+": request finished method=%s url=%s status=%d", request.Method, request.URL.Redacted(), lrw.status)
+					Int64("duration", dur.Milliseconds()).
+					Msgf(name+": request finished method=%s url=%q status=%d",
+						request.Method, request.URL.Redacted(), lrw.status, dur)
 			}()
 
 			next.ServeHTTP(lrw, request)
