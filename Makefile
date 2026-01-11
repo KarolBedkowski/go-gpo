@@ -2,11 +2,10 @@
 # Makefile
 #
 
-# enable sdjournal
-#GOTAGS=
+GOTAGS=
+# enable tracing (for debug)
 GOTAGS=-tags 'trace'
 
-#
 VERSION=`git describe --always`
 REVISION=`git rev-parse HEAD`
 DATE=`date +%Y%m%d%H%M%S`
@@ -28,11 +27,13 @@ LDFLAGSR="-w -s\
 
 .PHONY: build
 build: generate
+	GOEXPERIMENT=jsonv2 \
 	go build $(GOTAGS) -v -o go-gpo -ldflags $(LDFLAGS) \
 		./cli
 
 .PHONY: build_arm64
 build_arm64: generate
+	GOEXPERIMENT=jsonv2 \
 	CGO_ENABLED=1 \
 	GOGCCFLAGS="-fPIC -O4 -Ofast -pipe -march=native -s" \
 		GOARCH=arm64 GOOS=linux \
@@ -42,6 +43,7 @@ build_arm64: generate
 .PHONY: build_arm64_release
 build_arm64_release: generate
 	CGO_ENABLED=1 \
+	GOEXPERIMENT=jsonv2 \
 	GOGCCFLAGS="-fPIC -O4 -Ofast -pipe -march=native -s" \
 		GOARCH=arm64 GOOS=linux \
 		go build $(GOTAGS) -trimpath -v -o go-gpo-arm64 --ldflags $(LDFLAGSR) \
@@ -87,6 +89,7 @@ migrate:
 migrate_pg:
 	goose -dir ./internal/infra/pg/migrations postgres "user=gogpo dbname=gogpo password=gogpo123 host=127.0.0.1" up
 
+
 .PHONY: deps
 deps:
 	go get -u ./...
@@ -94,6 +97,7 @@ deps:
 	$(MAKE) test
 	$(MAKE) build
 
+##############################################
 
 QTPLS := $(shell find . -type f -name '*.qtpl')
 QTPLSC := $(QTPLS:%=%.go)
@@ -102,6 +106,8 @@ generate: $(QTPLSC)
 
 %.qtpl.go: %.qtpl
 	qtc -file $<
+
+##############################################
 
 .PHONY: clean
 prepare:

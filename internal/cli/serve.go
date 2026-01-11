@@ -76,9 +76,8 @@ func newStartServerCmd() *cli.Command { //nolint:funlen
 				Sources: cli.EnvVars("GOGPO_SERVER_SECURE_COOKIE"),
 			},
 			&cli.DurationFlag{
-				Name: "podcast-load-interval",
-				Usage: "Enable background worker that download podcast information in given intervals. " +
-					"This may eat a lot of memory....",
+				Name:    "podcast-load-interval",
+				Usage:   "Enable background worker that download podcast information in given intervals. ",
 				Sources: cli.EnvVars("GOGPO_SERVER_PODCAST_LOAD_INTERVAL"),
 				Value:   0,
 			},
