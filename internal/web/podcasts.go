@@ -96,6 +96,11 @@ func (p podcastPages) addPodcast(ctx context.Context, w http.ResponseWriter, r *
 		Timestamp:  time.Now(),
 	}
 
+	_ = cmd.Sanitize()
+	if len(cmd.Add) != 1 {
+		srvsupport.WriteError(w, r, http.StatusBadRequest, "invalid podcast URL")
+	}
+
 	if _, err := p.subscriptionsSrv.ChangeSubscriptions(ctx, &cmd); err != nil {
 		srvsupport.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
