@@ -57,17 +57,23 @@ func AuthenticatedOnly(next http.Handler) http.Handler {
 
 //-------------------------------------------------------------
 
-type authenticator struct {
-	usersSrv *service.UsersSrv
+type authenticator interface {
+	handle(next http.Handler) http.Handler
 }
 
-func newAuthenticator(i do.Injector) (authenticator, error) {
-	return authenticator{
+func newAuthenticator(i do.Injector) (authenticator, error) { //nolint:ireturn
+	return basicAuthenticator{
 		usersSrv: do.MustInvoke[*service.UsersSrv](i),
 	}, nil
 }
 
-func (a authenticator) handle(next http.Handler) http.Handler {
+//-------------------------------------------------------------
+
+type basicAuthenticator struct {
+	usersSrv *service.UsersSrv
+}
+
+func (a basicAuthenticator) handle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		username, password, basicAuthOk := r.BasicAuth()
 		sess := session.GetSession(r)
