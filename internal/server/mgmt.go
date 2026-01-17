@@ -104,7 +104,7 @@ func createMgmtRouters(injector do.Injector, router *chi.Mux, cfg *config.Server
 		group.Use(newVerySimpleLogMiddleware("MgmtServer"))
 		group.Use(newRecoverMiddleware)
 		group.Use(middleware.CleanPath)
-		group.Use(newAuthDebugMiddleware(cfg))
+		group.Use(newAuthMgmtMiddleware(cfg))
 
 		if cfg.DebugFlags.HasFlag(config.DebugDo) {
 			dochi.Use(router, webroot+"/debug/do", injector)

@@ -523,7 +523,7 @@ func mapStatusToLogLevel(status int) (zerolog.Level, zerolog.Level) {
 
 //-------------------------------------------------------------
 
-func newAuthDebugMiddleware(c *config.ServerConf) func(http.Handler) http.Handler {
+func newAuthMgmtMiddleware(c *config.ServerConf) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			log := zerolog.Ctx(r.Context())
