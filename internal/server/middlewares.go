@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"runtime/debug"
 	"strings"
@@ -62,9 +63,21 @@ type authenticator interface {
 }
 
 func newAuthenticator(i do.Injector) (authenticator, error) { //nolint:ireturn
-	return basicAuthenticator{
-		usersSrv: do.MustInvoke[*service.UsersSrv](i),
-	}, nil
+	cfg := do.MustInvoke[*config.ServerConf](i)
+
+	switch cfg.AuthMethod {
+	case "basic":
+		return basicAuthenticator{
+			usersSrv: do.MustInvoke[*service.UsersSrv](i),
+		}, nil
+	case "proxy":
+		return proxyAuthenticator{
+			usersSrv: do.MustInvoke[*service.UsersSrv](i),
+			cfg:      cfg,
+		}, nil
+	}
+
+	return nil, aerr.ErrInvalidConf.WithUserMsg("unknown auth method: %s", cfg.AuthMethod)
 }
 
 //-------------------------------------------------------------
@@ -124,6 +137,77 @@ func (a basicAuthenticator) handle(next http.Handler) http.Handler {
 		default:
 			common.TraceErrorLazyPrintf(ctx, "Authenticator: auth error")
 			logger.Error().Err(err).Msgf("Authenticator: internal error user_name=%s error=%q", username, err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		}
+	})
+}
+
+//-------------------------------------------------------------
+
+type proxyAuthenticator struct {
+	usersSrv *service.UsersSrv
+	cfg      *config.ServerConf
+}
+
+func (p proxyAuthenticator) handle(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		sess := session.GetSession(r)
+		sessionuser, _ := sess.Get("user").(string)
+		logger := hlog.FromRequest(r).With().
+			Str("sid", sess.ID()).Str(common.LogKeyUserName, sessionuser).Logger()
+		ctx := logger.WithContext(r.Context())
+
+		proxyip, _ := ctx.Value(ctxProxyRemoteIP).(string)
+		if !p.cfg.AuthProxyRequest(proxyip) {
+			logger.Info().Msgf("ProxyAuthenticator: unknown proxy=%s", proxyip)
+			common.TraceLazyPrintf(ctx, "Authenticator: auth failed - remote address not in acl")
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+
+			return
+		}
+
+		defer common.NewRegion(ctx, "ProxyAuthenticator handle").End()
+
+		username := r.Header.Get(p.cfg.ProxyUserHeader)
+		if sessionuser == "" && username == "" {
+			// no valid session, no auth, continue to next handler
+			next.ServeHTTP(w, r.WithContext(common.ContextWithUser(ctx, username)))
+
+			return
+		}
+
+		// if session is valid and (there is no new auth or there is auth but username is not changed) - continue
+		if sessionuser != "" && (username == "" || username == sessionuser) {
+			next.ServeHTTP(w, r.WithContext(common.ContextWithUser(ctx, sessionuser)))
+
+			return
+		}
+
+		common.TraceLazyPrintf(ctx, "ProxyAuthenticator: start check user")
+
+		switch _, err := p.usersSrv.CheckUser(ctx, username); {
+		case err == nil:
+			// no error login/check user - continue
+			logger.Info().Str(common.LogKeyAuthResult, common.LogAuthResultSuccess).Str("proxy_ip", proxyip).
+				Msgf("ProxyAuthenticator: user authenticated user_name=%s", username)
+
+			_ = sess.Set("user", username)
+
+			common.TraceLazyPrintf(ctx, "ProxyAuthenticator: user authenticated")
+			next.ServeHTTP(w, r.WithContext(common.ContextWithUser(ctx, username)))
+		case aerr.HasTag(err, common.AuthenticationError):
+			logger.Info().Err(err).Str(common.LogKeyUserName, username).
+				Str(common.LogKeyAuthResult, common.LogAuthResultFailed).Str("proxy_ip", proxyip).
+				Msgf("ProxyAuthenticator: user authentication failed user_name=%s: %s", username, err)
+			// destroy session
+			sess.Flush()
+			_ = sess.Destroy(w, r)
+
+			common.TraceLazyPrintf(ctx, "ProxyAuthenticator: auth failed")
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		default:
+			common.TraceErrorLazyPrintf(ctx, "ProxyAuthenticator: auth error")
+			logger.Error().Err(err).Msgf("ProxyAuthenticator: internal error user_name=%s error=%q", username, err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	})
@@ -461,5 +545,38 @@ func SecHeadersMiddleware(next http.Handler) http.Handler {
 				"img-src 'self; object-src 'none'; script-src 'self'; base-uri 'self';")
 
 		next.ServeHTTP(w, r)
+	})
+}
+
+//-------------------------------------------------------------
+
+var ctxProxyRemoteIP = any("ctxProxyRemoteIP") //nolint:gochecknoglobals
+
+var realIPHeaders = []string{ //nolint:gochecknoglobals
+	http.CanonicalHeaderKey("True-Client-IP"),
+	http.CanonicalHeaderKey("X-Forwarded-For"),
+	http.CanonicalHeaderKey("X-Real-IP"),
+}
+
+func RealIPMiddleware(handler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		ctx = context.WithValue(ctx, ctxProxyRemoteIP, r.RemoteAddr)
+
+		for _, header := range realIPHeaders {
+			v := r.Header.Get(header)
+			if v == "" {
+				continue
+			}
+
+			ip, _, _ := strings.Cut(v, ",")
+			if ip != "" && net.ParseIP(ip) == nil {
+				r.RemoteAddr = ip
+
+				break
+			}
+		}
+
+		handler.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

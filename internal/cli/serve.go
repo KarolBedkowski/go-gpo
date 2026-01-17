@@ -109,7 +109,7 @@ func newStartServerCmd() *cli.Command { //nolint:funlen
 			&cli.StringFlag{
 				Name:    "session-store",
 				Value:   "db",
-				Usage:   "where store session data (db. memory)",
+				Usage:   "where store session data (db, memory)",
 				Sources: cli.EnvVars("GOGPO_SESSION_STORE"),
 				Config:  cli.StringConfig{TrimSpace: true},
 			},
@@ -117,6 +117,27 @@ func newStartServerCmd() *cli.Command { //nolint:funlen
 				Name:    "set-security-headers",
 				Usage:   "enable add some http security related headers",
 				Sources: cli.EnvVars("GOGPO_SET_SECURITY_HEADERS"),
+			},
+			&cli.StringFlag{
+				Name:    "auth-method",
+				Value:   "basic",
+				Usage:   "user authentication method (basic, proxy)",
+				Sources: cli.EnvVars("GOGPO_AUTH_METHOD"),
+				Config:  cli.StringConfig{TrimSpace: true},
+			},
+			&cli.StringFlag{
+				Name:    "auth-proxy-user-header",
+				Value:   "X-PROXY-USER",
+				Usage:   "http header with user name for proxy auth-method (required)",
+				Sources: cli.EnvVars("GOGPO_AUTH_PROXY_USER_HEADER"),
+				Config:  cli.StringConfig{TrimSpace: true},
+			},
+			&cli.StringFlag{
+				Name:    "auth-proxy-access-list",
+				Value:   "",
+				Usage:   "list of ip or networks separated by ',' used as proxy for proxy auth-method",
+				Sources: cli.EnvVars("GOGPO_AUTH_PROXY_ACCESS_LIST"),
+				Config:  cli.StringConfig{TrimSpace: true},
 			},
 		},
 		Action: wrap(startServerCmd),
@@ -147,6 +168,10 @@ func startServerCmd(ctx context.Context, clicmd *cli.Command, rootInjector do.In
 		MgmtAccessList:     clicmd.String("mgmt-access-list"),
 		SessionStore:       clicmd.String("session-store"),
 		SetSecurityHeaders: clicmd.Bool("set-security-headers"),
+
+		AuthMethod:      clicmd.String("auth-method"),
+		ProxyUserHeader: clicmd.String("auth-proxy-user-header"),
+		ProxyAccessList: clicmd.String("auth-proxy-access-list"),
 	}
 
 	if err := serverConf.Validate(); err != nil {

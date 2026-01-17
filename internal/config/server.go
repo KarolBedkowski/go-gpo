@@ -61,7 +61,12 @@ type ServerConf struct {
 	SetSecurityHeaders bool
 	SessionStore       string
 
-	mgmtAccessList *AccessList
+	AuthMethod      string
+	ProxyUserHeader string
+	ProxyAccessList string
+
+	mgmtAccessList  *AccessList
+	proxyAccessList *AccessList
 }
 
 func (c *ServerConf) Validate() error {
@@ -78,7 +83,7 @@ func (c *ServerConf) Validate() error {
 	if c.MgmtAccessList != "" {
 		al, err := NewAccessList(c.MgmtAccessList)
 		if err != nil {
-			return fmt.Errorf("validate access list failed: %w", err)
+			return fmt.Errorf("validate mgmt access list failed: %w", err)
 		}
 
 		c.mgmtAccessList = al
@@ -93,6 +98,10 @@ func (c *ServerConf) Validate() error {
 		// ok
 	default:
 		return aerr.ErrValidation.WithUserMsg("invalid session store parameter")
+	}
+
+	if err := c.validateAuth(); err != nil {
+		return err
 	}
 
 	return nil
@@ -140,6 +149,49 @@ func (c *ServerConf) AuthMgmtRequest(req *http.Request) (bool, bool) {
 	}
 }
 
+func (c *ServerConf) AuthProxyRequest(remoteAddr string) bool {
+	if remoteAddr == "" {
+		return false
+	}
+
+	host, _, err := net.SplitHostPort(remoteAddr)
+	if err != nil {
+		host = remoteAddr
+	}
+
+	ip := net.ParseIP(host)
+
+	return c.proxyAccessList.HasAccess(ip)
+}
+
+func (c *ServerConf) validateAuth() error {
+	switch c.AuthMethod {
+	case "":
+		c.AuthMethod = "basic"
+	case "basic":
+		// no other options
+	case "proxy":
+		if c.ProxyUserHeader == "" {
+			return aerr.ErrValidation.WithUserMsg("missing proxy user header")
+		}
+
+		if c.ProxyAccessList == "" {
+			return aerr.ErrValidation.WithUserMsg("missing proxy access list")
+		}
+
+		al, err := NewAccessList(c.ProxyAccessList)
+		if err != nil {
+			return fmt.Errorf("validate proxy access list failed: %w", err)
+		}
+
+		c.proxyAccessList = al
+
+		log.Logger.Debug().Object("proxyAccessList", al).Msg("proxy access list configured")
+	}
+
+	return nil
+}
+
 //-------------------------------------------------------------
 
 type AccessList struct {
@@ -160,14 +212,14 @@ func NewAccessList(accesslist string) (*AccessList, error) {
 			_, n, err := net.ParseCIDR(entry)
 			if err != nil {
 				return nil, aerr.ErrValidation.WithUserMsg(
-					"invalid entry in debug access list: entry=%q error=%q", entry, err)
+					"invalid entry in access list: entry=%q error=%q", entry, err)
 			}
 
 			nets = append(nets, n)
 		} else {
 			ip := net.ParseIP(entry)
 			if ip == nil {
-				return nil, aerr.ErrValidation.WithUserMsg("invalid entry in debug access list: entry=%q", entry)
+				return nil, aerr.ErrValidation.WithUserMsg("invalid entry in access list: entry=%q", entry)
 			}
 
 			ips = append(ips, ip)
