@@ -374,13 +374,14 @@ func newSessionMiddleware(i do.Injector) (sessionMiddleware, error) {
 	})
 
 	sess, err := session.Sessioner(session.Options{
-		Provider:       "db",
+		Provider:       cfg.SessionStore,
 		ProviderConfig: "./tmp/",
 		CookieName:     "sessionid",
 		SameSite:       http.SameSiteLaxMode,
 		Maxlifetime:    int64(sessionMaxLifetime.Seconds()),
 		Secure:         cfg.MainServer.UseSecureCookie(),
 		CookiePath:     cfg.MainServer.WebRoot,
+		CookieLifeTime: int(sessionMaxLifetime.Seconds()),
 	})
 	if err != nil {
 		return nil, aerr.Wrapf(err, "start session manager failed")

@@ -58,6 +58,8 @@ type ServerConf struct {
 	EnableMetrics  bool
 	MgmtAccessList string
 
+	SessionStore string
+
 	mgmtAccessList *AccessList
 }
 
@@ -81,6 +83,15 @@ func (c *ServerConf) Validate() error {
 		c.mgmtAccessList = al
 
 		log.Logger.Debug().Object("debugAccessList", al).Msg("debug access list configured")
+	}
+
+	switch c.SessionStore {
+	case "":
+		c.SessionStore = "db"
+	case "db", "memory":
+		// ok
+	default:
+		return aerr.ErrValidation.WithUserMsg("invalid session store parameter")
 	}
 
 	return nil

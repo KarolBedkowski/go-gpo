@@ -98,8 +98,14 @@ func newStartServerCmd() *cli.Command { //nolint:funlen
 				Name:    "mgmt-access-list",
 				Value:   "",
 				Usage:   "list of ip or networks separated by ',' allowed to connected to mgmt endpoints.",
-				Aliases: []string{"m"},
 				Sources: cli.EnvVars("GOGPO_MGMT_SERVER_ACCESS_LIST"),
+				Config:  cli.StringConfig{TrimSpace: true},
+			},
+			&cli.StringFlag{
+				Name:    "session-store",
+				Value:   "db",
+				Usage:   "where store session data (db. memory)",
+				Sources: cli.EnvVars("GOGPO_SESSION_STORE"),
 				Config:  cli.StringConfig{TrimSpace: true},
 			},
 		},
@@ -129,6 +135,7 @@ func startServerCmd(ctx context.Context, clicmd *cli.Command, rootInjector do.In
 		DebugFlags:     config.NewDebugFLags(clicmd.String("debug")),
 		EnableMetrics:  clicmd.Bool("enable-metrics"),
 		MgmtAccessList: clicmd.String("mgmt-access-list"),
+		SessionStore:   clicmd.String("session-store"),
 	}
 
 	if err := serverConf.Validate(); err != nil {
