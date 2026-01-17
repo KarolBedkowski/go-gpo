@@ -77,9 +77,14 @@ func newStartServerCmd() *cli.Command { //nolint:funlen
 			},
 			&cli.DurationFlag{
 				Name:    "podcast-load-interval",
-				Usage:   "Enable background worker that download podcast information in given intervals. ",
+				Usage:   "Enable background worker that download podcast information in given intervals.",
 				Sources: cli.EnvVars("GOGPO_SERVER_PODCAST_LOAD_INTERVAL"),
 				Value:   0,
+			},
+			&cli.BoolFlag{
+				Name:    "podcast-load-only-missing",
+				Usage:   "Download podcast info only for podcasts without title (do not update).",
+				Sources: cli.EnvVars("GOGPO_SERVER_PODCAST_LOAD_MISSING_ONLY"),
 			},
 			&cli.BoolFlag{
 				Name:    "podcast-load-episodes",
@@ -196,7 +201,8 @@ func (s *Server) start(ctx context.Context, injector do.Injector, cfg *config.Se
 	go s.runBackgroundMaintenance(ctx, maintSrv)
 
 	if i := clicmd.Duration("podcast-load-interval"); i > 0 {
-		go s.podcastDownloadTask(ctx, injector, i, clicmd.Bool("podcast-load-episodes"))
+		go s.podcastDownloadTask(ctx, injector, i, clicmd.Bool("podcast-load-episodes"),
+			clicmd.Bool("podcast-load-only-missing"))
 	}
 
 	systemd.NotifyReady()           //nolint:errcheck
@@ -218,7 +224,7 @@ func (*Server) startSystemdWatchdog(logger *zerolog.Logger) {
 }
 
 func (s *Server) podcastDownloadTask(ctx context.Context, injector do.Injector,
-	interval time.Duration, loadepisodes bool,
+	interval time.Duration, loadepisodes, missingonly bool,
 ) {
 	logger := log.Ctx(ctx)
 	logger.Info().Msgf("PodcastDownloader: start background podcast downloader; interval=%s", interval)
@@ -242,7 +248,7 @@ func (s *Server) podcastDownloadTask(ctx context.Context, injector do.Injector,
 
 		eventlog.Printf("start processing")
 
-		if err := podcastSrv.DownloadPodcastsInfo(ctx, since, loadepisodes); err != nil {
+		if err := podcastSrv.DownloadPodcastsInfo(ctx, since, loadepisodes, missingonly); err != nil {
 			logger.Error().Err(err).Msgf("PodcastDownloader: download podcast info job error=%q", err)
 			eventlog.Errorf("processing error=%q", err)
 		} else {

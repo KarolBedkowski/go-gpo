@@ -232,7 +232,7 @@ func (p *PodcastsSrv) ResolvePodcastsURL(ctx context.Context, urls []string) map
 
 //------------------------------------------------------------------------------
 
-func (p *PodcastsSrv) DownloadPodcastsInfo(ctx context.Context, since time.Time, loadepisodes bool) error {
+func (p *PodcastsSrv) DownloadPodcastsInfo(ctx context.Context, since time.Time, loadepisodes, missingonly bool) error {
 	logger := zerolog.Ctx(ctx)
 	logger.Debug().Msgf("PodcastsSrv: start downloading podcasts info; since=%s", since)
 
@@ -242,6 +242,19 @@ func (p *PodcastsSrv) DownloadPodcastsInfo(ctx context.Context, since time.Time,
 	})
 	if err != nil {
 		return aerr.ApplyFor(ErrRepositoryError, err)
+	}
+
+	// select only podcast without metadataupdate = never updated.
+	if missingonly {
+		var t []model.PodcastToUpdate
+
+		for _, p := range urls {
+			if p.MetaUpdatedAt.IsZero() {
+				t = append(t, p)
+			}
+		}
+
+		urls = t
 	}
 
 	eventlog := common.ContextEventLog(ctx)
