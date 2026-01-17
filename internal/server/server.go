@@ -53,7 +53,6 @@ func New(injector do.Injector) (*Server, error) {
 	// routes
 	router := chi.NewRouter()
 	router.Use(middleware.Heartbeat(webroot + "/ping"))
-	router.Use(middleware.RealIP)
 
 	if cfg.SetSecurityHeaders {
 		router.Use(SecHeadersMiddleware)
