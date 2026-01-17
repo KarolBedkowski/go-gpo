@@ -254,12 +254,17 @@ func newSimpleLogMiddleware(next http.Handler) http.Handler {
 		request = request.WithContext(llog.WithContext(ctx))
 		user, _, _ := request.BasicAuth()
 
-		llog.Info().
+		l := llog.Info().
 			Str("url", request.URL.Redacted()).
 			Str("remote", request.RemoteAddr).
 			Str("method", request.Method).
-			Str("req_user", user).
-			Msgf("Server: request start method=%s url=%q", request.Method, request.URL.Redacted())
+			Str("req_user", user)
+
+		if pip, _ := ctx.Value(ctxProxyRemoteIP).(string); pip != "" {
+			l = l.Str("proxy_remote", pip)
+		}
+
+		l.Msgf("Server: request start method=%s url=%q", request.Method, request.URL.Redacted())
 
 		lrw := &logResponseWriter{ResponseWriter: writer, status: 0, size: 0}
 
@@ -305,19 +310,22 @@ func newFullLogMiddleware(next http.Handler) http.Handler {
 		llog := log.With().Str(common.LogKeyReqID, requestID.String()).Logger()
 		request = request.WithContext(llog.WithContext(ctx))
 		user, _, _ := request.BasicAuth()
-
-		llog.Info().
+		l := llog.Info().
 			Str("url", request.URL.Redacted()).
 			Str("remote", request.RemoteAddr).
 			Str("method", request.Method).
-			Str("req_user", user).
-			Msgf("Server: request start method=%s url=%q", request.Method, request.URL.Redacted())
+			Str("req_user", user)
+
+		if pip, _ := ctx.Value(ctxProxyRemoteIP).(string); pip != "" {
+			l = l.Str("proxy_remote", pip)
+		}
+
+		l.Msgf("Server: request start method=%s url=%q", request.Method, request.URL.Redacted())
 
 		var reqBody, respBody bytes.Buffer
 
 		request.Body = io.NopCloser(io.TeeReader(request.Body, &reqBody))
 		lrw := middleware.NewWrapResponseWriter(writer, request.ProtoMajor)
-
 		lrw.Tee(&respBody)
 
 		defer func() {
@@ -368,13 +376,20 @@ func newVerySimpleLogMiddleware(name string) func(http.Handler) http.Handler {
 				dur := time.Since(start)
 
 				loglevel, _ := mapStatusToLogLevel(lrw.status)
-				llog.WithLevel(loglevel).
+				l := llog.WithLevel(loglevel).
 					Str("url", request.URL.Redacted()).
 					Int("status", lrw.status).
 					Int("size", lrw.size).
 					Int64("duration", dur.Milliseconds()).
-					Msgf(name+": request finished method=%s url=%q status=%d",
-						request.Method, request.URL.Redacted(), lrw.status, dur)
+					Str("remote", request.RemoteAddr).
+					Str("method", request.Method)
+
+				if pip, _ := ctx.Value(ctxProxyRemoteIP).(string); pip != "" {
+					l = l.Str("proxy_remote", pip)
+				}
+
+				l.Msgf(name+": request finished method=%s url=%q status=%d",
+					request.Method, request.URL.Redacted(), lrw.status, dur)
 			}()
 
 			next.ServeHTTP(lrw, request)
@@ -558,25 +573,41 @@ var realIPHeaders = []string{ //nolint:gochecknoglobals
 	http.CanonicalHeaderKey("X-Real-IP"),
 }
 
-func RealIPMiddleware(handler http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		ctx = context.WithValue(ctx, ctxProxyRemoteIP, r.RemoteAddr)
+func newRealIPMiddleware(cfg *config.ServerConf) func(http.Handler) http.Handler {
+	return func(handler http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if !cfg.AuthProxyRequest(r.RemoteAddr) {
+				handler.ServeHTTP(w, r)
 
-		for _, header := range realIPHeaders {
-			v := r.Header.Get(header)
-			if v == "" {
-				continue
+				return
 			}
 
-			ip, _, _ := strings.Cut(v, ",")
-			if ip != "" && net.ParseIP(ip) == nil {
-				r.RemoteAddr = ip
+			ctx := r.Context()
 
-				break
+			// keep original remote addr in ctx
+			ctx = context.WithValue(ctx, ctxProxyRemoteIP, r.RemoteAddr)
+
+			if rip := findRealIP(r); rip != "" {
+				r.RemoteAddr = rip
 			}
+
+			handler.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
+func findRealIP(r *http.Request) string {
+	for _, header := range realIPHeaders {
+		v := r.Header.Get(header)
+		if v == "" {
+			continue
 		}
 
-		handler.ServeHTTP(w, r.WithContext(ctx))
-	})
+		ip, _, _ := strings.Cut(v, ",")
+		if ip != "" && net.ParseIP(ip) == nil {
+			return ip
+		}
+	}
+
+	return ""
 }

@@ -126,8 +126,8 @@ func createRoutes(injector do.Injector, router chi.Router, cfg *config.ServerCon
 	webroot := cfg.MainServer.WebRoot
 
 	router.Group(func(group chi.Router) {
-		if cfg.AuthMethod == "proxy" {
-			group.Use(RealIPMiddleware)
+		if cfg.ProxyAccessList != "" {
+			group.Use(newRealIPMiddleware(cfg))
 		}
 
 		group.Use(hlog.RequestIDHandler("req_id", "Request-Id"))

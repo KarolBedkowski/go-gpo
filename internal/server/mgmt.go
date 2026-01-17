@@ -35,9 +35,8 @@ func NewMgmt(injector do.Injector) (*MgmtServer, error) {
 
 	// routes
 	router := chi.NewRouter()
-	router.Use(middleware.Heartbeat(cfg.MgmtServer.WebRoot + "/ping"))
 	router.Use(middleware.RealIP)
-	router.Use(newRecoverMiddleware)
+	router.Use(middleware.Heartbeat(cfg.MgmtServer.WebRoot + "/ping"))
 
 	createMgmtRouters(injector, router, cfg, cfg.MgmtServer)
 
@@ -103,6 +102,8 @@ func createMgmtRouters(injector do.Injector, router *chi.Mux, cfg *config.Server
 	router.Group(func(group chi.Router) {
 		group.Use(hlog.RequestIDHandler("req_id", "Request-Id"))
 		group.Use(newVerySimpleLogMiddleware("MgmtServer"))
+		group.Use(newRecoverMiddleware)
+		group.Use(middleware.CleanPath)
 		group.Use(newAuthDebugMiddleware(cfg))
 
 		if cfg.DebugFlags.HasFlag(config.DebugDo) {
@@ -132,7 +133,7 @@ func newHealthChecker(injector do.Injector, cfg *config.ServerConf) http.Handler
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Logger.Debug().Msgf("remote %v", r.RemoteAddr)
 
-		// access to /health only from localhost
+		// access to /health only from selected networks
 		if _, access := cfg.AuthMgmtRequest(r); !access {
 			w.WriteHeader(http.StatusForbidden)
 

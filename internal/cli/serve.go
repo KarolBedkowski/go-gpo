@@ -133,10 +133,11 @@ func newStartServerCmd() *cli.Command { //nolint:funlen
 				Config:  cli.StringConfig{TrimSpace: true},
 			},
 			&cli.StringFlag{
-				Name:    "auth-proxy-access-list",
-				Value:   "",
-				Usage:   "list of ip or networks separated by ',' used as proxy for proxy auth-method",
-				Sources: cli.EnvVars("GOGPO_AUTH_PROXY_ACCESS_LIST"),
+				Name:  "proxy-list",
+				Value: "",
+				Usage: "list of ip or networks separated by ',' of reverse proxy in front of go-gpo. " +
+					"Required for proxy auth-method.",
+				Sources: cli.EnvVars("GOGPO_PROXY_LIST"),
 				Config:  cli.StringConfig{TrimSpace: true},
 			},
 		},
@@ -171,7 +172,7 @@ func startServerCmd(ctx context.Context, clicmd *cli.Command, rootInjector do.In
 
 		AuthMethod:      clicmd.String("auth-method"),
 		ProxyUserHeader: clicmd.String("auth-proxy-user-header"),
-		ProxyAccessList: clicmd.String("auth-proxy-access-list"),
+		ProxyAccessList: clicmd.String("proxy-list"),
 	}
 
 	if err := serverConf.Validate(); err != nil {
@@ -198,6 +199,7 @@ func (s *Server) start(ctx context.Context, injector do.Injector, cfg *config.Se
 	logger := log.Ctx(ctx)
 	logger.Log().Msgf("Starting go-gpo (%s)...", config.VersionString)
 	logger.Debug().Msgf("Server: debug_flags=%q", cfg.DebugFlags)
+	logger.Debug().Object("config", cfg).Msgf("Server: config")
 
 	s.startSystemdWatchdog(logger)
 

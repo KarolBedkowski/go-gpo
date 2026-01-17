@@ -14,7 +14,6 @@ import (
 	"strings"
 
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 )
 
@@ -47,6 +46,14 @@ func (c *ListenConf) UseSecureCookie() bool {
 	return c.TLSKey != "" || c.CookieSecure
 }
 
+func (c *ListenConf) MarshalZerologObject(event *zerolog.Event) {
+	event.Str("address", c.Address).
+		Str("webroot", c.WebRoot).
+		Str("tls_key", c.TLSKey).
+		Str("tls_cert", c.TLSCert).
+		Bool("cookie_secure", c.CookieSecure)
+}
+
 //-------------------------------------------------------------
 
 // ServerConf configure all web/api/mgmt servers.
@@ -69,7 +76,7 @@ type ServerConf struct {
 	proxyAccessList *AccessList
 }
 
-func (c *ServerConf) Validate() error {
+func (c *ServerConf) Validate() error { //nolint:cyclop
 	if err := c.MainServer.Validate(); err != nil {
 		return fmt.Errorf("validate main server configuration failed: %w", err)
 	}
@@ -87,8 +94,6 @@ func (c *ServerConf) Validate() error {
 		}
 
 		c.mgmtAccessList = al
-
-		log.Logger.Debug().Object("debugAccessList", al).Msg("debug access list configured")
 	}
 
 	switch c.SessionStore {
@@ -98,6 +103,15 @@ func (c *ServerConf) Validate() error {
 		// ok
 	default:
 		return aerr.ErrValidation.WithUserMsg("invalid session store parameter")
+	}
+
+	if c.ProxyAccessList != "" {
+		al, err := NewAccessList(c.ProxyAccessList)
+		if err != nil {
+			return fmt.Errorf("validate proxy access list failed: %w", err)
+		}
+
+		c.proxyAccessList = al
 	}
 
 	if err := c.validateAuth(); err != nil {
@@ -113,6 +127,18 @@ func (c *ServerConf) SeparateMgmtEnabled() bool {
 
 func (c *ServerConf) MgmtEnabledOnMainServer() bool {
 	return c.MgmtServer.Address != "" && c.MgmtServer.Address == c.MainServer.Address
+}
+
+func (c *ServerConf) MarshalZerologObject(event *zerolog.Event) {
+	event.Bool("metrics_enabled", c.EnableMetrics).
+		Object("mgmt_acl", c.mgmtAccessList).
+		Object("proxy_list", c.proxyAccessList).
+		Str("auth_method", c.AuthMethod).
+		Str("proxy_user_header", c.ProxyUserHeader).
+		Bool("sec_headers", c.SetSecurityHeaders).
+		Str("session_store", c.SessionStore).
+		Object("main_server", &c.MainServer).
+		Object("mgmt_server", &c.MgmtServer)
 }
 
 //-------------------------------------------------------------
@@ -150,7 +176,7 @@ func (c *ServerConf) AuthMgmtRequest(req *http.Request) (bool, bool) {
 }
 
 func (c *ServerConf) AuthProxyRequest(remoteAddr string) bool {
-	if remoteAddr == "" {
+	if c.proxyAccessList == nil || remoteAddr == "" {
 		return false
 	}
 
@@ -175,18 +201,9 @@ func (c *ServerConf) validateAuth() error {
 			return aerr.ErrValidation.WithUserMsg("missing proxy user header")
 		}
 
-		if c.ProxyAccessList == "" {
-			return aerr.ErrValidation.WithUserMsg("missing proxy access list")
+		if c.proxyAccessList == nil || c.proxyAccessList.Len() == 0 {
+			return aerr.ErrValidation.WithUserMsg("missing proxy list")
 		}
-
-		al, err := NewAccessList(c.ProxyAccessList)
-		if err != nil {
-			return fmt.Errorf("validate proxy access list failed: %w", err)
-		}
-
-		c.proxyAccessList = al
-
-		log.Logger.Debug().Object("proxyAccessList", al).Msg("proxy access list configured")
 	}
 
 	return nil
@@ -248,7 +265,13 @@ func (a *AccessList) HasAccess(ip net.IP) bool {
 	return false
 }
 
+func (a *AccessList) Len() int {
+	return len(a.AllowedNets) + len(a.AllowedIPs)
+}
+
 func (a *AccessList) MarshalZerologObject(event *zerolog.Event) {
-	event.Interface("allowed_ips", a.AllowedIPs).
-		Interface("allowed_nets", a.AllowedNets)
+	if a != nil {
+		event.Interface("allowed_ips", a.AllowedIPs).
+			Interface("allowed_nets", a.AllowedNets)
+	}
 }
