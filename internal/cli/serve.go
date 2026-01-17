@@ -108,6 +108,11 @@ func newStartServerCmd() *cli.Command { //nolint:funlen
 				Sources: cli.EnvVars("GOGPO_SESSION_STORE"),
 				Config:  cli.StringConfig{TrimSpace: true},
 			},
+			&cli.BoolFlag{
+				Name:    "set-security-headers",
+				Usage:   "enable add some http security related headers",
+				Sources: cli.EnvVars("GOGPO_SET_SECURITY_HEADERS"),
+			},
 		},
 		Action: wrap(startServerCmd),
 	}
@@ -132,10 +137,11 @@ func startServerCmd(ctx context.Context, clicmd *cli.Command, rootInjector do.In
 			Address: strings.TrimSpace(clicmd.String("mgmt-address")),
 			// mgmt not use for now tls/webroot/cookie
 		},
-		DebugFlags:     config.NewDebugFLags(clicmd.String("debug")),
-		EnableMetrics:  clicmd.Bool("enable-metrics"),
-		MgmtAccessList: clicmd.String("mgmt-access-list"),
-		SessionStore:   clicmd.String("session-store"),
+		DebugFlags:         config.NewDebugFLags(clicmd.String("debug")),
+		EnableMetrics:      clicmd.Bool("enable-metrics"),
+		MgmtAccessList:     clicmd.String("mgmt-access-list"),
+		SessionStore:       clicmd.String("session-store"),
+		SetSecurityHeaders: clicmd.Bool("set-security-headers"),
 	}
 
 	if err := serverConf.Validate(); err != nil {

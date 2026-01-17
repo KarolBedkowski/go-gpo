@@ -48,13 +48,16 @@ func New(injector do.Injector) (*Server, error) {
 	web := do.MustInvoke[gpoweb.WEB](injector)
 	sessionMW := do.MustInvoke[sessionMiddleware](injector)
 	logMW := do.MustInvoke[logMiddleware](injector)
-
 	webroot := cfg.MainServer.WebRoot
 
 	// routes
 	router := chi.NewRouter()
 	router.Use(middleware.Heartbeat(webroot + "/ping"))
 	router.Use(middleware.RealIP)
+
+	if cfg.SetSecurityHeaders {
+		router.Use(SecHeadersMiddleware)
+	}
 
 	router.Group(func(group chi.Router) {
 		group.Use(hlog.RequestIDHandler("req_id", "Request-Id"))

@@ -58,7 +58,8 @@ type ServerConf struct {
 	EnableMetrics  bool
 	MgmtAccessList string
 
-	SessionStore string
+	SetSecurityHeaders bool
+	SessionStore       string
 
 	mgmtAccessList *AccessList
 }

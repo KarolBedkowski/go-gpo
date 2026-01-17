@@ -433,3 +433,27 @@ func newAuthDebugMiddleware(c *config.ServerConf) func(http.Handler) http.Handle
 		})
 	}
 }
+
+//-------------------------------------------------------------
+
+// SecHeadersMiddleware set response headers related to security.
+// https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Headers_Cheat_Sheet.html
+func SecHeadersMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := w.Header()
+		h.Add("X-Frame-Options", "DENY")
+		h.Add("X-Content-Type-Options", "nosniff")
+		h.Add("Strict-Transport-Security", "max-age=31536000; preload")
+		h.Add("X-DNS-Prefetch-Control", "off")
+		h.Add("X-Download-Options", "noopen")
+		h.Add("Cross-Origin-Opener-Policy", "same-origin")
+		h.Add("Cross-Origin-Embedder-Policy", "require-corp")
+		h.Add("Cross-Origin-Resource-Policy", "same-site")
+		h.Add("Permissions-Policy", "interest-cohort=()")
+		h.Add("Content-Security-Policy",
+			"frame-ancestors 'self'; default-src 'self'; "+
+				"img-src 'self; object-src 'none'; script-src 'self'; base-uri 'self';")
+
+		next.ServeHTTP(w, r)
+	})
+}
