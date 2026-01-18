@@ -97,16 +97,11 @@ func (a basicAuthenticator) handle(next http.Handler) http.Handler {
 
 		defer common.NewRegion(ctx, "authenticator handle").End()
 
-		if sessionuser == "" && !basicAuthOk {
-			// no valid session, no auth, continue to next handler
+		// (no valid session, no auth, continue to next handler) or
+		// (session is valid and (there is no new auth or there is auth but username is not changed))
+		// - continue
+		if (sessionuser == "" && !basicAuthOk) || (sessionuser != "" && (!basicAuthOk || username == sessionuser)) {
 			next.ServeHTTP(w, r.WithContext(common.ContextWithUser(ctx, username)))
-
-			return
-		}
-
-		// if session is valid and (there is no new auth or there is auth but username is not changed) - continue
-		if sessionuser != "" && (!basicAuthOk || username == sessionuser) {
-			next.ServeHTTP(w, r.WithContext(common.ContextWithUser(ctx, sessionuser)))
 
 			return
 		}
@@ -116,20 +111,19 @@ func (a basicAuthenticator) handle(next http.Handler) http.Handler {
 		switch _, err := a.usersSrv.LoginUser(ctx, username, password); {
 		case err == nil:
 			// no error login/check user - continue
-			logger.Info().Str(common.LogKeyAuthResult, common.LogAuthResultSuccess).
-				Msgf("Authenticator: user authenticated user_name=%s", username)
-
 			_ = sess.Set("user", username)
 
+			logger.Info().Str(common.LogKeyAuthResult, common.LogAuthResultSuccess).
+				Msgf("Authenticator: user authenticated user_name=%s", username)
 			common.TraceLazyPrintf(ctx, "Authenticator: user authenticated")
 			next.ServeHTTP(w, r.WithContext(common.ContextWithUser(ctx, username)))
+
+			return
 		case aerr.HasTag(err, common.AuthenticationError):
-			logger.Info().Err(err).Str(common.LogKeyUserName, username).
+			logger.Info().Str(common.LogKeyUserName, username).
 				Str(common.LogKeyAuthResult, common.LogAuthResultFailed).
-				Msgf("Authenticator: user authentication failed user_name=%s: %s", username, err)
-			// destroy session
-			sess.Flush()
-			_ = sess.Destroy(w, r)
+				Str(common.LogKeyAuthFailReason, err.Error()).
+				Msgf("Authenticator: user authentication failed user_name=%s error=%q", username, err)
 
 			common.TraceLazyPrintf(ctx, "Authenticator: auth failed")
 			w.Header().Add("WWW-Authenticate", "Basic realm=\"go-gpo\"")
@@ -139,11 +133,18 @@ func (a basicAuthenticator) handle(next http.Handler) http.Handler {
 			logger.Error().Err(err).Msgf("Authenticator: internal error user_name=%s error=%q", username, err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
+
+		// destroy session
+		sess.Flush()
+		_ = sess.Destroy(w, r)
 	})
 }
 
 //-------------------------------------------------------------
 
+// proxyAuthenticator use reverse proxy on front of go-gpo to authenticate users.
+// User name is read from defined header.
+// Proxy address must be on list accepted proxy ip/nets.
 type proxyAuthenticator struct {
 	usersSrv *service.UsersSrv
 	cfg      *config.ServerConf
@@ -157,6 +158,9 @@ func (p proxyAuthenticator) handle(next http.Handler) http.Handler {
 			Str("sid", sess.ID()).Str(common.LogKeyUserName, sessionuser).Logger()
 		ctx := logger.WithContext(r.Context())
 
+		defer common.NewRegion(ctx, "ProxyAuthenticator handle").End()
+
+		// check is request from known proxy address; if not - reject request.
 		proxyip, _ := ctx.Value(ctxProxyRemoteIP).(string)
 		if !p.cfg.AuthProxyRequest(proxyip) {
 			logger.Info().Msgf("ProxyAuthenticator: unknown proxy=%s", proxyip)
@@ -166,19 +170,12 @@ func (p proxyAuthenticator) handle(next http.Handler) http.Handler {
 			return
 		}
 
-		defer common.NewRegion(ctx, "ProxyAuthenticator handle").End()
-
 		username := r.Header.Get(p.cfg.ProxyUserHeader)
-		if sessionuser == "" && username == "" {
-			// no valid session, no auth, continue to next handler
+		// (no valid session and no auth) or
+		// (if session is valid and (there is no new auth or there is auth but username is not changed))
+		// - continue
+		if (sessionuser == "" && username == "") || (sessionuser != "" && (username == "" || username == sessionuser)) {
 			next.ServeHTTP(w, r.WithContext(common.ContextWithUser(ctx, username)))
-
-			return
-		}
-
-		// if session is valid and (there is no new auth or there is auth but username is not changed) - continue
-		if sessionuser != "" && (username == "" || username == sessionuser) {
-			next.ServeHTTP(w, r.WithContext(common.ContextWithUser(ctx, sessionuser)))
 
 			return
 		}
@@ -188,20 +185,20 @@ func (p proxyAuthenticator) handle(next http.Handler) http.Handler {
 		switch _, err := p.usersSrv.CheckUser(ctx, username); {
 		case err == nil:
 			// no error login/check user - continue
-			logger.Info().Str(common.LogKeyAuthResult, common.LogAuthResultSuccess).Str("proxy_ip", proxyip).
-				Msgf("ProxyAuthenticator: user authenticated user_name=%s", username)
-
 			_ = sess.Set("user", username)
 
+			logger.Info().Str(common.LogKeyAuthResult, common.LogAuthResultSuccess).Str("proxy_ip", proxyip).
+				Msgf("ProxyAuthenticator: user authenticated user_name=%s", username)
 			common.TraceLazyPrintf(ctx, "ProxyAuthenticator: user authenticated")
 			next.ServeHTTP(w, r.WithContext(common.ContextWithUser(ctx, username)))
+
+			return
 		case aerr.HasTag(err, common.AuthenticationError):
-			logger.Info().Err(err).Str(common.LogKeyUserName, username).
+			// invalid user destroy session
+			logger.Info().Str(common.LogKeyUserName, username).
 				Str(common.LogKeyAuthResult, common.LogAuthResultFailed).Str("proxy_ip", proxyip).
-				Msgf("ProxyAuthenticator: user authentication failed user_name=%s: %s", username, err)
-			// destroy session
-			sess.Flush()
-			_ = sess.Destroy(w, r)
+				Str(common.LogKeyAuthFailReason, err.Error()).
+				Msgf("ProxyAuthenticator: user authentication failed user_name=%s error=%q", username, err)
 
 			common.TraceLazyPrintf(ctx, "ProxyAuthenticator: auth failed")
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
@@ -210,6 +207,9 @@ func (p proxyAuthenticator) handle(next http.Handler) http.Handler {
 			logger.Error().Err(err).Msgf("ProxyAuthenticator: internal error user_name=%s error=%q", username, err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
+
+		sess.Flush()
+		_ = sess.Destroy(w, r)
 	})
 }
 
@@ -573,6 +573,10 @@ var realIPHeaders = []string{ //nolint:gochecknoglobals
 	http.CanonicalHeaderKey("X-Real-IP"),
 }
 
+// newRealIPMiddleware create new middleware that replace http.Request RemoteAddr
+// with value from one of headers that can set reverse proxy on front of go-gpo.
+// This happen only if original RemoteAddr is one of defined in proxy lists.
+// Original RemoteAddr is put into context.
 func newRealIPMiddleware(cfg *config.ServerConf) func(http.Handler) http.Handler {
 	return func(handler http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -604,7 +608,7 @@ func findRealIP(r *http.Request) string {
 		}
 
 		ip, _, _ := strings.Cut(v, ",")
-		if ip != "" && net.ParseIP(ip) == nil {
+		if ip != "" && net.ParseIP(ip) != nil {
 			return ip
 		}
 	}
