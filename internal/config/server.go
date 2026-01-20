@@ -39,11 +39,11 @@ func (c *ListenConf) Validate() error {
 }
 
 func (c *ListenConf) TLSEnabled() bool {
-	return c.TLSKey != ""
+	return c.TLSKey != "" && c.TLSCert != ""
 }
 
 func (c *ListenConf) UseSecureCookie() bool {
-	return c.TLSKey != "" || c.CookieSecure
+	return (c.TLSKey != "" && c.TLSCert != "") || c.CookieSecure
 }
 
 func (c *ListenConf) MarshalZerologObject(event *zerolog.Event) {
