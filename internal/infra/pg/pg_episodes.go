@@ -65,7 +65,11 @@ func (s Repository) ListEpisodeActions(
 	limit uint,
 ) ([]model.Episode, error) {
 	if aggregated {
-		return s.listEpisodeActionsAggregated(ctx, userid, deviceid, podcastid, since, limit, inverse)
+		if deviceid != nil {
+			return s.listEpisodeActionsAggregatedDev(ctx, userid, *deviceid, podcastid, since, limit, inverse)
+		}
+
+		return s.listEpisodeActionsAggregated(ctx, userid, podcastid, since, limit, inverse)
 	}
 
 	return s.listEpisodeActions(ctx, userid, deviceid, podcastid, since, limit, inverse)
@@ -110,13 +114,13 @@ func (s Repository) listEpisodeActions(
 	}
 
 	if podcastid != nil {
-		query += " AND e.podcast_id = ?"
-		args = append(args, *podcastid) //nolint:wsl_v5
+		query += " AND e.podcast_id = ?" //nolint:goconst
+		args = append(args, *podcastid)  //nolint:wsl_v5
 	}
 
 	query += " ORDER BY eh.updated_at"
 	if inverse {
-		query += " DESC"
+		query += " DESC" //nolint:goconst
 	}
 
 	if limit > 0 {
@@ -143,16 +147,16 @@ func (s Repository) listEpisodeActions(
 }
 
 // listEpisodeActionsAggregated return list of last action for each podcast for user, and optionally
-// for device and podcastid. If deviceid is given, return actions from OTHER than given devices.
+// for device and podcastid.
 // Episodes are sorted by updated_at asc.
 func (s Repository) listEpisodeActionsAggregated( //nolint:funlen
 	ctx context.Context,
-	userid int64, deviceid, podcastid *int64,
+	userid int64, podcastid *int64,
 	since time.Time,
 	limit uint, inverse bool,
 ) ([]model.Episode, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Int64("user_id", userid).Any("podcast_id", podcastid).Any("device_id", deviceid).
+	logger.Debug().Int64("user_id", userid).Any("podcast_id", podcastid).
 		Msgf("pg.Repository: get episodes since=%s aggregated=true", since)
 
 	// ? because of rebind
@@ -162,12 +166,6 @@ func (s Repository) listEpisodeActionsAggregated( //nolint:funlen
 	if !since.IsZero() {
 		epArgs += " AND e.updated_at > ? "
 		args = append(args, since) //nolint:wsl_v5
-	}
-
-	// TODO: special case - look into history?
-	if deviceid != nil {
-		epArgs += " AND (e.device_id != ? OR e.device_id is NULL) "
-		args = append(args, *deviceid) //nolint:wsl_v5
 	}
 
 	if podcastid != nil {
@@ -214,6 +212,82 @@ func (s Repository) listEpisodeActionsAggregated( //nolint:funlen
 	}
 
 	logger.Debug().Msgf("pg.Repository: get episodes - found=%d", len(res.Episodes))
+
+	return res.Episodes, nil
+}
+
+// listEpisodeActionsAggregatedDev return list of last action for each podcast for user and device
+// and optionally podcastid. Return actions from OTHER than given devices.
+// Episodes are sorted by updated_at asc.
+func (s Repository) listEpisodeActionsAggregatedDev( //nolint:funlen
+	ctx context.Context,
+	userid, deviceid int64, podcastid *int64,
+	since time.Time,
+	limit uint, inverse bool,
+) ([]model.Episode, error) {
+	logger := log.Ctx(ctx)
+	logger.Debug().Int64("user_id", userid).Any("podcast_id", podcastid).Int64("device_id", deviceid).
+		Msgf("pg.Repository: get episodes for device=%d since=%s aggregated=true", deviceid, since)
+
+	// ? because of rebind
+	epArgs := ""
+	args := []any{deviceid, userid}
+
+	if !since.IsZero() {
+		epArgs += " AND e.updated_at > ? "
+		args = append(args, since) //nolint:wsl_v5
+	}
+
+	if podcastid != nil {
+		epArgs += " AND e.podcast_id = ?"
+		args = append(args, *podcastid) //nolint:wsl_v5
+	}
+
+	query := `
+		SELECT p.url AS "podcast.url", p.title AS "podcast.title", p.id AS "podcast.id",
+			e.id, e.podcast_id, e.url, e.title , eh.action, eh.started, eh.position, eh.total, e.guid,
+			eh.created_at, eh.updated_at, eh.device_id,
+			d.name AS "device.name", d.id AS "device.id"
+		FROM podcasts p
+		JOIN episodes e ON e.podcast_id  = p.id
+		JOIN lateral (
+			SELECT eh.action, eh.started, eh.position, eh.total, eh.created_at, eh.updated_at, eh.device_id
+			FROM episodes_hist eh
+			WHERE eh.episode_id = e.id AND (e.device_id != ? OR e.device_id is NULL)
+			ORDER BY eh.updated_at DESC
+			LIMIT 1
+		) eh ON true
+		LEFT JOIN devices d ON d.id=eh.device_id
+		WHERE p.user_id = ? ` + epArgs + `
+		ORDER BY eh.updated_at`
+
+	if inverse {
+		query += " DESC"
+	}
+
+	if limit > 0 {
+		query += " LIMIT " + strconv.FormatUint(uint64(limit), 10)
+	}
+
+	logger.Debug().Msgf("pg.Repository: get episodes for dev - sql=%s args=%v", query, args)
+
+	dbctx := db.MustCtx(ctx)
+
+	rows, err := dbctx.QueryxContext(ctx, sqlx.Rebind(sqlx.DOLLAR, query), args...)
+	if err != nil {
+		return nil, aerr.Wrapf(err, "query episodes failed").WithTag(aerr.InternalError).
+			WithMeta("sql", query, "args", args)
+	}
+
+	defer rows.Close()
+
+	res := newEpisodeCollector()
+	if err := res.loadRows(rows); err != nil {
+		return nil, aerr.Wrapf(err, "query episodes failed, load rows error").WithTag(aerr.InternalError).
+			WithMeta("sql", query, "args", args)
+	}
+
+	logger.Debug().Msgf("pg.Repository: get episodes for dev - found=%d", len(res.Episodes))
 
 	return res.Episodes, nil
 }
