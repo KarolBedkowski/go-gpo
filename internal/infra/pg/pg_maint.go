@@ -42,7 +42,7 @@ func (Repository) Maintenance(ctx context.Context) error {
 	}
 
 	// print some stats
-	var numEpisodes, numPodcasts int
+	var numEpisodes, numPodcasts, numEpisodeHist int
 	if err := dbi.GetContext(ctx, &numEpisodes, "SELECT count(*) FROM episodes"); err != nil {
 		return aerr.ApplyFor(aerr.ErrDatabase, err, "execute maintenance - count episodes failed")
 	}
@@ -51,8 +51,12 @@ func (Repository) Maintenance(ctx context.Context) error {
 		return aerr.ApplyFor(aerr.ErrDatabase, err, "execute maintenance - count podcasts failed")
 	}
 
-	logger.Info().Msgf("pg.Repository: database maintenance finished; podcasts=%d; episodes=%d",
-		numPodcasts, numEpisodes)
+	if err := dbi.GetContext(ctx, &numEpisodeHist, "SELECT count(*) FROM episodes_hist"); err != nil {
+		return aerr.ApplyFor(aerr.ErrDatabase, err, "execute maintenance - count episodes hist failed")
+	}
+
+	logger.Info().Msgf("pg.Repository: database maintenance finished; podcasts=%d; episodes=%d, episodes_hist=%d",
+		numPodcasts, numEpisodes, numEpisodeHist)
 
 	return nil
 }
@@ -62,11 +66,13 @@ func (Repository) Maintenance(ctx context.Context) error {
 //nolint:gochecknoglobals
 var maintScripts = []string{
 	// delete play actions when for given episode never play action exists
-	`DELETE FROM episodes AS e
-		WHERE action = 'play'
+	`
+	DELETE FROM episodes_hist AS e
+	WHERE action = 'play'
 		AND updated_at < now() - INTERVAL '14 day'
 		AND EXISTS (
-			SELECT NULL FROM episodes AS ed
-			WHERE ed.url = e.url AND ed.action = 'play' AND ed.updated_at > e.updated_at
-		);`,
+			SELECT NULL FROM episodes_hist AS eh
+			WHERE eh.episode_id  = e.episode_id AND eh.action = 'play' AND eh.updated_at > e.updated_at
+		);
+	`,
 }
