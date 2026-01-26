@@ -64,31 +64,56 @@ func (s Repository) ListEpisodeActions(
 	aggregated, inverse bool,
 	limit uint,
 ) ([]model.Episode, error) {
-	if aggregated {
-		if deviceid != nil {
-			return s.listEpisodeActionsAggregatedDev(ctx, userid, *deviceid, podcastid, since, limit, inverse)
-		}
-
-		return s.listEpisodeActionsAggregated(ctx, userid, podcastid, since, limit, inverse)
-	}
-
-	return s.listEpisodeActions(ctx, userid, deviceid, podcastid, since, limit, inverse)
-}
-
-// ListEpisodeActions return list of all actions for podcasts of user, and optionally for device
-// and podcastid.
-// If deviceid is given, return actions from OTHER than given devices.
-// Episodes are sorted by updated_at asc.
-func (s Repository) listEpisodeActions(
-	ctx context.Context,
-	userid int64, deviceid, podcastid *int64,
-	since time.Time,
-	limit uint, inverse bool,
-) ([]model.Episode, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Any("podcast_id", podcastid).Any("device_id", deviceid).
 		Msgf("pg.Repository: get episodes since=%s", since)
 
+	var (
+		query string
+		args  []any
+	)
+
+	switch {
+	case aggregated && deviceid != nil:
+		query, args = s.listEpisodeActionsAggregatedDev(userid, *deviceid, podcastid, since, limit, inverse)
+	case aggregated:
+		query, args = s.listEpisodeActionsAggregated(userid, podcastid, since, limit, inverse)
+	default:
+		query, args = s.listEpisodeActions(userid, deviceid, podcastid, since, limit, inverse)
+	}
+
+	logger.Debug().Msgf("pg.Repository: get episodes - sql=%s args=%v", query, args)
+
+	dbctx := db.MustCtx(ctx)
+
+	rows, err := dbctx.QueryxContext(ctx, sqlx.Rebind(sqlx.DOLLAR, query), args...)
+	if err != nil {
+		return nil, aerr.Wrapf(err, "query episodes failed").WithTag(aerr.InternalError).
+			WithMeta("sql", query, "args", args)
+	}
+
+	defer rows.Close()
+
+	res := newEpisodeCollector()
+	if err := res.loadRows(rows); err != nil {
+		return nil, aerr.Wrapf(err, "query episodes failed, load rows error").WithTag(aerr.InternalError).
+			WithMeta("sql", query, "args", args)
+	}
+
+	logger.Debug().Msgf("pg.Repository: ListEpisodeActions - found=%d", len(res.Episodes))
+
+	return res.Episodes, nil
+}
+
+// ListEpisodeActions return query for all actions for podcasts of user, and optionally for device
+// and podcastid.
+// If deviceid is given, return actions from OTHER than given devices.
+// Episodes are sorted by updated_at asc.
+func (s Repository) listEpisodeActions(
+	userid int64, deviceid, podcastid *int64,
+	since time.Time,
+	limit uint, inverse bool,
+) (string, []any) {
 	// ? because of rebind
 	query := `
 		SELECT e.id, e.podcast_id, e.url, e.title, eh.action, eh.started, eh.position, eh.total, e.guid,
@@ -101,7 +126,6 @@ func (s Repository) listEpisodeActions(
 		LEFT JOIN devices d ON d.id=eh.device_id
 		WHERE p.user_id=?`
 	args := []any{userid}
-	dbctx := db.MustCtx(ctx)
 
 	if !since.IsZero() {
 		query += " AND eh.updated_at > ? "
@@ -127,38 +151,17 @@ func (s Repository) listEpisodeActions(
 		query += " LIMIT " + strconv.FormatUint(uint64(limit), 10)
 	}
 
-	rows, err := dbctx.QueryxContext(ctx, sqlx.Rebind(sqlx.DOLLAR, query), args...)
-	if err != nil {
-		return nil, aerr.Wrapf(err, "query episodes failed").WithTag(aerr.InternalError).
-			WithMeta("sql", query, "args", args)
-	}
-
-	defer rows.Close()
-
-	res := newEpisodeCollector()
-	if err := res.loadRows(rows); err != nil {
-		return nil, aerr.Wrapf(err, "query episodes failed, load rows error").WithTag(aerr.InternalError).
-			WithMeta("sql", query, "args", args)
-	}
-
-	logger.Debug().Msgf("pg.Repository: get episodes - found=%d", len(res.Episodes))
-
-	return res.Episodes, nil
+	return query, args
 }
 
-// listEpisodeActionsAggregated return list of last action for each podcast for user, and optionally
+// listEpisodeActionsAggregated return query for last action for each podcast for user, and optionally
 // for device and podcastid.
 // Episodes are sorted by updated_at asc.
-func (s Repository) listEpisodeActionsAggregated( //nolint:funlen
-	ctx context.Context,
+func (s Repository) listEpisodeActionsAggregated(
 	userid int64, podcastid *int64,
 	since time.Time,
 	limit uint, inverse bool,
-) ([]model.Episode, error) {
-	logger := log.Ctx(ctx)
-	logger.Debug().Int64("user_id", userid).Any("podcast_id", podcastid).
-		Msgf("pg.Repository: get episodes since=%s aggregated=true", since)
-
+) (string, []any) {
 	// ? because of rebind
 	epArgs := ""
 	args := []any{userid}
@@ -193,42 +196,17 @@ func (s Repository) listEpisodeActionsAggregated( //nolint:funlen
 		query += " LIMIT " + strconv.FormatUint(uint64(limit), 10)
 	}
 
-	logger.Debug().Msgf("pg.Repository: get episodes - sql=%s args=%v", query, args)
-
-	dbctx := db.MustCtx(ctx)
-
-	rows, err := dbctx.QueryxContext(ctx, sqlx.Rebind(sqlx.DOLLAR, query), args...)
-	if err != nil {
-		return nil, aerr.Wrapf(err, "query episodes failed").WithTag(aerr.InternalError).
-			WithMeta("sql", query, "args", args)
-	}
-
-	defer rows.Close()
-
-	res := newEpisodeCollector()
-	if err := res.loadRows(rows); err != nil {
-		return nil, aerr.Wrapf(err, "query episodes failed, load rows error").WithTag(aerr.InternalError).
-			WithMeta("sql", query, "args", args)
-	}
-
-	logger.Debug().Msgf("pg.Repository: get episodes - found=%d", len(res.Episodes))
-
-	return res.Episodes, nil
+	return query, args
 }
 
-// listEpisodeActionsAggregatedDev return list of last action for each podcast for user and device
-// and optionally podcastid. Return actions from OTHER than given devices.
+// listEpisodeActionsAggregatedDev return sql for last action for each podcast for user and device
+// and optionally podcastid. Actions from OTHER than given devices.
 // Episodes are sorted by updated_at asc.
-func (s Repository) listEpisodeActionsAggregatedDev( //nolint:funlen
-	ctx context.Context,
+func (s Repository) listEpisodeActionsAggregatedDev(
 	userid, deviceid int64, podcastid *int64,
 	since time.Time,
 	limit uint, inverse bool,
-) ([]model.Episode, error) {
-	logger := log.Ctx(ctx)
-	logger.Debug().Int64("user_id", userid).Any("podcast_id", podcastid).Int64("device_id", deviceid).
-		Msgf("pg.Repository: get episodes for device=%d since=%s aggregated=true", deviceid, since)
-
+) (string, []any) {
 	// ? because of rebind
 	epArgs := ""
 	args := []any{deviceid, userid}
@@ -250,7 +228,7 @@ func (s Repository) listEpisodeActionsAggregatedDev( //nolint:funlen
 			d.name AS "device.name", d.id AS "device.id"
 		FROM podcasts p
 		JOIN episodes e ON e.podcast_id  = p.id
-		JOIN lateral (
+		JOIN LATERAL (
 			SELECT eh.action, eh.started, eh.position, eh.total, eh.created_at, eh.updated_at, eh.device_id
 			FROM episodes_hist eh
 			WHERE eh.episode_id = e.id AND (e.device_id != ? OR e.device_id is NULL)
@@ -269,27 +247,7 @@ func (s Repository) listEpisodeActionsAggregatedDev( //nolint:funlen
 		query += " LIMIT " + strconv.FormatUint(uint64(limit), 10)
 	}
 
-	logger.Debug().Msgf("pg.Repository: get episodes for dev - sql=%s args=%v", query, args)
-
-	dbctx := db.MustCtx(ctx)
-
-	rows, err := dbctx.QueryxContext(ctx, sqlx.Rebind(sqlx.DOLLAR, query), args...)
-	if err != nil {
-		return nil, aerr.Wrapf(err, "query episodes failed").WithTag(aerr.InternalError).
-			WithMeta("sql", query, "args", args)
-	}
-
-	defer rows.Close()
-
-	res := newEpisodeCollector()
-	if err := res.loadRows(rows); err != nil {
-		return nil, aerr.Wrapf(err, "query episodes failed, load rows error").WithTag(aerr.InternalError).
-			WithMeta("sql", query, "args", args)
-	}
-
-	logger.Debug().Msgf("pg.Repository: get episodes for dev - found=%d", len(res.Episodes))
-
-	return res.Episodes, nil
+	return query, args
 }
 
 func (s Repository) ListFavorites(ctx context.Context, userid int64) ([]model.Episode, error) {
