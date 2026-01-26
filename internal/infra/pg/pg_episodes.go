@@ -315,6 +315,7 @@ func (s Repository) ListFavorites(ctx context.Context, userid int64) ([]model.Ep
 	return episodesFromDB(res), nil
 }
 
+// GetLastEpisodeAction return last episode with action for given user and podcast.
 func (s Repository) GetLastEpisodeAction(ctx context.Context,
 	userid, podcastid int64, excludeDelete bool,
 ) (*model.Episode, error) {
@@ -331,7 +332,9 @@ func (s Repository) GetLastEpisodeAction(ctx context.Context,
 		FROM episodes e
 		JOIN podcasts p ON p.id = e.podcast_id
 		LEFT JOIN devices d ON d.id=e.device_id
-		WHERE p.user_id=$1 AND e.podcast_id = $2 `
+		WHERE p.user_id=$1 AND e.podcast_id = $2
+		ORDER by e.updated_at DESC
+		LIMIT 1`
 
 	dbctx := db.MustCtx(ctx)
 	res := EpisodeDB{}
