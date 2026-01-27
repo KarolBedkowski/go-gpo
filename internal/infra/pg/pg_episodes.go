@@ -40,7 +40,7 @@ func (s Repository) GetEpisode(
 		FROM episodes e
 		JOIN podcasts p on p.id = e.podcast_id
 		LEFT JOIN devices d on d.id = e.device_id
-		WHERE p.user_id=$1 AND e.podcast_id = $2 and (e.url = $3 or e.guid = $4)`
+		WHERE p.user_id=$1 AND p.id = $2 and (e.url = $3 or e.guid = $4)`
 
 	res := EpisodeDB{}
 	dbctx := db.MustCtx(ctx)
@@ -138,8 +138,8 @@ func (s Repository) listEpisodeActions(
 	}
 
 	if podcastid != nil {
-		query += " AND e.podcast_id = ?" //nolint:goconst
-		args = append(args, *podcastid)  //nolint:wsl_v5
+		query += " AND p.id = ?"
+		args = append(args, *podcastid) //nolint:wsl_v5
 	}
 
 	query += " ORDER BY eh.updated_at"
@@ -172,7 +172,7 @@ func (s Repository) listEpisodeActionsAggregated(
 	}
 
 	if podcastid != nil {
-		epArgs += " AND e.podcast_id = ?"
+		epArgs += " AND p.id = ?"
 		args = append(args, *podcastid) //nolint:wsl_v5
 	}
 
@@ -290,7 +290,7 @@ func (s Repository) GetLastEpisodeAction(ctx context.Context,
 		FROM episodes e
 		JOIN podcasts p ON p.id = e.podcast_id
 		LEFT JOIN devices d ON d.id=e.device_id
-		WHERE p.user_id=$1 AND e.podcast_id = $2
+		WHERE p.user_id=$1 AND p.id = $2
 		ORDER by e.updated_at DESC
 		LIMIT 1`
 
