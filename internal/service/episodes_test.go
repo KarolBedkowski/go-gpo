@@ -411,6 +411,112 @@ func TestEpisodesServiceNewDevPodcast(t *testing.T) {
 	assert.Equal(t, episodes[0].Podcast.URL, "http://example.com/p2")
 }
 
+func TestEpisodesServiceGetByPodcast(t *testing.T) {
+	ctx, i := prepareTests(t)
+	episodesSrv := do.MustInvoke[*EpisodesSrv](i)
+	subsSrv := do.MustInvoke[*SubscriptionsSrv](i)
+	_ = prepareTestUser(ctx, t, i, "user1")
+	_ = prepareTestUser(ctx, t, i, "user2")
+	prepareTestDevice(ctx, t, i, "user1", "dev1")
+	prepareTestDevice(ctx, t, i, "user1", "dev2")
+	prepareTestSub(
+		ctx,
+		t,
+		i,
+		"user1",
+		"dev1",
+		"http://example.com/p1",
+		"http://example.com/p2",
+		"http://example.com/p3",
+	)
+
+	episodeActions := prepareEpisodes()
+
+	err := episodesSrv.AddAction(ctx, &command.AddActionCmd{UserName: "user1", Actions: episodeActions})
+	assert.NoErr(t, err)
+
+	podcasts, err := subsSrv.GetUserSubscriptions(ctx, &query.GetUserSubscriptionsQuery{
+		UserName: "user1",
+	})
+	assert.NoErr(t, err)
+
+	podcast, ok := podcasts.FindPodcastByURL("http://example.com/p1")
+	assert.True(t, ok)
+
+	q := query.GetEpisodesByPodcastQuery{
+		PodcastID:  podcast.ID,
+		UserName:   "user1",
+		Aggregated: true,
+	}
+	episodes, err := episodesSrv.GetEpisodesByPodcast(ctx, &q)
+	assert.NoErr(t, err)
+	assert.Equal(t, len(episodes), 2)
+	assert.Equal(t, episodes[0].Podcast.URL, "http://example.com/p1")
+	assert.Equal(t, episodes[0].URL, "http://example.com/p1/ep1")
+	assert.Equal(t, episodes[0].Action, "play")
+	assert.Equal(t, episodes[0].Device.Name, "dev1")
+	assert.Equal(t, episodes[0].Timestamp, time.Date(2025, 1, 3, 3, 4, 5, 0, time.UTC))
+	assert.Equal(t, *episodes[0].Started, 10)
+	assert.Equal(t, *episodes[0].Position, 20)
+	assert.Equal(t, *episodes[0].Total, 300)
+	assert.Equal(t, episodes[1].Podcast.URL, "http://example.com/p1")
+	assert.Equal(t, episodes[1].URL, "http://example.com/p1/ep2")
+	assert.Equal(t, episodes[1].Device.Name, "dev1")
+	assert.Equal(t, episodes[1].Action, "download")
+	assert.Equal(t, episodes[1].Timestamp, time.Date(2025, 1, 4, 3, 4, 5, 0, time.UTC))
+	assert.Equal(t, episodes[1].Started, nil)
+	assert.Equal(t, episodes[1].Position, nil)
+	assert.Equal(t, episodes[1].Total, nil)
+
+	// aggregated should return the same
+	q = query.GetEpisodesByPodcastQuery{
+		PodcastID:  podcast.ID,
+		UserName:   "user1",
+		Aggregated: true,
+	}
+	episodes, err = episodesSrv.GetEpisodesByPodcast(ctx, &q)
+	assert.NoErr(t, err)
+	assert.Equal(t, len(episodes), 2)
+	// list is sorted by updated_at
+	assert.Equal(t, episodes[0].Podcast.URL, "http://example.com/p1")
+	assert.Equal(t, episodes[0].URL, "http://example.com/p1/ep1")
+	assert.Equal(t, episodes[0].Action, "play")
+	assert.Equal(t, episodes[0].Device.Name, "dev1")
+	assert.Equal(t, episodes[0].Timestamp, time.Date(2025, 1, 3, 3, 4, 5, 0, time.UTC))
+	assert.Equal(t, *episodes[0].Started, 10)
+	assert.Equal(t, *episodes[0].Position, 20)
+	assert.Equal(t, *episodes[0].Total, 300)
+	assert.Equal(t, episodes[1].Podcast.URL, "http://example.com/p1")
+	assert.Equal(t, episodes[1].URL, "http://example.com/p1/ep2")
+	assert.Equal(t, episodes[1].Device.Name, "dev1")
+	assert.Equal(t, episodes[1].Action, "download")
+	assert.Equal(t, episodes[1].Timestamp, time.Date(2025, 1, 4, 3, 4, 5, 0, time.UTC))
+	assert.Equal(t, episodes[1].Started, nil)
+	assert.Equal(t, episodes[1].Position, nil)
+	assert.Equal(t, episodes[1].Total, nil)
+
+	// since
+	q = query.GetEpisodesByPodcastQuery{
+		PodcastID: podcast.ID,
+		UserName:  "user1",
+		Since:     time.Date(2025, 1, 3, 10, 4, 5, 0, time.UTC),
+	}
+	episodes, err = episodesSrv.GetEpisodesByPodcast(ctx, &q)
+	assert.NoErr(t, err)
+	assert.Equal(t, len(episodes), 1)
+	// list is sorted by updated_at
+	assert.Equal(t, episodes[0].Podcast.URL, "http://example.com/p1")
+	assert.Equal(t, episodes[0].URL, "http://example.com/p1/ep2")
+	assert.Equal(t, episodes[0].Device.Name, "dev1")
+	assert.Equal(t, episodes[0].Action, "download")
+	assert.Equal(t, episodes[0].Timestamp, time.Date(2025, 1, 4, 3, 4, 5, 0, time.UTC))
+	assert.Equal(t, episodes[0].Started, nil)
+	assert.Equal(t, episodes[0].Position, nil)
+	assert.Equal(t, episodes[0].Total, nil)
+}
+
+// ------------------------------------------------------
+
 func prepareEpisodes() []model.Episode {
 	var started, position, total int32 = 10, 20, 300
 
