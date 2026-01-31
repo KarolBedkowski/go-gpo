@@ -59,6 +59,8 @@ func (s SettingsSrv) GetSettings(ctx context.Context, query *query.SettingsQuery
 			return nil, err
 		}
 
+		common.TraceLazyPrintf(ctx, "LoadSettings: skey prepared")
+
 		settings, err := s.settRepo.GetSettings(ctx, &key)
 		if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err, "failed get list settings")
@@ -86,6 +88,8 @@ func (s SettingsSrv) SaveSettings(ctx context.Context, cmd *command.ChangeSettin
 			return err
 		}
 
+		common.TraceLazyPrintf(ctx, "SaveSettings: skey prepared")
+
 		for skey, value := range settings {
 			key.Key = skey
 
@@ -98,7 +102,7 @@ func (s SettingsSrv) SaveSettings(ctx context.Context, cmd *command.ChangeSettin
 	})
 }
 
-func (s SettingsSrv) load( //nolint:cyclop,funlen
+func (s SettingsSrv) load( //nolint:cyclop
 	ctx context.Context,
 	username, scope, devicename, podcast, episode string,
 ) (model.SettingsKey, error) {
@@ -111,8 +115,6 @@ func (s SettingsSrv) load( //nolint:cyclop,funlen
 		return skey, aerr.ApplyFor(ErrRepositoryError, err)
 	}
 
-	common.TraceLazyPrintf(ctx, "load: user loaded")
-
 	skey.UserID = user.ID
 
 	switch scope {
@@ -124,8 +126,6 @@ func (s SettingsSrv) load( //nolint:cyclop,funlen
 			return skey, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		common.TraceLazyPrintf(ctx, "load: device loaded")
-
 		skey.DeviceID = &device.ID
 
 	case "podcast":
@@ -135,8 +135,6 @@ func (s SettingsSrv) load( //nolint:cyclop,funlen
 		} else if err != nil {
 			return skey, aerr.ApplyFor(ErrRepositoryError, err)
 		}
-
-		common.TraceLazyPrintf(ctx, "load: podcast loaded")
 
 		skey.PodcastID = &p.ID
 
@@ -148,8 +146,6 @@ func (s SettingsSrv) load( //nolint:cyclop,funlen
 			return skey, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		common.TraceLazyPrintf(ctx, "load: podcast loaded")
-
 		skey.PodcastID = &p.ID
 
 		e, err := s.episodesRepo.GetEpisode(ctx, user.ID, p.ID, episode)
@@ -158,8 +154,6 @@ func (s SettingsSrv) load( //nolint:cyclop,funlen
 		} else if err != nil {
 			return skey, aerr.ApplyFor(ErrRepositoryError, err)
 		}
-
-		common.TraceLazyPrintf(ctx, "load: episode loaded")
 
 		skey.EpisodeID = &e.ID
 	case "account":

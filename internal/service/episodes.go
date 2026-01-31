@@ -81,15 +81,11 @@ func (e *EpisodesSrv) GetEpisodesByPodcast(ctx context.Context, query *query.Get
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		common.TraceLazyPrintf(ctx, "GetEpisodesByPodcast: user loaded")
-
 		episodes, err := e.episodesRepo.ListEpisodeActions(ctx, user.ID, nil,
 			&query.PodcastID, query.Since, query.Aggregated, false, query.Limit)
 		if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
-
-		common.TraceLazyPrintf(ctx, "GetEpisodesByPodcast: episodes loaded")
 
 		return episodes, nil
 	})
@@ -97,7 +93,7 @@ func (e *EpisodesSrv) GetEpisodesByPodcast(ctx context.Context, query *query.Get
 
 // AddAction save new actions.
 // Podcasts and devices are cached and - if not exists for requested action - created.
-func (e *EpisodesSrv) AddAction(ctx context.Context, cmd *command.AddActionCmd) error { //nolint:cyclop,funlen
+func (e *EpisodesSrv) AddAction(ctx context.Context, cmd *command.AddActionCmd) error { //nolint:cyclop
 	logger := zerolog.Ctx(ctx)
 	logger.Debug().Str("username", cmd.UserName).
 		Msgf("EpisodesSrv: add actions user_name=%s num_actions=%d", cmd.UserName, len(cmd.Actions))
@@ -114,8 +110,6 @@ func (e *EpisodesSrv) AddAction(ctx context.Context, cmd *command.AddActionCmd) 
 		} else if err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
-
-		common.TraceLazyPrintf(ctx, "AddAction: user loaded")
 
 		// cache devices and podcasts
 		podcastscache, err := e.createPodcastsCache(ctx, user)
@@ -151,13 +145,9 @@ func (e *EpisodesSrv) AddAction(ctx context.Context, cmd *command.AddActionCmd) 
 			episodes[idx] = episode
 		}
 
-		common.TraceLazyPrintf(ctx, "AddAction: episodes prepared")
-
 		if err = e.episodesRepo.SaveEpisode(ctx, user.ID, episodes...); err != nil {
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
-
-		common.TraceLazyPrintf(ctx, "AddAction: episodes saved")
 
 		return nil
 	})
@@ -223,14 +213,10 @@ func (e *EpisodesSrv) GetFavorites(ctx context.Context, username string) ([]mode
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		common.TraceLazyPrintf(ctx, "GetFavorites: user loaded")
-
 		episodes, err := e.episodesRepo.ListFavorites(ctx, user.ID)
 		if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
-
-		common.TraceLazyPrintf(ctx, "GetFavorites: favorite episodes loaded")
 
 		return episodes, nil
 	})

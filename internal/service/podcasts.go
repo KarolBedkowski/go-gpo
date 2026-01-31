@@ -57,16 +57,12 @@ func (p *PodcastsSrv) GetPodcast(ctx context.Context, username string, podcastid
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		common.TraceLazyPrintf(ctx, "GetPodcast: user loaded")
-
 		podcast, err := p.podcastsRepo.GetPodcastByID(ctx, user.ID, podcastid)
 		if errors.Is(err, common.ErrNoData) {
 			return nil, common.ErrUnknownPodcast
 		} else if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
-
-		common.TraceLazyPrintf(ctx, "GetPodcast: podcast loaded")
 
 		return podcast, nil
 	})
@@ -85,14 +81,10 @@ func (p *PodcastsSrv) GetPodcasts(ctx context.Context, username string) ([]model
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		common.TraceLazyPrintf(ctx, "GetPodcasts: user loaded")
-
 		subs, err := p.podcastsRepo.ListSubscribedPodcasts(ctx, user.ID, time.Time{})
 		if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
-
-		common.TraceLazyPrintf(ctx, "GetPodcasts: podcasts loaded")
 
 		return subs, nil
 	})
@@ -171,8 +163,6 @@ func (p *PodcastsSrv) DeletePodcast(ctx context.Context, username string, podcas
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		common.TraceLazyPrintf(ctx, "DeletePodcast: user loaded")
-
 		podcast, err := p.podcastsRepo.GetPodcastByID(ctx, user.ID, podcastid)
 		if errors.Is(err, common.ErrNoData) {
 			return common.ErrUnknownPodcast
@@ -180,11 +170,7 @@ func (p *PodcastsSrv) DeletePodcast(ctx context.Context, username string, podcas
 			return aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		common.TraceLazyPrintf(ctx, "DeletePodcast: podcast loaded")
-
 		err = p.podcastsRepo.DeletePodcast(ctx, podcast.ID)
-
-		common.TraceLazyPrintf(ctx, "DeletePodcast: podcast deleted")
 
 		return err
 	})
