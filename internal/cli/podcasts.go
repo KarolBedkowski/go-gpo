@@ -32,6 +32,10 @@ func newDownloadPodcastsInfoCmd() *cli.Command {
 				Name:  "load-episodes",
 				Usage: "When loading podcast, load also episodes title.",
 			},
+			&cli.BoolFlag{
+				Name:  "load-only-missing",
+				Usage: "Download podcast info only for podcasts without title (do not update).",
+			},
 		},
 		Action: wrap(downloadPodcastsInfoCmd),
 	}
@@ -46,8 +50,9 @@ func downloadPodcastsInfoCmd(ctx context.Context, clicmd *cli.Command, injector 
 	}
 
 	loadepisodes := clicmd.Bool("load-episodes")
+	missingonly := clicmd.Bool("load-only-missing")
 
-	if err := podcastSrv.DownloadPodcastsInfo(ctx, maxAge, loadepisodes); err != nil {
+	if err := podcastSrv.DownloadPodcastsInfo(ctx, maxAge, loadepisodes, missingonly); err != nil {
 		return fmt.Errorf("download podcast info failed: %w", err)
 	}
 

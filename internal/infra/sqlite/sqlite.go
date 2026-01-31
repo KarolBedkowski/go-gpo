@@ -59,7 +59,7 @@ func NewDatabaseI(i do.Injector) (*Database, error) {
 
 func (d *Database) Open(ctx context.Context) (*sqlx.DB, error) {
 	logger := log.Ctx(ctx)
-	logger.Debug().Msgf("connecting to sqlite")
+	logger.Debug().Msgf("connecting to sqlite connstr=%q", d.connstr)
 
 	var err error
 
@@ -234,6 +234,9 @@ func (d *Database) onCloseConn(ctx context.Context, db sqlx.ExecerContext) error
 
 //------------------------------------------------------------------------------
 
+// prepareSqliteConnstr validate `connstr` and -if necessary - add connection options like
+// enabled foreign keys, set journal mode to wal and synchronous to normal. This may be overwrite
+// by connection string.
 func prepareSqliteConnstr(connstr string) (string, error) {
 	if connstr == "" {
 		return "", aerr.ErrInvalidConf.WithUserMsg("invalid (empty) database connection string")

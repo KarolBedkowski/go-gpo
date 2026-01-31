@@ -82,8 +82,6 @@ func (u *UsersSrv) CheckUser(ctx context.Context, username string) (*model.User,
 		return u.usersRepo.GetUser(ctx, username)
 	})
 
-	common.TraceLazyPrintf(ctx, "CheckUser: user loaded")
-
 	if errors.Is(err, common.ErrNoData) {
 		return nil, common.ErrUserNotFound
 	} else if err != nil {

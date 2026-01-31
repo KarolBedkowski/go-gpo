@@ -242,8 +242,6 @@ func (s *SubscriptionsSrv) getSubsctiptions(ctx context.Context, username, devic
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		common.TraceLazyPrintf(ctx, "getSubsctiptions: user loaded")
-
 		if devicename != "" {
 			// validate is device exists when device name is given and mark is seen.
 			_, err := s.getUserDevice(ctx, user.ID, devicename)
@@ -256,8 +254,6 @@ func (s *SubscriptionsSrv) getSubsctiptions(ctx context.Context, username, devic
 		if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
-
-		common.TraceLazyPrintf(ctx, "getSubsctiptions: podcasts loaded")
 
 		return podcasts, nil
 	})

@@ -14,7 +14,6 @@ import (
 	"strings"
 
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 )
 
@@ -40,11 +39,19 @@ func (c *ListenConf) Validate() error {
 }
 
 func (c *ListenConf) TLSEnabled() bool {
-	return c.TLSKey != ""
+	return c.TLSKey != "" && c.TLSCert != ""
 }
 
 func (c *ListenConf) UseSecureCookie() bool {
-	return c.TLSKey != "" || c.CookieSecure
+	return (c.TLSKey != "" && c.TLSCert != "") || c.CookieSecure
+}
+
+func (c *ListenConf) MarshalZerologObject(event *zerolog.Event) {
+	event.Str("address", c.Address).
+		Str("webroot", c.WebRoot).
+		Str("tls_key", c.TLSKey).
+		Str("tls_cert", c.TLSCert).
+		Bool("cookie_secure", c.CookieSecure)
 }
 
 //-------------------------------------------------------------
@@ -58,10 +65,18 @@ type ServerConf struct {
 	EnableMetrics  bool
 	MgmtAccessList string
 
-	mgmtAccessList *AccessList
+	SetSecurityHeaders bool
+	SessionStore       string
+
+	AuthMethod      string
+	ProxyUserHeader string
+	ProxyAccessList string
+
+	mgmtAccessList  *AccessList
+	proxyAccessList *AccessList
 }
 
-func (c *ServerConf) Validate() error {
+func (c *ServerConf) Validate() error { //nolint:cyclop
 	if err := c.MainServer.Validate(); err != nil {
 		return fmt.Errorf("validate main server configuration failed: %w", err)
 	}
@@ -75,12 +90,32 @@ func (c *ServerConf) Validate() error {
 	if c.MgmtAccessList != "" {
 		al, err := NewAccessList(c.MgmtAccessList)
 		if err != nil {
-			return fmt.Errorf("validate access list failed: %w", err)
+			return fmt.Errorf("validate mgmt access list failed: %w", err)
 		}
 
 		c.mgmtAccessList = al
+	}
 
-		log.Logger.Debug().Object("debugAccessList", al).Msg("debug access list configured")
+	switch c.SessionStore {
+	case "":
+		c.SessionStore = "db"
+	case "db", "memory":
+		// ok
+	default:
+		return aerr.ErrValidation.WithUserMsg("invalid session store parameter")
+	}
+
+	if c.ProxyAccessList != "" {
+		al, err := NewAccessList(c.ProxyAccessList)
+		if err != nil {
+			return fmt.Errorf("validate proxy access list failed: %w", err)
+		}
+
+		c.proxyAccessList = al
+	}
+
+	if err := c.validateAuth(); err != nil {
+		return err
 	}
 
 	return nil
@@ -92,6 +127,18 @@ func (c *ServerConf) SeparateMgmtEnabled() bool {
 
 func (c *ServerConf) MgmtEnabledOnMainServer() bool {
 	return c.MgmtServer.Address != "" && c.MgmtServer.Address == c.MainServer.Address
+}
+
+func (c *ServerConf) MarshalZerologObject(event *zerolog.Event) {
+	event.Bool("metrics_enabled", c.EnableMetrics).
+		Object("mgmt_acl", c.mgmtAccessList).
+		Object("proxy_list", c.proxyAccessList).
+		Str("auth_method", c.AuthMethod).
+		Str("proxy_user_header", c.ProxyUserHeader).
+		Bool("sec_headers", c.SetSecurityHeaders).
+		Str("session_store", c.SessionStore).
+		Object("main_server", &c.MainServer).
+		Object("mgmt_server", &c.MgmtServer)
 }
 
 //-------------------------------------------------------------
@@ -128,6 +175,40 @@ func (c *ServerConf) AuthMgmtRequest(req *http.Request) (bool, bool) {
 	}
 }
 
+func (c *ServerConf) AuthProxyRequest(remoteAddr string) bool {
+	if c.proxyAccessList == nil || remoteAddr == "" {
+		return false
+	}
+
+	host, _, err := net.SplitHostPort(remoteAddr)
+	if err != nil {
+		host = remoteAddr
+	}
+
+	ip := net.ParseIP(host)
+
+	return c.proxyAccessList.HasAccess(ip)
+}
+
+func (c *ServerConf) validateAuth() error {
+	switch c.AuthMethod {
+	case "":
+		c.AuthMethod = "basic"
+	case "basic":
+		// no other options
+	case "proxy":
+		if c.ProxyUserHeader == "" {
+			return aerr.ErrValidation.WithUserMsg("missing proxy user header")
+		}
+
+		if c.proxyAccessList == nil || c.proxyAccessList.Len() == 0 {
+			return aerr.ErrValidation.WithUserMsg("missing proxy list")
+		}
+	}
+
+	return nil
+}
+
 //-------------------------------------------------------------
 
 type AccessList struct {
@@ -148,14 +229,14 @@ func NewAccessList(accesslist string) (*AccessList, error) {
 			_, n, err := net.ParseCIDR(entry)
 			if err != nil {
 				return nil, aerr.ErrValidation.WithUserMsg(
-					"invalid entry in debug access list: entry=%q error=%q", entry, err)
+					"invalid entry in access list: entry=%q error=%q", entry, err)
 			}
 
 			nets = append(nets, n)
 		} else {
 			ip := net.ParseIP(entry)
 			if ip == nil {
-				return nil, aerr.ErrValidation.WithUserMsg("invalid entry in debug access list: entry=%q", entry)
+				return nil, aerr.ErrValidation.WithUserMsg("invalid entry in access list: entry=%q", entry)
 			}
 
 			ips = append(ips, ip)
@@ -184,7 +265,13 @@ func (a *AccessList) HasAccess(ip net.IP) bool {
 	return false
 }
 
+func (a *AccessList) Len() int {
+	return len(a.AllowedNets) + len(a.AllowedIPs)
+}
+
 func (a *AccessList) MarshalZerologObject(event *zerolog.Event) {
-	event.Interface("allowed_ips", a.AllowedIPs).
-		Interface("allowed_nets", a.AllowedNets)
+	if a != nil {
+		event.Interface("allowed_ips", a.AllowedIPs).
+			Interface("allowed_nets", a.AllowedNets)
+	}
 }

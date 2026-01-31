@@ -1,7 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 
-ALTER TABLE podcasts ADD metadata_updated_at DATETIME;
+ALTER TABLE podcasts ADD metadata_updated_at TIMESTAMP;
 ALTER TABLE podcasts ADD description TEXT;
 ALTER TABLE podcasts ADD website TEXT;
 

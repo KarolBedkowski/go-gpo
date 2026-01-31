@@ -91,14 +91,10 @@ func (d *DevicesSrv) ListDevices(ctx context.Context, query *query.GetDevicesQue
 			return nil, aerr.ApplyFor(ErrRepositoryError, err)
 		}
 
-		common.TraceLazyPrintf(ctx, "ListDevices: user loaded")
-
 		devices, err := d.devicesRepo.ListDevices(ctx, user.ID)
 		if err != nil {
 			return nil, aerr.ApplyFor(ErrRepositoryError, err, "get devices from db failed")
 		}
-
-		common.TraceLazyPrintf(ctx, "ListDevices: devices loaded")
 
 		return devices, nil
 	})

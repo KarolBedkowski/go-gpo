@@ -11,6 +11,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -35,9 +36,7 @@ func NewMgmt(injector do.Injector) (*MgmtServer, error) {
 
 	// routes
 	router := chi.NewRouter()
-	router.Use(middleware.Heartbeat(cfg.MgmtServer.WebRoot + "/ping"))
 	router.Use(middleware.RealIP)
-	router.Use(newRecoverMiddleware)
 
 	createMgmtRouters(injector, router, cfg, cfg.MgmtServer)
 
@@ -98,12 +97,20 @@ func (s *MgmtServer) Shutdown(ctx context.Context) error {
 func createMgmtRouters(injector do.Injector, router *chi.Mux, cfg *config.ServerConf, scfg config.ListenConf) {
 	webroot := scfg.WebRoot
 
-	router.Get(webroot+"/health", newHealthChecker(injector, cfg))
+	hh := newHealthChecker(injector, cfg)
+	router.Get(webroot+"/health", hh)
+	router.Get(webroot+"/healthz", hh)
+	// accept traffic
+	router.Get(webroot+"/readyz", hh)
+	// is should be restarted
+	router.HandleFunc(webroot+"/livez", healthHandler)
 
 	router.Group(func(group chi.Router) {
 		group.Use(hlog.RequestIDHandler("req_id", "Request-Id"))
 		group.Use(newVerySimpleLogMiddleware("MgmtServer"))
-		group.Use(newAuthDebugMiddleware(cfg))
+		group.Use(newRecoverMiddleware)
+		group.Use(middleware.CleanPath)
+		group.Use(newAuthMgmtMiddleware(cfg))
 
 		if cfg.DebugFlags.HasFlag(config.DebugDo) {
 			dochi.Use(router, webroot+"/debug/do", injector)
@@ -130,26 +137,39 @@ func newHealthChecker(injector do.Injector, cfg *config.ServerConf) http.Handler
 	rootscope := injector.RootScope()
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		log.Logger.Debug().Msgf("remote %v", r.RemoteAddr)
-
-		// access to /health only from localhost
+		// access to /health only from selected networks
 		if _, access := cfg.AuthMgmtRequest(r); !access {
 			w.WriteHeader(http.StatusForbidden)
 
 			return
 		}
 
-		response := "ok"
+		failed := 0
 
 		for service, err := range rootscope.HealthCheckWithContext(r.Context()) {
 			if err != nil {
 				log.Logger.Error().Err(err).Str("service", service).
 					Msgf("HealthChecker: service=%q failed on healthcheck: %s", service, err)
 
-				response = "error"
+				failed++
 			}
 		}
 
-		render.PlainText(w, r, response)
+		if failed > 0 {
+			w.WriteHeader(http.StatusInternalServerError)
+			render.PlainText(w, r, "services failed: "+strconv.Itoa(failed))
+		} else {
+			w.WriteHeader(http.StatusOK)
+			render.PlainText(w, r, "ok")
+		}
+	}
+}
+
+// newHealthChecker create new handler for /health endpoint. Accept only connection from localhost.
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet || r.Method == http.MethodHead {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("."))
 	}
 }

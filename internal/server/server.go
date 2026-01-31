@@ -43,47 +43,17 @@ type Server struct {
 
 func New(injector do.Injector) (*Server, error) {
 	cfg := do.MustInvoke[*config.ServerConf](injector)
-	authMW := do.MustInvoke[authenticator](injector)
-	api := do.MustInvoke[gpoapi.API](injector)
-	web := do.MustInvoke[gpoweb.WEB](injector)
-	sessionMW := do.MustInvoke[sessionMiddleware](injector)
-	logMW := do.MustInvoke[logMiddleware](injector)
-
 	webroot := cfg.MainServer.WebRoot
 
 	// routes
 	router := chi.NewRouter()
-	router.Use(middleware.Heartbeat(webroot + "/ping"))
-	router.Use(middleware.RealIP)
+	router.Use(middleware.Heartbeat(webroot + "/livez"))
 
-	router.Group(func(group chi.Router) {
-		group.Use(hlog.RequestIDHandler("req_id", "Request-Id"))
+	if cfg.SetSecurityHeaders {
+		router.Use(SecHeadersMiddleware)
+	}
 
-		if cfg.DebugFlags.HasFlag(config.DebugFlightRecorder) {
-			group.Use(newFRMiddleware())
-		}
-
-		if cfg.DebugFlags.HasFlag(config.DebugTrace) {
-			group.Use(newTracingMiddleware(cfg))
-		}
-
-		group.Use(logMW)
-		group.Use(newRecoverMiddleware)
-		group.Use(middleware.CleanPath)
-		group.Use(sessionMW)
-		group.Use(authMW.handle)
-		group.Use(AuthenticatedOnly)
-		group.
-			With(newPromMiddleware("api", nil)).
-			With(middleware.NoCache).
-			Mount(webroot+"/", api.Routes())
-		group.
-			With(newPromMiddleware("web", nil)).
-			Mount(webroot+"/web", web.Routes())
-		group.Get(webroot+"/", func(w http.ResponseWriter, r *http.Request) {
-			http.Redirect(w, r, webroot+"/web", http.StatusMovedPermanently)
-		})
-	})
+	createRoutes(injector, router, cfg)
 
 	if cfg.MgmtEnabledOnMainServer() {
 		createMgmtRouters(injector, router, cfg, cfg.MainServer)
@@ -145,7 +115,49 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-//-------------------------------------------------------------
+// -------------------------------------------------------------
+
+func createRoutes(injector do.Injector, router chi.Router, cfg *config.ServerConf) {
+	authMW := do.MustInvoke[authenticator](injector)
+	api := do.MustInvoke[gpoapi.API](injector)
+	web := do.MustInvoke[gpoweb.WEB](injector)
+	sessionMW := do.MustInvoke[sessionMiddleware](injector)
+	logMW := do.MustInvoke[logMiddleware](injector)
+	webroot := cfg.MainServer.WebRoot
+
+	router.Group(func(group chi.Router) {
+		if cfg.ProxyAccessList != "" {
+			group.Use(newRealIPMiddleware(cfg))
+		}
+
+		group.Use(hlog.RequestIDHandler("req_id", "Request-Id"))
+
+		if cfg.DebugFlags.HasFlag(config.DebugFlightRecorder) {
+			group.Use(newFRMiddleware())
+		}
+
+		if cfg.DebugFlags.HasFlag(config.DebugTrace) {
+			group.Use(newTracingMiddleware(cfg))
+		}
+
+		group.Use(logMW)
+		group.Use(newRecoverMiddleware)
+		group.Use(middleware.CleanPath)
+		group.Use(sessionMW)
+		group.Use(authMW.handle)
+		group.Use(AuthenticatedOnly)
+		group.
+			With(newPromMiddleware("api", nil)).
+			With(middleware.NoCache).
+			Mount(webroot+"/", api.Routes())
+		group.
+			With(newPromMiddleware("web", nil)).
+			Mount(webroot+"/web", web.Routes())
+		group.Get(webroot+"/", func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, webroot+"/web", http.StatusMovedPermanently)
+		})
+	})
+}
 
 func logRoutes(ctx context.Context, name string, r chi.Routes) {
 	logger := log.Ctx(ctx)

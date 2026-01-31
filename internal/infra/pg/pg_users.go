@@ -109,6 +109,15 @@ func (s Repository) DeleteUser(ctx context.Context, userid int64) error {
 	dbctx := db.MustCtx(ctx)
 
 	_, err := dbctx.ExecContext(ctx,
+		`DELETE FROM episodes_hist WHERE episode_id IN (
+			SELECT id FROM episodes WHERE podcast_id IN (SELECT id FROM podcasts WHERE user_id=$1)
+		)`,
+		userid)
+	if err != nil {
+		return aerr.Wrapf(err, "delete episodes_hist failed").WithTag(aerr.InternalError).WithMeta("user_id", userid)
+	}
+
+	_, err = dbctx.ExecContext(ctx,
 		"DELETE FROM episodes WHERE podcast_id IN (SELECT id FROM podcasts WHERE user_id=$1)",
 		userid)
 	if err != nil {

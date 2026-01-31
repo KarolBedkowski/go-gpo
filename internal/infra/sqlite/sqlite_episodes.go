@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/common"
@@ -63,143 +64,22 @@ func (s Repository) ListEpisodeActions(
 	aggregated, inverse bool,
 	limit uint,
 ) ([]model.Episode, error) {
-	if aggregated {
-		return s.listEpisodeActionsAggregated(ctx, userid, deviceid, podcastid, since, limit, inverse)
-	}
-
-	return s.listEpisodeActions(ctx, userid, deviceid, podcastid, since, limit, inverse)
-}
-
-// ListEpisodeActions return list of all actions for podcasts of user, and optionally for device
-// and podcastid.
-// If deviceid is given, return actions from OTHER than given devices.
-// Episodes are sorted by updated_at asc.
-func (s Repository) listEpisodeActions(
-	ctx context.Context,
-	userid int64, deviceid, podcastid *int64,
-	since time.Time,
-	limit uint, inverse bool,
-) ([]model.Episode, error) {
 	logger := log.Ctx(ctx)
 	logger.Debug().Int64("user_id", userid).Any("podcast_id", podcastid).Any("device_id", deviceid).
 		Msgf("sqlite.Repository: get episodes since=%s", since)
 
-	// ? because of rebind
-	query := `
-		SELECT e.id, e.podcast_id, e.url, e.title, e.action, e.started, e.position, e.total, e.guid,
-			e.created_at, e.updated_at, e.device_id,
-			p.url AS "podcast.url", p.title AS "podcast.title", p.id AS "podcast.id",
-			d.name AS "device.name", d.id AS "device.id"
-		FROM episodes e
-		JOIN podcasts p ON p.id = e.podcast_id
-		LEFT JOIN devices d ON d.id=e.device_id
-		WHERE p.user_id=?`
-	args := []any{userid}
-	dbctx := db.MustCtx(ctx)
+	var (
+		query string
+		args  []any
+	)
 
-	if !since.IsZero() {
-		query += " AND e.updated_at > ? "
-		args = append(args, since) //nolint:wsl_v5
-	}
-
-	if deviceid != nil {
-		query += " AND (e.device_id != ? OR e.device_id is NULL) "
-		args = append(args, *deviceid) //nolint:wsl_v5
-	}
-
-	if podcastid != nil {
-		query += " AND e.podcast_id = ?"
-		args = append(args, *podcastid) //nolint:wsl_v5
-	}
-
-	query += " ORDER BY e.updated_at"
-	if inverse {
-		query += " DESC"
-	}
-
-	if limit > 0 {
-		query += " LIMIT " + strconv.FormatUint(uint64(limit), 10)
-	}
-
-	rows, err := dbctx.QueryxContext(ctx, query, args...)
-	if err != nil {
-		return nil, aerr.Wrapf(err, "query episodes failed").WithTag(aerr.InternalError).
-			WithMeta("sql", query, "args", args)
-	}
-
-	defer rows.Close()
-
-	res := newEpisodeCollector()
-	if err := res.loadRows(rows); err != nil {
-		return nil, aerr.Wrapf(err, "query episodes failed, load rows error").WithTag(aerr.InternalError).
-			WithMeta("sql", query, "args", args)
-	}
-
-	logger.Debug().Msgf("sqlite.Repository: get episodes - found=%d", len(res.Episodes))
-
-	return res.Episodes, nil
-}
-
-// listEpisodeActionsAggregated return list of last action for each podcast for user, and optionally
-// for device and podcastid. If deviceid is given, return actions from OTHER than given devices.
-// Episodes are sorted by updated_at asc.
-func (s Repository) listEpisodeActionsAggregated( //nolint:funlen
-	ctx context.Context,
-	userid int64, deviceid, podcastid *int64,
-	since time.Time,
-	limit uint, inverse bool,
-) ([]model.Episode, error) {
-	logger := log.Ctx(ctx)
-	logger.Debug().Int64("user_id", userid).Any("podcast_id", podcastid).Any("device_id", deviceid).
-		Msgf("sqlite.Repository: get episodes since=%s aggregated=true", since)
-
-	epArgs := ""
-	args := []any{userid}
-
-	if !since.IsZero() {
-		epArgs += " AND e.updated_at > ? "
-		args = append(args, since) //nolint:wsl_v5
-	}
-
-	if deviceid != nil {
-		epArgs += " AND (e.device_id != ? OR e.device_id is NULL) "
-		args = append(args, *deviceid) //nolint:wsl_v5
-	}
-
-	if podcastid != nil {
-		epArgs += " AND e.podcast_id = ?"
-		args = append(args, *podcastid) //nolint:wsl_v5
-	}
-
-	query := `
-		WITH pe AS (
-			SELECT e.podcast_id, (
-				SELECT e2.id
-				FROM episodes e2
-				WHERE e2.podcast_id = e.podcast_id AND e2.url = e.url
-				ORDER BY e2.updated_at
-				DESC LIMIT 1
-			) AS episode_id
-			FROM podcasts p
-			JOIN episodes e ON p.id = e.podcast_id
-			WHERE p.user_id=? ` + epArgs + `
-			GROUP BY e.podcast_id, e.url
-		)
-		SELECT p.url AS "podcast.url", p.title AS "podcast.title", p.id AS "podcast.id",
-			e.id, e.podcast_id, e.url, e.title, e.action, e.started, e.position, e.total, e.guid,
-			e.created_at, e.updated_at, e.device_id,
-			d.name AS "device.name", d.id AS "device.id"
-		FROM pe
-		JOIN podcasts p ON p.id = pe.podcast_id
-		JOIN episodes e ON e.id = pe.episode_id
-		LEFT JOIN devices d ON d.id=e.device_id
-		ORDER BY e.updated_at`
-	if inverse {
-		query += " DESC"
-	}
-
-	if limit > 0 {
-		query += " LIMIT " + strconv.FormatUint(uint64(limit), 10)
+	switch {
+	case aggregated && deviceid != nil:
+		query, args = s.listEpisodeActionsAggregatedDev(userid, *deviceid, podcastid, since, limit, inverse)
+	case aggregated:
+		query, args = s.listEpisodeActionsAggregated(userid, podcastid, since, limit, inverse)
+	default:
+		query, args = s.listEpisodeActions(userid, deviceid, podcastid, since, limit, inverse)
 	}
 
 	logger.Debug().Msgf("sqlite.Repository: get episodes - sql=%s args=%v", query, args)
@@ -220,9 +100,160 @@ func (s Repository) listEpisodeActionsAggregated( //nolint:funlen
 			WithMeta("sql", query, "args", args)
 	}
 
-	logger.Debug().Msgf("sqlite.Repository: get episodes - found=%d", len(res.Episodes))
+	logger.Debug().Msgf("sqlite.Repository: ListEpisodeActions - found=%d", len(res.Episodes))
 
 	return res.Episodes, nil
+}
+
+// ListEpisodeActions return query for all actions for podcasts of user, and optionally for device
+// and podcastid.
+// If deviceid is given, return actions from OTHER than given devices.
+// Episodes are sorted by updated_at asc.
+func (s Repository) listEpisodeActions(
+	userid int64, deviceid, podcastid *int64,
+	since time.Time,
+	limit uint, inverse bool,
+) (string, []any) {
+	// ? because of rebind
+	query := `
+		SELECT e.id, e.podcast_id, e.url, e.title, eh.action, eh.started, eh.position, eh.total, e.guid,
+			eh.created_at, eh.updated_at, eh.device_id,
+			p.url AS "podcast.url", p.title AS "podcast.title", p.id AS "podcast.id",
+			d.name AS "device.name", d.id AS "device.id"
+		FROM episodes e
+		JOIN podcasts p ON p.id = e.podcast_id
+		JOIN episodes_hist eh ON eh.episode_id = e.id
+		LEFT JOIN devices d ON d.id=eh.device_id
+		WHERE p.user_id=?`
+	args := []any{userid}
+
+	if !since.IsZero() {
+		query += " AND eh.updated_at > ? "
+		args = append(args, since) //nolint:wsl_v5
+	}
+
+	if deviceid != nil {
+		query += " AND (eh.device_id != ? OR eh.device_id is NULL) "
+		args = append(args, *deviceid) //nolint:wsl_v5
+	}
+
+	if podcastid != nil {
+		query += " AND p.id = ?"
+		args = append(args, *podcastid) //nolint:wsl_v5
+	}
+
+	query += " ORDER BY eh.updated_at"
+	if inverse {
+		query += " DESC" //nolint:goconst
+	}
+
+	if limit > 0 {
+		query += " LIMIT " + strconv.FormatUint(uint64(limit), 10)
+	}
+
+	return query, args
+}
+
+// listEpisodeActionsAggregated return query for last action for each podcast for user, and optionally
+// for device and podcastid.
+// Episodes are sorted by updated_at asc.
+func (s Repository) listEpisodeActionsAggregated(
+	userid int64, podcastid *int64,
+	since time.Time,
+	limit uint, inverse bool,
+) (string, []any) {
+	// ? because of rebind
+	epArgs := ""
+	args := []any{userid}
+
+	if !since.IsZero() {
+		epArgs += " AND e.updated_at > ? "
+		args = append(args, since) //nolint:wsl_v5
+	}
+
+	if podcastid != nil {
+		epArgs += " AND p.id = ?"
+		args = append(args, *podcastid) //nolint:wsl_v5
+	}
+
+	query := `
+		SELECT p.url AS "podcast.url", p.title AS "podcast.title", p.id AS "podcast.id",
+			e.id, e.podcast_id, e.url, e.title, e.action, e.started, e.position, e.total, e.guid,
+			e.created_at, e.updated_at, e.device_id,
+			d.name AS "device.name", d.id AS "device.id"
+		FROM podcasts p
+		JOIN episodes e ON e.podcast_id  = p.id
+		LEFT JOIN devices d ON d.id=e.device_id
+		WHERE p.user_id = ?
+		` + epArgs + `
+		ORDER BY e.updated_at`
+
+	if inverse {
+		query += " DESC"
+	}
+
+	if limit > 0 {
+		query += " LIMIT " + strconv.FormatUint(uint64(limit), 10)
+	}
+
+	return query, args
+}
+
+// listEpisodeActionsAggregatedDev return sql for last action for each podcast for user and device
+// and optionally podcastid. Actions from OTHER than given devices.
+// Episodes are sorted by updated_at asc.
+func (s Repository) listEpisodeActionsAggregatedDev(
+	userid, deviceid int64, podcastid *int64,
+	since time.Time,
+	limit uint, inverse bool,
+) (string, []any) {
+	// ? because of rebind
+	epArgs := ""
+	args := []any{deviceid, userid}
+
+	if !since.IsZero() {
+		epArgs += " AND e.updated_at > ? "
+		args = append(args, since) //nolint:wsl_v5
+	}
+
+	if podcastid != nil {
+		epArgs += " AND e.podcast_id = ?"
+		args = append(args, *podcastid) //nolint:wsl_v5
+	}
+
+	query := `
+		WITH eph AS (
+			SELECT e.id, e.url, e.podcast_id, e.title, e.guid, e.updated_at,
+				(
+					SELECT rowid
+					FROM episodes_hist eh
+					WHERE eh.episode_id = e.id
+						AND (e.device_id != ? OR e.device_id is NULL)
+					ORDER BY eh.updated_at
+					DESC LIMIT 1
+				) AS last_eh
+			FROM episodes e
+		)
+		SELECT p.url AS "podcast.url", p.title AS "podcast.title", p.id AS "podcast.id",
+			e.id, e.podcast_id, e.url, e.title, eh.action, eh.started, eh.position, eh.total, e.guid,
+			eh.created_at, eh.updated_at, eh.device_id,
+			d.name AS "device.name", d.id AS "device.id"
+		FROM podcasts p
+		JOIN eph e ON e.podcast_id  = p.id
+		JOIN episodes_hist eh ON eh.rowid = e.last_eh
+		LEFT JOIN devices d ON d.id=eh.device_id
+		WHERE p.user_id = ? ` + epArgs + `
+		ORDER BY eh.updated_at`
+
+	if inverse {
+		query += " DESC"
+	}
+
+	if limit > 0 {
+		query += " LIMIT " + strconv.FormatUint(uint64(limit), 10)
+	}
+
+	return query, args
 }
 
 func (Repository) ListFavorites(ctx context.Context, userid int64) ([]model.Episode, error) {
@@ -266,13 +297,9 @@ func (Repository) GetLastEpisodeAction(ctx context.Context,
 		JOIN podcasts p on p.id = e.podcast_id
 		LEFT JOIN devices d on d.id=e.device_id
 		WHERE p.user_id=? AND e.podcast_id = ?
+		ORDER BY e.updated_at DESC
+		LIMIT 1
 		`
-
-	if excludeDelete {
-		query += " AND e.action != 'delete' "
-	}
-
-	query += "ORDER BY e.updated_at DESC LIMIT 1"
 
 	dbctx := db.MustCtx(ctx)
 	res := EpisodeDB{}
@@ -296,16 +323,16 @@ func (Repository) SaveEpisode(ctx context.Context, userid int64, episodes ...mod
 
 	dbctx := db.MustCtx(ctx)
 
-	stmt, err := dbctx.PrepareContext(ctx,
-		"INSERT INTO episodes (podcast_id, device_id, title, url, action, started, position, total, guid, "+
-			"created_at, updated_at) "+
-			"VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+	stmthist, err := dbctx.PrepareContext(ctx, `
+		INSERT INTO episodes_hist
+			(episode_id, device_id, action, started, position, total, created_at, updated_at)
+			VALUES(?, ?, ?, ?, ?, ?, ?, ?)`,
 	)
 	if err != nil {
 		return aerr.Wrapf(err, "prepare insert episode stmt failed").WithTag(aerr.InternalError)
 	}
 
-	defer stmt.Close()
+	defer stmthist.Close()
 
 	for _, episode := range episodes {
 		logger.Debug().Object("episode", &episode).
@@ -321,27 +348,91 @@ func (Repository) SaveEpisode(ctx context.Context, userid int64, episodes ...mod
 			episode.Timestamp = time.Now().UTC()
 		}
 
-		_, err := stmt.ExecContext(
-			ctx,
-			episode.Podcast.ID,
-			deviceid,
-			episode.Title,
-			episode.URL,
-			episode.Action,
-			episode.Started,
-			episode.Position,
-			episode.Total,
-			episode.GUID,
-			episode.Timestamp,
-			episode.Timestamp,
-		)
+		eid, err := insertOrUpdateEpisode(ctx, dbctx, logger, &episode, deviceid)
 		if err != nil {
-			return aerr.Wrapf(err, "insert episode failed").WithTag(aerr.InternalError).
+			return err
+		}
+
+		logger.Debug().Msgf("insert episode history podcast_id=%d episode_id=%d episode_url=%q action=%q",
+			episode.Podcast.ID, eid, episode.URL, episode.Action)
+
+		_, err = stmthist.ExecContext(ctx, eid, deviceid, episode.Action,
+			episode.Started, episode.Position, episode.Total,
+			episode.Timestamp, episode.Timestamp)
+		if err != nil {
+			return aerr.Wrapf(err, "insert episode history failed").WithTag(aerr.InternalError).
 				WithMeta("podcast_id", episode.Podcast.ID, "episode_url", episode.URL)
 		}
 	}
 
 	return nil
+}
+
+// insertOrUpdateEpisode look for episode in database; if not found - create; otherwise update.
+// Return episode id.
+// Cant use upsert because of we need check modification date before update.
+func insertOrUpdateEpisode(
+	ctx context.Context,
+	dbctx db.Interface,
+	logger *zerolog.Logger,
+	episode *model.Episode,
+	deviceid sql.NullInt64,
+) (int64, error) {
+	var epinfo struct {
+		ID        int64     `db:"id"`
+		UpdatedAt time.Time `db:"updated_at"`
+	}
+
+	err := dbctx.GetContext(ctx, &epinfo,
+		"SELECT id, updated_at FROM episodes WHERE podcast_id=? and (url=? or guid=?)",
+		episode.Podcast.ID, episode.URL, episode.GUID,
+	)
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		// new episode, insert
+		logger.Debug().Msgf("insert new episode podcast_id=%d episode_url=%q", episode.Podcast.ID, episode.URL)
+
+		err := dbctx.GetContext(
+			ctx, &epinfo.ID, `
+		INSERT INTO episodes (podcast_id, device_id, title, url, action, started, position, total,
+			guid, created_at, updated_at)
+		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		RETURNING id`,
+			episode.Podcast.ID, deviceid,
+			episode.Title, episode.URL,
+			episode.Action, episode.Started, episode.Position, episode.Total,
+			episode.GUID,
+			episode.Timestamp, episode.Timestamp,
+		)
+		if err != nil {
+			return 0, aerr.Wrapf(err, "insert episode failed").WithTag(aerr.InternalError).
+				WithMeta("podcast_id", episode.Podcast.ID, "episode_url", episode.URL)
+		}
+	case err != nil:
+		return 0, aerr.Wrapf(err, "get episode failed").WithTag(aerr.InternalError).
+			WithMeta("podcast_id", episode.Podcast.ID, "episode_url", episode.URL)
+	case epinfo.UpdatedAt.Before(episode.Timestamp):
+		// update episode
+		logger.Debug().Msgf("update episode podcast_id=%d episode_url=%q", episode.Podcast.ID, episode.URL)
+
+		_, err = dbctx.ExecContext(ctx, `
+				UPDATE episodes
+				SET device_id=?, "action"=?, started=?, "position"=?, total=?, updated_at=?
+				WHERE id=?`,
+			deviceid,
+			episode.Action, episode.Started, episode.Position, episode.Total,
+			episode.Timestamp,
+			epinfo.ID,
+		)
+		if err != nil {
+			return 0, aerr.Wrapf(err, "insert episode history failed").WithTag(aerr.InternalError).
+				WithMeta("podcast_id", episode.Podcast.ID, "episode_url", episode.URL)
+		}
+	default:
+		logger.Debug().Msgf("skip update episode podcast_id=%d episode_url=%q", episode.Podcast.ID, episode.URL)
+	}
+
+	return epinfo.ID, nil
 }
 
 func (Repository) UpdateEpisodeInfo(ctx context.Context, episodes ...model.Episode) error {

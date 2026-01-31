@@ -14,6 +14,7 @@ const (
 
 const (
 	LogKeyAuthResult     = "auth_result"
+	LogKeyAuthFailReason = "auth_fail_reason"
 	LogAuthResultSuccess = "success"
 	LogAuthResultFailed  = "failed"
 	LogAuthResultError   = "error"

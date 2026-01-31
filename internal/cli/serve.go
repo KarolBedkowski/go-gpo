@@ -31,76 +31,139 @@ import (
 )
 
 func newStartServerCmd() *cli.Command { //nolint:funlen
+	const (
+		proxyCategory      = "Proxy settings"
+		workersCategory    = "Background jobs"
+		managementCategory = "Management"
+		securityCategory   = "Security"
+		serverCategory     = "Server"
+	)
+
 	return &cli.Command{
-		Name:  "serve",
-		Usage: "start server",
+		Name:        "serve",
+		Usage:       "Start api/web server.",
+		Description: "Start web and pi server. When --key and --cert options are set - enable tls.",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:    "address",
-				Value:   ":8080",
-				Usage:   "listen address",
-				Aliases: []string{"a"},
-				Sources: cli.EnvVars("GOGPO_SERVER_ADDRESS"),
-				Config:  cli.StringConfig{TrimSpace: true},
+				Name:     "address",
+				Value:    ":8080",
+				Usage:    "Listen address.",
+				Aliases:  []string{"a"},
+				Category: serverCategory,
+				Sources:  cli.EnvVars("GOGPO_SERVER_ADDRESS"),
+				Config:   cli.StringConfig{TrimSpace: true},
 			},
 			&cli.StringFlag{
-				Name:    "web-root",
-				Value:   "/",
-				Usage:   "path root",
-				Aliases: []string{"a"},
-				Sources: cli.EnvVars("GOGPO_SERVER_WEBROOT"),
-				Config:  cli.StringConfig{TrimSpace: true},
+				Name:     "web-root",
+				Value:    "/",
+				Usage:    "Web root path.",
+				Aliases:  []string{"a"},
+				Category: serverCategory,
+				Sources:  cli.EnvVars("GOGPO_SERVER_WEBROOT"),
+				Config:   cli.StringConfig{TrimSpace: true},
 			},
 			&cli.BoolFlag{
-				Name:    "enable-metrics",
-				Usage:   "enable prometheus metrics (/metrics endpoint)",
-				Sources: cli.EnvVars("GOGPO_SERVER_METRICS"),
+				Name:     "enable-metrics",
+				Usage:    "Enable prometheus metrics (/metrics endpoint).",
+				Category: managementCategory,
+				Sources:  cli.EnvVars("GOGPO_SERVER_METRICS"),
 			},
 			&cli.StringFlag{
 				Name:      "cert",
-				Usage:     "tls certificate file",
+				Usage:     "TLS certificate file.",
+				Category:  serverCategory,
 				Sources:   cli.EnvVars("GOGPO_SERVER_CERT"),
 				Config:    cli.StringConfig{TrimSpace: true},
 				TakesFile: true,
 			},
 			&cli.StringFlag{
 				Name:      "key",
-				Usage:     "tls key file",
+				Usage:     "TlS key file.",
+				Category:  serverCategory,
 				Sources:   cli.EnvVars("GOGPO_SERVER_KEY"),
 				Config:    cli.StringConfig{TrimSpace: true},
 				TakesFile: true,
 			},
 			&cli.BoolFlag{
-				Name:    "secure-cookie",
-				Usage:   "use secure (https only) cookie",
-				Sources: cli.EnvVars("GOGPO_SERVER_SECURE_COOKIE"),
+				Name:     "secure-cookie",
+				Usage:    "Force use secure (https only) cookie; enable by default for TLS server.",
+				Category: securityCategory,
+				Sources:  cli.EnvVars("GOGPO_SERVER_SECURE_COOKIE"),
 			},
 			&cli.DurationFlag{
-				Name:    "podcast-load-interval",
-				Usage:   "Enable background worker that download podcast information in given intervals. ",
-				Sources: cli.EnvVars("GOGPO_SERVER_PODCAST_LOAD_INTERVAL"),
-				Value:   0,
+				Name:     "podcast-load-interval",
+				Usage:    "Enable background worker that download podcast information in given intervals.",
+				Category: workersCategory,
+				Sources:  cli.EnvVars("GOGPO_SERVER_PODCAST_LOAD_INTERVAL"),
+				Value:    0,
 			},
 			&cli.BoolFlag{
-				Name:    "podcast-load-episodes",
-				Usage:   "When loading podcast, load also episodes title.",
-				Sources: cli.EnvVars("GOGPO_SERVER_PODCAST_LOAD_EPISODES"),
+				Name:     "podcast-load-only-missing",
+				Usage:    "Download podcast info only for podcasts without title (do not update).",
+				Category: workersCategory,
+				Sources:  cli.EnvVars("GOGPO_SERVER_PODCAST_LOAD_MISSING_ONLY"),
+			},
+			&cli.BoolFlag{
+				Name:     "podcast-load-episodes",
+				Usage:    "When loading podcast, load also episodes title.",
+				Category: workersCategory,
+				Sources:  cli.EnvVars("GOGPO_SERVER_PODCAST_LOAD_EPISODES"),
 			},
 			&cli.StringFlag{
-				Name:    "mgmt-address",
-				Value:   "",
-				Usage:   "listen address for management endpoints; empty disable management; may be the same as main 'address'",
-				Aliases: []string{"m"},
-				Sources: cli.EnvVars("GOGPO_MGMT_SERVER_ADDRESS"),
-				Config:  cli.StringConfig{TrimSpace: true},
+				Name:     "mgmt-address",
+				Value:    "",
+				Usage:    "Listen address for management endpoints; empty disable management; may be the same as main 'address'.",
+				Aliases:  []string{"m"},
+				Category: managementCategory,
+				Sources:  cli.EnvVars("GOGPO_MGMT_SERVER_ADDRESS"),
+				Config:   cli.StringConfig{TrimSpace: true},
 			},
 			&cli.StringFlag{
-				Name:    "mgmt-access-list",
-				Value:   "",
-				Usage:   "list of ip or networks separated by ',' allowed to connected to mgmt endpoints.",
-				Aliases: []string{"m"},
-				Sources: cli.EnvVars("GOGPO_MGMT_SERVER_ACCESS_LIST"),
-				Config:  cli.StringConfig{TrimSpace: true},
+				Name:     "mgmt-access-list",
+				Value:    "",
+				Usage:    "List of ip or networks separated by ',' allowed to connected to management endpoints.",
+				Category: managementCategory,
+				Sources:  cli.EnvVars("GOGPO_MGMT_SERVER_ACCESS_LIST"),
+				Config:   cli.StringConfig{TrimSpace: true},
+			},
+			&cli.StringFlag{
+				Name:     "session-store",
+				Value:    "db",
+				Usage:    "Where store session data (db, memory).",
+				Category: serverCategory,
+				Sources:  cli.EnvVars("GOGPO_SESSION_STORE"),
+				Config:   cli.StringConfig{TrimSpace: true},
+			},
+			&cli.BoolFlag{
+				Name:     "add-security-headers",
+				Usage:    "Add some http security-related headers to response.",
+				Category: securityCategory,
+				Sources:  cli.EnvVars("GOGPO_SET_SECURITY_HEADERS"),
+			},
+			&cli.StringFlag{
+				Name:     "auth-method",
+				Value:    "basic",
+				Usage:    "User authentication method (basic, proxy).",
+				Category: securityCategory,
+				Sources:  cli.EnvVars("GOGPO_AUTH_METHOD"),
+				Config:   cli.StringConfig{TrimSpace: true},
+			},
+			&cli.StringFlag{
+				Name:     "auth-proxy-user-header",
+				Value:    "X-PROXY-USER",
+				Usage:    "Http header with user name for proxy auth-method (required).",
+				Category: proxyCategory,
+				Sources:  cli.EnvVars("GOGPO_AUTH_PROXY_USER_HEADER"),
+				Config:   cli.StringConfig{TrimSpace: true},
+			},
+			&cli.StringFlag{
+				Name:  "proxy-list",
+				Value: "",
+				Usage: "List of ip or networks separated by ',' of reverse proxy in front of go-gpo. " +
+					"Required for proxy auth-method.",
+				Category: proxyCategory,
+				Sources:  cli.EnvVars("GOGPO_PROXY_LIST"),
+				Config:   cli.StringConfig{TrimSpace: true},
 			},
 		},
 		Action: wrap(startServerCmd),
@@ -126,9 +189,15 @@ func startServerCmd(ctx context.Context, clicmd *cli.Command, rootInjector do.In
 			Address: strings.TrimSpace(clicmd.String("mgmt-address")),
 			// mgmt not use for now tls/webroot/cookie
 		},
-		DebugFlags:     config.NewDebugFLags(clicmd.String("debug")),
-		EnableMetrics:  clicmd.Bool("enable-metrics"),
-		MgmtAccessList: clicmd.String("mgmt-access-list"),
+		DebugFlags:         config.NewDebugFLags(clicmd.String("debug")),
+		EnableMetrics:      clicmd.Bool("enable-metrics"),
+		MgmtAccessList:     clicmd.String("mgmt-access-list"),
+		SessionStore:       clicmd.String("session-store"),
+		SetSecurityHeaders: clicmd.Bool("add-security-headers"),
+
+		AuthMethod:      clicmd.String("auth-method"),
+		ProxyUserHeader: clicmd.String("auth-proxy-user-header"),
+		ProxyAccessList: clicmd.String("proxy-list"),
 	}
 
 	if err := serverConf.Validate(); err != nil {
@@ -155,6 +224,7 @@ func (s *Server) start(ctx context.Context, injector do.Injector, cfg *config.Se
 	logger := log.Ctx(ctx)
 	logger.Log().Msgf("Starting go-gpo (%s)...", config.VersionString)
 	logger.Debug().Msgf("Server: debug_flags=%q", cfg.DebugFlags)
+	logger.Debug().Object("config", cfg).Msgf("Server: config")
 
 	s.startSystemdWatchdog(logger)
 
@@ -183,7 +253,8 @@ func (s *Server) start(ctx context.Context, injector do.Injector, cfg *config.Se
 	go s.runBackgroundMaintenance(ctx, maintSrv)
 
 	if i := clicmd.Duration("podcast-load-interval"); i > 0 {
-		go s.podcastDownloadTask(ctx, injector, i, clicmd.Bool("podcast-load-episodes"))
+		go s.podcastDownloadTask(ctx, injector, i, clicmd.Bool("podcast-load-episodes"),
+			clicmd.Bool("podcast-load-only-missing"))
 	}
 
 	systemd.NotifyReady()           //nolint:errcheck
@@ -205,7 +276,7 @@ func (*Server) startSystemdWatchdog(logger *zerolog.Logger) {
 }
 
 func (s *Server) podcastDownloadTask(ctx context.Context, injector do.Injector,
-	interval time.Duration, loadepisodes bool,
+	interval time.Duration, loadepisodes, missingonly bool,
 ) {
 	logger := log.Ctx(ctx)
 	logger.Info().Msgf("PodcastDownloader: start background podcast downloader; interval=%s", interval)
@@ -229,7 +300,7 @@ func (s *Server) podcastDownloadTask(ctx context.Context, injector do.Injector,
 
 		eventlog.Printf("start processing")
 
-		if err := podcastSrv.DownloadPodcastsInfo(ctx, since, loadepisodes); err != nil {
+		if err := podcastSrv.DownloadPodcastsInfo(ctx, since, loadepisodes, missingonly); err != nil {
 			logger.Error().Err(err).Msgf("PodcastDownloader: download podcast info job error=%q", err)
 			eventlog.Errorf("processing error=%q", err)
 		} else {

@@ -165,6 +165,7 @@ func (d *Database) Migrate(ctx context.Context) error {
 func (d *Database) Clear(ctx context.Context) error {
 	sqls := []string{
 		"DELETE FROM settings;",
+		"DELETE FROM episodes_hist;",
 		"DELETE FROM episodes;",
 		"DELETE FROM podcasts;",
 		"DELETE FROM devices;",
