@@ -1,5 +1,44 @@
 # Changelog
 
+## v1.3.0 2026-01-31
+
+### Bug Fixes
+
+- Sanitize url when adding new podcast
+- Do not replace remoteip with values from header
+- Pg: make table session unlogged
+- Sqlite: fix type of metadata_updated_at column
+- Fix sqlite default conn str
+
+### Features
+
+- Option for select session store (db, memory)
+- Option that enable adding to response some security headers
+- Podcast downloader can only process podcasts without metadata
+- Add authentication via reverse proxy on front of go-gpo
+- Add /healthz, /health, /readyz, /livez endpoints; drop /ping
+
+### Miscellaneous Tasks
+
+- Improve cli help messages
+- Update deps
+- Pg: minor improvements for query episodes
+- Update Makefile
+
+### Refactor
+
+- Convert authenticator to interface
+- Clean middlewares - comments etc; fix set remoteid from header
+- Pg: separate history from episodes
+- Sqlite: move actions to episodes_history
+- Drop some TraceLazyPrintf
+
+### Testing
+
+- Add tests for episodesSrv.GetEpisodesByPodcast
+
+
+
 ## v1.2.0 2026-01-11
 
 ### Bug Fixes
