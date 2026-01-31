@@ -43,7 +43,7 @@ func Main() {
 			},
 			&cli.StringFlag{
 				Name:      "db.connstr",
-				Value:     "database.sqlite?_fk=1&_journal_mode=WAL&_synchronous=NORMAL",
+				Value:     "database.sqlite",
 				Usage:     "Database connection string",
 				Aliases:   []string{"C"},
 				Sources:   cli.EnvVars("GOGPO_DB_CONNSTR"),
