@@ -89,6 +89,8 @@ migrate:
 migrate_pg:
 	goose -dir ./internal/infra/pg/migrations postgres "user=gogpo dbname=gogpo password=gogpo123 host=127.0.0.1" up
 
+migrate_pg_down:
+	goose -dir ./internal/infra/pg/migrations postgres "user=gogpo dbname=gogpo password=gogpo123 host=127.0.0.1" down
 
 .PHONY: deps
 deps:
