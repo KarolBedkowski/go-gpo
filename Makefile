@@ -25,23 +25,23 @@ LDFLAGSR="-w -s\
 	-X gitlab.com/kabes/go-gpo/internal/config.BuildUser=$(USER) \
 	-X gitlab.com/kabes/go-gpo/internal/config.Branch=$(BRANCH)"
 
+SRC := $(shell find . -type f -name '*.go' -or -name '*.qtpl' -or -name 'go.mod')
+
 .PHONY: build
-build: generate
+build: generate go-gpo
+
+go-gpo: $(SRC)
 	GOEXPERIMENT=jsonv2 \
 	go build $(GOTAGS) -v -o go-gpo -ldflags $(LDFLAGS) \
 		./cli
 
 .PHONY: build_arm64
-build_arm64: generate
-	GOEXPERIMENT=jsonv2 \
-	CGO_ENABLED=1 \
-	GOGCCFLAGS="-fPIC -O4 -Ofast -pipe -march=native -s" \
-		GOARCH=arm64 GOOS=linux \
-		go build $(GOTAGS)-v -o go-gpo-arm64 --ldflags $(LDFLAGS) \
-		./cli
+build_arm64: generate go-gpo-arm64
 
 .PHONY: build_arm64_release
-build_arm64_release: generate
+build_arm64_release: generate go-gpo-arm64 
+
+go-gpo-arm64: $(SRC)
 	CGO_ENABLED=1 \
 	GOEXPERIMENT=jsonv2 \
 	GOGCCFLAGS="-fPIC -O4 -Ofast -pipe -march=native -s" \
@@ -104,6 +104,7 @@ deps:
 QTPLS := $(shell find . -type f -name '*.qtpl')
 QTPLSC := $(QTPLS:%=%.go)
 
+.PHONY: generate
 generate: $(QTPLSC)
 
 %.qtpl.go: %.qtpl
