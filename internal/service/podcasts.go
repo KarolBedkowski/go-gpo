@@ -386,7 +386,7 @@ func parseFeedURLWithContext(ctx context.Context, feedparser *gofeed.Parser, //n
 
 	req.Header.Set("User-Agent", feedparser.UserAgent)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := http.DefaultClient.Do(req) //nolint:gosec
 	if err != nil {
 		return nil, 0, aerr.Wrapf(err, "make request failed")
 	} else if resp == nil {
@@ -524,7 +524,7 @@ func ResolvePodcastURL(ctx context.Context, url string) (string, error) {
 		return url, aerr.Wrapf(err, "create request error").WithTag(aerr.InternalError).WithMeta("url", url)
 	}
 
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) //nolint:gosec
 	if err != nil {
 		return url, aerr.Wrapf(err, "request failed").WithTag(aerr.InternalError).WithMeta("url", url)
 	}

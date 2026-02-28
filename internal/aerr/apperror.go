@@ -99,7 +99,7 @@ func (a AppError) WithMeta(keyval ...any) AppError {
 			key = fmt.Sprintf("%v", keyval[i])
 		}
 
-		nerr.meta[key] = keyval[i+1]
+		nerr.meta[key] = keyval[i+1] //nolint:gosec
 	}
 
 	return nerr

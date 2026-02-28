@@ -288,7 +288,7 @@ type UserDB struct {
 	CreatedAt time.Time `db:"created_at"`
 	UpdatedAt time.Time `db:"updated_at"`
 	UserName  string    `db:"username"`
-	Password  string    `db:"password"`
+	Password  string    `db:"password"   json:"-"`
 	Email     string    `db:"email"`
 	Name      string    `db:"name"`
 }

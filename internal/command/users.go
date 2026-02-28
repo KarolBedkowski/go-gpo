@@ -18,7 +18,7 @@ import (
 // NewUserCmd define new user to add.
 type NewUserCmd struct {
 	UserName string
-	Password string
+	Password string `json:"-"`
 	Email    string
 	Name     string
 }
@@ -52,7 +52,7 @@ var ErrChangePasswordOldNotMatch = errors.New("invalid current password")
 // ChangeUserPasswordCmd define new user to add.
 type ChangeUserPasswordCmd struct {
 	UserName         string
-	Password         string
+	Password         string `json:"-"`
 	CurrentPassword  string
 	CheckCurrentPass bool
 }
