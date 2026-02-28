@@ -16,12 +16,15 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/render"
 	"github.com/rs/zerolog"
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/command"
 	"gitlab.com/kabes/go-gpo/internal/common"
+	"gitlab.com/kabes/go-gpo/internal/formats"
 	"gitlab.com/kabes/go-gpo/internal/model"
+	"gitlab.com/kabes/go-gpo/internal/query"
 	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 	"gitlab.com/kabes/go-gpo/internal/service"
 	nt "gitlab.com/kabes/go-gpo/internal/web/templates"
@@ -46,6 +49,7 @@ func newPodcastPages(i do.Injector) (podcastPages, error) {
 func (p podcastPages) Routes() *chi.Mux {
 	r := chi.NewRouter()
 	r.Get(`/`, srvsupport.WrapNamed(p.list, "web_podcast_index"))
+	r.Get(`/export`, srvsupport.WrapNamed(p.export, "web_podcast_export"))
 	r.Post(`/`, srvsupport.WrapNamed(p.addPodcast, "web_podcast_add"))
 	r.Get(`/{podcastid:[0-9]+}/`, srvsupport.WrapNamed(p.podcastGet, "web_podcast_get"))
 	r.Post(`/{podcastid:[0-9]+}/unsubscribe`, srvsupport.WrapNamed(p.podcastUnsubscribe, "web_podcast_unsub"))
@@ -258,4 +262,25 @@ func (p podcastPages) podcastDeletePost(
 	}
 
 	http.Redirect(w, r, p.webroot+"/web/podcast/", http.StatusFound)
+}
+
+func (p podcastPages) export(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
+	user := common.ContextUser(ctx)
+
+	subs, err := p.subscriptionsSrv.GetUserSubscriptions(ctx, &query.GetUserSubscriptionsQuery{UserName: user})
+	if err != nil {
+		srvsupport.CheckAndWriteError(w, r, err)
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
+			Msgf("web.Podcasts: get subscribed podcasts for export user_name=%s error=%q", user, err)
+
+		return
+	}
+
+	o := formats.NewOPML("go-gpo")
+	for _, s := range subs {
+		o.AddRSS(s.URL, s.Title, s.Title)
+	}
+
+	w.Header().Add("Content-Disposition", "attachment; filename=\"export.opml\"")
+	render.XML(w, r, &o)
 }
