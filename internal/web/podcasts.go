@@ -77,6 +77,9 @@ func (p podcastPages) list(ctx context.Context, w http.ResponseWriter, r *http.R
 }
 
 func (p podcastPages) addPodcast(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
+	const maxBody = 1024 * 1024 // 1k
+
+	r.Body = http.MaxBytesReader(w, r.Body, maxBody)
 	if err := r.ParseForm(); err != nil {
 		logger.Error().Err(err).Msgf("web.Podcasts: bad request - parse form error=%q", err)
 		srvsupport.WriteError(w, r, http.StatusBadRequest, "")
