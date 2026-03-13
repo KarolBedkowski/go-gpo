@@ -32,7 +32,19 @@ build: generate go-gpo
 
 go-gpo: $(SRC)
 	GOEXPERIMENT=jsonv2 \
-	go build $(GOTAGS) -v -o go-gpo -ldflags $(LDFLAGS) \
+	go build $(GOTAGS) -v \
+		-trimpath \
+		-o go-gpo \
+		-ldflags $(LDFLAGS) \
+		./cli
+
+# release
+go-gpo-amd64: $(SRC)
+	GOEXPERIMENT=jsonv2 \
+	go build $(GOTAGS) -v \
+		-trimpath \
+		-o go-gpo-amd64 \
+		-ldflags $(LDFLAGSR) \
 		./cli
 
 .PHONY: build_arm64
@@ -40,6 +52,9 @@ build_arm64: generate go-gpo-arm64
 
 .PHONY: build_arm64_release
 build_arm64_release: generate go-gpo-arm64 
+
+.PHONY: build_amd64_release
+build_amd64_release: generate go-gpo-amd64 
 
 go-gpo-arm64: $(SRC)
 	CGO_ENABLED=1 \
@@ -74,6 +89,8 @@ lint:
 	typos
 	# go install go.uber.org/nilaway/cmd/nilaway@latest
 	nilaway ./...
+	# go install golang.org/x/vuln/cmd/govulncheck@lates
+	govulncheck ./...
 
 .PHONY: format
 format:
