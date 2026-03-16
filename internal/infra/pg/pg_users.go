@@ -84,16 +84,19 @@ func (s Repository) ListUsers(ctx context.Context, activeOnly bool) ([]model.Use
 
 	var users []UserDB
 
+	var args []any
+
 	sql := "SELECT id, username, password, email, name, created_at, updated_at FROM users"
 	if activeOnly {
-		sql += " WHERE password != 'LOCKED'"
+		sql += " WHERE password != $1"
+		args = []any{model.UserLockedPassword}
 	}
 
 	sql += " ORDER BY username"
 
 	dbctx := db.MustCtx(ctx)
 
-	err := dbctx.SelectContext(ctx, &users, sql)
+	err := dbctx.SelectContext(ctx, &users, sql, args...)
 	if err != nil {
 		return nil, aerr.Wrapf(err, "select users failed").WithTag(aerr.InternalError)
 	}
