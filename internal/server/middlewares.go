@@ -557,7 +557,7 @@ func SecHeadersMiddleware(next http.Handler) http.Handler {
 		h.Add("Permissions-Policy", "interest-cohort=()")
 		h.Add("Content-Security-Policy",
 			"frame-ancestors 'self'; default-src 'self'; "+
-				"img-src 'self; object-src 'none'; script-src 'self'; base-uri 'self';")
+				"img-src 'self'; object-src 'none'; script-src 'self'; base-uri 'self';")
 
 		next.ServeHTTP(w, r)
 	})
