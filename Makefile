@@ -91,6 +91,7 @@ lint:
 	nilaway ./...
 	# go install golang.org/x/vuln/cmd/govulncheck@lates
 	govulncheck ./...
+	detect-secrets-hook --baseline .secrets.baseline
 
 .PHONY: format
 format:
