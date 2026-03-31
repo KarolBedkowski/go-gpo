@@ -11,6 +11,7 @@ import (
 	"context"
 	"net/http"
 
+	"gitea.com/go-chi/session"
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 	"github.com/samber/do/v2"
@@ -37,6 +38,7 @@ func newIndexPage(i do.Injector) (indexPage, error) {
 func (i indexPage) Routes() *chi.Mux {
 	r := chi.NewRouter()
 	r.Get("/", srvsupport.WrapNamed(i.indexPage, "web_index"))
+	r.Get("/logout", srvsupport.WrapNamed(i.logout, "web_logout"))
 
 	return r
 }
@@ -61,4 +63,17 @@ func (i indexPage) indexPage(ctx context.Context, writer http.ResponseWriter, r 
 	}
 
 	i.renderer.WritePage(writer, &nt.IndexPage{LastActions: lastactions})
+}
+
+func (i indexPage) logout(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
+	sess := session.GetSession(r)
+	user := common.ContextUser(ctx)
+
+	logger.Info().Str(common.LogKeyUserName, user).Msgf("web: logout user")
+
+	sess.Flush()
+	_ = sess.Destroy(w, r)
+	_, _ = sess.RegenerateID(w, r)
+
+	i.renderer.WriteSimplePage(w, nt.LogoutPage{})
 }

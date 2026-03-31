@@ -26,7 +26,8 @@ Page {
 		&emsp;
 		<a href="{%s pctx.Webroot %}/web/device/">Devices</a> |
 		<a href="{%s pctx.Webroot %}/web/podcast/">Podcasts</a> |
-		<a href="{%s pctx.Webroot %}/web/user/">User</a>
+		<a href="{%s pctx.Webroot %}/web/user/">User</a> |
+		<a href="{%s pctx.Webroot %}/web/logout">Logout</a>
 	</header>
 	<br/>
 	<content>

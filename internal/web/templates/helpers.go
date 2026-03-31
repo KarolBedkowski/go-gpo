@@ -47,6 +47,14 @@ func (r *Renderer) WritePage(w io.Writer, p Page) {
 	WritePageTemplate(w, p, r.pageContext)
 }
 
+type SimplePage interface {
+	Body(pctx *PageContext) string
+}
+
+func (r *Renderer) WriteSimplePage(w io.Writer, p SimplePage) {
+	_, _ = w.Write([]byte(p.Body(r.pageContext)))
+}
+
 //------------------------------------------------------------------------------
 
 func shortString(str string, maxlen int) string {
