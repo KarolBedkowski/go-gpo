@@ -21,7 +21,7 @@ type GetUserSubscriptionsQuery struct {
 
 func (q *GetUserSubscriptionsQuery) Validate() error {
 	if !validators.IsValidUserName(q.UserName) {
-		return common.ErrInvalidUser.WithUserMsg("invalid username")
+		return common.ErrInvalidUser
 	}
 
 	return nil
@@ -42,11 +42,11 @@ type GetSubscriptionsQuery struct {
 
 func (q *GetSubscriptionsQuery) Validate() error {
 	if !validators.IsValidUserName(q.UserName) {
-		return common.ErrInvalidUser.WithUserMsg("invalid username")
+		return common.ErrInvalidUser
 	}
 
 	if !validators.IsValidDevName(q.DeviceName) {
-		return common.ErrInvalidDevice.WithUserMsg("invalid device name")
+		return common.ErrInvalidDevice
 	}
 
 	return nil
@@ -68,7 +68,7 @@ type GetSubscriptionChangesQuery struct {
 
 func (q *GetSubscriptionChangesQuery) Validate() error {
 	if !validators.IsValidUserName(q.UserName) {
-		return common.ErrInvalidUser.WithUserMsg("invalid username")
+		return common.ErrInvalidUser
 	}
 
 	return nil

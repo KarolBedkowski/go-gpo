@@ -17,7 +17,7 @@ type GetDevicesQuery struct {
 
 func (q *GetDevicesQuery) Validate() error {
 	if !validators.IsValidUserName(q.UserName) {
-		return common.ErrInvalidUser.WithUserMsg("invalid username")
+		return common.ErrInvalidUser
 	}
 
 	return nil

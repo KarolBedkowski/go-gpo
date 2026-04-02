@@ -14,3 +14,13 @@ import (
 var ErrRepositoryError = aerr.New("database error").
 	WithTag(aerr.InternalError).
 	WithUserMsg("database error")
+
+var ErrUserExists = aerr.New("username exists").WithUserMsg("user name already exists").
+	WithTag(aerr.ValidationError)
+
+const AuthenticationError = "authentication error"
+
+var (
+	ErrUnauthorized      = aerr.New("unauthorized").WithUserMsg("authorization failed").WithTag(AuthenticationError)
+	ErrUserAccountLocked = aerr.New("locked account").WithUserMsg("account is locked").WithTag(AuthenticationError)
+)

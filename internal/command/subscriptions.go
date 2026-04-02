@@ -40,12 +40,12 @@ func (s *ChangeSubscriptionsCmd) Sanitize() [][]string {
 
 func (s *ChangeSubscriptionsCmd) Validate() error {
 	if !validators.IsValidUserName(s.UserName) {
-		return common.ErrInvalidUser.WithUserMsg("invalid username")
+		return common.ErrInvalidUser
 	}
 
 	if s.DeviceName != "" {
 		if !validators.IsValidDevName(s.DeviceName) {
-			return common.ErrInvalidDevice.WithUserMsg("invalid device name")
+			return common.ErrInvalidDevice
 		}
 	}
 
@@ -74,11 +74,11 @@ type ReplaceSubscriptionsCmd struct {
 
 func (r *ReplaceSubscriptionsCmd) Validate() error {
 	if !validators.IsValidUserName(r.UserName) {
-		return common.ErrInvalidUser.WithUserMsg("invalid username")
+		return common.ErrInvalidUser
 	}
 
 	if !validators.IsValidDevName(r.DeviceName) {
-		return common.ErrInvalidDevice.WithUserMsg("invalid device name")
+		return common.ErrInvalidDevice
 	}
 
 	return nil

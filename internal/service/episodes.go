@@ -75,16 +75,14 @@ func (e *EpisodesSrv) GetEpisodesByPodcast(ctx context.Context, query *query.Get
 	//nolint:wrapcheck
 	return db.InConnectionR(ctx, e.dbi, func(ctx context.Context) ([]model.Episode, error) {
 		user, err := e.usersRepo.GetUser(ctx, query.UserName)
-		if errors.Is(err, common.ErrNoData) {
-			return nil, common.ErrUnknownUser
-		} else if err != nil {
-			return nil, aerr.ApplyFor(ErrRepositoryError, err)
+		if err != nil {
+			return nil, aerr.Wrapf(err, "get user error")
 		}
 
 		episodes, err := e.episodesRepo.ListEpisodeActions(ctx, user.ID, nil,
 			&query.PodcastID, query.Since, query.Aggregated, false, query.Limit)
 		if err != nil {
-			return nil, aerr.ApplyFor(ErrRepositoryError, err)
+			return nil, aerr.Wrapf(err, "list episode actions error")
 		}
 
 		return episodes, nil
@@ -105,21 +103,19 @@ func (e *EpisodesSrv) AddAction(ctx context.Context, cmd *command.AddActionCmd) 
 	//nolint:wrapcheck
 	return db.InTransaction(ctx, e.dbi, func(ctx context.Context) error {
 		user, err := e.usersRepo.GetUser(ctx, cmd.UserName)
-		if errors.Is(err, common.ErrNoData) {
-			return common.ErrUnknownUser
-		} else if err != nil {
-			return aerr.ApplyFor(ErrRepositoryError, err)
+		if err != nil {
+			return aerr.Wrapf(err, "get user error")
 		}
 
 		// cache devices and podcasts
 		podcastscache, err := e.createPodcastsCache(ctx, user)
 		if err != nil {
-			return aerr.ApplyFor(ErrRepositoryError, err)
+			return aerr.Wrapf(err, "create podcasts cache error")
 		}
 
 		devicescache, err := e.createDevicesCache(ctx, user)
 		if err != nil {
-			return aerr.ApplyFor(ErrRepositoryError, err)
+			return aerr.Wrapf(err, "create devices cache error")
 		}
 
 		common.TraceLazyPrintf(ctx, "AddAction: cache filled")
@@ -146,7 +142,7 @@ func (e *EpisodesSrv) AddAction(ctx context.Context, cmd *command.AddActionCmd) 
 		}
 
 		if err = e.episodesRepo.SaveEpisode(ctx, user.ID, episodes...); err != nil {
-			return aerr.ApplyFor(ErrRepositoryError, err)
+			return aerr.Wrapf(err, "save episode error")
 		}
 
 		return nil
@@ -202,20 +198,18 @@ func (e *EpisodesSrv) GetLastActions(ctx context.Context, query *query.GetLastEp
 
 func (e *EpisodesSrv) GetFavorites(ctx context.Context, username string) ([]model.Favorite, error) {
 	if username == "" {
-		return nil, common.ErrEmptyUsername
+		return nil, common.ErrInvalidUser
 	}
 
 	episodes, err := db.InConnectionR(ctx, e.dbi, func(ctx context.Context) ([]model.Episode, error) {
 		user, err := e.usersRepo.GetUser(ctx, username)
-		if errors.Is(err, common.ErrNoData) {
-			return nil, common.ErrUnknownUser
-		} else if err != nil {
-			return nil, aerr.ApplyFor(ErrRepositoryError, err)
+		if err != nil {
+			return nil, aerr.Wrapf(err, "get user error")
 		}
 
 		episodes, err := e.episodesRepo.ListFavorites(ctx, user.ID)
 		if err != nil {
-			return nil, aerr.ApplyFor(ErrRepositoryError, err)
+			return nil, aerr.Wrapf(err, "list favorites error")
 		}
 
 		return episodes, nil
@@ -237,10 +231,8 @@ func (e *EpisodesSrv) getEpisodes(
 	limit uint,
 ) ([]model.Episode, error) {
 	user, err := e.usersRepo.GetUser(ctx, username)
-	if errors.Is(err, common.ErrNoData) {
-		return nil, common.ErrUnknownUser
-	} else if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err)
+	if err != nil {
+		return nil, aerr.Wrapf(err, "get user error")
 	}
 
 	common.TraceLazyPrintf(ctx, "getEpisodes: user loaded")
@@ -263,7 +255,7 @@ func (e *EpisodesSrv) getEpisodes(
 	episodes, err := e.episodesRepo.ListEpisodeActions(ctx, user.ID, deviceid, podcastid, since, aggregated,
 		inverse, limit)
 	if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err)
+		return nil, aerr.Wrapf(err, "list episode actions error")
 	}
 
 	common.TraceLazyPrintf(ctx, "getEpisodes: episodes loaded")
@@ -293,7 +285,7 @@ func (e *EpisodesSrv) createPodcastsCache(ctx context.Context, user *model.User)
 
 				p.SetSubscribed(time.Now())
 				podcast = p
-			case errors.Is(err, common.ErrNoData):
+			case errors.Is(err, aerr.ErrNoData):
 				// new podcast
 				podcast = &model.Podcast{User: user, URL: key, Subscribed: true}
 			default:
@@ -335,7 +327,7 @@ func (e *EpisodesSrv) createDevicesCache(ctx context.Context, user *model.User) 
 			switch {
 			case err == nil:
 				return &d.ID, nil
-			case errors.Is(err, common.ErrNoData):
+			case errors.Is(err, aerr.ErrNoData):
 				did, err := e.devicesRepo.SaveDevice(ctx,
 					&model.Device{User: user, Name: key, DevType: "other"})
 				if err != nil {
@@ -364,10 +356,8 @@ func (e *EpisodesSrv) getDeviceID(
 	}
 
 	device, err := e.devicesRepo.GetDevice(ctx, userid, devicename)
-	if errors.Is(err, common.ErrNoData) {
-		return nil, common.ErrUnknownDevice
-	} else if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err)
+	if err != nil {
+		return nil, aerr.Wrapf(err, "get device error")
 	}
 
 	return &device.ID, nil
@@ -383,10 +373,8 @@ func (e *EpisodesSrv) getPodcastID(
 	}
 
 	p, err := e.podcastsRepo.GetPodcast(ctx, userid, podcast)
-	if errors.Is(err, common.ErrNoData) {
-		return nil, common.ErrUnknownPodcast
-	} else if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err)
+	if err != nil {
+		return nil, aerr.Wrapf(err, "get podcast error")
 	}
 
 	return &p.ID, nil

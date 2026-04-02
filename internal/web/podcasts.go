@@ -9,7 +9,6 @@ package web
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -82,7 +81,7 @@ func (p podcastPages) addPodcast(ctx context.Context, w http.ResponseWriter, r *
 	r.Body = http.MaxBytesReader(w, r.Body, maxBody)
 	if err := r.ParseForm(); err != nil {
 		logger.Error().Err(err).Msgf("web.Podcasts: bad request - parse form error=%q", err)
-		srvsupport.WriteError(w, r, http.StatusBadRequest, "")
+		srvsupport.WriteError(w, r, http.StatusBadRequest)
 	}
 
 	var podcast string
@@ -105,7 +104,7 @@ func (p podcastPages) addPodcast(ctx context.Context, w http.ResponseWriter, r *
 
 	_ = cmd.Sanitize()
 	if len(cmd.Add) != 1 {
-		srvsupport.WriteError(w, r, http.StatusBadRequest, "invalid podcast URL")
+		srvsupport.WriteErrorWithMsg(w, r, http.StatusBadRequest, "invalid podcast URL")
 	}
 
 	if _, err := p.subscriptionsSrv.ChangeSubscriptions(ctx, &cmd); err != nil {
@@ -122,7 +121,7 @@ func (p podcastPages) addPodcast(ctx context.Context, w http.ResponseWriter, r *
 func (p podcastPages) podcastGet(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
 	podcast, status := p.podcastFromURLParam(ctx, r, logger)
 	if status > 0 {
-		srvsupport.WriteError(w, r, status, "")
+		p.renderer.WriteError(ctx, w, status, "")
 
 		return
 	}
@@ -138,7 +137,7 @@ func (p podcastPages) podcastUnsubscribe(
 ) {
 	podcast, status := p.podcastFromURLParam(ctx, r, logger)
 	if status > 0 || podcast == nil {
-		srvsupport.WriteError(w, r, status, "")
+		srvsupport.WriteError(w, r, status)
 
 		return
 	}
@@ -168,7 +167,7 @@ func (p podcastPages) podcastResubscribe(
 ) {
 	podcast, status := p.podcastFromURLParam(ctx, r, logger)
 	if status > 0 || podcast == nil {
-		srvsupport.WriteError(w, r, status, "")
+		srvsupport.WriteError(w, r, status)
 
 		return
 	}
@@ -206,13 +205,13 @@ func (p podcastPages) podcastFromURLParam(ctx context.Context, r *http.Request, 
 	user := common.ContextUser(ctx)
 
 	podcast, err := p.podcastsSrv.GetPodcast(ctx, user, podcastid)
-	if errors.Is(err, common.ErrNoData) {
+	if aerr.HasTag(err, aerr.NotFound) {
 		return nil, http.StatusNotFound
 	} else if err != nil {
-		logger.Error().Err(err).Int64("podcast_id", podcastid).
+		logger.Info().Err(err).Int64("podcast_id", podcastid).
 			Msgf("web.Podcasts: get podcast_id=%d error=%q", podcastid, err)
 
-		return nil, http.StatusNotFound
+		return nil, http.StatusInternalServerError
 	}
 
 	return podcast, 0
@@ -226,7 +225,7 @@ func (p podcastPages) podcastDeleteGet(
 ) {
 	podcast, status := p.podcastFromURLParam(ctx, r, logger)
 	if status > 0 || podcast == nil {
-		srvsupport.WriteError(w, r, status, "")
+		srvsupport.WriteError(w, r, status)
 
 		return
 	}
@@ -242,14 +241,14 @@ func (p podcastPages) podcastDeletePost(
 ) {
 	podcastidS := chi.URLParam(r, "podcastid")
 	if podcastidS == "" {
-		srvsupport.WriteError(w, r, http.StatusBadRequest, "")
+		srvsupport.WriteError(w, r, http.StatusBadRequest)
 
 		return
 	}
 
 	podcastid, err := strconv.ParseInt(podcastidS, 10, 32)
 	if err != nil || podcastid < 1 {
-		srvsupport.WriteError(w, r, http.StatusBadRequest, "")
+		srvsupport.WriteError(w, r, http.StatusBadRequest)
 
 		return
 	}

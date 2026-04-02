@@ -15,7 +15,6 @@ import (
 
 	"github.com/go-chi/render"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
-	"gitlab.com/kabes/go-gpo/internal/common"
 )
 
 // getSinceParameter from request url query.
@@ -39,16 +38,13 @@ func checkAndWriteError(w http.ResponseWriter, r *http.Request, err error) {
 	status := http.StatusInternalServerError
 
 	switch {
-	case errors.Is(err, common.ErrUnknownDevice):
+	case errors.Is(err, aerr.ErrNoData):
 		status = http.StatusNotFound
 
 	case aerr.HasTag(err, aerr.InternalError):
 		status = http.StatusInternalServerError
 
 	case aerr.HasTag(err, aerr.ValidationError):
-		status = http.StatusBadRequest
-
-	case aerr.HasTag(err, aerr.DataError):
 		status = http.StatusBadRequest
 	}
 

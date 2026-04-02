@@ -22,27 +22,15 @@ type UpdateDeviceCmd struct {
 }
 
 func (u *UpdateDeviceCmd) Validate() error {
-	if u.UserName == "" {
-		return common.ErrInvalidUser.WithUserMsg("user name can't be empty")
-	}
-
-	if !validators.IsValidUserName(u.UserName) {
+	if u.UserName == "" || !validators.IsValidUserName(u.UserName) {
 		return common.ErrInvalidUser
 	}
 
-	if u.DeviceName == "" {
-		return common.ErrInvalidDevice.WithUserMsg("device name can't be empty")
-	}
-
-	if !validators.IsValidDevName(u.DeviceName) {
+	if u.DeviceName == "" || !validators.IsValidDevName(u.DeviceName) {
 		return common.ErrInvalidDevice
 	}
 
-	if u.DeviceType == "" {
-		return aerr.ErrValidation.WithUserMsg("device type can't be empty")
-	}
-
-	if !validators.IsValidDevType(u.DeviceType) {
+	if u.DeviceType == "" || !validators.IsValidDevType(u.DeviceType) {
 		return aerr.ErrValidation.WithUserMsg("invalid device type %q", u.DeviceType)
 	}
 
@@ -67,11 +55,11 @@ type DeleteDeviceCmd struct {
 
 func (u *DeleteDeviceCmd) Validate() error {
 	if !validators.IsValidUserName(u.UserName) {
-		return common.ErrInvalidUser.WithUserMsg("invalid username")
+		return common.ErrInvalidUser
 	}
 
 	if !validators.IsValidDevName(u.DeviceName) {
-		return common.ErrInvalidDevice.WithUserMsg("invalid device name")
+		return common.ErrInvalidDevice
 	}
 
 	return nil

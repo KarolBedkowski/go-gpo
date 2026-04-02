@@ -8,11 +8,15 @@ package templates
 //
 
 import (
+	"context"
 	"io"
+	"net/http"
 	"strings"
 	"time"
 
+	"github.com/rs/zerolog/hlog"
 	"github.com/samber/do/v2"
+	"gitlab.com/kabes/go-gpo/internal/aerr"
 )
 
 func formatDateTime(t time.Time) string {
@@ -53,6 +57,48 @@ type SimplePage interface {
 
 func (r *Renderer) WriteSimplePage(w io.Writer, p SimplePage) {
 	_, _ = w.Write([]byte(p.Body(r.pageContext)))
+}
+
+//------------------------------------------------------------------------------
+
+func (r *Renderer) WriteError(ctx context.Context, w io.Writer, status int, details string) {
+	page := ErrorPage{
+		Status:  status,
+		Message: http.StatusText(status),
+		Details: details,
+		ReqID:   "",
+	}
+
+	if status == http.StatusInternalServerError {
+		if reqid, ok := hlog.IDFromCtx(ctx); ok {
+			page.ReqID = reqid.String()
+		}
+	}
+
+	WritePageTemplate(w, &page, r.pageContext)
+}
+
+func (r *Renderer) WriteNotFoundError(ctx context.Context, w io.Writer, details string) {
+	r.WriteError(ctx, w, http.StatusNotFound, details)
+}
+
+func (r *Renderer) WriteBadRequestError(ctx context.Context, w io.Writer, details string) {
+	r.WriteError(ctx, w, http.StatusBadRequest, details)
+}
+
+func (r *Renderer) WriteInternalError(ctx context.Context, w io.Writer, err error) {
+	page := ErrorPage{
+		Status:  http.StatusInternalServerError,
+		Message: http.StatusText(http.StatusInternalServerError),
+		Details: aerr.GetUserMessage(err),
+		ReqID:   "",
+	}
+
+	if reqid, ok := hlog.IDFromCtx(ctx); ok {
+		page.ReqID = reqid.String()
+	}
+
+	WritePageTemplate(w, &page, r.pageContext)
 }
 
 //------------------------------------------------------------------------------

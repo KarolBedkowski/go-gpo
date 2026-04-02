@@ -77,7 +77,7 @@ func (s *SubscriptionsSrv) ReplaceSubscriptions( //nolint:cyclop
 
 		// check dev
 		_, err = s.getUserDevice(ctx, user.ID, cmd.DeviceName)
-		if errors.Is(err, common.ErrUnknownDevice) {
+		if errors.Is(err, aerr.ErrNoData) {
 			_, err = s.createUserDevice(ctx, user, cmd.DeviceName)
 		}
 
@@ -88,7 +88,7 @@ func (s *SubscriptionsSrv) ReplaceSubscriptions( //nolint:cyclop
 		// get all podcasts for user
 		subscribed, err := s.podcastsRepo.ListPodcasts(ctx, user.ID, time.Time{})
 		if err != nil {
-			return aerr.ApplyFor(ErrRepositoryError, err)
+			return aerr.Wrapf(err, "list podcasts error")
 		}
 
 		changes := make([]model.Podcast, 0, len(cmd.Subscriptions))
@@ -154,7 +154,7 @@ func (s *SubscriptionsSrv) ChangeSubscriptions( //nolint:cyclop,gocognit,funlen
 
 		userpodcasts, err := s.podcastsRepo.ListPodcasts(ctx, user.ID, time.Time{})
 		if err != nil {
-			return aerr.ApplyFor(ErrRepositoryError, err)
+			return aerr.Wrapf(err, "list podcasts error")
 		}
 
 		common.TraceLazyPrintf(ctx, "ChangeSubscriptions: podcasts loaded")
@@ -187,7 +187,7 @@ func (s *SubscriptionsSrv) ChangeSubscriptions( //nolint:cyclop,gocognit,funlen
 
 		for _, p := range podchanges {
 			if _, err := s.podcastsRepo.SavePodcast(ctx, &p); err != nil {
-				return aerr.ApplyFor(ErrRepositoryError, err)
+				return aerr.Wrapf(err, "save podcast error")
 			}
 		}
 
@@ -236,23 +236,21 @@ func (s *SubscriptionsSrv) getSubsctiptions(ctx context.Context, username, devic
 	//nolint:wrapcheck
 	return db.InConnectionR(ctx, s.dbi, func(ctx context.Context) (model.Podcasts, error) {
 		user, err := s.usersRepo.GetUser(ctx, username)
-		if errors.Is(err, common.ErrNoData) {
-			return nil, common.ErrUnknownUser
-		} else if err != nil {
-			return nil, aerr.ApplyFor(ErrRepositoryError, err)
+		if err != nil {
+			return nil, aerr.Wrapf(err, "get user error")
 		}
 
 		if devicename != "" {
 			// validate is device exists when device name is given and mark is seen.
 			_, err := s.getUserDevice(ctx, user.ID, devicename)
 			if err != nil {
-				return nil, err
+				return nil, aerr.Wrapf(err, "get device error")
 			}
 		}
 
 		podcasts, err := s.podcastsRepo.ListSubscribedPodcasts(ctx, user.ID, since)
 		if err != nil {
-			return nil, aerr.ApplyFor(ErrRepositoryError, err)
+			return nil, aerr.Wrapf(err, "list podcasts error")
 		}
 
 		return podcasts, nil
@@ -261,10 +259,8 @@ func (s *SubscriptionsSrv) getSubsctiptions(ctx context.Context, username, devic
 
 func (s *SubscriptionsSrv) getUser(ctx context.Context, username string) (*model.User, error) {
 	user, err := s.usersRepo.GetUser(ctx, username)
-	if errors.Is(err, common.ErrNoData) {
-		return nil, common.ErrUnknownUser
-	} else if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err)
+	if err != nil {
+		return nil, aerr.Wrapf(err, "get user error")
 	}
 
 	common.TraceLazyPrintf(ctx, "getUser: user loaded")
@@ -279,10 +275,8 @@ func (s *SubscriptionsSrv) getUserDevice(
 	devicename string,
 ) (*model.Device, error) {
 	device, err := s.devicesRepo.GetDevice(ctx, userid, devicename)
-	if errors.Is(err, common.ErrNoData) {
-		return device, common.ErrUnknownDevice
-	} else if err != nil {
-		return device, aerr.ApplyFor(ErrRepositoryError, err)
+	if err != nil {
+		return device, aerr.Wrapf(err, "get device error")
 	}
 
 	common.TraceLazyPrintf(ctx, "getUserDevice: devices loaded")
@@ -302,7 +296,7 @@ func (s *SubscriptionsSrv) createUserDevice(
 
 	_, err := s.devicesRepo.SaveDevice(ctx, &device)
 	if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err, "save device failed")
+		return nil, aerr.Wrapf(err, "save device failed")
 	}
 
 	common.TraceLazyPrintf(ctx, "createUserDevice: device created")
@@ -326,12 +320,12 @@ func (s *SubscriptionsSrv) getPodcasts(
 
 		_, err = s.getUserDevice(ctx, user.ID, devicename)
 		if err != nil {
-			return nil, err
+			return nil, aerr.Wrapf(err, "get device failed")
 		}
 
 		podcasts, err := s.podcastsRepo.ListPodcasts(ctx, user.ID, since)
 		if err != nil {
-			return nil, aerr.ApplyFor(ErrRepositoryError, err, "list podcasts failed")
+			return nil, aerr.Wrapf(err, "list podcasts failed")
 		}
 
 		return podcasts, nil

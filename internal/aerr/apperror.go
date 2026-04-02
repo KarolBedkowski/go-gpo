@@ -64,13 +64,20 @@ func (a AppError) WithMsg(msg string, args ...any) AppError {
 	return n
 }
 
-func (a AppError) WithTag(tag string) AppError {
-	if slices.Contains(a.tags, tag) {
+func (a AppError) WithTag(tag ...string) AppError {
+	tagsToAdd := make([]string, 0, len(tag))
+	for _, t := range tag {
+		if !slices.Contains(a.tags, t) {
+			tagsToAdd = append(tagsToAdd, t)
+		}
+	}
+
+	if len(tagsToAdd) == 0 {
 		return a
 	}
 
 	n := a.clone()
-	n.tags = append(n.tags, tag)
+	n.tags = append(n.tags, tagsToAdd...)
 
 	return n
 }

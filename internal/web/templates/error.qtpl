@@ -1,0 +1,24 @@
+{% code
+type ErrorPage struct {
+	Status int
+	Message string
+	Details string
+	ReqID string
+}
+%}
+
+{% func (p *ErrorPage) Title() %}Error{% endfunc %}
+
+{% func (p *ErrorPage) Body(pctx *PageContext) %}
+<section>
+	<h2>Error</h2>
+	<h3>{%s p.Message %}</h3>
+	{% if p.Details != "" %}
+	<p>{%s p.Details %}</p>
+	{% endif %}
+	{% if p.ReqID != "" %}
+	<p>reqid: {%s p.ReqID %}</p>
+	{% endif %}
+</section>
+
+{% endfunc %}

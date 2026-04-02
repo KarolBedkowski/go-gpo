@@ -21,7 +21,7 @@ type AddActionCmd struct {
 
 func (u *AddActionCmd) Validate() error {
 	if !validators.IsValidUserName(u.UserName) {
-		return common.ErrInvalidUser.WithUserMsg("invalid username").WithMeta("cmd", u)
+		return common.ErrInvalidUser.WithMeta("cmd", u)
 	}
 
 	if len(u.Actions) == 0 {
@@ -38,7 +38,7 @@ func (u *AddActionCmd) Validate() error {
 		}
 
 		if action.Podcast.URL == "" {
-			return common.ErrInvalidPodcast.WithUserMsg("invalid (empty) action podcast url").WithMeta("cmd", u)
+			return aerr.ErrValidation.WithUserMsg("invalid (empty) action podcast url").WithMeta("cmd", u)
 		}
 
 		if !validators.IsValidEpisodeAction(action.Action) {

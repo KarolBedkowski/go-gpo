@@ -66,7 +66,7 @@ func (u userPages) changePassword(
 		r.Body = http.MaxBytesReader(w, r.Body, maxBody)
 		if err := r.ParseForm(); err != nil {
 			logger.Info().Err(err).Msgf("web.User: bad request - parse form error=%q", err)
-			srvsupport.WriteError(w, r, http.StatusBadRequest, "")
+			srvsupport.WriteError(w, r, http.StatusBadRequest)
 
 			return
 		}

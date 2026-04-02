@@ -25,7 +25,7 @@ type NewUserCmd struct {
 
 func (n *NewUserCmd) Validate() error {
 	if !validators.IsValidUserName(n.UserName) {
-		return common.ErrInvalidUser.WithUserMsg("invalid username")
+		return common.ErrInvalidUser
 	}
 
 	if n.Password == "" {
@@ -59,7 +59,7 @@ type ChangeUserPasswordCmd struct {
 
 func (c *ChangeUserPasswordCmd) Validate() error {
 	if !validators.IsValidUserName(c.UserName) {
-		return common.ErrInvalidUser.WithUserMsg("invalid username")
+		return common.ErrInvalidUser
 	}
 
 	if c.Password == "" {
@@ -82,7 +82,7 @@ type LockAccountCmd struct {
 
 func (l *LockAccountCmd) Validate() error {
 	if !validators.IsValidUserName(l.UserName) {
-		return common.ErrInvalidUser.WithUserMsg("invalid username")
+		return common.ErrInvalidUser
 	}
 
 	return nil
@@ -97,7 +97,7 @@ type DeleteUserCmd struct {
 
 func (d *DeleteUserCmd) Validate() error {
 	if !validators.IsValidUserName(d.UserName) {
-		return common.ErrInvalidUser.WithUserMsg("invalid username")
+		return common.ErrInvalidUser
 	}
 
 	return nil

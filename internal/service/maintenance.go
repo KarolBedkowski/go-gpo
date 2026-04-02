@@ -46,7 +46,7 @@ func (m *MaintenanceSrv) MaintainDatabase(ctx context.Context) error {
 		return nil, m.maintRepo.Maintenance(ctx)
 	})
 	if err != nil {
-		return aerr.ApplyFor(ErrRepositoryError, err)
+		return aerr.Wrap(err)
 	}
 
 	return nil

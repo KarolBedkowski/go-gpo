@@ -18,7 +18,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
-	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
 )
@@ -299,7 +298,7 @@ func (s Repository) GetLastEpisodeAction(ctx context.Context,
 
 	err := dbctx.GetContext(ctx, &res, query, userid, podcastid)
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, common.ErrNoData
+		return nil, aerr.ErrNoData
 	} else if err != nil {
 		return nil, aerr.Wrapf(err, "query episode failed").WithTag(aerr.InternalError)
 	}

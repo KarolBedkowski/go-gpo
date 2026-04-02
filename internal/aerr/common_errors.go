@@ -9,17 +9,21 @@ import (
 //
 // Distributed under terms of the GPLv3 license.
 
+// Main errors categories.
 const (
 	InternalError      = "internal error"
 	ValidationError    = "validation error"
-	DataError          = "data error"
 	ConfigurationError = "configuration error"
+	NotFound           = "not found"
+	BadRequest         = "bad request"
 )
 
 var (
 	ErrValidation  = New("validation error").WithTag(ValidationError)
 	ErrInvalidConf = New("invalid configuration").WithTag(ConfigurationError)
 	ErrDatabase    = New("database error").WithTag(InternalError).WithUserMsg("database error")
+	ErrBadRequest  = New("bad request").WithTag(NotFound).WithUserMsg("bad request")
+	ErrNoData      = New("no result").WithTag(NotFound)
 )
 
 func IsSerious(err error) bool {

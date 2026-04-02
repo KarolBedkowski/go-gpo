@@ -45,23 +45,19 @@ func NewPodcastsSrv(i do.Injector) (*PodcastsSrv, error) {
 
 func (p *PodcastsSrv) GetPodcast(ctx context.Context, username string, podcastid int64) (*model.Podcast, error) {
 	if username == "" {
-		return nil, common.ErrEmptyUsername
+		return nil, common.ErrInvalidUser
 	}
 
 	//nolint:wrapcheck
 	return db.InConnectionR(ctx, p.dbi, func(ctx context.Context) (*model.Podcast, error) {
 		user, err := p.usersRepo.GetUser(ctx, username)
-		if errors.Is(err, common.ErrNoData) {
-			return nil, common.ErrUnknownUser
-		} else if err != nil {
-			return nil, aerr.ApplyFor(ErrRepositoryError, err)
+		if err != nil {
+			return nil, aerr.Wrapf(err, "get user error")
 		}
 
 		podcast, err := p.podcastsRepo.GetPodcastByID(ctx, user.ID, podcastid)
-		if errors.Is(err, common.ErrNoData) {
-			return nil, common.ErrUnknownPodcast
-		} else if err != nil {
-			return nil, aerr.ApplyFor(ErrRepositoryError, err)
+		if err != nil {
+			return nil, aerr.Wrapf(err, "get podcast error")
 		}
 
 		return podcast, nil
@@ -70,20 +66,18 @@ func (p *PodcastsSrv) GetPodcast(ctx context.Context, username string, podcastid
 
 func (p *PodcastsSrv) GetPodcasts(ctx context.Context, username string) ([]model.Podcast, error) {
 	if username == "" {
-		return nil, common.ErrEmptyUsername
+		return nil, common.ErrInvalidUser
 	}
 	//nolint:wrapcheck
 	return db.InConnectionR(ctx, p.dbi, func(ctx context.Context) ([]model.Podcast, error) {
 		user, err := p.usersRepo.GetUser(ctx, username)
-		if errors.Is(err, common.ErrNoData) {
-			return nil, common.ErrUnknownUser
-		} else if err != nil {
-			return nil, aerr.ApplyFor(ErrRepositoryError, err)
+		if err != nil {
+			return nil, aerr.Wrapf(err, "get user error")
 		}
 
 		subs, err := p.podcastsRepo.ListSubscribedPodcasts(ctx, user.ID, time.Time{})
 		if err != nil {
-			return nil, aerr.ApplyFor(ErrRepositoryError, err)
+			return nil, aerr.Wrapf(err, "get subscribed podcast error")
 		}
 
 		return subs, nil
@@ -93,16 +87,14 @@ func (p *PodcastsSrv) GetPodcasts(ctx context.Context, username string) ([]model
 func (p *PodcastsSrv) GetPodcastsWithLastEpisode(ctx context.Context, username string, subscribedOnly bool,
 ) ([]model.PodcastWithLastEpisode, error) {
 	if username == "" {
-		return nil, common.ErrEmptyUsername
+		return nil, common.ErrInvalidUser
 	}
 
 	//nolint:wrapcheck
 	return db.InConnectionR(ctx, p.dbi, func(ctx context.Context) ([]model.PodcastWithLastEpisode, error) {
 		user, err := p.usersRepo.GetUser(ctx, username)
-		if errors.Is(err, common.ErrNoData) {
-			return nil, common.ErrUnknownUser
-		} else if err != nil {
-			return nil, aerr.ApplyFor(ErrRepositoryError, err)
+		if err != nil {
+			return nil, aerr.Wrapf(err, "get user error")
 		}
 
 		common.TraceLazyPrintf(ctx, "GetPodcastsWithLastEpisode: user loaded")
@@ -115,27 +107,28 @@ func (p *PodcastsSrv) GetPodcastsWithLastEpisode(ctx context.Context, username s
 		}
 
 		if err != nil {
-			return nil, aerr.ApplyFor(ErrRepositoryError, err)
+			return nil, aerr.Wrapf(err, "list podcasts error")
 		}
 
 		common.TraceLazyPrintf(ctx, "GetPodcastsWithLastEpisode: podcasts loaded")
 
 		podcasts := make([]model.PodcastWithLastEpisode, len(subs))
-		for idx, s := range subs {
+		for idx, sub := range subs {
 			podcasts[idx] = model.PodcastWithLastEpisode{
-				PodcastID:   s.ID,
-				Title:       s.Title,
-				URL:         s.URL,
-				Website:     s.Website,
-				Description: s.Description,
-				Subscribed:  s.Subscribed,
+				PodcastID:   sub.ID,
+				Title:       sub.Title,
+				URL:         sub.URL,
+				Website:     sub.Website,
+				Description: sub.Description,
+				Subscribed:  sub.Subscribed,
 			}
 
-			lastEpisode, err := p.episodesRepo.GetLastEpisodeAction(ctx, user.ID, s.ID, false)
-			if errors.Is(err, common.ErrNoData) {
+			lastEpisode, err := p.episodesRepo.GetLastEpisodeAction(ctx, user.ID, sub.ID, false)
+			if errors.Is(err, aerr.ErrNoData) {
 				continue
 			} else if err != nil {
-				return nil, aerr.ApplyFor(ErrRepositoryError, err, "failed to get last episode")
+				return nil, aerr.Wrapf(err, "failed to get last episode").
+					WithMeta("user_id", user.ID, "podcast_id", sub.ID)
 			}
 
 			podcasts[idx].LastEpisode = lastEpisode
@@ -157,22 +150,21 @@ func (p *PodcastsSrv) DeletePodcast(ctx context.Context, username string, podcas
 	//nolint:wrapcheck
 	return db.InTransaction(ctx, p.dbi, func(ctx context.Context) error {
 		user, err := p.usersRepo.GetUser(ctx, username)
-		if errors.Is(err, common.ErrNoData) {
-			return common.ErrUnknownUser
-		} else if err != nil {
-			return aerr.ApplyFor(ErrRepositoryError, err)
+		if err != nil {
+			return aerr.Wrapf(err, "get user error")
 		}
 
 		podcast, err := p.podcastsRepo.GetPodcastByID(ctx, user.ID, podcastid)
-		if errors.Is(err, common.ErrNoData) {
-			return common.ErrUnknownPodcast
-		} else if err != nil {
-			return aerr.ApplyFor(ErrRepositoryError, err)
+		if err != nil {
+			return aerr.Wrapf(err, "get podcast error")
 		}
 
 		err = p.podcastsRepo.DeletePodcast(ctx, podcast.ID)
+		if err != nil {
+			return aerr.Wrapf(err, "delete podcast error")
+		}
 
-		return err
+		return nil
 	})
 }
 
@@ -227,7 +219,7 @@ func (p *PodcastsSrv) DownloadPodcastsInfo(ctx context.Context, since time.Time,
 		return p.podcastsRepo.ListPodcastsToUpdate(ctx, since)
 	})
 	if err != nil {
-		return aerr.ApplyFor(ErrRepositoryError, err)
+		return aerr.Wrapf(err, "list podcasts error")
 	}
 
 	// select only podcast without metadataupdate = never updated.

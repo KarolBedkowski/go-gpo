@@ -9,7 +9,6 @@ package service
 
 import (
 	"context"
-	"errors"
 
 	//	"gitlab.com/kabes/go-gpo/internal/model"
 	"github.com/rs/zerolog/log"
@@ -109,10 +108,8 @@ func (s SettingsSrv) load( //nolint:cyclop
 	skey := model.SettingsKey{Scope: scope}
 
 	user, err := s.usersRepo.GetUser(ctx, username)
-	if errors.Is(err, common.ErrNoData) {
-		return skey, common.ErrUnknownUser
-	} else if err != nil {
-		return skey, aerr.ApplyFor(ErrRepositoryError, err)
+	if err != nil {
+		return skey, aerr.Wrapf(err, "get user error")
 	}
 
 	skey.UserID = user.ID
@@ -120,39 +117,31 @@ func (s SettingsSrv) load( //nolint:cyclop
 	switch scope {
 	case "device":
 		device, err := s.devicesRepo.GetDevice(ctx, user.ID, devicename)
-		if errors.Is(err, common.ErrNoData) {
-			return skey, common.ErrUnknownDevice
-		} else if err != nil {
-			return skey, aerr.ApplyFor(ErrRepositoryError, err)
+		if err != nil {
+			return skey, aerr.Wrapf(err, "get device error")
 		}
 
 		skey.DeviceID = &device.ID
 
 	case "podcast":
 		p, err := s.podcastsRepo.GetPodcast(ctx, user.ID, podcast)
-		if errors.Is(err, common.ErrNoData) {
-			return skey, common.ErrUnknownPodcast
-		} else if err != nil {
-			return skey, aerr.ApplyFor(ErrRepositoryError, err)
+		if err != nil {
+			return skey, aerr.Wrapf(err, "get podcast error")
 		}
 
 		skey.PodcastID = &p.ID
 
 	case "episode":
 		p, err := s.podcastsRepo.GetPodcast(ctx, user.ID, podcast)
-		if errors.Is(err, common.ErrNoData) {
-			return skey, common.ErrUnknownEpisode
-		} else if err != nil {
-			return skey, aerr.ApplyFor(ErrRepositoryError, err)
+		if err != nil {
+			return skey, aerr.Wrapf(err, "get podcast error")
 		}
 
 		skey.PodcastID = &p.ID
 
 		e, err := s.episodesRepo.GetEpisode(ctx, user.ID, p.ID, episode)
-		if errors.Is(err, common.ErrNoData) {
-			return skey, common.ErrUnknownPodcast
-		} else if err != nil {
-			return skey, aerr.ApplyFor(ErrRepositoryError, err)
+		if err != nil {
+			return skey, aerr.Wrapf(err, "get episode error")
 		}
 
 		skey.EpisodeID = &e.ID

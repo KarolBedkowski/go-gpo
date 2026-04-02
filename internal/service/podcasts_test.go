@@ -11,9 +11,9 @@ import (
 	"testing"
 
 	"github.com/samber/do/v2"
+	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/assert"
 	"gitlab.com/kabes/go-gpo/internal/command"
-	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/model"
 )
 
@@ -38,7 +38,7 @@ func TestPodcastsServiceUserPodcasts(t *testing.T) {
 	assert.Equal(t, len(podcasts), 0)
 
 	podcasts, err = podcastsSrv.GetPodcasts(ctx, "user3")
-	assert.ErrSpec(t, err, common.ErrUnknownUser)
+	assert.ErrSpec(t, err, aerr.ErrNoData)
 }
 
 func TestPodcastsServiceUserPodcastsExt(t *testing.T) {
@@ -66,7 +66,7 @@ func TestPodcastsServiceUserPodcastsExt(t *testing.T) {
 	assert.Equal(t, podcasts[0].LastEpisode.URL, "http://example.com/p1/ep2")
 
 	_, err = podcastsSrv.GetPodcastsWithLastEpisode(ctx, "user3", true)
-	assert.ErrSpec(t, err, common.ErrUnknownUser)
+	assert.ErrSpec(t, err, aerr.ErrNoData)
 }
 
 func TestPodcastsServiceDelete(t *testing.T) {
@@ -89,7 +89,7 @@ func TestPodcastsServiceDelete(t *testing.T) {
 
 	// other user
 	err = podcastsSrv.DeletePodcast(ctx, "user2", pid)
-	assert.ErrSpec(t, err, common.ErrUnknownPodcast)
+	assert.ErrSpec(t, err, aerr.ErrNoData)
 
 	err = podcastsSrv.DeletePodcast(ctx, "user1", pid)
 	assert.NoErr(t, err)
@@ -100,5 +100,5 @@ func TestPodcastsServiceDelete(t *testing.T) {
 	assert.EqualSorted(t, model.PodcastsToUrls(podcasts), []string{"http://example.com/p1", "http://example.com/p3"})
 
 	_, err = podcastsSrv.GetPodcast(ctx, "user1", pid)
-	assert.ErrSpec(t, err, common.ErrUnknownPodcast)
+	assert.ErrSpec(t, err, aerr.ErrNoData)
 }

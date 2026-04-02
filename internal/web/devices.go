@@ -62,7 +62,7 @@ func (d devicePages) list(ctx context.Context, w http.ResponseWriter, r *http.Re
 func (d devicePages) deleteGet(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
 	devicename := chi.URLParam(r, "devicename")
 	if devicename == "" {
-		srvsupport.WriteError(w, r, http.StatusBadRequest, "")
+		srvsupport.WriteError(w, r, http.StatusBadRequest)
 
 		return
 	}
@@ -73,7 +73,7 @@ func (d devicePages) deleteGet(ctx context.Context, w http.ResponseWriter, r *ht
 func (d devicePages) deletePost(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
 	devicename := chi.URLParam(r, "devicename")
 	if devicename == "" {
-		srvsupport.WriteError(w, r, http.StatusBadRequest, "")
+		srvsupport.WriteError(w, r, http.StatusBadRequest)
 
 		return
 	}

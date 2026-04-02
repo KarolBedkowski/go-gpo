@@ -15,7 +15,6 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
-	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
 )
@@ -41,7 +40,7 @@ func (s Repository) GetDevice(
 		userid, devicename)
 
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, common.ErrNoData
+		return nil, aerr.ErrNoData
 	} else if err != nil {
 		return nil, aerr.Wrapf(err, "select device failed").WithMeta("user_id", userid, "device_name", devicename)
 	}

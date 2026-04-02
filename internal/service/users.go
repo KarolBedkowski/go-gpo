@@ -40,7 +40,7 @@ func (u *UsersSrv) LoginUser(ctx context.Context, username, password string) (*m
 	defer end()
 
 	if username == "" {
-		return nil, common.ErrEmptyUsername
+		return nil, common.ErrInvalidUser
 	}
 
 	if password == "" {
@@ -53,18 +53,16 @@ func (u *UsersSrv) LoginUser(ctx context.Context, username, password string) (*m
 
 	common.TraceLazyPrintf(ctx, "LoginUser: user loaded")
 
-	if errors.Is(err, common.ErrNoData) {
-		return nil, common.ErrUserNotFound
-	} else if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err)
+	if err != nil {
+		return nil, aerr.Wrapf(err, "get user error")
 	}
 
 	if user.Password == model.UserLockedPassword {
-		return nil, common.ErrUserAccountLocked
+		return nil, ErrUserAccountLocked
 	}
 
 	if !u.passHasher.CheckPassword(password, user.Password) {
-		return nil, common.ErrUnauthorized
+		return nil, ErrUnauthorized
 	}
 
 	common.TraceLazyPrintf(ctx, "LoginUser: password verified")
@@ -75,21 +73,18 @@ func (u *UsersSrv) LoginUser(ctx context.Context, username, password string) (*m
 // CheckUser check is user account valid; return user.
 func (u *UsersSrv) CheckUser(ctx context.Context, username string) (*model.User, error) {
 	if username == "" {
-		return nil, common.ErrEmptyUsername
+		return nil, common.ErrInvalidUser
 	}
 
 	user, err := db.InConnectionR(ctx, u.dbi, func(ctx context.Context) (*model.User, error) {
 		return u.usersRepo.GetUser(ctx, username)
 	})
-
-	if errors.Is(err, common.ErrNoData) {
-		return nil, common.ErrUserNotFound
-	} else if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err)
+	if err != nil {
+		return nil, aerr.Wrapf(err, "get user error")
 	}
 
 	if user.Password == model.UserLockedPassword {
-		return nil, common.ErrUserAccountLocked
+		return nil, ErrUserAccountLocked
 	}
 
 	return user, nil
@@ -111,14 +106,14 @@ func (u *UsersSrv) AddUser(ctx context.Context, cmd *command.NewUserCmd) (comman
 		// is user exists?
 		_, err := u.usersRepo.GetUser(ctx, cmd.UserName)
 		switch {
-		case errors.Is(err, common.ErrNoData):
+		case errors.Is(err, aerr.ErrNoData):
 			// ok; user not exists
 		case err == nil:
 			// user exists
-			return res, common.ErrUserExists
+			return res, ErrUserExists
 		default:
 			// failed to get user
-			return res, aerr.ApplyFor(ErrRepositoryError, err)
+			return res, aerr.Wrapf(err, "get user error")
 		}
 
 		hashedPass, err := u.passHasher.HashPassword(cmd.Password)
@@ -157,11 +152,8 @@ func (u *UsersSrv) ChangePassword(ctx context.Context, cmd *command.ChangeUserPa
 	return db.InTransaction(ctx, u.dbi, func(ctx context.Context) error {
 		// is user exists?
 		user, err := u.usersRepo.GetUser(ctx, cmd.UserName)
-
-		if errors.Is(err, common.ErrNoData) {
-			return common.ErrUnknownUser
-		} else if err != nil {
-			return aerr.ApplyFor(ErrRepositoryError, err)
+		if err != nil {
+			return aerr.Wrapf(err, "get user error")
 		}
 
 		if cmd.CheckCurrentPass && !u.passHasher.CheckPassword(cmd.CurrentPassword, user.Password) {
@@ -200,10 +192,8 @@ func (u *UsersSrv) LockAccount(ctx context.Context, cmd command.LockAccountCmd) 
 	//nolint:wrapcheck
 	return db.InTransaction(ctx, u.dbi, func(ctx context.Context) error {
 		udb, err := u.usersRepo.GetUser(ctx, cmd.UserName)
-		if errors.Is(err, common.ErrNoData) {
-			return common.ErrUnknownUser
-		} else if err != nil {
-			return aerr.ApplyFor(ErrRepositoryError, err)
+		if err != nil {
+			return aerr.Wrapf(err, "get user error")
 		}
 
 		udb.Password = model.UserLockedPassword
@@ -224,10 +214,8 @@ func (u *UsersSrv) DeleteUser(ctx context.Context, cmd *command.DeleteUserCmd) e
 	//nolint:wrapcheck
 	return db.InTransaction(ctx, u.dbi, func(ctx context.Context) error {
 		user, err := u.usersRepo.GetUser(ctx, cmd.UserName)
-		if errors.Is(err, common.ErrNoData) {
-			return common.ErrUnknownUser
-		} else if err != nil {
-			return aerr.ApplyFor(ErrRepositoryError, err)
+		if err != nil {
+			return aerr.Wrapf(err, "get user error")
 		}
 
 		if err = u.usersRepo.DeleteUser(ctx, user.ID); err != nil {
