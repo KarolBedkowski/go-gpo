@@ -65,9 +65,9 @@ func (p podcastPages) list(ctx context.Context, w http.ResponseWriter, r *http.R
 
 	podcasts, err := p.podcastsSrv.GetPodcastsWithLastEpisode(ctx, user, subscribedOnly)
 	if err != nil {
-		srvsupport.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
 			Msgf("web.Podcasts: get user_name=%s podcasts error=%q", user, err)
+		p.renderer.WriteError(ctx, w, err)
 
 		return
 	}
@@ -81,7 +81,7 @@ func (p podcastPages) addPodcast(ctx context.Context, w http.ResponseWriter, r *
 	r.Body = http.MaxBytesReader(w, r.Body, maxBody)
 	if err := r.ParseForm(); err != nil {
 		logger.Error().Err(err).Msgf("web.Podcasts: bad request - parse form error=%q", err)
-		srvsupport.WriteError(w, r, http.StatusBadRequest)
+		p.renderer.WriteError(ctx, w, err)
 	}
 
 	var podcast string
@@ -104,13 +104,13 @@ func (p podcastPages) addPodcast(ctx context.Context, w http.ResponseWriter, r *
 
 	_ = cmd.Sanitize()
 	if len(cmd.Add) != 1 {
-		srvsupport.WriteErrorWithMsg(w, r, http.StatusBadRequest, "invalid podcast URL")
+		p.renderer.WriteBadRequestError(ctx, w, "invalid podcast URL")
 	}
 
 	if _, err := p.subscriptionsSrv.ChangeSubscriptions(ctx, &cmd); err != nil {
-		srvsupport.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
 			Msgf("web.Podcasts: add podcast error=%q", err)
+		p.renderer.WriteError(ctx, w, err)
 
 		return
 	}
@@ -119,9 +119,11 @@ func (p podcastPages) addPodcast(ctx context.Context, w http.ResponseWriter, r *
 }
 
 func (p podcastPages) podcastGet(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
-	podcast, status := p.podcastFromURLParam(ctx, r, logger)
-	if status > 0 {
-		p.renderer.WriteError(ctx, w, status, "")
+	podcast, err := p.podcastFromURLParam(ctx, r, logger)
+	if err != nil {
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
+			Msgf("web.Podcasts: get podcast error=%q", err)
+		p.renderer.WriteError(ctx, w, err)
 
 		return
 	}
@@ -135,9 +137,11 @@ func (p podcastPages) podcastUnsubscribe(
 	r *http.Request,
 	logger *zerolog.Logger,
 ) {
-	podcast, status := p.podcastFromURLParam(ctx, r, logger)
-	if status > 0 || podcast == nil {
-		srvsupport.WriteError(w, r, status)
+	podcast, err := p.podcastFromURLParam(ctx, r, logger)
+	if err != nil {
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
+			Msgf("web.Podcasts: get podcast error=%q", err)
+		p.renderer.WriteError(ctx, w, err)
 
 		return
 	}
@@ -150,8 +154,8 @@ func (p podcastPages) podcastUnsubscribe(
 	}
 
 	if _, err := p.subscriptionsSrv.ChangeSubscriptions(ctx, &cmd); err != nil {
-		srvsupport.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msgf("web.Podcasts: add podcast error=%q", err)
+		p.renderer.WriteError(ctx, w, err)
 
 		return
 	}
@@ -165,9 +169,11 @@ func (p podcastPages) podcastResubscribe(
 	r *http.Request,
 	logger *zerolog.Logger,
 ) {
-	podcast, status := p.podcastFromURLParam(ctx, r, logger)
-	if status > 0 || podcast == nil {
-		srvsupport.WriteError(w, r, status)
+	podcast, err := p.podcastFromURLParam(ctx, r, logger)
+	if err != nil {
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
+			Msgf("web.Podcasts: get podcast error=%q", err)
+		p.renderer.WriteError(ctx, w, err)
 
 		return
 	}
@@ -180,9 +186,9 @@ func (p podcastPages) podcastResubscribe(
 	}
 
 	if _, err := p.subscriptionsSrv.ChangeSubscriptions(ctx, &cmd); err != nil {
-		srvsupport.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
 			Msgf("web.Podcasts: resubscribe podcast_url=%q error=%q", podcast.URL, err)
+		p.renderer.WriteError(ctx, w, err)
 
 		return
 	}
@@ -191,30 +197,25 @@ func (p podcastPages) podcastResubscribe(
 }
 
 func (p podcastPages) podcastFromURLParam(ctx context.Context, r *http.Request, logger *zerolog.Logger,
-) (*model.Podcast, int) {
+) (*model.Podcast, error) {
 	podcastidS := chi.URLParam(r, "podcastid")
 	if podcastidS == "" {
-		return nil, http.StatusBadRequest
+		return nil, aerr.ErrBadRequest.WithMsg("invalid podcast id")
 	}
 
 	podcastid, err := strconv.ParseInt(podcastidS, 10, 32)
 	if err != nil {
-		return nil, http.StatusBadRequest
+		return nil, aerr.ErrBadRequest.WithMsg("invalid podcast id")
 	}
 
 	user := common.ContextUser(ctx)
 
 	podcast, err := p.podcastsSrv.GetPodcast(ctx, user, podcastid)
-	if aerr.HasTag(err, aerr.NotFound) {
-		return nil, http.StatusNotFound
-	} else if err != nil {
-		logger.Info().Err(err).Int64("podcast_id", podcastid).
-			Msgf("web.Podcasts: get podcast_id=%d error=%q", podcastid, err)
-
-		return nil, http.StatusInternalServerError
+	if err != nil {
+		return nil, aerr.Wrap(err)
 	}
 
-	return podcast, 0
+	return podcast, nil
 }
 
 func (p podcastPages) podcastDeleteGet(
@@ -223,9 +224,11 @@ func (p podcastPages) podcastDeleteGet(
 	r *http.Request,
 	logger *zerolog.Logger,
 ) {
-	podcast, status := p.podcastFromURLParam(ctx, r, logger)
-	if status > 0 || podcast == nil {
-		srvsupport.WriteError(w, r, status)
+	podcast, err := p.podcastFromURLParam(ctx, r, logger)
+	if err != nil {
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
+			Msgf("web.Podcasts: get podcast error=%q", err)
+		p.renderer.WriteError(ctx, w, err)
 
 		return
 	}
@@ -241,14 +244,14 @@ func (p podcastPages) podcastDeletePost(
 ) {
 	podcastidS := chi.URLParam(r, "podcastid")
 	if podcastidS == "" {
-		srvsupport.WriteError(w, r, http.StatusBadRequest)
+		p.renderer.WriteBadRequestError(ctx, w, "Invalid podcast id.")
 
 		return
 	}
 
 	podcastid, err := strconv.ParseInt(podcastidS, 10, 32)
 	if err != nil || podcastid < 1 {
-		srvsupport.WriteError(w, r, http.StatusBadRequest)
+		p.renderer.WriteBadRequestError(ctx, w, "Invalid podcast id.")
 
 		return
 	}
@@ -256,9 +259,9 @@ func (p podcastPages) podcastDeletePost(
 	user := common.ContextUser(ctx)
 
 	if err := p.podcastsSrv.DeletePodcast(ctx, user, podcastid); err != nil {
-		srvsupport.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
 			Msgf("web.Podcasts: delete podcast_id=%d error=%q", podcastid, err)
+		p.renderer.WriteError(ctx, w, err)
 
 		return
 	}
@@ -271,9 +274,9 @@ func (p podcastPages) export(ctx context.Context, w http.ResponseWriter, r *http
 
 	subs, err := p.subscriptionsSrv.GetUserSubscriptions(ctx, &query.GetUserSubscriptionsQuery{UserName: user})
 	if err != nil {
-		srvsupport.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
 			Msgf("web.Podcasts: get subscribed podcasts for export user_name=%s error=%q", user, err)
+		p.renderer.WriteError(ctx, w, err)
 
 		return
 	}

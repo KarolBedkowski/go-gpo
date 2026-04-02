@@ -51,9 +51,9 @@ func (u favoritesResource) getFavorites(
 
 	favorites, err := u.episodesSrv.GetFavorites(ctx, user)
 	if err != nil {
-		checkAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
 			Msgf("FavoritesResource: get favorites user_name=%s error=%s", user, err)
+		renderError(w, r, err)
 
 		return
 	}

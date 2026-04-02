@@ -49,9 +49,9 @@ func (d devicePages) list(ctx context.Context, w http.ResponseWriter, r *http.Re
 
 	devices, err := d.deviceSrv.ListDevices(ctx, &query.GetDevicesQuery{UserName: user})
 	if err != nil {
-		srvsupport.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
 			Msgf("web.Devices: list user_name=%s devices error=%q", user, err)
+		d.renderer.WriteError(ctx, w, err)
 
 		return
 	}
@@ -62,7 +62,7 @@ func (d devicePages) list(ctx context.Context, w http.ResponseWriter, r *http.Re
 func (d devicePages) deleteGet(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
 	devicename := chi.URLParam(r, "devicename")
 	if devicename == "" {
-		srvsupport.WriteError(w, r, http.StatusBadRequest)
+		d.renderer.WriteBadRequestError(ctx, w, "Missing device name.")
 
 		return
 	}
@@ -73,7 +73,7 @@ func (d devicePages) deleteGet(ctx context.Context, w http.ResponseWriter, r *ht
 func (d devicePages) deletePost(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
 	devicename := chi.URLParam(r, "devicename")
 	if devicename == "" {
-		srvsupport.WriteError(w, r, http.StatusBadRequest)
+		d.renderer.WriteBadRequestError(ctx, w, "Missing device name.")
 
 		return
 	}
@@ -85,9 +85,9 @@ func (d devicePages) deletePost(ctx context.Context, w http.ResponseWriter, r *h
 
 	err := d.deviceSrv.DeleteDevice(ctx, &cmd)
 	if err != nil {
-		srvsupport.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Object("cmd", &cmd).
 			Msgf("web.Devices: delete device_name=%s for user_name=%s error=%q", devicename, cmd.UserName, err)
+		d.renderer.WriteError(ctx, w, err)
 
 		return
 	}

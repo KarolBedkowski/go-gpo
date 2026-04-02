@@ -1,6 +1,8 @@
 package aerr
 
 import (
+	"slices"
+
 	"github.com/rs/zerolog"
 )
 
@@ -21,26 +23,21 @@ const (
 var (
 	ErrValidation  = New("validation error").WithTag(ValidationError)
 	ErrInvalidConf = New("invalid configuration").WithTag(ConfigurationError)
-	ErrDatabase    = New("database error").WithTag(InternalError).WithUserMsg("database error")
-	ErrBadRequest  = New("bad request").WithTag(NotFound).WithUserMsg("bad request")
+	ErrDatabase    = New("database error").WithTag(InternalError)
+	ErrBadRequest  = New("bad request").WithTag(BadRequest)
 	ErrNoData      = New("no result").WithTag(NotFound)
 )
 
-func IsSerious(err error) bool {
+func LogLevelForError(err error) zerolog.Level {
 	tags := GetTags(err)
 
-	if len(tags) == 1 && tags[0] == ValidationError {
-		return false
-	}
-
-	return true
-}
-
-func LogLevelForError(err error) zerolog.Level {
-	if IsSerious(err) {
+	switch {
+	case len(tags) == 0:
 		return zerolog.WarnLevel
+	case slices.Contains(tags, InternalError):
+		return zerolog.ErrorLevel
+	default:
+		// all others are usually user errors and not required logging.
+		return zerolog.DebugLevel
 	}
-
-	// all others are usually user errors and not required logging.
-	return zerolog.DebugLevel
 }

@@ -48,7 +48,7 @@ func (e episodePages) list(ctx context.Context, w http.ResponseWriter, r *http.R
 	podcast := r.URL.Query().Get("podcast")
 	if podcast == "" {
 		logger.Debug().Msgf("web.Episodes: bad request empty podcast user_name=%s", user)
-		w.WriteHeader(http.StatusBadRequest)
+		e.renderer.WriteBadRequestError(ctx, w, "Invalid podcast.")
 
 		return
 	}
@@ -56,7 +56,7 @@ func (e episodePages) list(ctx context.Context, w http.ResponseWriter, r *http.R
 	podcastid, err := strconv.ParseInt(podcast, 10, 32)
 	if err != nil {
 		logger.Debug().Err(err).Msgf("web.Episodes: bad request: invalid_podcast_id=%q parse error=%q", podcast, err)
-		w.WriteHeader(http.StatusBadRequest)
+		e.renderer.WriteBadRequestError(ctx, w, "Invalid podcast.")
 
 		return
 	}
@@ -69,9 +69,9 @@ func (e episodePages) list(ctx context.Context, w http.ResponseWriter, r *http.R
 
 	episodes, err := e.episodeSrv.GetEpisodesByPodcast(ctx, &query)
 	if err != nil {
-		srvsupport.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
 			Msgf("web.Episodes: get podcast episodes user_name=%s error=%q", user, err)
+		e.renderer.WriteError(ctx, w, err)
 
 		return
 	}

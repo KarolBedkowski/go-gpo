@@ -61,9 +61,9 @@ func (u settingsResource) getSettings(
 
 	res, err := u.settingsSrv.GetSettings(ctx, &key)
 	if err != nil {
-		checkAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
 			Msgf("SettingsResource: get settings user_name=%s scope=%s error=%q", user, key.Scope, err)
+		renderError(w, r, err)
 
 		return
 	}
@@ -87,7 +87,7 @@ func (u settingsResource) postSettings(
 
 	if err := render.DecodeJSON(r.Body, &reqData); err != nil {
 		logger.Debug().Err(err).Msgf("SettingsResource: decode request from user_name=%s error=%q", user, err)
-		writeError(w, r, http.StatusBadRequest)
+		writeError(w, r, http.StatusBadRequest, "")
 
 		return
 	}
@@ -102,9 +102,9 @@ func (u settingsResource) postSettings(
 		Remove:     reqData.Remove,
 	}
 	if err := u.settingsSrv.SaveSettings(ctx, &cmd); err != nil {
-		checkAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
 			Msgf("SettingsResource: save settings user_name=%s scope=%s error=%q", user, cmd.Scope, err)
+		renderError(w, r, err)
 
 		return
 	}

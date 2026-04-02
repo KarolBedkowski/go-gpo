@@ -6,7 +6,6 @@ package api
 // Distributed under terms of the GPLv3 license.
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -14,6 +13,7 @@ import (
 	"time"
 
 	"github.com/go-chi/render"
+	"github.com/rs/zerolog/hlog"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 )
 
@@ -34,29 +34,37 @@ func getSinceParameter(r *http.Request) (time.Time, error) {
 }
 
 // checkAndWriteError decode and write error to ResponseWriter.
-func checkAndWriteError(w http.ResponseWriter, r *http.Request, err error) {
-	status := http.StatusInternalServerError
-
+func renderError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
-	case errors.Is(err, aerr.ErrNoData):
-		status = http.StatusNotFound
-
 	case aerr.HasTag(err, aerr.InternalError):
-		status = http.StatusInternalServerError
-
+		writeError(w, r, http.StatusInternalServerError, aerr.GetUserMessage(err))
+	case aerr.HasTag(err, aerr.NotFound):
+		writeError(w, r, http.StatusNotFound, aerr.GetUserMessage(err))
 	case aerr.HasTag(err, aerr.ValidationError):
-		status = http.StatusBadRequest
+		writeError(w, r, http.StatusBadRequest, aerr.GetUserMessage(err))
+	default:
+		writeError(w, r, http.StatusInternalServerError, aerr.GetUserMessage(err))
 	}
-
-	writeError(w, r, status)
 }
 
-func writeError(w http.ResponseWriter, r *http.Request, status int) {
+func writeError(w http.ResponseWriter, r *http.Request, status int, details string) {
+	var reqid, now string
+
+	if status == http.StatusInternalServerError {
+		rid, _ := hlog.IDFromRequest(r)
+		reqid = rid.String()
+		now = time.Now().Format(time.RFC3339Nano)
+	}
+
 	msg := http.StatusText(status)
+
 	if strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
 		res := struct {
-			Error string `json:"error"`
-		}{msg}
+			Error   string `json:"error"`
+			ReqID   string `json:"request_id,omitempty"`
+			TS      string `json:"ts,omitempty"`
+			Details string `json:"details,omitempty"`
+		}{msg, reqid, now, details}
 
 		render.Status(r, status)
 		render.JSON(w, r, &res)
@@ -65,6 +73,18 @@ func writeError(w http.ResponseWriter, r *http.Request, status int) {
 	}
 
 	http.Error(w, msg, status)
+
+	if details != "" {
+		fmt.Fprintln(w, details)
+	}
+
+	if reqid != "" {
+		fmt.Fprintln(w, "reqid="+reqid) //nolint:gosec
+	}
+
+	if now != "" {
+		fmt.Fprintln(w, "ts="+now)
+	}
 }
 
 // jsonpWriter wrap response with jsonp function when this function name is given in `jsonp` url parameter.

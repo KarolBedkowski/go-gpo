@@ -9,17 +9,11 @@ package srvsupport
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"net/http"
-	"strings"
-	"time"
 
 	"gitea.com/go-chi/session"
-	"github.com/go-chi/render"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/hlog"
-	"gitlab.com/kabes/go-gpo/internal/aerr"
 )
 
 func SessionUser(store session.Store) string {
@@ -56,78 +50,5 @@ func WrapNamed(
 		r = r.WithContext(ctx)
 
 		handler(ctx, w, r, &logger)
-	}
-}
-
-func WriteError(w http.ResponseWriter, r *http.Request, code int) {
-	WriteErrorWithMsg(w, r, code, http.StatusText(code))
-}
-
-func WriteErrorWithMsg(w http.ResponseWriter, r *http.Request, code int, msg string) {
-	if msg == "" {
-		msg = http.StatusText(code)
-	}
-
-	if code == http.StatusInternalServerError {
-		writeInternalServerError(w, r, code, msg)
-
-		return
-	}
-
-	if strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-		res := struct {
-			Error string `json:"error"`
-		}{msg}
-
-		render.Status(r, code)
-		RenderJSON(w, r, &res)
-
-		return
-	}
-
-	http.Error(w, msg, code)
-}
-
-func writeInternalServerError(w http.ResponseWriter, r *http.Request, code int, msg string) {
-	rid, _ := hlog.IDFromCtx(r.Context())
-	reqid := rid.String()
-	now := time.Now().Format(time.RFC3339Nano)
-
-	if strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-		res := struct {
-			Error string `json:"error"`
-			ReqID string `json:"request_id"`
-			TS    string `json:"ts"`
-		}{msg, reqid, now}
-
-		render.Status(r, code)
-		RenderJSON(w, r, &res)
-
-		return
-	}
-
-	http.Error(w, msg, code)
-	fmt.Fprintln(w, "reqid="+reqid)
-	fmt.Fprintln(w, "ts="+now)
-}
-
-// CheckAndWriteError decode and write error to ResponseWriter.
-func CheckAndWriteError(w http.ResponseWriter, r *http.Request, err error) {
-	msg := aerr.GetUserMessage(err)
-
-	switch {
-	case errors.Is(err, aerr.ErrNoData):
-		WriteErrorWithMsg(w, r, http.StatusNotFound, msg)
-
-	case aerr.HasTag(err, aerr.InternalError):
-		// write message if is defined in error
-		WriteErrorWithMsg(w, r, http.StatusInternalServerError, msg)
-
-	case aerr.HasTag(err, aerr.ValidationError):
-		WriteErrorWithMsg(w, r, http.StatusBadRequest, msg)
-
-	default:
-		// unknown error; newer show details
-		WriteError(w, r, http.StatusInternalServerError)
 	}
 }
