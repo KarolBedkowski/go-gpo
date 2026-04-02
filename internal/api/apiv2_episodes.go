@@ -99,7 +99,7 @@ func (er episodesResource) uploadEpisodeActions(
 	}
 	if err := er.episodesSrv.AddAction(ctx, &cmd); err != nil {
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msgf("EpisodeResource: save episodes error=%q", err)
-		renderError(w, r, err)
+		writeError(w, r, err)
 
 		return
 	}
@@ -130,7 +130,7 @@ func (er episodesResource) getEpisodeActions(
 	if err != nil {
 		logger.Debug().Err(err).
 			Msgf("EpisodeResource: parse since=%q to time error=%q", r.URL.Query().Get("since"), err)
-		writeError(w, r, http.StatusBadRequest, "")
+		writeSimpleError(w, r, http.StatusBadRequest, "")
 
 		return
 	}
@@ -148,7 +148,7 @@ func (er episodesResource) getEpisodeActions(
 	if err != nil {
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
 			Msgf("EpisodeResource: get episodes actions error=%q", err)
-		renderError(w, r, err)
+		writeError(w, r, err)
 
 		return
 	}

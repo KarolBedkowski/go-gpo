@@ -119,7 +119,7 @@ func (p podcastPages) addPodcast(ctx context.Context, w http.ResponseWriter, r *
 }
 
 func (p podcastPages) podcastGet(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
-	podcast, err := p.podcastFromURLParam(ctx, r, logger)
+	podcast, err := p.podcastFromURLParam(ctx, r)
 	if err != nil {
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
 			Msgf("web.Podcasts: get podcast error=%q", err)
@@ -137,7 +137,7 @@ func (p podcastPages) podcastUnsubscribe(
 	r *http.Request,
 	logger *zerolog.Logger,
 ) {
-	podcast, err := p.podcastFromURLParam(ctx, r, logger)
+	podcast, err := p.podcastFromURLParam(ctx, r)
 	if err != nil {
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
 			Msgf("web.Podcasts: get podcast error=%q", err)
@@ -169,7 +169,7 @@ func (p podcastPages) podcastResubscribe(
 	r *http.Request,
 	logger *zerolog.Logger,
 ) {
-	podcast, err := p.podcastFromURLParam(ctx, r, logger)
+	podcast, err := p.podcastFromURLParam(ctx, r)
 	if err != nil {
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
 			Msgf("web.Podcasts: get podcast error=%q", err)
@@ -196,7 +196,7 @@ func (p podcastPages) podcastResubscribe(
 	http.Redirect(w, r, p.webroot+"/web/podcast/", http.StatusFound)
 }
 
-func (p podcastPages) podcastFromURLParam(ctx context.Context, r *http.Request, logger *zerolog.Logger,
+func (p podcastPages) podcastFromURLParam(ctx context.Context, r *http.Request,
 ) (*model.Podcast, error) {
 	podcastidS := chi.URLParam(r, "podcastid")
 	if podcastidS == "" {
@@ -224,7 +224,7 @@ func (p podcastPages) podcastDeleteGet(
 	r *http.Request,
 	logger *zerolog.Logger,
 ) {
-	podcast, err := p.podcastFromURLParam(ctx, r, logger)
+	podcast, err := p.podcastFromURLParam(ctx, r)
 	if err != nil {
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
 			Msgf("web.Podcasts: get podcast error=%q", err)

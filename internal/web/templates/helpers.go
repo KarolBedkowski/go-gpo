@@ -61,7 +61,7 @@ func (r *Renderer) WriteSimplePage(w io.Writer, p SimplePage) {
 
 //------------------------------------------------------------------------------
 
-func (r *Renderer) WrtieSimpleError(ctx context.Context, w io.Writer, status int, details string) {
+func (r *Renderer) WriteSimpleError(ctx context.Context, writer io.Writer, status int, details string) {
 	page := ErrorPage{
 		Status:  status,
 		Message: http.StatusText(status),
@@ -75,27 +75,27 @@ func (r *Renderer) WrtieSimpleError(ctx context.Context, w io.Writer, status int
 		}
 	}
 
-	WritePageTemplate(w, &page, r.pageContext)
+	WritePageTemplate(writer, &page, r.pageContext)
 }
 
 func (r *Renderer) WriteNotFoundError(ctx context.Context, w io.Writer, details string) {
-	r.WrtieSimpleError(ctx, w, http.StatusNotFound, details)
+	r.WriteSimpleError(ctx, w, http.StatusNotFound, details)
 }
 
 func (r *Renderer) WriteBadRequestError(ctx context.Context, w io.Writer, details string) {
-	r.WrtieSimpleError(ctx, w, http.StatusBadRequest, details)
+	r.WriteSimpleError(ctx, w, http.StatusBadRequest, details)
 }
 
 func (r *Renderer) WriteError(ctx context.Context, w io.Writer, err error) {
 	switch {
 	case aerr.HasTag(err, aerr.InternalError):
-		r.WrtieSimpleError(ctx, w, http.StatusInternalServerError, aerr.GetUserMessage(err))
+		r.WriteSimpleError(ctx, w, http.StatusInternalServerError, aerr.GetUserMessage(err))
 	case aerr.HasTag(err, aerr.NotFound):
-		r.WrtieSimpleError(ctx, w, http.StatusNotFound, aerr.GetUserMessage(err))
+		r.WriteSimpleError(ctx, w, http.StatusNotFound, aerr.GetUserMessage(err))
 	case aerr.HasTag(err, aerr.ValidationError):
-		r.WrtieSimpleError(ctx, w, http.StatusBadRequest, aerr.GetUserMessage(err))
+		r.WriteSimpleError(ctx, w, http.StatusBadRequest, aerr.GetUserMessage(err))
 	default:
-		r.WrtieSimpleError(ctx, w, http.StatusInternalServerError, aerr.GetUserMessage(err))
+		r.WriteSimpleError(ctx, w, http.StatusInternalServerError, aerr.GetUserMessage(err))
 	}
 }
 

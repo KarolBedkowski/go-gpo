@@ -34,25 +34,27 @@ func getSinceParameter(r *http.Request) (time.Time, error) {
 }
 
 // checkAndWriteError decode and write error to ResponseWriter.
-func renderError(w http.ResponseWriter, r *http.Request, err error) {
+func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case aerr.HasTag(err, aerr.InternalError):
-		writeError(w, r, http.StatusInternalServerError, aerr.GetUserMessage(err))
+		writeSimpleError(w, r, http.StatusInternalServerError, aerr.GetUserMessage(err))
 	case aerr.HasTag(err, aerr.NotFound):
-		writeError(w, r, http.StatusNotFound, aerr.GetUserMessage(err))
+		writeSimpleError(w, r, http.StatusNotFound, aerr.GetUserMessage(err))
 	case aerr.HasTag(err, aerr.ValidationError):
-		writeError(w, r, http.StatusBadRequest, aerr.GetUserMessage(err))
+		writeSimpleError(w, r, http.StatusBadRequest, aerr.GetUserMessage(err))
 	default:
-		writeError(w, r, http.StatusInternalServerError, aerr.GetUserMessage(err))
+		writeSimpleError(w, r, http.StatusInternalServerError, aerr.GetUserMessage(err))
 	}
 }
 
-func writeError(w http.ResponseWriter, r *http.Request, status int, details string) {
+func writeSimpleError(w http.ResponseWriter, r *http.Request, status int, details string) {
 	var reqid, now string
 
 	if status == http.StatusInternalServerError {
-		rid, _ := hlog.IDFromRequest(r)
-		reqid = rid.String()
+		if rid, ok := hlog.IDFromRequest(r); ok {
+			reqid = rid.String()
+		}
+
 		now = time.Now().Format(time.RFC3339Nano)
 	}
 

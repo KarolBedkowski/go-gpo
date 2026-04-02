@@ -58,7 +58,7 @@ func (ar authResource) logout(ctx context.Context, w http.ResponseWriter, r *htt
 	if username != "" && user != username {
 		logger.Info().Str(common.LogKeyUserName, user).
 			Msgf("SimpleResource: logout user error; session user %q not match user", username)
-		writeError(w, r, http.StatusBadRequest, "")
+		writeSimpleError(w, r, http.StatusBadRequest, "")
 
 		return
 	}
