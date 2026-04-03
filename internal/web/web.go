@@ -28,19 +28,22 @@ func New(i do.Injector) (WEB, error) {
 	userPages := do.MustInvoke[userPages](i)
 	episodePages := do.MustInvoke[episodePages](i)
 	podcastPages := do.MustInvoke[podcastPages](i)
+	errorPages := do.MustInvoke[errorPages](i)
 
 	router := chi.NewRouter()
+	web := WEB{router: router}
 
 	router.Mount("/", indexPage.Routes())
 	router.Mount("/device", devicePages.Routes())
 	router.Mount("/podcast", podcastPages.Routes())
 	router.Mount("/episode", episodePages.Routes())
 	router.Mount("/user", userPages.Routes())
+	errorPages.Register(router)
 
 	fs := http.FileServerFS(staticFS)
 	router.Method("GET", "/static/*", http.StripPrefix("/web/", fs))
 
-	return WEB{router: router}, nil
+	return web, nil
 }
 
 func (w *WEB) Routes() *chi.Mux {
