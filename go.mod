@@ -7,17 +7,17 @@ require (
 	github.com/Merovius/systemd v0.0.0-20140203230105-93296c743739
 	github.com/go-chi/chi/v5 v5.2.5
 	github.com/go-chi/render v1.0.3
-	github.com/jackc/pgx/v5 v5.8.0
+	github.com/jackc/pgx/v5 v5.9.1
 	github.com/jmoiron/sqlx v1.4.0
-	github.com/mattn/go-sqlite3 v1.14.37
+	github.com/mattn/go-sqlite3 v1.14.38
 	github.com/mmcdole/gofeed v1.3.0
 	github.com/pressly/goose/v3 v3.27.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/rs/xid v1.6.0
-	github.com/rs/zerolog v1.34.0
-	github.com/samber/do/http/chi/v2 v2.0.0-20260305203052-41f8d85bea11
+	github.com/rs/zerolog v1.35.0
+	github.com/samber/do/http/chi/v2 v2.0.0-20260402171856-a67b77d0dec8
 	github.com/samber/do/v2 v2.0.0
-	github.com/urfave/cli/v3 v3.7.0
+	github.com/urfave/cli/v3 v3.8.0
 	github.com/valyala/quicktemplate v1.8.0
 	golang.org/x/crypto v0.49.0
 	golang.org/x/net v0.52.0
