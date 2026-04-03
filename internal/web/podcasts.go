@@ -10,7 +10,6 @@ package web
 import (
 	"context"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -121,8 +120,7 @@ func (p podcastPages) addPodcast(ctx context.Context, w http.ResponseWriter, r *
 func (p podcastPages) podcastGet(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
 	podcast, err := p.podcastFromURLParam(ctx, r)
 	if err != nil {
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
-			Msgf("web.Podcasts: get podcast error=%q", err)
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msgf("web.Podcasts: get podcast error=%q", err)
 		p.renderer.WriteError(ctx, w, err)
 
 		return
@@ -139,8 +137,7 @@ func (p podcastPages) podcastUnsubscribe(
 ) {
 	podcast, err := p.podcastFromURLParam(ctx, r)
 	if err != nil {
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
-			Msgf("web.Podcasts: get podcast error=%q", err)
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msgf("web.Podcasts: get podcast error=%q", err)
 		p.renderer.WriteError(ctx, w, err)
 
 		return
@@ -171,8 +168,7 @@ func (p podcastPages) podcastResubscribe(
 ) {
 	podcast, err := p.podcastFromURLParam(ctx, r)
 	if err != nil {
-		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
-			Msgf("web.Podcasts: get podcast error=%q", err)
+		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msgf("web.Podcasts: get podcast error=%q", err)
 		p.renderer.WriteError(ctx, w, err)
 
 		return
@@ -198,14 +194,9 @@ func (p podcastPages) podcastResubscribe(
 
 func (p podcastPages) podcastFromURLParam(ctx context.Context, r *http.Request,
 ) (*model.Podcast, error) {
-	podcastidS := chi.URLParam(r, "podcastid")
-	if podcastidS == "" {
-		return nil, aerr.ErrBadRequest.WithMsg("invalid podcast id")
-	}
-
-	podcastid, err := strconv.ParseInt(podcastidS, 10, 32)
+	podcastid, err := urlParamAsInt(r, "podcastid")
 	if err != nil {
-		return nil, aerr.ErrBadRequest.WithMsg("invalid podcast id")
+		return nil, err
 	}
 
 	user := common.ContextUser(ctx)
@@ -242,15 +233,8 @@ func (p podcastPages) podcastDeletePost(
 	r *http.Request,
 	logger *zerolog.Logger,
 ) {
-	podcastidS := chi.URLParam(r, "podcastid")
-	if podcastidS == "" {
-		p.renderer.WriteBadRequestError(ctx, w, "Invalid podcast id.")
-
-		return
-	}
-
-	podcastid, err := strconv.ParseInt(podcastidS, 10, 32)
-	if err != nil || podcastid < 1 {
+	podcastid, err := urlParamAsInt(r, "podcastid")
+	if err != nil {
 		p.renderer.WriteBadRequestError(ctx, w, "Invalid podcast id.")
 
 		return

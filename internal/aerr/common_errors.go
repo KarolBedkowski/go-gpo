@@ -29,12 +29,12 @@ var (
 )
 
 func LogLevelForError(err error) zerolog.Level {
-	tags := GetTags(err)
-
-	switch {
+	switch tags := GetTags(err); {
 	case len(tags) == 0:
+		// this is unknown error
 		return zerolog.WarnLevel
 	case slices.Contains(tags, InternalError):
+		// internal server error
 		return zerolog.ErrorLevel
 	default:
 		// all others are usually user errors and not required logging.

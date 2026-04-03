@@ -69,64 +69,67 @@ func (p *ErrorPage) StreamBody(qw422016 *qt422016.Writer, pctx *PageContext) {
 	qw422016.E().S(p.Message)
 //line internal/web/templates/error.qtpl:15
 	qw422016.N().S(`</h3>
+
 	`)
-//line internal/web/templates/error.qtpl:16
+//line internal/web/templates/error.qtpl:17
 	if p.Details != "" {
-//line internal/web/templates/error.qtpl:16
-		qw422016.N().S(`
-	<p>`)
 //line internal/web/templates/error.qtpl:17
+		qw422016.N().S(`
+		<p>`)
+//line internal/web/templates/error.qtpl:18
 		qw422016.E().S(p.Details)
-//line internal/web/templates/error.qtpl:17
+//line internal/web/templates/error.qtpl:18
 		qw422016.N().S(`</p>
 	`)
-//line internal/web/templates/error.qtpl:18
-	}
-//line internal/web/templates/error.qtpl:18
-	qw422016.N().S(`
-	`)
 //line internal/web/templates/error.qtpl:19
+	}
+//line internal/web/templates/error.qtpl:19
+	qw422016.N().S(`
+
+	`)
+//line internal/web/templates/error.qtpl:21
 	if p.ReqID != "" {
-//line internal/web/templates/error.qtpl:19
+//line internal/web/templates/error.qtpl:21
 		qw422016.N().S(`
-	<p>reqid: `)
-//line internal/web/templates/error.qtpl:20
+		<p>reqid: `)
+//line internal/web/templates/error.qtpl:22
 		qw422016.E().S(p.ReqID)
-//line internal/web/templates/error.qtpl:20
+//line internal/web/templates/error.qtpl:22
 		qw422016.N().S(`</p>
 	`)
-//line internal/web/templates/error.qtpl:21
+//line internal/web/templates/error.qtpl:23
 	}
-//line internal/web/templates/error.qtpl:21
+//line internal/web/templates/error.qtpl:23
 	qw422016.N().S(`
+
 </section>
 
 `)
-//line internal/web/templates/error.qtpl:24
+//line internal/web/templates/error.qtpl:27
 }
 
-//line internal/web/templates/error.qtpl:24
+//line internal/web/templates/error.qtpl:27
 func (p *ErrorPage) WriteBody(qq422016 qtio422016.Writer, pctx *PageContext) {
-//line internal/web/templates/error.qtpl:24
+//line internal/web/templates/error.qtpl:27
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line internal/web/templates/error.qtpl:24
+//line internal/web/templates/error.qtpl:27
 	p.StreamBody(qw422016, pctx)
-//line internal/web/templates/error.qtpl:24
+//line internal/web/templates/error.qtpl:27
 	qt422016.ReleaseWriter(qw422016)
-//line internal/web/templates/error.qtpl:24
+//line internal/web/templates/error.qtpl:27
 }
 
-//line internal/web/templates/error.qtpl:24
+//line internal/web/templates/error.qtpl:27
 func (p *ErrorPage) Body(pctx *PageContext) string {
-//line internal/web/templates/error.qtpl:24
+//line internal/web/templates/error.qtpl:27
 	qb422016 := qt422016.AcquireByteBuffer()
-//line internal/web/templates/error.qtpl:24
+//line internal/web/templates/error.qtpl:27
 	p.WriteBody(qb422016, pctx)
-//line internal/web/templates/error.qtpl:24
+//line internal/web/templates/error.qtpl:27
 	qs422016 := string(qb422016.B)
-//line internal/web/templates/error.qtpl:24
+//line internal/web/templates/error.qtpl:27
 	qt422016.ReleaseByteBuffer(qb422016)
-//line internal/web/templates/error.qtpl:24
+//line internal/web/templates/error.qtpl:27
 	return qs422016
-//line internal/web/templates/error.qtpl:24
+//line internal/web/templates/error.qtpl:27
 }

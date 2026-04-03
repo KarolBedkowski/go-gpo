@@ -92,7 +92,7 @@ func (r *Renderer) WriteError(ctx context.Context, w io.Writer, err error) {
 		r.WriteSimpleError(ctx, w, http.StatusInternalServerError, aerr.GetUserMessage(err))
 	case aerr.HasTag(err, aerr.NotFound):
 		r.WriteSimpleError(ctx, w, http.StatusNotFound, aerr.GetUserMessage(err))
-	case aerr.HasTag(err, aerr.ValidationError):
+	case aerr.HasTag(err, aerr.ValidationError) || aerr.HasTag(err, aerr.BadRequest):
 		r.WriteSimpleError(ctx, w, http.StatusBadRequest, aerr.GetUserMessage(err))
 	default:
 		r.WriteSimpleError(ctx, w, http.StatusInternalServerError, aerr.GetUserMessage(err))

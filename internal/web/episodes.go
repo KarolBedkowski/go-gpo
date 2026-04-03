@@ -10,7 +10,6 @@ package web
 import (
 	"context"
 	"net/http"
-	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
@@ -45,17 +44,9 @@ func (e episodePages) Routes() *chi.Mux {
 func (e episodePages) list(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
 	user := common.ContextUser(ctx)
 
-	podcast := r.URL.Query().Get("podcast")
-	if podcast == "" {
-		logger.Debug().Msgf("web.Episodes: bad request empty podcast user_name=%s", user)
-		e.renderer.WriteBadRequestError(ctx, w, "Invalid podcast.")
-
-		return
-	}
-
-	podcastid, err := strconv.ParseInt(podcast, 10, 32)
+	podcastid, err := queryParamAsInt(r, "podcast")
 	if err != nil {
-		logger.Debug().Err(err).Msgf("web.Episodes: bad request: invalid_podcast_id=%q parse error=%q", podcast, err)
+		logger.Debug().Err(err).Msgf("web.Episodes: bad request: invalid podcast; error=%q", err)
 		e.renderer.WriteBadRequestError(ctx, w, "Invalid podcast.")
 
 		return

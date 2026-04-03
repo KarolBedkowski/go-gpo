@@ -13,12 +13,15 @@ type ErrorPage struct {
 <section>
 	<h2>Error</h2>
 	<h3>{%s p.Message %}</h3>
+
 	{% if p.Details != "" %}
-	<p>{%s p.Details %}</p>
+		<p>{%s p.Details %}</p>
 	{% endif %}
+
 	{% if p.ReqID != "" %}
-	<p>reqid: {%s p.ReqID %}</p>
+		<p>reqid: {%s p.ReqID %}</p>
 	{% endif %}
+
 </section>
 
 {% endfunc %}
