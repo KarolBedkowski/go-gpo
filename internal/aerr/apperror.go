@@ -135,7 +135,20 @@ func (a AppError) Is(target error) bool {
 		maps.Equal(tapperr.meta, a.meta)
 }
 
+// Error return string representing error; hide internal error; return only userMsg or msg.
 func (a AppError) Error() string {
+	if a.userMsg != "" {
+		return a.userMsg
+	}
+
+	if a.msg != "" {
+		return a.msg
+	}
+
+	return "error"
+}
+
+func (a AppError) LogString() string {
 	switch {
 	case a.msg != "" && a.err != nil:
 		return a.msg + "(" + a.err.Error() + ")"
@@ -153,16 +166,7 @@ func (a AppError) Unwrap() error {
 }
 
 func (a AppError) String() string {
-	msg := a.userMsg
-	if msg == "" {
-		msg = a.msg
-	}
-
-	if msg != "" {
-		return msg
-	}
-
-	return a.err.Error()
+	return a.Error()
 }
 
 func (a AppError) Format(s fmt.State, verb rune) {

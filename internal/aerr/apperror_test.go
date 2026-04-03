@@ -79,7 +79,8 @@ func TestAppErrorWrap(t *testing.T) {
 	assert.True(t, errors.Is(aerr1, err))
 	assert.Equal(t, errors.Unwrap(aerr1), err)
 	assert.True(t, aerr1.stack != nil)
-	assert.Equal(t, aerr1.String(), "error1")
+	assert.Equal(t, aerr1.LogString(), "error1")
+	assert.Equal(t, aerr1.String(), "error")
 }
 
 func TestAppErrorSimple(t *testing.T) {
@@ -89,7 +90,8 @@ func TestAppErrorSimple(t *testing.T) {
 	assert.True(t, errors.Is(aerr1, err))
 	assert.True(t, errors.Is(errors.Unwrap(aerr1), err))
 	assert.True(t, aerr1.stack != nil)
-	assert.Equal(t, aerr1.String(), "error1")
+	assert.Equal(t, aerr1.String(), "error")
+	assert.Equal(t, aerr1.LogString(), "error1")
 }
 
 func TestAppErrorMsg(t *testing.T) {
