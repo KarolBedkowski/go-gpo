@@ -60,7 +60,7 @@ func (er episodesResource) uploadEpisodeActions(
 
 	if err := render.DecodeJSON(r.Body, &reqData); err != nil {
 		logger.Debug().Err(err).Msgf("EpisodeResource: parse json error=%s", err)
-		http.Error(w, "invalid reqData data", http.StatusBadRequest)
+		srvsupport.WriteSimpleError(w, r, http.StatusBadRequest, "")
 
 		return
 	}
@@ -83,7 +83,7 @@ func (er episodesResource) uploadEpisodeActions(
 		if err := reqEpisode.validate(); err != nil {
 			logger.Debug().Err(err).Interface("req", reqEpisode).
 				Msgf("EpisodeResource: validate episode error=%s", err)
-			http.Error(w, "validate reqData data failed", http.StatusBadRequest)
+			srvsupport.WriteSimpleError(w, r, http.StatusBadRequest, "")
 
 			return
 		}
@@ -99,7 +99,7 @@ func (er episodesResource) uploadEpisodeActions(
 	}
 	if err := er.episodesSrv.AddAction(ctx, &cmd); err != nil {
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msgf("EpisodeResource: save episodes error=%q", err)
-		writeError(w, r, err)
+		srvsupport.WriteError(w, r, err)
 
 		return
 	}
@@ -130,7 +130,7 @@ func (er episodesResource) getEpisodeActions(
 	if err != nil {
 		logger.Debug().Err(err).
 			Msgf("EpisodeResource: parse since=%q to time error=%q", r.URL.Query().Get("since"), err)
-		writeSimpleError(w, r, http.StatusBadRequest, "")
+		srvsupport.WriteError(w, r, err)
 
 		return
 	}
@@ -148,7 +148,7 @@ func (er episodesResource) getEpisodeActions(
 	if err != nil {
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
 			Msgf("EpisodeResource: get episodes actions error=%q", err)
-		writeError(w, r, err)
+		srvsupport.WriteError(w, r, err)
 
 		return
 	}

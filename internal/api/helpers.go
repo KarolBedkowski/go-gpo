@@ -6,14 +6,10 @@ package api
 // Distributed under terms of the GPLv3 license.
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
-	"github.com/go-chi/render"
-	"github.com/rs/zerolog/hlog"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 )
 
@@ -24,69 +20,14 @@ func getSinceParameter(r *http.Request) (time.Time, error) {
 	if s := r.URL.Query().Get("since"); s != "" {
 		se, err := strconv.ParseInt(s, 10, 64)
 		if err != nil {
-			return since, fmt.Errorf("parse error: %w", err)
+			return since, aerr.Wrapf(err, "parse since parameter error").WithMeta("since", s).
+				WithTag(aerr.ValidationError)
 		}
 
 		since = time.Unix(se, 0).UTC()
 	}
 
 	return since, nil
-}
-
-// checkAndWriteError decode and write error to ResponseWriter.
-func writeError(w http.ResponseWriter, r *http.Request, err error) {
-	switch {
-	case aerr.HasTag(err, aerr.InternalError):
-		writeSimpleError(w, r, http.StatusInternalServerError, aerr.GetUserMessage(err))
-	case aerr.HasTag(err, aerr.NotFound):
-		writeSimpleError(w, r, http.StatusNotFound, aerr.GetUserMessage(err))
-	case aerr.HasTag(err, aerr.ValidationError):
-		writeSimpleError(w, r, http.StatusBadRequest, aerr.GetUserMessage(err))
-	default:
-		writeSimpleError(w, r, http.StatusInternalServerError, aerr.GetUserMessage(err))
-	}
-}
-
-func writeSimpleError(w http.ResponseWriter, r *http.Request, status int, details string) {
-	var reqid, now string
-
-	if status == http.StatusInternalServerError {
-		if rid, ok := hlog.IDFromRequest(r); ok {
-			reqid = rid.String()
-		}
-
-		now = time.Now().Format(time.RFC3339Nano)
-	}
-
-	msg := http.StatusText(status)
-
-	if strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-		res := struct {
-			Error   string `json:"error"`
-			ReqID   string `json:"request_id,omitempty"`
-			TS      string `json:"ts,omitempty"`
-			Details string `json:"details,omitempty"`
-		}{msg, reqid, now, details}
-
-		render.Status(r, status)
-		render.JSON(w, r, &res)
-
-		return
-	}
-
-	http.Error(w, msg, status)
-
-	if details != "" {
-		fmt.Fprintln(w, details)
-	}
-
-	if reqid != "" {
-		fmt.Fprintln(w, "reqid="+reqid) //nolint:gosec
-	}
-
-	if now != "" {
-		fmt.Fprintln(w, "ts="+now)
-	}
 }
 
 // jsonpWriter wrap response with jsonp function when this function name is given in `jsonp` url parameter.

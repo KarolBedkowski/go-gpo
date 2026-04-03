@@ -58,7 +58,7 @@ func (u updatesResource) getUpdates(
 	if err != nil {
 		logger.Debug().Err(err).Msgf("UpdatesResource: parse since=%q to time error=%`",
 			r.URL.Query().Get("since"), err)
-		writeSimpleError(w, r, http.StatusBadRequest, "")
+		srvsupport.WriteError(w, r, err)
 
 		return
 	}
@@ -70,7 +70,7 @@ func (u updatesResource) getUpdates(
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
 			Msgf("UpdatesResource: get subscription user_name=%s devicename=%s changes error=%q",
 				user, devicename, err)
-		writeError(w, r, err)
+		srvsupport.WriteError(w, r, err)
 
 		return
 	}
@@ -86,7 +86,7 @@ func (u updatesResource) getUpdates(
 	if err != nil {
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
 			Msgf("UpdatesResource: get episodes updates user_name=%s devicename=%s error=%`", user, devicename, err)
-		writeError(w, r, err)
+		srvsupport.WriteError(w, r, err)
 
 		return
 	}

@@ -131,7 +131,7 @@ func (a basicAuthenticator) handle(next http.Handler) http.Handler {
 		default:
 			common.TraceErrorLazyPrintf(ctx, "Authenticator: auth error")
 			logger.Error().Err(err).Msgf("Authenticator: internal error user_name=%s error=%q", username, err)
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			srvsupport.WriteError(w, r, err)
 		}
 
 		// destroy session
@@ -205,7 +205,7 @@ func (p proxyAuthenticator) handle(next http.Handler) http.Handler {
 		default:
 			common.TraceErrorLazyPrintf(ctx, "ProxyAuthenticator: auth error")
 			logger.Error().Err(err).Msgf("ProxyAuthenticator: internal error user_name=%s error=%q", username, err)
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			srvsupport.WriteError(w, r, err)
 		}
 
 		sess.Flush()
@@ -457,7 +457,7 @@ func newRecoverMiddleware(next http.Handler) http.Handler {
 			}
 
 			if req.Header.Get("Connection") != "Upgrade" {
-				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+				srvsupport.WriteSimpleError(w, req, http.StatusInternalServerError, "")
 			}
 		}(req.Context())
 

@@ -62,7 +62,7 @@ func (s *simpleResource) downloadUserSubscriptions(
 
 	subs, err := s.subServ.GetUserSubscriptions(ctx, &query.GetUserSubscriptionsQuery{UserName: user})
 	if err != nil {
-		writeError(w, r, err)
+		srvsupport.WriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).
 			Err(err).
 			Msgf("SimpleResource: get user subscriptions error=%q", err)
@@ -95,7 +95,7 @@ func (s *simpleResource) downloadUserSubscriptions(
 		render.XML(w, r, &xmlsubs)
 	default:
 		logger.Info().Msgf("SimpleResource: unknown format=%q", format)
-		writeSimpleError(w, r, http.StatusNotFound, "")
+		srvsupport.WriteSimpleError(w, r, http.StatusNotFound, "")
 	}
 }
 
@@ -110,7 +110,7 @@ func (s *simpleResource) downloadDevSubscriptions(
 
 	subs, err := s.subServ.GetSubscriptions(ctx, &query.GetSubscriptionsQuery{UserName: user, DeviceName: devicename})
 	if err != nil {
-		writeError(w, r, err)
+		srvsupport.WriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).
 			Err(err).
 			Msgf("SimpleResource: get device subscriptions error=%q", err)
@@ -143,7 +143,7 @@ func (s *simpleResource) downloadDevSubscriptions(
 		render.PlainText(w, r, strings.Join(subs.ToURLs(), "\n"))
 	default:
 		logger.Info().Msgf("SimpleResource: unknown format=%q", format)
-		writeSimpleError(w, r, http.StatusNotFound, "")
+		srvsupport.WriteSimpleError(w, r, http.StatusNotFound, "")
 	}
 }
 
@@ -171,14 +171,14 @@ func (s *simpleResource) uploadSubscriptions(
 		subs, err = parseTextSubs(r.Body)
 	default:
 		logger.Debug().Msgf("SimpleResource: unknown format=%q", format)
-		writeSimpleError(w, r, http.StatusNotFound, "")
+		srvsupport.WriteSimpleError(w, r, http.StatusNotFound, "")
 
 		return
 	}
 
 	if err != nil {
 		logger.Debug().Err(err).Msgf("SimpleResource: parse format=%q error=%q", format, err)
-		writeError(w, r, err)
+		srvsupport.WriteError(w, r, err)
 
 		return
 	}
@@ -191,7 +191,7 @@ func (s *simpleResource) uploadSubscriptions(
 	}
 	if err := s.subServ.ReplaceSubscriptions(ctx, &cmd); err != nil {
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msgf("SimpleResource: update subscriptions error=%q", err)
-		writeError(w, r, err)
+		srvsupport.WriteError(w, r, err)
 	} else {
 		w.WriteHeader(http.StatusOK)
 	}

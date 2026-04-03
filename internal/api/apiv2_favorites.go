@@ -53,7 +53,7 @@ func (u favoritesResource) getFavorites(
 	if err != nil {
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
 			Msgf("FavoritesResource: get favorites user_name=%s error=%s", user, err)
-		writeError(w, r, err)
+		srvsupport.WriteError(w, r, err)
 
 		return
 	}

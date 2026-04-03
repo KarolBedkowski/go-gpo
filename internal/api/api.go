@@ -9,8 +9,11 @@ package api
 //
 
 import (
+	"net/http"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/samber/do/v2"
+	"gitlab.com/kabes/go-gpo/internal/server/srvsupport"
 )
 
 type Configuration struct {
@@ -35,6 +38,7 @@ func New(i do.Injector) (API, error) {
 	favoritesResource := do.MustInvoke[favoritesResource](i)
 
 	router := chi.NewRouter()
+	api := API{router}
 
 	router.Route("/subscriptions", func(r chi.Router) {
 		r.Mount("/", simpleResource.Routes())
@@ -50,9 +54,20 @@ func New(i do.Injector) (API, error) {
 		r.Mount("/favorites", favoritesResource.Routes())
 	})
 
-	return API{router}, nil
+	router.NotFound(api.notfoundHandler)
+	router.MethodNotAllowed(api.methodNotAllowedHandler)
+
+	return api, nil
 }
 
 func (a *API) Routes() *chi.Mux {
 	return a.router
+}
+
+func (a *API) notfoundHandler(w http.ResponseWriter, r *http.Request) {
+	srvsupport.WriteSimpleError(w, r, http.StatusNotFound, "")
+}
+
+func (a *API) methodNotAllowedHandler(w http.ResponseWriter, r *http.Request) {
+	srvsupport.WriteSimpleError(w, r, http.StatusNotFound, "")
 }
