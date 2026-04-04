@@ -8,6 +8,7 @@ package cli
 //
 import (
 	"context"
+	"fmt"
 	"os/signal"
 	"strings"
 	"syscall"
@@ -201,7 +202,7 @@ func startServerCmd(ctx context.Context, clicmd *cli.Command, rootInjector do.In
 	}
 
 	if err := serverConf.Validate(); err != nil {
-		return aerr.Wrapf(err, "server config validation failed")
+		return fmt.Errorf("server config validation failed: %w", err)
 	}
 
 	do.ProvideNamedValue(injector, "server.webroot", serverConf.MainServer.WebRoot)

@@ -7,10 +7,6 @@ package config
 // Distributed under terms of the GPLv3 license.
 //
 
-import (
-	"gitlab.com/kabes/go-gpo/internal/aerr"
-)
-
 type DBConfig struct {
 	Driver  string
 	Connstr string
@@ -25,13 +21,13 @@ func NewDBConfig(driver, connstr string) DBConfig {
 
 func (d *DBConfig) Validate() error {
 	if d.Connstr == "" {
-		return aerr.New("db.connstr argument can't be empty").WithTag(aerr.ValidationError)
+		return ConfigurationError("db.connstr argument can't be empty")
 	}
 
 	if d.Driver == "" {
-		return aerr.New("db.driver argument can't be empty").WithTag(aerr.ValidationError)
+		return ConfigurationError("db.driver argument can't be empty")
 	} else if d.Driver != "sqlite3" && d.Driver != "postgres" { //nolint:goconst
-		return aerr.New("invalid (unsupported) db.driver").WithTag(aerr.ValidationError)
+		return ConfigurationError("invalid (unsupported) db.driver")
 	}
 
 	return nil

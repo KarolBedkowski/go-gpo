@@ -32,20 +32,13 @@ type AppError struct {
 	tags []Tag
 }
 
-func NewWStack(msg string, args ...any) AppError {
-	return AppError{
-		stack: getStack(),
-		msg:   fmt.Sprintf(msg, args...),
-	}
-}
-
 func New(msg string, args ...any) AppError {
 	return AppError{
 		msg: fmt.Sprintf(msg, args...),
 	}
 }
 
-func Newf(msg string, args ...any) AppError {
+func Errorf(msg string, args ...any) AppError {
 	return AppError{
 		stack: getStack(),
 		msg:   fmt.Sprintf(msg, args...),
@@ -94,7 +87,11 @@ func (a AppError) WithTag(tag ...Tag) AppError {
 
 func (a AppError) WithDetails(msg string, args ...any) AppError {
 	n := a.clone()
-	n.details = fmt.Sprintf(msg, args...)
+	if len(args) == 1 {
+		n.details = fmt.Sprintf("%s", args[0])
+	} else {
+		n.details = fmt.Sprintf(msg, args...)
+	}
 
 	return n
 }

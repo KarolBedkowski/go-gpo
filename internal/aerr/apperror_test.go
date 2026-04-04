@@ -144,7 +144,7 @@ func TestAppErrorMeta(t *testing.T) {
 }
 
 func TestAppErrorTags(t *testing.T) {
-	aerr0 := NewWStack("error1")
+	aerr0 := Errorf("error1")
 
 	aerr1 := aerr0.WithTag("k1")
 	assert.Equal(t, GetTags(aerr1), []Tag{"k1"})
@@ -176,7 +176,7 @@ func TestAppErrorTags(t *testing.T) {
 
 func TestAppErrorErr(t *testing.T) {
 	err := New("simple error%d", 1)
-	err0 := Newf("error %s-%d", "1", 2)
+	err0 := Errorf("error %s-%d", "1", 2)
 
 	aerr1 := err.WithError(err0)
 	assert.True(t, errors.Is(aerr1.err, err0))

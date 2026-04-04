@@ -8,13 +8,12 @@ package config
 //
 
 import (
-	"fmt"
+	"errors"
 	"net"
 	"net/http"
 	"strings"
 
 	"github.com/rs/zerolog"
-	"gitlab.com/kabes/go-gpo/internal/aerr"
 )
 
 // ListenConf configure one address on server.
@@ -28,11 +27,11 @@ type ListenConf struct {
 
 func (c *ListenConf) Validate() error {
 	if c.Address == "" {
-		return aerr.ErrValidation.WithUserMsg("listen address can't be empty")
+		return ConfigurationError("listen address can't be empty")
 	}
 
 	if (c.TLSKey != "") != (c.TLSCert != "") {
-		return aerr.ErrValidation.WithUserMsg("both tls key and cert must be defined")
+		return ConfigurationError("both tls key and cert must be defined")
 	}
 
 	return nil
@@ -77,20 +76,22 @@ type ServerConf struct {
 }
 
 func (c *ServerConf) Validate() error { //nolint:cyclop
+	var errs error
+
 	if err := c.MainServer.Validate(); err != nil {
-		return fmt.Errorf("validate main server configuration failed: %w", err)
+		errs = errors.Join(errs, newConfiguratonError("invalid server configuration: %s", err))
 	}
 
 	if c.MgmtServer.Address != "" {
 		if err := c.MgmtServer.Validate(); err != nil {
-			return fmt.Errorf("validate mgmt server configuration failed: %w", err)
+			errs = errors.Join(errs, newConfiguratonError("invalid mgmt configuration: %s", err))
 		}
 	}
 
 	if c.MgmtAccessList != "" {
 		al, err := NewAccessList(c.MgmtAccessList)
 		if err != nil {
-			return fmt.Errorf("validate mgmt access list failed: %w", err)
+			errs = errors.Join(newConfiguratonError("invalid mgmt access list: %s", err))
 		}
 
 		c.mgmtAccessList = al
@@ -102,20 +103,24 @@ func (c *ServerConf) Validate() error { //nolint:cyclop
 	case "db", "memory":
 		// ok
 	default:
-		return aerr.ErrValidation.WithUserMsg("invalid session store parameter")
+		errs = errors.Join(errs, ConfigurationError("invalid session store parameter"))
 	}
 
 	if c.ProxyAccessList != "" {
 		al, err := NewAccessList(c.ProxyAccessList)
 		if err != nil {
-			return fmt.Errorf("validate proxy access list failed: %w", err)
+			errs = errors.Join(errs, newConfiguratonError("invalid proxy access list: %s", err))
 		}
 
 		c.proxyAccessList = al
 	}
 
 	if err := c.validateAuth(); err != nil {
-		return err
+		errs = errors.Join(errs, err)
+	}
+
+	if errs != nil {
+		return errs
 	}
 
 	return nil
@@ -198,11 +203,11 @@ func (c *ServerConf) validateAuth() error {
 		// no other options
 	case "proxy":
 		if c.ProxyUserHeader == "" {
-			return aerr.ErrValidation.WithUserMsg("missing proxy user header")
+			return ConfigurationError("missing proxy user header")
 		}
 
 		if c.proxyAccessList == nil || c.proxyAccessList.Len() == 0 {
-			return aerr.ErrValidation.WithUserMsg("missing proxy list")
+			return ConfigurationError("missing proxy list")
 		}
 	}
 
@@ -228,15 +233,14 @@ func NewAccessList(accesslist string) (*AccessList, error) {
 		if strings.Contains(entry, "/") {
 			_, n, err := net.ParseCIDR(entry)
 			if err != nil {
-				return nil, aerr.ErrValidation.WithUserMsg(
-					"invalid entry in access list: entry=%q error=%q", entry, err)
+				return nil, newConfiguratonError("invalid entry in access list: entry=%q error=%q", entry, err)
 			}
 
 			nets = append(nets, n)
 		} else {
 			ip := net.ParseIP(entry)
 			if ip == nil {
-				return nil, aerr.ErrValidation.WithUserMsg("invalid entry in access list: entry=%q", entry)
+				return nil, newConfiguratonError("invalid entry in access list: entry=%q", entry)
 			}
 
 			ips = append(ips, ip)
