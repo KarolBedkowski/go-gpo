@@ -23,7 +23,7 @@ func TestUsers(t *testing.T) {
 	usersSrv := do.MustInvoke[*UsersSrv](i)
 
 	_, err := usersSrv.LoginUser(ctx, "test", "test123")
-	assert.ErrSpec(t, err, aerr.ErrNoData)
+	assert.ErrSpec(t, err, aerr.ErrAuthentication)
 
 	newuser := command.NewUserCmd{UserName: "test", Password: "test123", Email: "test@example.com", Name: "test user 1"}
 	res, err := usersSrv.AddUser(ctx, &newuser)
@@ -37,7 +37,7 @@ func TestUsers(t *testing.T) {
 	assert.Equal(t, user.Email, newuser.Email)
 
 	_, err = usersSrv.LoginUser(ctx, "test", "test1233")
-	assert.ErrSpec(t, err, ErrUnauthorized)
+	assert.ErrSpec(t, err, aerr.ErrAuthentication)
 
 	// lock account and try login
 	err = usersSrv.LockAccount(ctx, command.LockAccountCmd{UserName: "test"})

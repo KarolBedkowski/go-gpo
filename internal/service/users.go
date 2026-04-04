@@ -40,11 +40,11 @@ func (u *UsersSrv) LoginUser(ctx context.Context, username, password string) (*m
 	defer end()
 
 	if username == "" {
-		return nil, common.ErrInvalidUser
+		return nil, aerr.ErrAuthentication.WithDetails("empty username")
 	}
 
 	if password == "" {
-		return nil, aerr.ErrValidation.WithMsg("password can't be empty")
+		return nil, aerr.ErrAuthentication.WithDetails("empty password")
 	}
 
 	user, err := db.InConnectionR(ctx, u.dbi, func(ctx context.Context) (*model.User, error) {
@@ -53,7 +53,9 @@ func (u *UsersSrv) LoginUser(ctx context.Context, username, password string) (*m
 
 	common.TraceLazyPrintf(ctx, "LoginUser: user loaded")
 
-	if err != nil {
+	if errors.Is(err, aerr.ErrNoData) {
+		return nil, aerr.ErrAuthentication.WithDetails("user not found")
+	} else if err != nil {
 		return nil, aerr.Wrapf(err, "get user error")
 	}
 
@@ -62,7 +64,7 @@ func (u *UsersSrv) LoginUser(ctx context.Context, username, password string) (*m
 	}
 
 	if !u.passHasher.CheckPassword(password, user.Password) {
-		return nil, ErrUnauthorized
+		return nil, ErrInvalidPassword
 	}
 
 	common.TraceLazyPrintf(ctx, "LoginUser: password verified")
@@ -73,13 +75,15 @@ func (u *UsersSrv) LoginUser(ctx context.Context, username, password string) (*m
 // CheckUser check is user account valid; return user.
 func (u *UsersSrv) CheckUser(ctx context.Context, username string) (*model.User, error) {
 	if username == "" {
-		return nil, common.ErrInvalidUser
+		return nil, aerr.ErrAuthentication.WithDetails("empty username")
 	}
 
 	user, err := db.InConnectionR(ctx, u.dbi, func(ctx context.Context) (*model.User, error) {
 		return u.usersRepo.GetUser(ctx, username)
 	})
-	if err != nil {
+	if errors.Is(err, aerr.ErrNoData) {
+		return nil, aerr.ErrAuthentication.WithDetails("user not found")
+	} else if err != nil {
 		return nil, aerr.Wrapf(err, "get user error")
 	}
 
@@ -166,7 +170,7 @@ func (u *UsersSrv) ChangePassword(ctx context.Context, cmd *command.ChangeUserPa
 		}
 
 		if _, err = u.usersRepo.SaveUser(ctx, user); err != nil {
-			return aerr.ApplyFor(ErrRepositoryError, err)
+			return aerr.Wrapf(err, "save user failed")
 		}
 
 		return nil
@@ -178,7 +182,7 @@ func (u *UsersSrv) GetUsers(ctx context.Context, activeOnly bool) ([]model.User,
 		return u.usersRepo.ListUsers(ctx, activeOnly)
 	})
 	if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err)
+		return nil, aerr.Wrapf(err, "get user failed")
 	}
 
 	return users, nil
@@ -199,7 +203,7 @@ func (u *UsersSrv) LockAccount(ctx context.Context, cmd command.LockAccountCmd) 
 		udb.Password = model.UserLockedPassword
 
 		if _, err = u.usersRepo.SaveUser(ctx, udb); err != nil {
-			return aerr.ApplyFor(ErrRepositoryError, err)
+			return aerr.Wrapf(err, "save user failed")
 		}
 
 		return nil
@@ -219,7 +223,7 @@ func (u *UsersSrv) DeleteUser(ctx context.Context, cmd *command.DeleteUserCmd) e
 		}
 
 		if err = u.usersRepo.DeleteUser(ctx, user.ID); err != nil {
-			return aerr.ApplyFor(ErrRepositoryError, err)
+			return aerr.Wrapf(err, "delete user failed")
 		}
 
 		return nil

@@ -119,10 +119,10 @@ func (a basicAuthenticator) handle(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r.WithContext(common.ContextWithUser(ctx, username)))
 
 			return
-		case aerr.HasTag(err, service.AuthenticationError):
+		case aerr.HasTag(err, aerr.AuthenticationError):
 			logger.Info().Str(common.LogKeyUserName, username).
 				Str(common.LogKeyAuthResult, common.LogAuthResultFailed).
-				Str(common.LogKeyAuthFailReason, err.Error()).
+				Str(common.LogKeyAuthFailReason, aerr.GetDetails(err)).
 				Msgf("Authenticator: user authentication failed user_name=%s error=%q", username, err)
 
 			common.TraceLazyPrintf(ctx, "Authenticator: auth failed")
@@ -193,11 +193,11 @@ func (p proxyAuthenticator) handle(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r.WithContext(common.ContextWithUser(ctx, username)))
 
 			return
-		case aerr.HasTag(err, service.AuthenticationError):
+		case aerr.HasTag(err, aerr.AuthenticationError):
 			// invalid user destroy session
 			logger.Info().Str(common.LogKeyUserName, username).
 				Str(common.LogKeyAuthResult, common.LogAuthResultFailed).Str("proxy_ip", proxyip).
-				Str(common.LogKeyAuthFailReason, err.Error()).
+				Str(common.LogKeyAuthFailReason, aerr.GetDetails(err)).
 				Msgf("ProxyAuthenticator: user authentication failed user_name=%s error=%q", username, err)
 
 			common.TraceLazyPrintf(ctx, "ProxyAuthenticator: auth failed")

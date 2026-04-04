@@ -14,12 +14,20 @@ import (
 )
 
 type AppError struct {
-	err     error
-	tags    []string
-	msg     string
+	// err is base error
+	err error
+	// error message (short); may be exposed to user if no userMsg
+	msg string
+	// detailed information about error (internal)
+	details string
+	// information about error that is exposed externally
 	userMsg string
-	meta    map[string]any
-	stack   []string
+	// any data related to error (context)
+	meta map[string]any
+	// stack when error occurred
+	stack []string
+	// tags related to error
+	tags []string
 }
 
 func NewWStack(msg string, args ...any) AppError {
@@ -78,6 +86,13 @@ func (a AppError) WithTag(tag ...string) AppError {
 
 	n := a.clone()
 	n.tags = append(n.tags, tagsToAdd...)
+
+	return n
+}
+
+func (a AppError) WithDetails(msg string, args ...any) AppError {
+	n := a.clone()
+	n.details = fmt.Sprintf(msg, args...)
 
 	return n
 }
@@ -149,16 +164,24 @@ func (a AppError) Error() string {
 }
 
 func (a AppError) LogString() string {
+	var msg string
+
 	switch {
 	case a.msg != "" && a.err != nil:
-		return a.msg + "(" + a.err.Error() + ")"
+		msg = a.msg + "(" + a.err.Error() + ")"
 	case a.msg != "":
-		return a.msg
+		msg = a.msg
 	case a.err != nil:
-		return a.err.Error()
+		msg = a.err.Error()
 	default:
-		return fmt.Sprintf("%v", a)
+		msg = fmt.Sprintf("%v", a)
 	}
+
+	if a.details != "" {
+		msg = a.msg + " [" + a.details + "]"
+	}
+
+	return msg
 }
 
 func (a AppError) Unwrap() error {
@@ -191,6 +214,7 @@ func (a AppError) clone() AppError {
 		stack:   a.stack,
 		msg:     a.msg,
 		tags:    slices.Clone(a.tags),
+		details: a.details,
 		userMsg: a.userMsg,
 		meta:    maps.Clone(a.meta),
 		err:     a.err,
@@ -238,10 +262,13 @@ func AsAppError(err error) (AppError, bool) {
 
 //-------------------------------------------------------------
 
-func HasTag(err error, tag string) bool {
+// HasTag check is any error in error hierarchy has any of tag.
+func HasTag(err error, tag ...string) bool {
 	for _, ae := range Flatten(err) {
-		if slices.Contains(ae.tags, tag) {
-			return true
+		for _, t := range tag {
+			if slices.Contains(ae.tags, t) {
+				return true
+			}
 		}
 	}
 
@@ -272,6 +299,16 @@ func GetUserMessages(err error) []string {
 	}
 
 	return msgs
+}
+
+func GetDetails(err error) string {
+	for _, ae := range Flatten(err) {
+		if ae.details != "" {
+			return ae.details
+		}
+	}
+
+	return ""
 }
 
 func GetUserMessage(err error) string {
@@ -384,8 +421,8 @@ type zerologErrorMarshaller struct {
 
 func (m zerologErrorMarshaller) MarshalZerologObject(event *zerolog.Event) { //nolint:cyclop
 	var (
-		stack, errs []string
-		meta        map[string]any
+		stack, errs, details []string
+		meta                 map[string]any
 	)
 
 	usermsg := make(uniqueList, 0)
@@ -405,6 +442,10 @@ func (m zerologErrorMarshaller) MarshalZerologObject(event *zerolog.Event) { //n
 				errs = append(errs, apperr.msg)
 			}
 
+			if apperr.details != "" {
+				details = append(details, apperr.details)
+			}
+
 			if apperr.tags != nil {
 				tags.append(apperr.tags...)
 			}
@@ -419,6 +460,11 @@ func (m zerologErrorMarshaller) MarshalZerologObject(event *zerolog.Event) { //n
 		} else {
 			errs = append(errs, err.Error())
 		}
+	}
+
+	if len(details) > 0 {
+		slices.Reverse(details)
+		event.Strs("details", details)
 	}
 
 	if len(usermsg) > 0 {
