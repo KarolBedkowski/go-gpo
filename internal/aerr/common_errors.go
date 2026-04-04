@@ -13,13 +13,13 @@ import (
 
 // Main errors categories.
 const (
-	InternalError       = "internal error"
-	ValidationError     = "validation error"
-	ConfigurationError  = "configuration error"
-	NotFound            = "not found"
-	BadRequest          = "bad request"
-	AuthenticationError = "authentication error"
-	AuthorizationError  = "authentication error"
+	InternalError       = Tag("internal error")
+	ValidationError     = Tag("validation error")
+	ConfigurationError  = Tag("configuration error")
+	NotFound            = Tag("not found")
+	BadRequest          = Tag("bad request")
+	AuthenticationError = Tag("authentication error")
+	AuthorizationError  = Tag("authentication error")
 )
 
 var (

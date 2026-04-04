@@ -16,7 +16,7 @@ import (
 )
 
 func TestUniqueList(t *testing.T) {
-	var ulist uniqueList
+	var ulist uniqueList[string]
 
 	assert.Equal(t, ulist, nil)
 
@@ -57,7 +57,7 @@ func TestUniqueList(t *testing.T) {
 }
 
 func TestUniqueList2(t *testing.T) {
-	ul := make(uniqueList, 0)
+	ul := make(uniqueList[string], 0)
 	ul.append("1")
 	ul.append("2")
 	ul.append("3")
@@ -147,31 +147,31 @@ func TestAppErrorTags(t *testing.T) {
 	aerr0 := NewWStack("error1")
 
 	aerr1 := aerr0.WithTag("k1")
-	assert.Equal(t, GetTags(aerr1), []string{"k1"})
+	assert.Equal(t, GetTags(aerr1), []Tag{"k1"})
 
 	aerr1 = aerr1.WithTag("k2")
-	assert.Equal(t, GetTags(aerr1), []string{"k1", "k2"})
+	assert.Equal(t, GetTags(aerr1), []Tag{"k1", "k2"})
 	assert.True(t, HasTag(aerr1, "k1"))
 	assert.True(t, HasTag(aerr1, "k2"))
 	assert.True(t, !HasTag(aerr1, "k3"))
 
 	aerr2 := aerr1.WithTag("k3")
-	assert.Equal(t, GetTags(aerr2), []string{"k1", "k2", "k3"})
-	assert.Equal(t, GetTags(aerr1), []string{"k1", "k2"})
+	assert.Equal(t, GetTags(aerr2), []Tag{"k1", "k2", "k3"})
+	assert.Equal(t, GetTags(aerr1), []Tag{"k1", "k2"})
 	assert.True(t, HasTag(aerr2, "k1"))
 	assert.True(t, HasTag(aerr2, "k2"))
 
 	aerr3 := aerr2.WithUserMsg("user msg")
-	assert.Equal(t, GetTags(aerr3), []string{"k1", "k2", "k3"})
+	assert.Equal(t, GetTags(aerr3), []Tag{"k1", "k2", "k3"})
 
 	other := New("simple")
 	aerr4 := ApplyFor(aerr3, other)
-	assert.Equal(t, GetTags(aerr4), []string{"k1", "k2", "k3"})
+	assert.Equal(t, GetTags(aerr4), []Tag{"k1", "k2", "k3"})
 
 	gerr := errors.New("new base")
 	other2 := Wrapf(gerr, "new error").WithMeta("aa", "vv")
 	aerr5 := ApplyFor(aerr3, other2)
-	assert.Equal(t, GetTags(aerr5), []string{"k1", "k2", "k3"})
+	assert.Equal(t, GetTags(aerr5), []Tag{"k1", "k2", "k3"})
 }
 
 func TestAppErrorErr(t *testing.T) {

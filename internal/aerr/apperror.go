@@ -13,6 +13,8 @@ import (
 	"github.com/rs/zerolog"
 )
 
+type Tag string
+
 type AppError struct {
 	// err is base error
 	err error
@@ -27,7 +29,7 @@ type AppError struct {
 	// stack when error occurred
 	stack []string
 	// tags related to error
-	tags []string
+	tags []Tag
 }
 
 func NewWStack(msg string, args ...any) AppError {
@@ -72,8 +74,8 @@ func (a AppError) WithMsg(msg string, args ...any) AppError {
 	return n
 }
 
-func (a AppError) WithTag(tag ...string) AppError {
-	tagsToAdd := make([]string, 0, len(tag))
+func (a AppError) WithTag(tag ...Tag) AppError {
+	tagsToAdd := make([]Tag, 0, len(tag))
 	for _, t := range tag {
 		if !slices.Contains(a.tags, t) {
 			tagsToAdd = append(tagsToAdd, t)
@@ -263,7 +265,7 @@ func AsAppError(err error) (AppError, bool) {
 //-------------------------------------------------------------
 
 // HasTag check is any error in error hierarchy has any of tag.
-func HasTag(err error, tag ...string) bool {
+func HasTag(err error, tag ...Tag) bool {
 	for _, ae := range Flatten(err) {
 		for _, t := range tag {
 			if slices.Contains(ae.tags, t) {
@@ -275,8 +277,8 @@ func HasTag(err error, tag ...string) bool {
 	return false
 }
 
-func GetTags(err error) []string {
-	tags := []string{}
+func GetTags(err error) []Tag {
+	tags := []Tag{}
 
 	for _, ae := range Flatten(err) {
 		for _, t := range ae.tags {
@@ -301,6 +303,16 @@ func GetUserMessages(err error) []string {
 	return msgs
 }
 
+func GetLogString(err error) string {
+	for _, ae := range Flatten(err) {
+		if s := ae.LogString(); s != "" {
+			return s
+		}
+	}
+
+	return err.Error()
+}
+
 func GetDetails(err error) string {
 	for _, ae := range Flatten(err) {
 		if ae.details != "" {
@@ -308,7 +320,7 @@ func GetDetails(err error) string {
 		}
 	}
 
-	return ""
+	return err.Error()
 }
 
 func GetUserMessage(err error) string {
@@ -403,14 +415,23 @@ func CollectErrors(err error) []string {
 
 //-------------------------------------------------------------
 
-type uniqueList []string
+type uniqueList[T ~string] []T
 
-func (u *uniqueList) append(value ...string) {
+func (u *uniqueList[T]) append(value ...T) {
 	for _, v := range value {
 		if !slices.Contains(*u, v) {
 			*u = append(*u, v) //nolint:nilaway
 		}
 	}
+}
+
+func (u *uniqueList[T]) asStrs() []string {
+	res := make([]string, 0, len(*u))
+	for _, v := range *u {
+		res = append(res, string(v))
+	}
+
+	return res
 }
 
 //-------------------------------------------------------------
@@ -425,8 +446,8 @@ func (m zerologErrorMarshaller) MarshalZerologObject(event *zerolog.Event) { //n
 		meta                 map[string]any
 	)
 
-	usermsg := make(uniqueList, 0)
-	tags := make(uniqueList, 0)
+	usermsg := make(uniqueList[string], 0)
+	tags := make(uniqueList[Tag], 0)
 
 	for err := m.err; err != nil; err = errors.Unwrap(err) {
 		if apperr, ok := err.(AppError); ok { //nolint:errorlint,nestif
@@ -482,7 +503,7 @@ func (m zerologErrorMarshaller) MarshalZerologObject(event *zerolog.Event) { //n
 	}
 
 	if len(tags) > 0 {
-		event.Strs("tags", tags)
+		event.Strs("tags", tags.asStrs())
 	}
 
 	if meta != nil {
