@@ -1,5 +1,7 @@
 package config
 
+import "errors"
+
 //
 // dbconfig.go
 // Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
@@ -20,17 +22,19 @@ func NewDBConfig(driver, connstr string) DBConfig {
 }
 
 func (d *DBConfig) Validate() error {
+	var errs error
+
 	if d.Connstr == "" {
-		return ConfigurationError("db.connstr argument can't be empty")
+		errs = errors.Join(errs, ConfigurationError("db.connstr argument can't be empty"))
 	}
 
 	if d.Driver == "" {
-		return ConfigurationError("db.driver argument can't be empty")
+		errs = errors.Join(errs, ConfigurationError("db.driver argument can't be empty"))
 	} else if d.Driver != "sqlite3" && d.Driver != "postgres" { //nolint:goconst
-		return ConfigurationError("invalid (unsupported) db.driver")
+		errs = errors.Join(errs, newConfigurationError("invalid (unsupported) db.driver %q", d.Driver))
 	}
 
-	return nil
+	return errs
 }
 
 func mapDriverName(driver string) string {

@@ -79,19 +79,19 @@ func (c *ServerConf) Validate() error { //nolint:cyclop
 	var errs error
 
 	if err := c.MainServer.Validate(); err != nil {
-		errs = errors.Join(errs, newConfiguratonError("invalid server configuration: %s", err))
+		errs = errors.Join(errs, newConfigurationError("invalid server configuration: %s", err))
 	}
 
 	if c.MgmtServer.Address != "" {
 		if err := c.MgmtServer.Validate(); err != nil {
-			errs = errors.Join(errs, newConfiguratonError("invalid mgmt configuration: %s", err))
+			errs = errors.Join(errs, newConfigurationError("invalid mgmt configuration: %s", err))
 		}
 	}
 
 	if c.MgmtAccessList != "" {
 		al, err := NewAccessList(c.MgmtAccessList)
 		if err != nil {
-			errs = errors.Join(newConfiguratonError("invalid mgmt access list: %s", err))
+			errs = errors.Join(newConfigurationError("invalid mgmt access list: %s", err))
 		}
 
 		c.mgmtAccessList = al
@@ -103,13 +103,13 @@ func (c *ServerConf) Validate() error { //nolint:cyclop
 	case "db", "memory":
 		// ok
 	default:
-		errs = errors.Join(errs, ConfigurationError("invalid session store parameter"))
+		errs = errors.Join(errs, newConfigurationError("invalid session store parameter %q", c.SessionStore))
 	}
 
 	if c.ProxyAccessList != "" {
 		al, err := NewAccessList(c.ProxyAccessList)
 		if err != nil {
-			errs = errors.Join(errs, newConfiguratonError("invalid proxy access list: %s", err))
+			errs = errors.Join(errs, newConfigurationError("invalid proxy access list: %s", err))
 		}
 
 		c.proxyAccessList = al
@@ -119,11 +119,7 @@ func (c *ServerConf) Validate() error { //nolint:cyclop
 		errs = errors.Join(errs, err)
 	}
 
-	if errs != nil {
-		return errs
-	}
-
-	return nil
+	return errs
 }
 
 func (c *ServerConf) SeparateMgmtEnabled() bool {
@@ -233,14 +229,14 @@ func NewAccessList(accesslist string) (*AccessList, error) {
 		if strings.Contains(entry, "/") {
 			_, n, err := net.ParseCIDR(entry)
 			if err != nil {
-				return nil, newConfiguratonError("invalid entry in access list: entry=%q error=%q", entry, err)
+				return nil, newConfigurationError("invalid entry %q in access list: %s", entry, err)
 			}
 
 			nets = append(nets, n)
 		} else {
 			ip := net.ParseIP(entry)
 			if ip == nil {
-				return nil, newConfiguratonError("invalid entry in access list: entry=%q", entry)
+				return nil, newConfigurationError("invalid entry %q in access list", entry)
 			}
 
 			ips = append(ips, ip)

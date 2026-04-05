@@ -172,12 +172,6 @@ func newStartServerCmd() *cli.Command { //nolint:funlen
 }
 
 func startServerCmd(ctx context.Context, clicmd *cli.Command, rootInjector do.Injector) error {
-	injector := rootInjector.Scope("server",
-		gpoweb.Package,
-		gpoapi.Package,
-		server.Package,
-	)
-
 	serverConf := config.ServerConf{
 		MainServer: config.ListenConf{
 			Address:      strings.TrimSpace(clicmd.String("address")),
@@ -202,8 +196,14 @@ func startServerCmd(ctx context.Context, clicmd *cli.Command, rootInjector do.In
 	}
 
 	if err := serverConf.Validate(); err != nil {
-		return fmt.Errorf("server config validation failed: %w", err)
+		return fmt.Errorf("server config validation failed:\n%w", err)
 	}
+
+	injector := rootInjector.Scope("server",
+		gpoweb.Package,
+		gpoapi.Package,
+		server.Package,
+	)
 
 	do.ProvideNamedValue(injector, "server.webroot", serverConf.MainServer.WebRoot)
 	do.ProvideValue(injector, &serverConf)

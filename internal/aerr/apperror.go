@@ -416,6 +416,10 @@ type uniqueList[T ~string] []T
 
 func (u *uniqueList[T]) append(value ...T) {
 	for _, v := range value {
+		if v == "" {
+			continue
+		}
+
 		if !slices.Contains(*u, v) {
 			*u = append(*u, v) //nolint:nilaway
 		}
@@ -437,7 +441,7 @@ type zerologErrorMarshaller struct {
 	err error
 }
 
-func (m zerologErrorMarshaller) MarshalZerologObject(event *zerolog.Event) { //nolint:cyclop
+func (m zerologErrorMarshaller) MarshalZerologObject(event *zerolog.Event) { //nolint:cyclop,funlen
 	var (
 		stack, errs, details []string
 		meta                 map[string]any
@@ -448,9 +452,8 @@ func (m zerologErrorMarshaller) MarshalZerologObject(event *zerolog.Event) { //n
 
 	for err := m.err; err != nil; err = errors.Unwrap(err) {
 		if apperr, ok := err.(AppError); ok { //nolint:errorlint,nestif
-			if apperr.userMsg != "" {
-				usermsg.append(apperr.userMsg)
-			}
+			usermsg.append(apperr.userMsg)
+			tags.append(apperr.tags...)
 
 			if apperr.stack != nil {
 				stack = apperr.stack
@@ -462,10 +465,6 @@ func (m zerologErrorMarshaller) MarshalZerologObject(event *zerolog.Event) { //n
 
 			if apperr.details != "" {
 				details = append(details, apperr.details)
-			}
-
-			if apperr.tags != nil {
-				tags.append(apperr.tags...)
 			}
 
 			if apperr.meta != nil {

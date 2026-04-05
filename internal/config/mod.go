@@ -16,6 +16,6 @@ func (c ConfigurationError) Error() string {
 	return string(c)
 }
 
-func newConfiguratonError(msg string, args ...any) ConfigurationError {
+func newConfigurationError(msg string, args ...any) ConfigurationError {
 	return ConfigurationError(fmt.Sprintf(msg, args...))
 }
