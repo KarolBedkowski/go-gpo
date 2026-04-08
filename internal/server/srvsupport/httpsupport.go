@@ -73,12 +73,12 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 }
 
 type errorData struct {
-	Error   string `json:"error"`
-	ReqID   string `json:"request_id,omitempty"`
-	TS      string `json:"ts,omitempty"`
-	Details string `json:"details,omitempty"`
+	Error   string `json:"error"                xml:"error"`
+	ReqID   string `json:"request_id,omitempty" xml:"request_id,omitempty"`
+	TS      string `json:"ts,omitempty"         xml:"ts,omitempty"`
+	Details string `json:"details,omitempty"    xml:"details,omitempty"`
 
-	status int `json:"-"`
+	status int `json:"-" xml:"-"`
 }
 
 func newErrorData(status int, details string) *errorData {
@@ -112,6 +112,11 @@ func (e *errorData) writePlain(w http.ResponseWriter, _ *http.Request) {
 	}
 }
 
+func (e *errorData) writeXML(w http.ResponseWriter, r *http.Request) {
+	render.Status(r, e.status)
+	render.XML(w, r, e)
+}
+
 func (e *errorData) withTS() {
 	e.TS = time.Now().Format(time.RFC3339Nano)
 }
@@ -124,9 +129,12 @@ func WriteSimpleError(w http.ResponseWriter, r *http.Request, status int, detail
 		edata.withTS()
 	}
 
-	if strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
+	switch reqContentType := r.Header.Get("Content-Type"); {
+	case strings.HasPrefix(reqContentType, "application/json"):
 		edata.writeJSON(w, r)
-	} else {
+	case strings.HasPrefix(reqContentType, "text/xml") || strings.Contains(reqContentType, "opml"):
+		edata.writeXML(w, r)
+	default:
 		edata.writePlain(w, r)
 	}
 }
