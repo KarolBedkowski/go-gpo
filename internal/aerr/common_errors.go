@@ -23,13 +23,13 @@ const (
 )
 
 var (
-	ErrValidation     = New("validation error").WithTag(ValidationError)
-	ErrInvalidConf    = New("invalid configuration").WithTag(ConfigurationError)
-	ErrDatabase       = New("database error").WithTag(InternalError)
-	ErrBadRequest     = New("bad request").WithTag(BadRequest)
-	ErrNoData         = New("no result").WithTag(NotFound)
-	ErrUnauthorized   = New("unauthorized").WithTag(AuthorizationError)
-	ErrAuthentication = New("authentication error").WithTag(AuthenticationError)
+	ErrValidation     = New("validation error").WithTag(ValidationError).WithUserMsg("bad request")
+	ErrInvalidConf    = New("invalid configuration").WithTag(ConfigurationError).WithUserMsg("invalid configuration")
+	ErrDatabase       = New("database error").WithTag(InternalError).WithUserMsg("internal error")
+	ErrBadRequest     = New("bad request").WithTag(BadRequest).WithUserMsg("bad request")
+	ErrNoData         = New("no result").WithTag(NotFound).WithUserMsg("not found")
+	ErrUnauthorized   = New("unauthorized").WithTag(AuthorizationError).WithUserMsg("unauthorized")
+	ErrAuthentication = New("authentication error").WithTag(AuthenticationError).WithUserMsg("authentication error")
 )
 
 // LogLevelForError return zerolog.Lever that should be used for given error.

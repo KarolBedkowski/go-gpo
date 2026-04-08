@@ -110,10 +110,10 @@ func (s *simpleResource) downloadDevSubscriptions(
 
 	subs, err := s.subServ.GetSubscriptions(ctx, &query.GetSubscriptionsQuery{UserName: user, DeviceName: devicename})
 	if err != nil {
-		srvsupport.WriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).
 			Err(err).
 			Msgf("SimpleResource: get device subscriptions error=%q", err)
+		srvsupport.WriteError(w, r, err)
 
 		return
 	}
