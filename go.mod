@@ -7,7 +7,7 @@ require (
 	github.com/Merovius/systemd v0.0.0-20140203230105-93296c743739
 	github.com/go-chi/chi/v5 v5.2.4
 	github.com/go-chi/render v1.0.3
-	github.com/jackc/pgx/v5 v5.8.0
+	github.com/jackc/pgx/v5 v5.9.2
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/mattn/go-sqlite3 v1.14.33
 	github.com/mmcdole/gofeed v1.3.0
