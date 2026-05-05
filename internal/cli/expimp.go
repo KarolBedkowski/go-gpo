@@ -48,7 +48,7 @@ func dataExportCmd(ctx context.Context, _ *cli.Command, injector do.Injector) er
 func newDataImportCmd() *cli.Command {
 	return &cli.Command{
 		Name:   "import",
-		Usage:  "import json data from stdin into database",
+		Usage:  "Import JSON data from standard input into database",
 		Action: wrap(dataImportCmd),
 	}
 }

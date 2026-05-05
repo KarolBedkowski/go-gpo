@@ -19,7 +19,7 @@ import (
 func newMaintenanceCmd() *cli.Command {
 	return &cli.Command{
 		Name:   "maintenance",
-		Usage:  "maintenance database",
+		Usage:  "Maintenance database",
 		Action: wrap(maintenanceCmd),
 	}
 }

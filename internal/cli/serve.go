@@ -122,7 +122,7 @@ func newStartServerCmd() *cli.Command { //nolint:funlen
 			&cli.StringFlag{
 				Name:     "mgmt-access-list",
 				Value:    "",
-				Usage:    "List of ip or networks separated by ',' allowed to connected to management endpoints.",
+				Usage:    "List of IP or networks separated by ',' allowed to connected to management endpoints.",
 				Category: managementCategory,
 				Sources:  cli.EnvVars("GOGPO_MGMT_SERVER_ACCESS_LIST"),
 				Config:   cli.StringConfig{TrimSpace: true},
