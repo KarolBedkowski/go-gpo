@@ -10,6 +10,8 @@ linters:
     - exhaustruct
     - wsl
     - noinlineerr
+    - gomodguard
+    - goconst
   settings:
     depguard:
       rules:
