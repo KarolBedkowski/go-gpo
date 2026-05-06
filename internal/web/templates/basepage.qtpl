@@ -12,7 +12,7 @@ Page {
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<link rel="stylesheet" href="/web/static/main.css" type="text/css">
+	<link rel="stylesheet" href="{%s pctx.Webroot %}/web/static/main.css" type="text/css">
 	{% code t := p.Title() %}
 	{% if t != "" %}
 	<title>go-gpo - {%s t %}</title>
