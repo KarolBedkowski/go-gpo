@@ -19,7 +19,8 @@ import (
 var staticFS embed.FS
 
 type WEB struct {
-	router *chi.Mux
+	router     *chi.Mux
+	routerAuth *chi.Mux
 }
 
 func New(i do.Injector) (WEB, error) {
@@ -29,9 +30,10 @@ func New(i do.Injector) (WEB, error) {
 	episodePages := do.MustInvoke[episodePages](i)
 	podcastPages := do.MustInvoke[podcastPages](i)
 	errorPages := do.MustInvoke[errorPages](i)
+	authPages := do.MustInvoke[authPages](i)
 
 	router := chi.NewRouter()
-	web := WEB{router: router}
+	web := WEB{router: router, routerAuth: chi.NewRouter()}
 
 	router.Mount("/", indexPage.Routes())
 	router.Mount("/device", devicePages.Routes())
@@ -43,11 +45,17 @@ func New(i do.Injector) (WEB, error) {
 	fs := http.FileServerFS(staticFS)
 	router.Method("GET", "/static/*", http.StripPrefix("/web/", fs))
 
+	web.routerAuth.Mount("/", authPages.Routes())
+
 	return web, nil
 }
 
 func (w *WEB) Routes() *chi.Mux {
 	return w.router
+}
+
+func (w *WEB) RoutesAuth() *chi.Mux {
+	return w.routerAuth
 }
 
 //-----------------------------------------------
