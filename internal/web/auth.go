@@ -40,6 +40,7 @@ func (i authPages) Routes() *chi.Mux {
 	r := chi.NewRouter()
 	r.Get("/login", srvsupport.WrapNamed(i.login, "web_login"))
 	r.Post("/login", srvsupport.WrapNamed(i.loginPost, "web_login"))
+	r.Get("/logout", srvsupport.WrapNamed(i.logout, "web_logout"))
 
 	return r
 }
@@ -105,4 +106,17 @@ func (i authPages) loginPost(ctx context.Context, w http.ResponseWriter, r *http
 	}
 
 	i.renderer.WriteSimplePage(w, nt.LoginPage{})
+}
+
+func (i authPages) logout(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
+	sess := session.GetSession(r)
+	user := common.ContextUser(ctx)
+
+	logger.Info().Str(common.LogKeyUserName, user).Msgf("web: logout user")
+
+	sess.Flush()
+	_ = sess.Destroy(w, r)
+	_, _ = sess.RegenerateID(w, r)
+
+	i.renderer.WriteSimplePage(w, nt.LogoutPage{})
 }

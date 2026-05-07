@@ -103,7 +103,7 @@ func StreamPageTemplate(qw422016 *qt422016.Writer, p Page, pctx *PageContext) {
 //line internal/web/templates/basepage.qtpl:30
 	qw422016.E().S(pctx.Webroot)
 //line internal/web/templates/basepage.qtpl:30
-	qw422016.N().S(`/web/logout">Logout</a>
+	qw422016.N().S(`/web/auth/logout">Logout</a>
 	</header>
 	<br/>
 	<content>
