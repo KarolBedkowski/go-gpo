@@ -36,16 +36,16 @@ func newAuthPages(i do.Injector) (authPages, error) {
 	}, nil
 }
 
-func (i authPages) Routes() *chi.Mux {
+func (a authPages) Routes() *chi.Mux {
 	r := chi.NewRouter()
-	r.Get("/login", srvsupport.WrapNamed(i.login, "web_login"))
-	r.Post("/login", srvsupport.WrapNamed(i.loginPost, "web_login"))
-	r.Get("/logout", srvsupport.WrapNamed(i.logout, "web_logout"))
+	r.Get("/login", srvsupport.WrapNamed(a.login, "web_login"))
+	r.Post("/login", srvsupport.WrapNamed(a.loginPost, "web_login"))
+	r.Get("/logout", srvsupport.WrapNamed(a.logout, "web_logout"))
 
 	return r
 }
 
-func (i authPages) login(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
+func (a authPages) login(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
 	sess := session.GetSession(r)
 	user := common.ContextUser(ctx)
 
@@ -55,10 +55,10 @@ func (i authPages) login(ctx context.Context, w http.ResponseWriter, r *http.Req
 	_ = sess.Destroy(w, r)
 	_, _ = sess.RegenerateID(w, r)
 
-	i.renderer.WriteSimplePage(w, nt.LoginPage{})
+	a.renderer.WriteSimplePage(w, nt.LoginPage{})
 }
 
-func (i authPages) loginPost(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
+func (a authPages) loginPost(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
 	sess := session.GetSession(r)
 
 	logger.Info().Msgf("web: do login user")
@@ -68,7 +68,7 @@ func (i authPages) loginPost(ctx context.Context, w http.ResponseWriter, r *http
 	r.Body = http.MaxBytesReader(w, r.Body, maxBody)
 	if err := r.ParseForm(); err != nil {
 		logger.Error().Err(err).Msgf("web.Auth: do login bad request - parse form error=%q", err)
-		i.renderer.WriteError(ctx, w, err)
+		a.renderer.WriteError(ctx, w, err)
 
 		return
 	}
@@ -77,12 +77,12 @@ func (i authPages) loginPost(ctx context.Context, w http.ResponseWriter, r *http
 	password := r.Form.Get("password")
 
 	if username == "" || password == "" {
-		i.renderer.WriteSimplePage(w, nt.LoginPage{})
+		a.renderer.WriteSimplePage(w, nt.LoginPage{})
 
 		return
 	}
 
-	switch _, err := i.usersSrv.LoginUser(ctx, username, password); {
+	switch _, err := a.usersSrv.LoginUser(ctx, username, password); {
 	case err == nil:
 		// no error login/check user - continue
 		_ = sess.Set("user", username)
@@ -91,7 +91,7 @@ func (i authPages) loginPost(ctx context.Context, w http.ResponseWriter, r *http
 		logger.Info().Str(common.LogKeyAuthResult, common.LogAuthResultSuccess).
 			Msgf("web.Auth: user authenticated user_name=%s", username)
 
-		http.Redirect(w, r, i.webroot+"/web/", http.StatusFound)
+		http.Redirect(w, r, a.webroot+"/web/", http.StatusFound)
 
 		return
 	case aerr.HasTag(err, aerr.AuthenticationError):
@@ -105,10 +105,10 @@ func (i authPages) loginPost(ctx context.Context, w http.ResponseWriter, r *http
 		srvsupport.WriteError(w, r, err)
 	}
 
-	i.renderer.WriteSimplePage(w, nt.LoginPage{})
+	a.renderer.WriteSimplePage(w, nt.LoginPage{})
 }
 
-func (i authPages) logout(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
+func (a authPages) logout(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
 	sess := session.GetSession(r)
 	user := common.ContextUser(ctx)
 
@@ -118,5 +118,5 @@ func (i authPages) logout(ctx context.Context, w http.ResponseWriter, r *http.Re
 	_ = sess.Destroy(w, r)
 	_, _ = sess.RegenerateID(w, r)
 
-	i.renderer.WriteSimplePage(w, nt.LogoutPage{})
+	a.renderer.WriteSimplePage(w, nt.LogoutPage{})
 }
