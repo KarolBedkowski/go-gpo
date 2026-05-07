@@ -151,10 +151,6 @@ func createRoutes(injector do.Injector, router chi.Router, cfg *config.ServerCon
 			With(middleware.NoCache).
 			Mount(webroot+"/", api.Routes())
 		group.
-			With(newPromMiddleware("auth", nil)).
-			Mount(webroot+"/web/auth", web.RoutesAuth())
-		group.
-			With(newAuthenticatedOnlyWeb(webroot)).
 			With(newPromMiddleware("web", nil)).
 			Mount(webroot+"/web", web.Routes())
 		group.Get(webroot+"/", func(w http.ResponseWriter, r *http.Request) {
