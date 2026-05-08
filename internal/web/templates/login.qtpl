@@ -2,6 +2,8 @@
 
 {% code
 type LoginPage struct {
+	Token string
+	Message string
 }
 %}
 
@@ -21,8 +23,11 @@ type LoginPage struct {
 <body>
 	<content>
 		<form method="POST">
+			<input type="hidden" name="token" value="{%s l.Token %}"></input>
 			<fieldset>
 				<legend>go-gpo</legend>
+				{% if l.Message != "" %}<p><b>{%s l.Message %}</b></p>{% endif %}
+
 				<label for="login">Login:</label><br/>
 				<input type="text" id="login" name="login"></input><br/>
 
@@ -30,7 +35,6 @@ type LoginPage struct {
 				<input type="password" id="password" name="password"></input><br/>
 
 				<button type="submit">Login</button>
-
 			</fieldset>
 		</form>
 	</content>

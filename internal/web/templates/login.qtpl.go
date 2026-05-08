@@ -19,11 +19,13 @@ var (
 
 //line internal/web/templates/login.qtpl:4
 type LoginPage struct {
+	Token   string
+	Message string
 }
 
-//line internal/web/templates/login.qtpl:8
+//line internal/web/templates/login.qtpl:10
 func (l LoginPage) StreamBody(qw422016 *qt422016.Writer, pctx *PageContext) {
-//line internal/web/templates/login.qtpl:8
+//line internal/web/templates/login.qtpl:10
 	qw422016.N().S(`
 <!doctype html>
 <html lang="en">
@@ -40,8 +42,27 @@ func (l LoginPage) StreamBody(qw422016 *qt422016.Writer, pctx *PageContext) {
 <body>
 	<content>
 		<form method="POST">
+			<input type="hidden" name="token" value="`)
+//line internal/web/templates/login.qtpl:26
+	qw422016.E().S(l.Token)
+//line internal/web/templates/login.qtpl:26
+	qw422016.N().S(`"></input>
 			<fieldset>
 				<legend>go-gpo</legend>
+				`)
+//line internal/web/templates/login.qtpl:29
+	if l.Message != "" {
+//line internal/web/templates/login.qtpl:29
+		qw422016.N().S(`<p><b>`)
+//line internal/web/templates/login.qtpl:29
+		qw422016.E().S(l.Message)
+//line internal/web/templates/login.qtpl:29
+		qw422016.N().S(`</b></p>`)
+//line internal/web/templates/login.qtpl:29
+	}
+//line internal/web/templates/login.qtpl:29
+	qw422016.N().S(`
+
 				<label for="login">Login:</label><br/>
 				<input type="text" id="login" name="login"></input><br/>
 
@@ -49,7 +70,6 @@ func (l LoginPage) StreamBody(qw422016 *qt422016.Writer, pctx *PageContext) {
 				<input type="password" id="password" name="password"></input><br/>
 
 				<button type="submit">Login</button>
-
 			</fieldset>
 		</form>
 	</content>
@@ -57,31 +77,31 @@ func (l LoginPage) StreamBody(qw422016 *qt422016.Writer, pctx *PageContext) {
 </html>
 
 `)
-//line internal/web/templates/login.qtpl:40
+//line internal/web/templates/login.qtpl:44
 }
 
-//line internal/web/templates/login.qtpl:40
+//line internal/web/templates/login.qtpl:44
 func (l LoginPage) WriteBody(qq422016 qtio422016.Writer, pctx *PageContext) {
-//line internal/web/templates/login.qtpl:40
+//line internal/web/templates/login.qtpl:44
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line internal/web/templates/login.qtpl:40
+//line internal/web/templates/login.qtpl:44
 	l.StreamBody(qw422016, pctx)
-//line internal/web/templates/login.qtpl:40
+//line internal/web/templates/login.qtpl:44
 	qt422016.ReleaseWriter(qw422016)
-//line internal/web/templates/login.qtpl:40
+//line internal/web/templates/login.qtpl:44
 }
 
-//line internal/web/templates/login.qtpl:40
+//line internal/web/templates/login.qtpl:44
 func (l LoginPage) Body(pctx *PageContext) string {
-//line internal/web/templates/login.qtpl:40
+//line internal/web/templates/login.qtpl:44
 	qb422016 := qt422016.AcquireByteBuffer()
-//line internal/web/templates/login.qtpl:40
+//line internal/web/templates/login.qtpl:44
 	l.WriteBody(qb422016, pctx)
-//line internal/web/templates/login.qtpl:40
+//line internal/web/templates/login.qtpl:44
 	qs422016 := string(qb422016.B)
-//line internal/web/templates/login.qtpl:40
+//line internal/web/templates/login.qtpl:44
 	qt422016.ReleaseByteBuffer(qb422016)
-//line internal/web/templates/login.qtpl:40
+//line internal/web/templates/login.qtpl:44
 	return qs422016
-//line internal/web/templates/login.qtpl:40
+//line internal/web/templates/login.qtpl:44
 }

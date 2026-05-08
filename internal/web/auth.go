@@ -9,6 +9,7 @@ package web
 
 import (
 	"context"
+	"crypto/rand"
 	"net/http"
 
 	"gitea.com/go-chi/session"
@@ -21,6 +22,8 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/service"
 	nt "gitlab.com/kabes/go-gpo/internal/web/templates"
 )
+
+const sessionCSRFKey = "_csrf_token"
 
 type authPages struct {
 	renderer *nt.Renderer
@@ -38,30 +41,19 @@ func newAuthPages(i do.Injector) (authPages, error) {
 
 func (a authPages) Routes() *chi.Mux {
 	r := chi.NewRouter()
-	r.Get("/login", srvsupport.WrapNamed(a.login, "web_login"))
+	r.Get("/login", srvsupport.WrapNamed(a.loginGet, "web_login"))
 	r.Post("/login", srvsupport.WrapNamed(a.loginPost, "web_login"))
 	r.Get("/logout", srvsupport.WrapNamed(a.logout, "web_logout"))
 
 	return r
 }
 
-func (a authPages) login(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
-	sess := session.GetSession(r)
-	user := common.ContextUser(ctx)
-
-	logger.Info().Str(common.LogKeyUserName, user).Msgf("web: login user")
-
-	sess.Flush()
-	_ = sess.Destroy(w, r)
-	_, _ = sess.RegenerateID(w, r)
-
-	a.renderer.WriteSimplePage(w, nt.LoginPage{})
+func (a authPages) loginGet(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
+	a.login(ctx, w, r, logger, "")
 }
 
 func (a authPages) loginPost(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
 	sess := session.GetSession(r)
-
-	logger.Info().Msgf("web: do login user")
 
 	const maxBody = 1024 * 1024 // 1k
 
@@ -73,39 +65,56 @@ func (a authPages) loginPost(ctx context.Context, w http.ResponseWriter, r *http
 		return
 	}
 
+	token := r.Form.Get("token")
+	sesstoken, _ := sess.Get(sessionCSRFKey).(string)
 	username := r.Form.Get("login")
 	password := r.Form.Get("password")
 
-	if username == "" || password == "" {
-		a.renderer.WriteSimplePage(w, nt.LoginPage{})
+	if username != "" && password != "" && token != "" && token == sesstoken {
+		switch _, err := a.usersSrv.LoginUser(ctx, username, password); {
+		case err == nil:
+			_ = sess.Set("user", username)
+			_ = sess.Release()
 
-		return
+			logger.Info().Str(common.LogKeyAuthResult, common.LogAuthResultSuccess).
+				Msgf("web.Auth: user authenticated user_name=%s", username)
+
+			http.Redirect(w, r, a.webroot+"/web/", http.StatusFound)
+
+			return
+		case aerr.HasTag(err, aerr.AuthenticationError):
+			logger.Info().Str(common.LogKeyUserName, username).
+				Str(common.LogKeyAuthResult, common.LogAuthResultFailed).
+				Str(common.LogKeyAuthFailReason, aerr.GetDetails(err)).
+				Msgf("web.Auth: user authentication failed user_name=%s error=%q", username, err)
+
+		default:
+			logger.Error().Err(err).Msgf("web.Auth: internal error user_name=%s error=%q", username, err)
+			srvsupport.WriteError(w, r, err)
+		}
 	}
 
-	switch _, err := a.usersSrv.LoginUser(ctx, username, password); {
-	case err == nil:
-		// no error login/check user - continue
-		_ = sess.Set("user", username)
-		_ = sess.Release()
+	a.login(ctx, w, r, logger, "Invalid user and/or password")
+}
 
-		logger.Info().Str(common.LogKeyAuthResult, common.LogAuthResultSuccess).
-			Msgf("web.Auth: user authenticated user_name=%s", username)
+func (a authPages) login(
+	ctx context.Context,
+	w http.ResponseWriter,
+	r *http.Request,
+	logger *zerolog.Logger,
+	message string,
+) {
+	_ = logger
+	_ = ctx
 
-		http.Redirect(w, r, a.webroot+"/web/", http.StatusFound)
+	sess := session.GetSession(r)
+	_, _ = sess.RegenerateID(w, r)
 
-		return
-	case aerr.HasTag(err, aerr.AuthenticationError):
-		logger.Info().Str(common.LogKeyUserName, username).
-			Str(common.LogKeyAuthResult, common.LogAuthResultFailed).
-			Str(common.LogKeyAuthFailReason, aerr.GetDetails(err)).
-			Msgf("web.Auth: user authentication failed user_name=%s error=%q", username, err)
+	token := rand.Text()
+	_ = sess.Set(sessionCSRFKey, token)
+	_ = sess.Release()
 
-	default:
-		logger.Error().Err(err).Msgf("web.Auth: internal error user_name=%s error=%q", username, err)
-		srvsupport.WriteError(w, r, err)
-	}
-
-	a.renderer.WriteSimplePage(w, nt.LoginPage{})
+	a.renderer.WriteSimplePage(w, nt.LoginPage{Token: token, Message: message})
 }
 
 func (a authPages) logout(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
