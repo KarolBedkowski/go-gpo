@@ -49,16 +49,10 @@ func (a authPages) Routes() *chi.Mux {
 }
 
 func (a authPages) loginGet(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
-	sess := session.GetSession(r)
-	_ = sess.Flush()
-	_, _ = sess.RegenerateID(w, r)
-
 	a.login(ctx, w, r, logger, "")
 }
 
 func (a authPages) loginPost(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
-	sess := session.GetSession(r)
-
 	const maxBody = 1024 * 1024 // 1k
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxBody)
@@ -69,19 +63,18 @@ func (a authPages) loginPost(ctx context.Context, w http.ResponseWriter, r *http
 		return
 	}
 
-	token := r.Form.Get("token")
+	sess := session.GetSession(r)
 	sesstoken, _ := sess.Get(sessionCSRFKey).(string)
+	token := r.Form.Get("token")
 	username := r.Form.Get("login")
 	password := r.Form.Get("password")
 
-	_ = sess.Flush()
 	_, _ = sess.RegenerateID(w, r)
 
 	if username != "" && password != "" && token != "" && token == sesstoken {
 		switch _, err := a.usersSrv.LoginUser(ctx, username, password); {
 		case err == nil:
 			_ = sess.Set("user", username)
-			_ = sess.Release()
 
 			logger.Info().Str(common.LogKeyAuthResult, common.LogAuthResultSuccess).
 				Str("sid", sess.ID()).
@@ -118,7 +111,6 @@ func (a authPages) login(
 	sess := session.GetSession(r)
 	token := rand.Text()
 	_ = sess.Set(sessionCSRFKey, token)
-	_ = sess.Release()
 
 	a.renderer.WriteSimplePage(w, nt.LoginPage{Token: token, Message: message})
 }
