@@ -49,6 +49,10 @@ func (a authPages) Routes() *chi.Mux {
 }
 
 func (a authPages) loginGet(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
+	sess := session.GetSession(r)
+	_ = sess.Flush()
+	_, _ = sess.RegenerateID(w, r)
+
 	a.login(ctx, w, r, logger, "")
 }
 
@@ -70,6 +74,9 @@ func (a authPages) loginPost(ctx context.Context, w http.ResponseWriter, r *http
 	username := r.Form.Get("login")
 	password := r.Form.Get("password")
 
+	_ = sess.Flush()
+	_, _ = sess.RegenerateID(w, r)
+
 	if username != "" && password != "" && token != "" && token == sesstoken {
 		switch _, err := a.usersSrv.LoginUser(ctx, username, password); {
 		case err == nil:
@@ -77,6 +84,7 @@ func (a authPages) loginPost(ctx context.Context, w http.ResponseWriter, r *http
 			_ = sess.Release()
 
 			logger.Info().Str(common.LogKeyAuthResult, common.LogAuthResultSuccess).
+				Str("sid", sess.ID()).
 				Msgf("web.Auth: user authenticated user_name=%s", username)
 
 			http.Redirect(w, r, a.webroot+"/web/", http.StatusFound)
@@ -108,8 +116,6 @@ func (a authPages) login(
 	_ = ctx
 
 	sess := session.GetSession(r)
-	_, _ = sess.RegenerateID(w, r)
-
 	token := rand.Text()
 	_ = sess.Set(sessionCSRFKey, token)
 	_ = sess.Release()
@@ -125,7 +131,6 @@ func (a authPages) logout(ctx context.Context, w http.ResponseWriter, r *http.Re
 
 	sess.Flush()
 	_ = sess.Destroy(w, r)
-	_, _ = sess.RegenerateID(w, r)
 
 	a.renderer.WriteSimplePage(w, nt.LogoutPage{})
 }

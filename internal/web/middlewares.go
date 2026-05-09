@@ -25,9 +25,6 @@ func newAuthenticatedOnlyWeb(webroot string) func(http.Handler) http.Handler {
 				return
 			}
 
-			sess.Flush()
-			_ = sess.Destroy(w, r)
-
 			http.Redirect(w, r, webroot+"/web/auth/login", http.StatusFound)
 		})
 	}
