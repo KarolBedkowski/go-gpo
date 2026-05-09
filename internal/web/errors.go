@@ -11,6 +11,7 @@ import (
 	"context"
 	"net/http"
 
+	"gitea.com/go-chi/session"
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 	"github.com/samber/do/v2"
@@ -39,7 +40,14 @@ func (e errorPages) notfoundHandler(
 	r *http.Request,
 	logger *zerolog.Logger,
 ) {
-	e.renderer.WriteNotFoundError(ctx, w, "")
+	sess := session.GetSession(r)
+	user := srvsupport.SessionUser(sess)
+
+	if user == "" {
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+	} else {
+		e.renderer.WriteNotFoundError(ctx, w, "")
+	}
 }
 
 func (e errorPages) methodNotAllowedHandler(
@@ -48,5 +56,12 @@ func (e errorPages) methodNotAllowedHandler(
 	r *http.Request,
 	logger *zerolog.Logger,
 ) {
-	e.renderer.WriteBadRequestError(ctx, w, "")
+	sess := session.GetSession(r)
+	user := srvsupport.SessionUser(sess)
+
+	if user == "" {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+	} else {
+		e.renderer.WriteBadRequestError(ctx, w, "")
+	}
 }
