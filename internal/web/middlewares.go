@@ -17,7 +17,7 @@ func newAuthenticatedOnlyWeb(webroot string) func(http.Handler) http.Handler {
 			user := srvsupport.SessionUser(sess)
 
 			logger.Debug().Str("session_user", user).Str("sid", sess.ID()).
-				Msgf("AuthenticatedOnly: check user_name=%s sid=%s", user, sess.ID())
+				Msgf("AuthenticatedOnlyWeb: check user_name=%s sid=%s", user, sess.ID())
 
 			if user != "" {
 				next.ServeHTTP(w, r.WithContext(common.ContextWithUser(r.Context(), user)))
