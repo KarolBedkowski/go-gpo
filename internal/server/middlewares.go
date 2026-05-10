@@ -48,9 +48,6 @@ func AuthenticatedOnly(next http.Handler) http.Handler {
 			return
 		}
 
-		sess.Flush()
-		_ = sess.Destroy(w, r)
-
 		w.Header().Add("WWW-Authenticate", "Basic realm=\"go-gpo\"")
 		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 	})
