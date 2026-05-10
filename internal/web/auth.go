@@ -69,7 +69,13 @@ func (a authPages) loginPost(ctx context.Context, w http.ResponseWriter, r *http
 	username := r.Form.Get("login")
 	password := r.Form.Get("password")
 
-	_, _ = sess.RegenerateID(w, r)
+	sess, err := session.RegenerateSession(w, r)
+	if err != nil {
+		logger.Error().Err(err).Msgf("web.Auth: regenerate session error=%q", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+
+		return
+	}
 
 	if username != "" && password != "" && token != "" && token == sesstoken {
 		switch _, err := a.usersSrv.LoginUser(ctx, username, password); {
