@@ -29,21 +29,29 @@ func New(i do.Injector) (WEB, error) {
 	episodePages := do.MustInvoke[episodePages](i)
 	podcastPages := do.MustInvoke[podcastPages](i)
 	errorPages := do.MustInvoke[errorPages](i)
+	authPages := do.MustInvoke[authPages](i)
+	webroot := do.MustInvokeNamed[string](i, "server.webroot")
 
 	router := chi.NewRouter()
-	web := WEB{router: router}
 
-	router.Mount("/", indexPage.Routes())
-	router.Mount("/device", devicePages.Routes())
-	router.Mount("/podcast", podcastPages.Routes())
-	router.Mount("/episode", episodePages.Routes())
-	router.Mount("/user", userPages.Routes())
+	router.Group(func(group chi.Router) {
+		group.Use(newAuthenticatedOnlyWeb(webroot))
+
+		group.Mount("/", indexPage.Routes())
+		group.Mount("/device", devicePages.Routes())
+		group.Mount("/podcast", podcastPages.Routes())
+		group.Mount("/episode", episodePages.Routes())
+		group.Mount("/user", userPages.Routes())
+	})
+
+	router.Mount("/auth", authPages.Routes())
+
 	errorPages.Register(router)
 
 	fs := http.FileServerFS(staticFS)
 	router.Method("GET", "/static/*", http.StripPrefix("/web/", fs))
 
-	return web, nil
+	return WEB{router: router}, nil
 }
 
 func (w *WEB) Routes() *chi.Mux {

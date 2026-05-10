@@ -43,7 +43,11 @@ func StreamPageTemplate(qw422016 *qt422016.Writer, p Page, pctx *PageContext) {
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<link rel="stylesheet" href="/web/static/main.css" type="text/css">
+	<link rel="stylesheet" href="`)
+//line internal/web/templates/basepage.qtpl:15
+	qw422016.E().S(pctx.Webroot)
+//line internal/web/templates/basepage.qtpl:15
+	qw422016.N().S(`/web/static/main.css" type="text/css">
 	`)
 //line internal/web/templates/basepage.qtpl:16
 	t := p.Title()
@@ -99,7 +103,7 @@ func StreamPageTemplate(qw422016 *qt422016.Writer, p Page, pctx *PageContext) {
 //line internal/web/templates/basepage.qtpl:30
 	qw422016.E().S(pctx.Webroot)
 //line internal/web/templates/basepage.qtpl:30
-	qw422016.N().S(`/web/logout">Logout</a>
+	qw422016.N().S(`/web/auth/logout">Logout</a>
 	</header>
 	<br/>
 	<content>

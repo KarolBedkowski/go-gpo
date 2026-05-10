@@ -249,22 +249,29 @@ func newSimpleLogMiddleware(next http.Handler) http.Handler {
 
 		start := time.Now().UTC()
 		ctx := request.Context()
+
+		// add requestid to context and logger
 		requestID, _ := hlog.IDFromCtx(ctx)
 		llog := log.With().Str(common.LogKeyReqID, requestID.String()).Logger()
 		request = request.WithContext(llog.WithContext(ctx))
+
 		user, _, _ := request.BasicAuth()
 
-		l := llog.Info().
+		startlog := llog.Info().
 			Str("url", request.URL.Redacted()).
 			Str("remote", request.RemoteAddr).
 			Str("method", request.Method).
 			Str("req_user", user)
 
-		if pip, _ := ctx.Value(ctxProxyRemoteIP).(string); pip != "" {
-			l = l.Str("proxy_remote", pip)
+		if sid, _ := request.Cookie("sessionid"); sid != nil && sid.Value != "" {
+			startlog = startlog.Str("sid", sid.Value)
 		}
 
-		l.Msgf("Server: request start method=%s url=%q", request.Method, request.URL.Redacted())
+		if pip, _ := ctx.Value(ctxProxyRemoteIP).(string); pip != "" {
+			startlog = startlog.Str("proxy_remote", pip)
+		}
+
+		startlog.Msgf("Server: request start method=%s url=%q", request.Method, request.URL.Redacted())
 
 		lrw := &logResponseWriter{ResponseWriter: writer, status: 0, size: 0}
 
@@ -284,7 +291,6 @@ func newSimpleLogMiddleware(next http.Handler) http.Handler {
 				Int("status", lrw.status).
 				Int("size", lrw.size).
 				Int64("duration", dur.Milliseconds()).
-				Str("req_user", user).
 				Msgf("Server: request finished method=%s url=%q status=%d duration=%s",
 					request.Method, request.URL.Redacted(), lrw.status, dur)
 		}()
@@ -296,7 +302,7 @@ func newSimpleLogMiddleware(next http.Handler) http.Handler {
 //-------------------------------------------------------------
 
 // newFullLogMiddleware create new logging middleware.
-func newFullLogMiddleware(next http.Handler) http.Handler {
+func newFullLogMiddleware(next http.Handler) http.Handler { //nolint:funlen
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		if shouldSkipLogRequest(request) {
 			next.ServeHTTP(writer, request)
@@ -306,21 +312,28 @@ func newFullLogMiddleware(next http.Handler) http.Handler {
 
 		start := time.Now().UTC()
 		ctx := request.Context()
+
+		// add requestid to context and logger
 		requestID, _ := hlog.IDFromCtx(ctx)
 		llog := log.With().Str(common.LogKeyReqID, requestID.String()).Logger()
 		request = request.WithContext(llog.WithContext(ctx))
 		user, _, _ := request.BasicAuth()
-		l := llog.Info().
+
+		startlog := llog.Info().
 			Str("url", request.URL.Redacted()).
 			Str("remote", request.RemoteAddr).
 			Str("method", request.Method).
 			Str("req_user", user)
 
-		if pip, _ := ctx.Value(ctxProxyRemoteIP).(string); pip != "" {
-			l = l.Str("proxy_remote", pip)
+		if sid, _ := request.Cookie("sessionid"); sid != nil && sid.Value != "" {
+			startlog = startlog.Str("sid", sid.Value)
 		}
 
-		l.Msgf("Server: request start method=%s url=%q", request.Method, request.URL.Redacted())
+		if pip, _ := ctx.Value(ctxProxyRemoteIP).(string); pip != "" {
+			startlog = startlog.Str("proxy_remote", pip)
+		}
+
+		startlog.Msgf("Server: request start method=%s url=%q", request.Method, request.URL.Redacted())
 
 		var reqBody, respBody bytes.Buffer
 
@@ -349,7 +362,6 @@ func newFullLogMiddleware(next http.Handler) http.Handler {
 				Str("url", request.RequestURI).
 				Int("status", lrw.Status()).
 				Int("size", lrw.BytesWritten()).
-				Str("req_user", user).
 				Int64("duration", dur.Milliseconds()).
 				Msgf("Server: request finished method=%s url=%q status=%d duration=%s",
 					request.Method, request.URL.Redacted(), lrw.Status(), dur)
@@ -376,7 +388,7 @@ func newVerySimpleLogMiddleware(name string) func(http.Handler) http.Handler {
 				dur := time.Since(start)
 
 				loglevel, _ := mapStatusToLogLevel(lrw.status)
-				l := llog.WithLevel(loglevel).
+				startlog := llog.WithLevel(loglevel).
 					Str("url", request.URL.Redacted()).
 					Int("status", lrw.status).
 					Int("size", lrw.size).
@@ -384,11 +396,15 @@ func newVerySimpleLogMiddleware(name string) func(http.Handler) http.Handler {
 					Str("remote", request.RemoteAddr).
 					Str("method", request.Method)
 
-				if pip, _ := ctx.Value(ctxProxyRemoteIP).(string); pip != "" {
-					l = l.Str("proxy_remote", pip)
+				if sid, _ := request.Cookie("sessionid"); sid != nil && sid.Value != "" {
+					startlog = startlog.Str("sid", sid.Value)
 				}
 
-				l.Msgf(name+": request finished method=%s url=%q status=%d",
+				if pip, _ := ctx.Value(ctxProxyRemoteIP).(string); pip != "" {
+					startlog = startlog.Str("proxy_remote", pip)
+				}
+
+				startlog.Msgf(name+": request finished method=%s url=%q status=%d",
 					request.Method, request.URL.Redacted(), lrw.status, dur)
 			}()
 
@@ -404,7 +420,7 @@ func shouldSkipLogRequest(request *http.Request) bool {
 	path := request.URL.Path
 
 	return strings.HasPrefix(path, "/metrics") || strings.HasPrefix(path, "/debug") ||
-		path == "/favicon.ico" || strings.HasPrefix(path, "/web/static/")
+		path == "/favicon.ico"
 }
 
 func shouldLogRequestBody(request *http.Request) bool {

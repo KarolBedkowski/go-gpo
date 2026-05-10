@@ -144,9 +144,9 @@ func createRoutes(injector do.Injector, router chi.Router, cfg *config.ServerCon
 		group.Use(newRecoverMiddleware)
 		group.Use(middleware.CleanPath)
 		group.Use(sessionMW)
-		group.Use(authMW.handle)
-		group.Use(AuthenticatedOnly)
 		group.
+			With(authMW.handle).
+			With(AuthenticatedOnly).
 			With(newPromMiddleware("api", nil)).
 			With(middleware.NoCache).
 			Mount(webroot+"/", api.Routes())

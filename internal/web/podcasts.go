@@ -81,6 +81,8 @@ func (p podcastPages) addPodcast(ctx context.Context, w http.ResponseWriter, r *
 	if err := r.ParseForm(); err != nil {
 		logger.Error().Err(err).Msgf("web.Podcasts: bad request - parse form error=%q", err)
 		p.renderer.WriteError(ctx, w, err)
+
+		return
 	}
 
 	var podcast string

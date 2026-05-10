@@ -35,6 +35,7 @@ func (ar authResource) Routes() *chi.Mux {
 func (ar authResource) login(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
 	sess := session.GetSession(r)
 	user := common.ContextUser(ctx)
+	_, _ = sess.RegenerateID(w, r)
 
 	switch u := srvsupport.SessionUser(sess); u {
 	case "":
