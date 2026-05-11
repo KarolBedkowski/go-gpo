@@ -3,7 +3,7 @@ module gitlab.com/kabes/go-gpo
 go 1.26
 
 require (
-	gitea.com/go-chi/session v0.0.0-20251124165456-68e0254e989e
+	code.forgejo.org/go-chi/session v1.0.4
 	github.com/Merovius/systemd v0.0.0-20140203230105-93296c743739
 	github.com/go-chi/chi/v5 v5.2.5
 	github.com/go-chi/render v1.0.3

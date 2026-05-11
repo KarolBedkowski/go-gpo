@@ -19,7 +19,7 @@ import (
 	"strings"
 	"time"
 
-	"gitea.com/go-chi/session"
+	"code.forgejo.org/go-chi/session"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/hlog"
@@ -491,7 +491,7 @@ func newSessionMiddleware(i do.Injector) (sessionMiddleware, error) {
 		return service.NewSessionProvider(dbi, repo, sessionMaxLifetime)
 	})
 
-	sess, err := session.Sessioner(session.Options{
+	return session.Sessioner(session.Options{
 		Provider:       cfg.SessionStore,
 		ProviderConfig: "./tmp/",
 		CookieName:     "sessionid",
@@ -500,12 +500,7 @@ func newSessionMiddleware(i do.Injector) (sessionMiddleware, error) {
 		Secure:         cfg.MainServer.UseSecureCookie(),
 		CookiePath:     cfg.MainServer.WebRoot,
 		CookieLifeTime: int(sessionMaxLifetime.Seconds()),
-	})
-	if err != nil {
-		return nil, aerr.Wrapf(err, "start session manager failed")
-	}
-
-	return sess, nil
+	}), nil
 }
 
 //-------------------------------------------------------------

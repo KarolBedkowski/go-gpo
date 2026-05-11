@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"gitea.com/go-chi/session"
+	"code.forgejo.org/go-chi/session"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
@@ -101,6 +101,14 @@ func (s *SessionStore) Flush() error {
 	return nil
 }
 
+// Empty returns true if no keys have been set.
+func (s *SessionStore) Empty() bool {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	return len(s.data) == 0
+}
+
 //-------------------------------------------------------------
 
 // SessionProvider represents a postgres session provider implementation.
@@ -157,17 +165,19 @@ func (p *SessionProvider) Read(sid string) (session.RawStore, error) { //nolint:
 }
 
 // Exist returns true if session with given ID exists.
-func (p *SessionProvider) Exist(sid string) (bool, error) {
+func (p *SessionProvider) Exist(sid string) bool {
 	ctx := p.logger.WithContext(context.Background())
 
 	exists, err := db.InConnectionR(ctx, p.dbi, func(ctx context.Context) (bool, error) {
 		return p.repo.SessionExists(ctx, sid)
 	})
 	if err != nil {
-		return false, fmt.Errorf("check session %q exists error: %w", sid, err)
+		p.logger.Error().Err(err).Msgf("check session sid=%q exists error=%q", sid, err)
+
+		return false
 	}
 
-	return exists, nil
+	return exists
 }
 
 // Destroy deletes a session by session ID.
@@ -216,19 +226,21 @@ func (p *SessionProvider) Regenerate(oldsid, sid string) (session.RawStore, erro
 }
 
 // Count counts and returns number of sessions.
-func (p *SessionProvider) Count() (int, error) {
+func (p *SessionProvider) Count() int {
 	ctx := p.logger.WithContext(context.Background())
 
 	total, err := db.InConnectionR(ctx, p.dbi, func(ctx context.Context) (int, error) {
 		return p.repo.CountSessions(ctx)
 	})
 	if err != nil {
-		return 0, fmt.Errorf("error counting records: %w", err)
+		p.logger.Error().Err(err).Msgf("SessionProvider: count session error=%q", err)
+
+		return 0
 	}
 
 	p.logger.Debug().Msgf("SessionProvider: total sessions count=%d", total)
 
-	return total, nil
+	return total
 }
 
 // GC calls GC to clean expired sessions.
