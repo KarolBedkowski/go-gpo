@@ -58,7 +58,7 @@ func (a authPages) loginPost(ctx context.Context, w http.ResponseWriter, r *http
 	r.Body = http.MaxBytesReader(w, r.Body, maxBody)
 	if err := r.ParseForm(); err != nil {
 		logger.Error().Err(err).Msgf("web.Auth: do login bad request - parse form error=%q", err)
-		a.renderer.WriteError(ctx, w, err)
+		a.renderer.WriteError(w, r, err)
 
 		return
 	}
@@ -118,7 +118,7 @@ func (a authPages) login(
 	token := rand.Text()
 	_ = sess.Set(sessionCSRFKey, token)
 
-	a.renderer.WriteSimplePage(w, nt.LoginPage{Token: token, Message: message})
+	a.renderer.WriteSimplePage(w, r, nt.LoginPage{Token: token, Message: message})
 }
 
 func (a authPages) logout(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
@@ -130,5 +130,5 @@ func (a authPages) logout(ctx context.Context, w http.ResponseWriter, r *http.Re
 	sess.Flush()
 	_ = sess.Destroy(w, r)
 
-	a.renderer.WriteSimplePage(w, nt.LogoutPage{})
+	a.renderer.WriteSimplePage(w, r, nt.LogoutPage{})
 }

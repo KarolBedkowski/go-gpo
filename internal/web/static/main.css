@@ -28,3 +28,14 @@ table td,th{
 	border: 1px solid black;
 	padding: 0.1em 0.5em
 }
+
+.flash {
+	border: 1px solid gray;
+	padding: 0.5em 1em;
+	margin: 1em auto;
+}
+
+.flash-info {background-color: lightblue; }
+.flash-success {background-color: lightgreen; }
+.flash-error {background-color: red; color: white; font-weight: bold; }
+.flash-warn {background-color: yellow;}

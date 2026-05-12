@@ -107,107 +107,162 @@ func StreamPageTemplate(qw422016 *qt422016.Writer, p Page, pctx *PageContext) {
 	</header>
 	<br/>
 	<content>
+
 	`)
-//line internal/web/templates/basepage.qtpl:34
+//line internal/web/templates/basepage.qtpl:35
+	for _, f := range pctx.Flash() {
+//line internal/web/templates/basepage.qtpl:35
+		qw422016.N().S(`
+		<div class="flash flash-`)
+//line internal/web/templates/basepage.qtpl:36
+		qw422016.E().S(f.Level)
+//line internal/web/templates/basepage.qtpl:36
+		qw422016.N().S(`">
+			`)
+//line internal/web/templates/basepage.qtpl:37
+		if len(f.Messages) > 1 {
+//line internal/web/templates/basepage.qtpl:37
+			qw422016.N().S(`
+				<ul>
+					`)
+//line internal/web/templates/basepage.qtpl:39
+			for _, m := range f.Messages {
+//line internal/web/templates/basepage.qtpl:39
+				qw422016.N().S(`
+						<li>`)
+//line internal/web/templates/basepage.qtpl:40
+				qw422016.E().S(m)
+//line internal/web/templates/basepage.qtpl:40
+				qw422016.N().S(`</li>
+					`)
+//line internal/web/templates/basepage.qtpl:41
+			}
+//line internal/web/templates/basepage.qtpl:41
+			qw422016.N().S(`
+				</ul>
+			`)
+//line internal/web/templates/basepage.qtpl:43
+		} else {
+//line internal/web/templates/basepage.qtpl:43
+			qw422016.N().S(`
+				<p>`)
+//line internal/web/templates/basepage.qtpl:44
+			qw422016.E().S(f.Messages[0])
+//line internal/web/templates/basepage.qtpl:44
+			qw422016.N().S(`</p>
+			`)
+//line internal/web/templates/basepage.qtpl:45
+		}
+//line internal/web/templates/basepage.qtpl:45
+		qw422016.N().S(`
+		</div>
+	`)
+//line internal/web/templates/basepage.qtpl:47
+	}
+//line internal/web/templates/basepage.qtpl:47
+	qw422016.N().S(`
+
+	`)
+//line internal/web/templates/basepage.qtpl:49
 	p.StreamBody(qw422016, pctx)
-//line internal/web/templates/basepage.qtpl:34
+//line internal/web/templates/basepage.qtpl:49
 	qw422016.N().S(`
 	</content>
 </body>
 </html>
 `)
-//line internal/web/templates/basepage.qtpl:38
+//line internal/web/templates/basepage.qtpl:53
 }
 
-//line internal/web/templates/basepage.qtpl:38
+//line internal/web/templates/basepage.qtpl:53
 func WritePageTemplate(qq422016 qtio422016.Writer, p Page, pctx *PageContext) {
-//line internal/web/templates/basepage.qtpl:38
+//line internal/web/templates/basepage.qtpl:53
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line internal/web/templates/basepage.qtpl:38
+//line internal/web/templates/basepage.qtpl:53
 	StreamPageTemplate(qw422016, p, pctx)
-//line internal/web/templates/basepage.qtpl:38
+//line internal/web/templates/basepage.qtpl:53
 	qt422016.ReleaseWriter(qw422016)
-//line internal/web/templates/basepage.qtpl:38
+//line internal/web/templates/basepage.qtpl:53
 }
 
-//line internal/web/templates/basepage.qtpl:38
+//line internal/web/templates/basepage.qtpl:53
 func PageTemplate(p Page, pctx *PageContext) string {
-//line internal/web/templates/basepage.qtpl:38
+//line internal/web/templates/basepage.qtpl:53
 	qb422016 := qt422016.AcquireByteBuffer()
-//line internal/web/templates/basepage.qtpl:38
+//line internal/web/templates/basepage.qtpl:53
 	WritePageTemplate(qb422016, p, pctx)
-//line internal/web/templates/basepage.qtpl:38
+//line internal/web/templates/basepage.qtpl:53
 	qs422016 := string(qb422016.B)
-//line internal/web/templates/basepage.qtpl:38
+//line internal/web/templates/basepage.qtpl:53
 	qt422016.ReleaseByteBuffer(qb422016)
-//line internal/web/templates/basepage.qtpl:38
+//line internal/web/templates/basepage.qtpl:53
 	return qs422016
-//line internal/web/templates/basepage.qtpl:38
+//line internal/web/templates/basepage.qtpl:53
 }
 
-//line internal/web/templates/basepage.qtpl:41
+//line internal/web/templates/basepage.qtpl:56
 type BasePage struct{}
 
-//line internal/web/templates/basepage.qtpl:42
+//line internal/web/templates/basepage.qtpl:57
 func (p *BasePage) StreamTitle(qw422016 *qt422016.Writer) {
-//line internal/web/templates/basepage.qtpl:42
+//line internal/web/templates/basepage.qtpl:57
 }
 
-//line internal/web/templates/basepage.qtpl:42
+//line internal/web/templates/basepage.qtpl:57
 func (p *BasePage) WriteTitle(qq422016 qtio422016.Writer) {
-//line internal/web/templates/basepage.qtpl:42
+//line internal/web/templates/basepage.qtpl:57
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line internal/web/templates/basepage.qtpl:42
+//line internal/web/templates/basepage.qtpl:57
 	p.StreamTitle(qw422016)
-//line internal/web/templates/basepage.qtpl:42
+//line internal/web/templates/basepage.qtpl:57
 	qt422016.ReleaseWriter(qw422016)
-//line internal/web/templates/basepage.qtpl:42
+//line internal/web/templates/basepage.qtpl:57
 }
 
-//line internal/web/templates/basepage.qtpl:42
+//line internal/web/templates/basepage.qtpl:57
 func (p *BasePage) Title() string {
-//line internal/web/templates/basepage.qtpl:42
+//line internal/web/templates/basepage.qtpl:57
 	qb422016 := qt422016.AcquireByteBuffer()
-//line internal/web/templates/basepage.qtpl:42
+//line internal/web/templates/basepage.qtpl:57
 	p.WriteTitle(qb422016)
-//line internal/web/templates/basepage.qtpl:42
+//line internal/web/templates/basepage.qtpl:57
 	qs422016 := string(qb422016.B)
-//line internal/web/templates/basepage.qtpl:42
+//line internal/web/templates/basepage.qtpl:57
 	qt422016.ReleaseByteBuffer(qb422016)
-//line internal/web/templates/basepage.qtpl:42
+//line internal/web/templates/basepage.qtpl:57
 	return qs422016
-//line internal/web/templates/basepage.qtpl:42
+//line internal/web/templates/basepage.qtpl:57
 }
 
-//line internal/web/templates/basepage.qtpl:43
+//line internal/web/templates/basepage.qtpl:58
 func (p *BasePage) StreamBody(qw422016 *qt422016.Writer, pctx *PageContext) {
-//line internal/web/templates/basepage.qtpl:43
+//line internal/web/templates/basepage.qtpl:58
 	qw422016.N().S(`body`)
-//line internal/web/templates/basepage.qtpl:43
+//line internal/web/templates/basepage.qtpl:58
 }
 
-//line internal/web/templates/basepage.qtpl:43
+//line internal/web/templates/basepage.qtpl:58
 func (p *BasePage) WriteBody(qq422016 qtio422016.Writer, pctx *PageContext) {
-//line internal/web/templates/basepage.qtpl:43
+//line internal/web/templates/basepage.qtpl:58
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line internal/web/templates/basepage.qtpl:43
+//line internal/web/templates/basepage.qtpl:58
 	p.StreamBody(qw422016, pctx)
-//line internal/web/templates/basepage.qtpl:43
+//line internal/web/templates/basepage.qtpl:58
 	qt422016.ReleaseWriter(qw422016)
-//line internal/web/templates/basepage.qtpl:43
+//line internal/web/templates/basepage.qtpl:58
 }
 
-//line internal/web/templates/basepage.qtpl:43
+//line internal/web/templates/basepage.qtpl:58
 func (p *BasePage) Body(pctx *PageContext) string {
-//line internal/web/templates/basepage.qtpl:43
+//line internal/web/templates/basepage.qtpl:58
 	qb422016 := qt422016.AcquireByteBuffer()
-//line internal/web/templates/basepage.qtpl:43
+//line internal/web/templates/basepage.qtpl:58
 	p.WriteBody(qb422016, pctx)
-//line internal/web/templates/basepage.qtpl:43
+//line internal/web/templates/basepage.qtpl:58
 	qs422016 := string(qb422016.B)
-//line internal/web/templates/basepage.qtpl:43
+//line internal/web/templates/basepage.qtpl:58
 	qt422016.ReleaseByteBuffer(qb422016)
-//line internal/web/templates/basepage.qtpl:43
+//line internal/web/templates/basepage.qtpl:58
 	return qs422016
-//line internal/web/templates/basepage.qtpl:43
+//line internal/web/templates/basepage.qtpl:58
 }

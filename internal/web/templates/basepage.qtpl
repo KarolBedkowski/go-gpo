@@ -31,6 +31,21 @@ Page {
 	</header>
 	<br/>
 	<content>
+
+	{% for _, f := range pctx.Flash() %}
+		<div class="flash flash-{%s f.Level %}">
+			{% if len(f.Messages) > 1 %}
+				<ul>
+					{% for _, m := range f.Messages %}
+						<li>{%s m %}</li>
+					{% endfor %}
+				</ul>
+			{% else %}
+				<p>{%s f.Messages[0] %}</p>
+			{% endif %}
+		</div>
+	{% endfor %}
+
 	{%= p.Body(pctx) %}
 	</content>
 </body>

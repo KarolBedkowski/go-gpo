@@ -49,7 +49,7 @@ func (u userPages) userPage(
 	r *http.Request,
 	logger *zerolog.Logger,
 ) {
-	u.renderer.WritePage(w, &nt.UserPage{})
+	u.renderer.WritePage(w, r, &nt.UserPage{})
 }
 
 func (u userPages) changePassword(
@@ -66,7 +66,7 @@ func (u userPages) changePassword(
 		r.Body = http.MaxBytesReader(w, r.Body, maxBody)
 		if err := r.ParseForm(); err != nil {
 			logger.Info().Err(err).Msgf("web.User: bad request - parse form error=%q", err)
-			u.renderer.WriteBadRequestError(ctx, w, "Invalid form data.")
+			u.renderer.WriteBadRequestError(w, r, "Invalid form data.")
 
 			return
 		}
@@ -74,7 +74,7 @@ func (u userPages) changePassword(
 		msg = u.doChangePassword(ctx, r, logger)
 	}
 
-	u.renderer.WritePage(w, &nt.UserChangePassPage{Msg: msg})
+	u.renderer.WritePage(w, r, &nt.UserChangePassPage{Msg: msg})
 }
 
 func (u userPages) doChangePassword(ctx context.Context, r *http.Request, logger *zerolog.Logger) string {

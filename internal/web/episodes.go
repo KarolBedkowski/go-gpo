@@ -47,7 +47,7 @@ func (e episodePages) list(ctx context.Context, w http.ResponseWriter, r *http.R
 	podcastid, err := queryParamAsInt(r, "podcast")
 	if err != nil {
 		logger.Debug().Err(err).Msgf("web.Episodes: bad request: invalid podcast; error=%q", err)
-		e.renderer.WriteBadRequestError(ctx, w, "Invalid podcast.")
+		e.renderer.WriteBadRequestError(w, r, "Invalid podcast.")
 
 		return
 	}
@@ -62,10 +62,10 @@ func (e episodePages) list(ctx context.Context, w http.ResponseWriter, r *http.R
 	if err != nil {
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
 			Msgf("web.Episodes: get podcast episodes user_name=%s error=%q", user, err)
-		e.renderer.WriteError(ctx, w, err)
+		e.renderer.WriteError(w, r, err)
 
 		return
 	}
 
-	e.renderer.WritePage(w, &nt.EpisodesPage{Episodes: episodes})
+	e.renderer.WritePage(w, r, &nt.EpisodesPage{Episodes: episodes})
 }

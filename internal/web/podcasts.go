@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"code.forgejo.org/go-chi/session"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 	"github.com/rs/zerolog"
@@ -66,12 +67,12 @@ func (p podcastPages) list(ctx context.Context, w http.ResponseWriter, r *http.R
 	if err != nil {
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
 			Msgf("web.Podcasts: get user_name=%s podcasts error=%q", user, err)
-		p.renderer.WriteError(ctx, w, err)
+		p.renderer.WriteError(w, r, err)
 
 		return
 	}
 
-	p.renderer.WritePage(w, &nt.PodcastsPage{Podcasts: podcasts, SubscribedOnly: subscribedOnly})
+	p.renderer.WritePage(w, r, &nt.PodcastsPage{Podcasts: podcasts, SubscribedOnly: subscribedOnly})
 }
 
 func (p podcastPages) addPodcast(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
@@ -80,7 +81,7 @@ func (p podcastPages) addPodcast(ctx context.Context, w http.ResponseWriter, r *
 	r.Body = http.MaxBytesReader(w, r.Body, maxBody)
 	if err := r.ParseForm(); err != nil {
 		logger.Error().Err(err).Msgf("web.Podcasts: bad request - parse form error=%q", err)
-		p.renderer.WriteError(ctx, w, err)
+		p.renderer.WriteError(w, r, err)
 
 		return
 	}
@@ -105,17 +106,18 @@ func (p podcastPages) addPodcast(ctx context.Context, w http.ResponseWriter, r *
 
 	_ = cmd.Sanitize()
 	if len(cmd.Add) != 1 {
-		p.renderer.WriteBadRequestError(ctx, w, "invalid podcast URL")
+		p.renderer.WriteBadRequestError(w, r, "invalid podcast URL")
 	}
 
 	if _, err := p.subscriptionsSrv.ChangeSubscriptions(ctx, &cmd); err != nil {
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
 			Msgf("web.Podcasts: add podcast error=%q", err)
-		p.renderer.WriteError(ctx, w, err)
+		p.renderer.WriteError(w, r, err)
 
 		return
 	}
 
+	nt.AddFlash(session.GetSession(r), "success", "Podcast added")
 	http.Redirect(w, r, p.webroot+"/web/podcast/", http.StatusFound)
 }
 
@@ -123,12 +125,12 @@ func (p podcastPages) podcastGet(ctx context.Context, w http.ResponseWriter, r *
 	podcast, err := p.podcastFromURLParam(ctx, r)
 	if err != nil {
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msgf("web.Podcasts: get podcast error=%q", err)
-		p.renderer.WriteError(ctx, w, err)
+		p.renderer.WriteError(w, r, err)
 
 		return
 	}
 
-	p.renderer.WritePage(w, &nt.PodcastPage{Podcast: podcast})
+	p.renderer.WritePage(w, r, &nt.PodcastPage{Podcast: podcast})
 }
 
 func (p podcastPages) podcastUnsubscribe(
@@ -140,7 +142,7 @@ func (p podcastPages) podcastUnsubscribe(
 	podcast, err := p.podcastFromURLParam(ctx, r)
 	if err != nil {
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msgf("web.Podcasts: get podcast error=%q", err)
-		p.renderer.WriteError(ctx, w, err)
+		p.renderer.WriteError(w, r, err)
 
 		return
 	}
@@ -154,7 +156,7 @@ func (p podcastPages) podcastUnsubscribe(
 
 	if _, err := p.subscriptionsSrv.ChangeSubscriptions(ctx, &cmd); err != nil {
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msgf("web.Podcasts: add podcast error=%q", err)
-		p.renderer.WriteError(ctx, w, err)
+		p.renderer.WriteError(w, r, err)
 
 		return
 	}
@@ -171,7 +173,7 @@ func (p podcastPages) podcastResubscribe(
 	podcast, err := p.podcastFromURLParam(ctx, r)
 	if err != nil {
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msgf("web.Podcasts: get podcast error=%q", err)
-		p.renderer.WriteError(ctx, w, err)
+		p.renderer.WriteError(w, r, err)
 
 		return
 	}
@@ -186,7 +188,7 @@ func (p podcastPages) podcastResubscribe(
 	if _, err := p.subscriptionsSrv.ChangeSubscriptions(ctx, &cmd); err != nil {
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
 			Msgf("web.Podcasts: resubscribe podcast_url=%q error=%q", podcast.URL, err)
-		p.renderer.WriteError(ctx, w, err)
+		p.renderer.WriteError(w, r, err)
 
 		return
 	}
@@ -221,12 +223,12 @@ func (p podcastPages) podcastDeleteGet(
 	if err != nil {
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
 			Msgf("web.Podcasts: get podcast error=%q", err)
-		p.renderer.WriteError(ctx, w, err)
+		p.renderer.WriteError(w, r, err)
 
 		return
 	}
 
-	p.renderer.WritePage(w, &nt.PodcastDeletePage{Podcast: podcast})
+	p.renderer.WritePage(w, r, &nt.PodcastDeletePage{Podcast: podcast})
 }
 
 func (p podcastPages) podcastDeletePost(
@@ -237,7 +239,7 @@ func (p podcastPages) podcastDeletePost(
 ) {
 	podcastid, err := urlParamAsInt(r, "podcastid")
 	if err != nil {
-		p.renderer.WriteBadRequestError(ctx, w, "Invalid podcast id.")
+		p.renderer.WriteBadRequestError(w, r, "Invalid podcast id.")
 
 		return
 	}
@@ -247,7 +249,7 @@ func (p podcastPages) podcastDeletePost(
 	if err := p.podcastsSrv.DeletePodcast(ctx, user, podcastid); err != nil {
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
 			Msgf("web.Podcasts: delete podcast_id=%d error=%q", podcastid, err)
-		p.renderer.WriteError(ctx, w, err)
+		p.renderer.WriteError(w, r, err)
 
 		return
 	}
@@ -262,7 +264,7 @@ func (p podcastPages) export(ctx context.Context, w http.ResponseWriter, r *http
 	if err != nil {
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
 			Msgf("web.Podcasts: get subscribed podcasts for export user_name=%s error=%q", user, err)
-		p.renderer.WriteError(ctx, w, err)
+		p.renderer.WriteError(w, r, err)
 
 		return
 	}

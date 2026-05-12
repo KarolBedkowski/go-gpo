@@ -46,7 +46,7 @@ func (e errorPages) notfoundHandler(
 	if user == "" {
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 	} else {
-		e.renderer.WriteNotFoundError(ctx, w, "")
+		e.renderer.WriteNotFoundError(w, r, "")
 	}
 }
 
@@ -62,6 +62,6 @@ func (e errorPages) methodNotAllowedHandler(
 	if user == "" {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 	} else {
-		e.renderer.WriteBadRequestError(ctx, w, "")
+		e.renderer.WriteBadRequestError(w, r, "")
 	}
 }

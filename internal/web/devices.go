@@ -51,29 +51,29 @@ func (d devicePages) list(ctx context.Context, w http.ResponseWriter, r *http.Re
 	if err != nil {
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
 			Msgf("web.Devices: list user_name=%s devices error=%q", user, err)
-		d.renderer.WriteError(ctx, w, err)
+		d.renderer.WriteError(w, r, err)
 
 		return
 	}
 
-	d.renderer.WritePage(w, &nt.DevicesPage{Devices: devices})
+	d.renderer.WritePage(w, r, &nt.DevicesPage{Devices: devices})
 }
 
 func (d devicePages) deleteGet(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
 	devicename := chi.URLParam(r, "devicename")
 	if devicename == "" {
-		d.renderer.WriteBadRequestError(ctx, w, "Missing device name.")
+		d.renderer.WriteBadRequestError(w, r, "Missing device name.")
 
 		return
 	}
 
-	d.renderer.WritePage(w, &nt.DeviceDeletePage{DeviceName: devicename})
+	d.renderer.WritePage(w, r, &nt.DeviceDeletePage{DeviceName: devicename})
 }
 
 func (d devicePages) deletePost(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
 	devicename := chi.URLParam(r, "devicename")
 	if devicename == "" {
-		d.renderer.WriteBadRequestError(ctx, w, "Missing device name.")
+		d.renderer.WriteBadRequestError(w, r, "Missing device name.")
 
 		return
 	}
@@ -87,7 +87,7 @@ func (d devicePages) deletePost(ctx context.Context, w http.ResponseWriter, r *h
 	if err != nil {
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Object("cmd", &cmd).
 			Msgf("web.Devices: delete device_name=%s for user_name=%s error=%q", devicename, cmd.UserName, err)
-		d.renderer.WriteError(ctx, w, err)
+		d.renderer.WriteError(w, r, err)
 
 		return
 	}

@@ -8,12 +8,13 @@ package templates
 //
 
 import (
-	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"time"
 
+	"code.forgejo.org/go-chi/session"
 	"github.com/rs/zerolog/hlog"
 	"github.com/samber/do/v2"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
@@ -31,37 +32,58 @@ func formatPInt32AsDuration(v *int32) string {
 	return (time.Duration(int(*v)) * time.Second).String()
 }
 
+// ------------------------------------------------------------------------------
+
 type PageContext struct {
 	Webroot string
+	Session session.Store
 }
 
+func (p *PageContext) Flash() FlashStore {
+	if p.Session != nil {
+		if flash, ok := p.Session.Get("_flash").(FlashStore); ok {
+			_ = p.Session.Delete("_flash")
+
+			return flash
+		}
+	}
+
+	return nil
+}
+
+//------------------------------------------------------------------------------
+
 type Renderer struct {
-	pageContext *PageContext
+	webroot string
 }
 
 func NewRenderer(i do.Injector) (*Renderer, error) {
 	return &Renderer{
-		&PageContext{
-			Webroot: do.MustInvokeNamed[string](i, "server.webroot"),
-		},
+		webroot: do.MustInvokeNamed[string](i, "server.webroot"),
 	}, nil
 }
 
-func (r *Renderer) WritePage(w io.Writer, p Page) {
-	WritePageTemplate(w, p, r.pageContext)
+func (r *Renderer) WritePage(w io.Writer, req *http.Request, p Page) {
+	pctx := PageContext{
+		Webroot: r.webroot,
+		Session: session.GetSession(req),
+	}
+	WritePageTemplate(w, p, &pctx)
 }
 
 type SimplePage interface {
 	Body(pctx *PageContext) string
 }
 
-func (r *Renderer) WriteSimplePage(w io.Writer, p SimplePage) {
-	_, _ = w.Write([]byte(p.Body(r.pageContext)))
+func (r *Renderer) WriteSimplePage(w io.Writer, req *http.Request, p SimplePage) {
+	pctx := PageContext{
+		Webroot: r.webroot,
+		Session: session.GetSession(req),
+	}
+	_, _ = w.Write([]byte(p.Body(&pctx)))
 }
 
-//------------------------------------------------------------------------------
-
-func (r *Renderer) WriteSimpleError(ctx context.Context, writer io.Writer, status int, details string) {
+func (r *Renderer) WriteSimpleError(writer io.Writer, req *http.Request, status int, details string) {
 	page := ErrorPage{
 		Status:  status,
 		Message: http.StatusText(status),
@@ -70,32 +92,38 @@ func (r *Renderer) WriteSimpleError(ctx context.Context, writer io.Writer, statu
 	}
 
 	if status == http.StatusInternalServerError {
+		ctx := req.Context()
+
 		if reqid, ok := hlog.IDFromCtx(ctx); ok {
 			page.ReqID = reqid.String()
 		}
 	}
 
-	WritePageTemplate(writer, &page, r.pageContext)
+	pctx := PageContext{
+		Webroot: r.webroot,
+		Session: session.GetSession(req),
+	}
+	WritePageTemplate(writer, &page, &pctx)
 }
 
-func (r *Renderer) WriteNotFoundError(ctx context.Context, w io.Writer, details string) {
-	r.WriteSimpleError(ctx, w, http.StatusNotFound, details)
+func (r *Renderer) WriteNotFoundError(w io.Writer, req *http.Request, details string) {
+	r.WriteSimpleError(w, req, http.StatusNotFound, details)
 }
 
-func (r *Renderer) WriteBadRequestError(ctx context.Context, w io.Writer, details string) {
-	r.WriteSimpleError(ctx, w, http.StatusBadRequest, details)
+func (r *Renderer) WriteBadRequestError(w io.Writer, req *http.Request, details string) {
+	r.WriteSimpleError(w, req, http.StatusBadRequest, details)
 }
 
-func (r *Renderer) WriteError(ctx context.Context, w io.Writer, err error) {
+func (r *Renderer) WriteError(w io.Writer, req *http.Request, err error) {
 	switch {
 	case aerr.HasTag(err, aerr.InternalError):
-		r.WriteSimpleError(ctx, w, http.StatusInternalServerError, aerr.GetUserMessage(err))
+		r.WriteSimpleError(w, req, http.StatusInternalServerError, aerr.GetUserMessage(err))
 	case aerr.HasTag(err, aerr.NotFound):
-		r.WriteSimpleError(ctx, w, http.StatusNotFound, aerr.GetUserMessage(err))
+		r.WriteSimpleError(w, req, http.StatusNotFound, aerr.GetUserMessage(err))
 	case aerr.HasTag(err, aerr.ValidationError) || aerr.HasTag(err, aerr.BadRequest):
-		r.WriteSimpleError(ctx, w, http.StatusBadRequest, aerr.GetUserMessage(err))
+		r.WriteSimpleError(w, req, http.StatusBadRequest, aerr.GetUserMessage(err))
 	default:
-		r.WriteSimpleError(ctx, w, http.StatusInternalServerError, aerr.GetUserMessage(err))
+		r.WriteSimpleError(w, req, http.StatusInternalServerError, aerr.GetUserMessage(err))
 	}
 }
 
@@ -113,4 +141,33 @@ func shortString(str string, maxlen int) string {
 	}
 
 	return str + "…"
+}
+
+//------------------------------------------------------------------------------
+
+type Flash struct {
+	Level    string
+	Messages []string
+}
+
+func (f *Flash) String() string {
+	return fmt.Sprintf("Flash %s: %v", f.Level, f.Messages)
+}
+
+type FlashStore []*Flash
+
+func AddFlash(sess session.Store, level, message string) {
+	flashstore, ok := sess.Get("_flash").(FlashStore)
+	if ok && flashstore != nil {
+		for _, f := range flashstore {
+			if f.Level == level {
+				f.Messages = append(f.Messages, message)
+				_ = sess.Set("_flash", flashstore)
+
+				return
+			}
+		}
+	}
+
+	_ = sess.Set("_flash", append(flashstore, &Flash{level, []string{message}}))
 }
