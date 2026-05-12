@@ -181,7 +181,9 @@ func (s Repository) ReadOrCreate(
 	if session.IsValid(maxLifeTime) {
 		session.Data, err = decodeSession(data)
 		if err != nil {
-			return nil, err
+			logger.Error().Err(err).Str("sid", sid).Msgf("pg.Repository: decode session error=%q sid=%s", err, sid)
+
+			session.Data = make(map[any]any)
 		}
 	} else {
 		logger.Debug().Str("sid", sid).Object("session", &session).Msgf("pg.Repository: session expired sid=%s", sid)
