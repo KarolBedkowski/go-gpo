@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"code.forgejo.org/go-chi/session"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 	"github.com/rs/zerolog"
@@ -106,18 +105,16 @@ func (p podcastPages) addPodcast(ctx context.Context, w http.ResponseWriter, r *
 
 	_ = cmd.Sanitize()
 	if len(cmd.Add) != 1 {
-		p.renderer.WriteBadRequestError(w, r, "invalid podcast URL")
-	}
-
-	if _, err := p.subscriptionsSrv.ChangeSubscriptions(ctx, &cmd); err != nil {
+		nt.AddFlash(r, "warn", "invalid podcast URL")
+	} else if _, err := p.subscriptionsSrv.ChangeSubscriptions(ctx, &cmd); err != nil {
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
 			Msgf("web.Podcasts: add podcast error=%q", err)
-		p.renderer.WriteError(w, r, err)
-
-		return
+		nt.AddFlashError(w, r, err)
+		///	p.renderer.WriteError(w, r, err)
+	} else {
+		nt.AddFlash(r, "success", "Podcast added")
 	}
 
-	nt.AddFlash(session.GetSession(r), "success", "Podcast added")
 	http.Redirect(w, r, p.webroot+"/web/podcast/", http.StatusFound)
 }
 

@@ -156,7 +156,9 @@ func (f *Flash) String() string {
 
 type FlashStore []*Flash
 
-func AddFlash(sess session.Store, level, message string) {
+func AddFlash(req *http.Request, level, message string) {
+	sess := session.GetSession(req)
+
 	flashstore, ok := sess.Get("_flash").(FlashStore)
 	if ok && flashstore != nil {
 		for _, f := range flashstore {
@@ -170,4 +172,49 @@ func AddFlash(sess session.Store, level, message string) {
 	}
 
 	_ = sess.Set("_flash", append(flashstore, &Flash{level, []string{message}}))
+}
+
+func AddFlashError(w io.Writer, req *http.Request, err error) {
+	switch {
+	case aerr.HasTag(err, aerr.InternalError):
+		msg := http.StatusText(http.StatusInternalServerError)
+		if herr := aerr.GetUserMessage(err); herr != "" {
+			msg += ": " + herr
+		}
+
+		if reqid, ok := hlog.IDFromCtx(req.Context()); ok {
+			msg += " (reqid: " + reqid.String() + ")"
+		}
+
+		AddFlash(req, "error", msg)
+	case aerr.HasTag(err, aerr.NotFound):
+		msg := "Not found"
+		if herr := aerr.GetUserMessage(err); herr != "" {
+			msg = herr
+		}
+
+		AddFlash(req, "warn", msg)
+	case aerr.HasTag(err, aerr.ValidationError):
+		msg := "Validation error"
+		if herr := aerr.GetUserMessage(err); herr != "" {
+			msg += ": " + herr
+		}
+
+		AddFlash(req, "warn", msg)
+
+	case aerr.HasTag(err, aerr.BadRequest):
+		msg := http.StatusText(http.StatusBadRequest)
+		if herr := aerr.GetUserMessage(err); herr != "" {
+			msg += ": " + herr
+		}
+
+		AddFlash(req, "warn", msg)
+	default:
+		msg := http.StatusText(http.StatusInternalServerError)
+		if herr := aerr.GetUserMessage(err); herr != "" {
+			msg += ": " + herr
+		}
+
+		AddFlash(req, "error", msg)
+	}
 }
