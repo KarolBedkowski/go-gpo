@@ -26,12 +26,14 @@ import (
 type devicePages struct {
 	deviceSrv *service.DevicesSrv
 	renderer  *nt.Renderer
+	webroot   string
 }
 
 func newDevicePages(i do.Injector) (devicePages, error) {
 	return devicePages{
 		deviceSrv: do.MustInvoke[*service.DevicesSrv](i),
 		renderer:  do.MustInvoke[*nt.Renderer](i),
+		webroot:   do.MustInvokeNamed[string](i, "server.webroot"),
 	}, nil
 }
 
@@ -87,10 +89,10 @@ func (d devicePages) deletePost(ctx context.Context, w http.ResponseWriter, r *h
 	if err != nil {
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Object("cmd", &cmd).
 			Msgf("web.Devices: delete device_name=%s for user_name=%s error=%q", devicename, cmd.UserName, err)
-		d.renderer.WriteError(w, r, err)
-
-		return
+		nt.AddFlashError(w, r, err)
+	} else {
+		nt.AddFlash(r, "success", "Device "+devicename+" deleted")
 	}
 
-	d.list(ctx, w, r, logger)
+	http.Redirect(w, r, d.webroot+"/web/device/", http.StatusFound)
 }
