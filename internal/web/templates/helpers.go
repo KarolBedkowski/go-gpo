@@ -175,46 +175,31 @@ func AddFlash(req *http.Request, level, message string) {
 }
 
 func AddFlashError(w io.Writer, req *http.Request, err error) {
+	usermsg := ""
+	if herr := aerr.GetUserMessage(err); herr != "" {
+		usermsg = ": " + herr
+	}
+
 	switch {
 	case aerr.HasTag(err, aerr.InternalError):
-		msg := http.StatusText(http.StatusInternalServerError)
-		if herr := aerr.GetUserMessage(err); herr != "" {
-			msg += ": " + herr
-		}
+		msg := http.StatusText(http.StatusInternalServerError) + usermsg
 
 		if reqid, ok := hlog.IDFromCtx(req.Context()); ok {
 			msg += " (reqid: " + reqid.String() + ")"
 		}
 
 		AddFlash(req, "error", msg)
+
 	case aerr.HasTag(err, aerr.NotFound):
-		msg := "Not found"
-		if herr := aerr.GetUserMessage(err); herr != "" {
-			msg = herr
-		}
+		AddFlash(req, "warn", "Not found"+usermsg)
 
-		AddFlash(req, "warn", msg)
 	case aerr.HasTag(err, aerr.ValidationError):
-		msg := "Validation error"
-		if herr := aerr.GetUserMessage(err); herr != "" {
-			msg += ": " + herr
-		}
-
-		AddFlash(req, "warn", msg)
+		AddFlash(req, "warn", "Validation error"+usermsg)
 
 	case aerr.HasTag(err, aerr.BadRequest):
-		msg := http.StatusText(http.StatusBadRequest)
-		if herr := aerr.GetUserMessage(err); herr != "" {
-			msg += ": " + herr
-		}
+		AddFlash(req, "warn", http.StatusText(http.StatusBadRequest)+usermsg)
 
-		AddFlash(req, "warn", msg)
 	default:
-		msg := http.StatusText(http.StatusInternalServerError)
-		if herr := aerr.GetUserMessage(err); herr != "" {
-			msg += ": " + herr
-		}
-
-		AddFlash(req, "error", msg)
+		AddFlash(req, "error", http.StatusText(http.StatusInternalServerError)+usermsg)
 	}
 }
