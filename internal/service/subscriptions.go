@@ -60,7 +60,7 @@ func (s *SubscriptionsSrv) GetSubscriptions(ctx context.Context, query *query.Ge
 }
 
 // ReplaceSubscriptions replace all subscriptions for given user. Create device when no exists.
-func (s *SubscriptionsSrv) ReplaceSubscriptions( //nolint:cyclop
+func (s *SubscriptionsSrv) ReplaceSubscriptions(
 	ctx context.Context,
 	cmd *command.ReplaceSubscriptionsCmd,
 ) error {
@@ -91,44 +91,45 @@ func (s *SubscriptionsSrv) ReplaceSubscriptions( //nolint:cyclop
 			return aerr.Wrapf(err, "list podcasts error")
 		}
 
-		changes := make([]model.Podcast, 0, len(cmd.Subscriptions))
-		// remove subscriptions found in db but not in currentSubs
-		for _, sub := range subscribed {
-			if sub.Subscribed && !slices.Contains(cmd.Subscriptions, sub.URL) {
-				sub.SetUnsubscribed(cmd.Timestamp)
-				changes = append(changes, sub)
-			}
-		}
-
-		// add or set subscribed flag for podcast in currentSubs; update updated_at
-		for _, sub := range cmd.Subscriptions {
-			podcast, ok := subscribed.FindPodcastByURL(sub)
-			if !ok {
-				podcast = model.Podcast{User: user, URL: sub}
-			} else if podcast.Subscribed {
-				continue
-			}
-
-			if podcast.SetSubscribed(cmd.Timestamp) {
-				changes = append(changes, podcast)
-			}
-		}
-
-		common.TraceLazyPrintf(ctx, "ReplaceSubscriptions: changes prepared")
-
-		for _, p := range changes {
+		for _, p := range prepareReplaceSubscriptions(subscribed, cmd) {
+			p.User = user
 			if _, err := s.podcastsRepo.SavePodcast(ctx, &p); err != nil {
 				return aerr.ApplyFor(ErrRepositoryError, err)
 			}
 		}
 
-		common.TraceLazyPrintf(ctx, "ReplaceSubscriptions: podcasts saved")
-
 		return nil
 	})
 }
 
-func (s *SubscriptionsSrv) ChangeSubscriptions( //nolint:cyclop,gocognit,funlen
+func prepareReplaceSubscriptions(subscribed model.Podcasts, cmd *command.ReplaceSubscriptionsCmd) []model.Podcast {
+	changes := make([]model.Podcast, 0, len(cmd.Subscriptions))
+	// remove subscriptions found in db but not in currentSubs
+	for _, sub := range subscribed {
+		if sub.Subscribed && !slices.Contains(cmd.Subscriptions, sub.URL) {
+			sub.SetUnsubscribed(cmd.Timestamp)
+			changes = append(changes, sub)
+		}
+	}
+
+	// add or set subscribed flag for podcast in currentSubs; update updated_at
+	for _, sub := range cmd.Subscriptions {
+		podcast, ok := subscribed.FindPodcastByURL(sub)
+		if !ok {
+			podcast = model.Podcast{URL: sub}
+		} else if podcast.Subscribed {
+			continue
+		}
+
+		if podcast.SetSubscribed(cmd.Timestamp) {
+			changes = append(changes, podcast)
+		}
+	}
+
+	return changes
+}
+
+func (s *SubscriptionsSrv) ChangeSubscriptions(
 	ctx context.Context, cmd *command.ChangeSubscriptionsCmd,
 ) (command.ChangeSubscriptionsCmdResult, error) {
 	res := command.ChangeSubscriptionsCmdResult{
@@ -157,46 +158,46 @@ func (s *SubscriptionsSrv) ChangeSubscriptions( //nolint:cyclop,gocognit,funlen
 			return aerr.Wrapf(err, "list podcasts error")
 		}
 
-		common.TraceLazyPrintf(ctx, "ChangeSubscriptions: podcasts loaded")
-
-		podchanges := make([]model.Podcast, 0, len(cmd.Add)+len(cmd.Remove))
-
-		// removed
-		for _, sub := range cmd.Remove {
-			if podcast, ok := userpodcasts.FindPodcastByURL(sub); ok {
-				if podcast.SetUnsubscribed(cmd.Timestamp) {
-					podchanges = append(podchanges, podcast)
-				}
-			}
-		}
-
-		for _, sub := range cmd.Add {
-			podcast, ok := userpodcasts.FindPodcastByURL(sub)
-			if !ok { // new
-				podcast = model.Podcast{User: user, URL: sub}
-			} else if podcast.Subscribed {
-				continue
-			}
-
-			if podcast.SetSubscribed(cmd.Timestamp) {
-				podchanges = append(podchanges, podcast)
-			}
-		}
-
-		common.TraceLazyPrintf(ctx, "ChangeSubscriptions: changes prepared")
-
-		for _, p := range podchanges {
+		for _, p := range preparePodcastChanges(userpodcasts, cmd) {
+			p.User = user
 			if _, err := s.podcastsRepo.SavePodcast(ctx, &p); err != nil {
 				return aerr.Wrapf(err, "save podcast error")
 			}
 		}
 
-		common.TraceLazyPrintf(ctx, "ChangeSubscriptions: podcast saved")
-
 		return nil
 	})
 
 	return res, err //nolint:wrapcheck
+}
+
+func preparePodcastChanges(userpodcasts model.Podcasts, cmd *command.ChangeSubscriptionsCmd) []model.Podcast {
+	podchanges := make([]model.Podcast, 0, len(cmd.Add)+len(cmd.Remove))
+
+	// removed
+	for _, sub := range cmd.Remove {
+		if podcast, ok := userpodcasts.FindPodcastByURL(sub); ok {
+			if podcast.SetUnsubscribed(cmd.Timestamp) {
+				podchanges = append(podchanges, podcast)
+			}
+		}
+	}
+
+	for _, sub := range cmd.Add {
+		podcast, ok := userpodcasts.FindPodcastByURL(sub)
+		if !ok { // new
+			// user is set on save
+			podcast = model.Podcast{URL: sub}
+		} else if podcast.Subscribed {
+			continue
+		}
+
+		if podcast.SetSubscribed(cmd.Timestamp) {
+			podchanges = append(podchanges, podcast)
+		}
+	}
+
+	return podchanges
 }
 
 func (s *SubscriptionsSrv) GetSubscriptionChanges(ctx context.Context, query *query.GetSubscriptionChangesQuery) (

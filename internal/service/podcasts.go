@@ -298,15 +298,11 @@ func (p *PodcastsSrv) downloadPodcastInfoWorker(
 	}
 }
 
-func (p *PodcastsSrv) downloadPodcastInfo(ctx context.Context, //nolint: cyclop
+func (p *PodcastsSrv) downloadPodcastInfo(ctx context.Context,
 	feedparser *gofeed.Parser, since time.Time, task *model.PodcastToUpdate, loadepisodes bool,
 	eventlog *common.EventLog,
 ) error {
 	logger := zerolog.Ctx(ctx)
-	if logger == nil {
-		panic("missing logger in ctx")
-	}
-
 	logger.Debug().Msgf("PodcastsSrv: downloading podcast_url=%q", task.URL)
 
 	var (
@@ -361,7 +357,7 @@ func (p *PodcastsSrv) downloadPodcastInfo(ctx context.Context, //nolint: cyclop
 	})
 }
 
-func parseFeedURLWithContext(ctx context.Context, feedparser *gofeed.Parser, //nolint:cyclop
+func parseFeedURLWithContext(ctx context.Context, feedparser *gofeed.Parser,
 	ptu *model.PodcastToUpdate,
 ) (*gofeed.Feed, int, error) {
 	ctx, cancel := context.WithTimeout(ctx, downloadPodcastInfoTimeout)
@@ -379,14 +375,19 @@ func parseFeedURLWithContext(ctx context.Context, feedparser *gofeed.Parser, //n
 	req.Header.Set("User-Agent", feedparser.UserAgent)
 
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
+	switch {
+	case err != nil:
 		return nil, 0, aerr.Wrapf(err, "make request failed")
-	} else if resp == nil {
+	case resp == nil:
 		return nil, 0, aerr.New("empty response when get feed")
 	}
 
 	defer resp.Body.Close()
 
+	return parseFeedResponse(feedparser, resp)
+}
+
+func parseFeedResponse(feedparser *gofeed.Parser, resp *http.Response) (*gofeed.Feed, int, error) {
 	switch {
 	case resp.StatusCode == http.StatusNotModified:
 		return nil, http.StatusNotModified, nil

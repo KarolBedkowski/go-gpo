@@ -441,7 +441,40 @@ type zerologErrorMarshaller struct {
 	err error
 }
 
-func (m zerologErrorMarshaller) MarshalZerologObject(event *zerolog.Event) { //nolint:cyclop,funlen
+func (m zerologErrorMarshaller) MarshalZerologObject(event *zerolog.Event) {
+	stack, errs, details, meta, usermsg, tags := m.build()
+
+	if len(details) > 0 {
+		slices.Reverse(details)
+		event.Strs("details", details)
+	}
+
+	if len(usermsg) > 0 {
+		slices.Reverse(usermsg)
+		event.Strs("user_msg", usermsg)
+	}
+
+	if stack != nil {
+		event.Strs("stack", stack)
+	}
+
+	if errs != nil {
+		slices.Reverse(errs)
+		event.Strs("errors", errs)
+	}
+
+	if len(tags) > 0 {
+		event.Strs("tags", tags)
+	}
+
+	if meta != nil {
+		event.Any("meta", meta)
+	}
+}
+
+func (m zerologErrorMarshaller) build() (
+	[]string, []string, []string, map[string]any, []string, []string,
+) {
 	var (
 		stack, errs, details []string
 		meta                 map[string]any
@@ -479,32 +512,7 @@ func (m zerologErrorMarshaller) MarshalZerologObject(event *zerolog.Event) { //n
 		}
 	}
 
-	if len(details) > 0 {
-		slices.Reverse(details)
-		event.Strs("details", details)
-	}
-
-	if len(usermsg) > 0 {
-		slices.Reverse(usermsg)
-		event.Strs("user_msg", usermsg)
-	}
-
-	if stack != nil {
-		event.Strs("stack", stack)
-	}
-
-	if errs != nil {
-		slices.Reverse(errs)
-		event.Strs("errors", errs)
-	}
-
-	if len(tags) > 0 {
-		event.Strs("tags", tags.asStrs())
-	}
-
-	if meta != nil {
-		event.Any("meta", meta)
-	}
+	return stack, errs, details, meta, usermsg, tags.asStrs()
 }
 
 func ErrorMarshalFunc(err error) any {
