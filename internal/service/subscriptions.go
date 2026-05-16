@@ -161,8 +161,12 @@ func (s *SubscriptionsSrv) ChangeSubscriptions(
 		for _, p := range preparePodcastChanges(userpodcasts, cmd) {
 			p.User = user
 			if _, err := s.podcastsRepo.SavePodcast(ctx, &p); err != nil {
+				res.PodcastsModified = 0
+
 				return aerr.Wrapf(err, "save podcast error")
 			}
+
+			res.PodcastsModified += 1
 		}
 
 		return nil

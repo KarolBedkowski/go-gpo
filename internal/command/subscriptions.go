@@ -59,7 +59,8 @@ func (s *ChangeSubscriptionsCmd) Validate() error {
 }
 
 type ChangeSubscriptionsCmdResult struct {
-	ChangedURLs [][]string
+	ChangedURLs      [][]string
+	PodcastsModified int
 }
 
 //---------------------------------------------------------------------

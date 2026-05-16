@@ -175,6 +175,10 @@ func AddFlash(req *http.Request, level, message string) {
 	_ = sess.Set("_flash", append(flashstore, &Flash{level, []string{message}}))
 }
 
+func AddFlashf(req *http.Request, level, message string, args ...any) {
+	AddFlash(req, level, fmt.Sprintf(message, args...))
+}
+
 func AddFlashError(w io.Writer, req *http.Request, err error) {
 	usermsg := ""
 	if herr := aerr.GetUserMessage(err); herr != "" {

@@ -103,16 +103,14 @@ func (p podcastPages) addPodcast(ctx context.Context, w http.ResponseWriter, r *
 		Timestamp:  time.Now(),
 	}
 
-	_ = cmd.Sanitize()
 	if len(cmd.Add) != 1 {
 		nt.AddFlash(r, "warn", "invalid podcast URL")
-	} else if _, err := p.subscriptionsSrv.ChangeSubscriptions(ctx, &cmd); err != nil {
+	} else if res, err := p.subscriptionsSrv.ChangeSubscriptions(ctx, &cmd); err != nil {
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
 			Msgf("web.Podcasts: add podcast error=%q", err)
 		nt.AddFlashError(w, r, err)
-		///	p.renderer.WriteError(w, r, err)
 	} else {
-		nt.AddFlash(r, "success", "Podcast added")
+		nt.AddFlashf(r, "success", "Podcast %d added", res.PodcastsModified)
 	}
 
 	http.Redirect(w, r, p.webroot+"/web/podcast/", http.StatusFound)
@@ -122,7 +120,8 @@ func (p podcastPages) podcastGet(ctx context.Context, w http.ResponseWriter, r *
 	podcast, err := p.podcastFromURLParam(ctx, r)
 	if err != nil {
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msgf("web.Podcasts: get podcast error=%q", err)
-		p.renderer.WriteError(w, r, err)
+		nt.AddFlashError(w, r, err)
+		http.Redirect(w, r, p.webroot+"/web/podcast/", http.StatusFound)
 
 		return
 	}
@@ -153,9 +152,9 @@ func (p podcastPages) podcastUnsubscribe(
 
 	if _, err := p.subscriptionsSrv.ChangeSubscriptions(ctx, &cmd); err != nil {
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msgf("web.Podcasts: add podcast error=%q", err)
-		p.renderer.WriteError(w, r, err)
-
-		return
+		nt.AddFlashError(w, r, err)
+	} else {
+		nt.AddFlash(r, "success", "Podcast unsubscribed")
 	}
 
 	http.Redirect(w, r, p.webroot+"/web/podcast/", http.StatusFound)
@@ -185,9 +184,9 @@ func (p podcastPages) podcastResubscribe(
 	if _, err := p.subscriptionsSrv.ChangeSubscriptions(ctx, &cmd); err != nil {
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
 			Msgf("web.Podcasts: resubscribe podcast_url=%q error=%q", podcast.URL, err)
-		p.renderer.WriteError(w, r, err)
-
-		return
+		nt.AddFlashError(w, r, err)
+	} else {
+		nt.AddFlash(r, "success", "Podcast re-subscribed")
 	}
 
 	http.Redirect(w, r, p.webroot+"/web/podcast/", http.StatusFound)
@@ -220,7 +219,8 @@ func (p podcastPages) podcastDeleteGet(
 	if err != nil {
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
 			Msgf("web.Podcasts: get podcast error=%q", err)
-		p.renderer.WriteError(w, r, err)
+		nt.AddFlashError(w, r, err)
+		http.Redirect(w, r, p.webroot+"/web/podcast/", http.StatusFound)
 
 		return
 	}
@@ -246,9 +246,9 @@ func (p podcastPages) podcastDeletePost(
 	if err := p.podcastsSrv.DeletePodcast(ctx, user, podcastid); err != nil {
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
 			Msgf("web.Podcasts: delete podcast_id=%d error=%q", podcastid, err)
-		p.renderer.WriteError(w, r, err)
-
-		return
+		nt.AddFlashError(w, r, err)
+	} else {
+		nt.AddFlash(r, "success", "Podcast deleted")
 	}
 
 	http.Redirect(w, r, p.webroot+"/web/podcast/", http.StatusFound)
