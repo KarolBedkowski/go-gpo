@@ -28,9 +28,9 @@ import (
 )
 
 const (
-	sessionMaxLifetime    = (15 * 60) * time.Second //nolint:mnd
-	defaultReadTimeout    = 60 * time.Second
-	defaultWriteTimeout   = 60 * time.Second
+	sessionMaxLifetime    = 15 * time.Minute
+	defaultReadTimeout    = 1 * time.Minute
+	defaultWriteTimeout   = 1 * time.Minute
 	defaultMaxHeaderBytes = 1 << 20
 )
 

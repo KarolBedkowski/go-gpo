@@ -38,7 +38,7 @@ func (Repository) ListSubscribedPodcasts(ctx context.Context, userid int64, sinc
 
 	if !since.IsZero() {
 		query += " AND p.updated_at > ? "
-		args = append(args, since) //nolint:wsl_v5
+		args = append(args, since)
 	}
 
 	query += " ORDER BY p.title, p.url"
@@ -69,7 +69,7 @@ func (Repository) ListPodcasts(ctx context.Context, userid int64, since time.Tim
 
 	if !since.IsZero() {
 		query += " AND p.updated_at > ? "
-		args = append(args, since) //nolint:wsl_v5
+		args = append(args, since)
 	}
 
 	query += " ORDER BY p.title, p.url"

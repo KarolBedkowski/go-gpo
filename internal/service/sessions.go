@@ -250,7 +250,7 @@ func (p *SessionProvider) GC() {
 	ctx := p.logger.WithContext(context.Background())
 
 	err := db.InTransaction(ctx, p.dbi, func(ctx context.Context) error {
-		return p.repo.CleanSessions(ctx, p.maxlifetime, 2*time.Hour) //nolint:mnd
+		return p.repo.CleanSessions(ctx, p.maxlifetime, p.maxlifetime)
 	})
 	if err != nil {
 		p.logger.Error().Err(err).Msgf("SessionProvider: gc sessions error: %s", err)

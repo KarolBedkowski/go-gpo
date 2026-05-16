@@ -25,9 +25,9 @@ var ErrInvalidDBInfra = aerr.New("not found infrastructure for db driver")
 var Package = do.Package(
 	do.Lazy(func(i do.Injector) (repository.Sessions, error) {
 		switch getDriverName(i) {
-		case "sqlite3": //nolint:goconst
+		case "sqlite3":
 			return &sqlite.Repository{}, nil
-		case "postgres": //nolint:goconst
+		case "postgres":
 			return &pg.Repository{}, nil
 		default:
 			return nil, ErrInvalidDBInfra

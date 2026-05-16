@@ -223,7 +223,7 @@ func (e *EpisodeDB) toModel() *model.Episode {
 		episode.GUID = &e.GUID.String
 	}
 
-	if e.Action == "play" { //nolint:goconst
+	if e.Action == "play" {
 		episode.Started = &e.Started.Int32
 		episode.Position = &e.Position.Int32
 		episode.Total = &e.Total.Int32

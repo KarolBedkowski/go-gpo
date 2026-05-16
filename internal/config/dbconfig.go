@@ -30,7 +30,7 @@ func (d *DBConfig) Validate() error {
 
 	if d.Driver == "" {
 		errs = errors.Join(errs, ConfigurationError("db.driver argument can't be empty"))
-	} else if d.Driver != "sqlite3" && d.Driver != "postgres" { //nolint:goconst
+	} else if d.Driver != "sqlite3" && d.Driver != "postgres" {
 		errs = errors.Join(errs, newConfigurationError("invalid (unsupported) db.driver %q", d.Driver))
 	}
 

@@ -31,6 +31,8 @@ import (
 	gpoweb "gitlab.com/kabes/go-gpo/internal/web"
 )
 
+const maintenanceInterval = 24 * time.Hour
+
 func newStartServerCmd() *cli.Command { //nolint:funlen
 	const (
 		proxyCategory      = "Proxy settings"
@@ -258,12 +260,12 @@ func (s *Server) start(ctx context.Context, injector do.Injector, cfg *config.Se
 			clicmd.Bool("podcast-load-only-missing"))
 	}
 
-	systemd.NotifyReady()           //nolint:errcheck
-	systemd.NotifyStatus("running") //nolint:errcheck
+	_ = systemd.NotifyReady()
+	_ = systemd.NotifyStatus("running")
 
 	<-ctx.Done()
 
-	systemd.NotifyStatus("stopped") //nolint:errcheck
+	_ = systemd.NotifyStatus("stopped")
 
 	return nil
 }
@@ -328,7 +330,7 @@ func (s *Server) runBackgroundMaintenance(ctx context.Context, maintSrv *service
 		nextRun := time.Date(now.Year(), now.Month(), now.Day(), startHour, 0, 0, 0, time.UTC)
 
 		if nextRun.Before(now) {
-			nextRun = nextRun.Add(time.Duration(60*60*24) * time.Second) //nolint:mnd
+			nextRun = nextRun.Add(maintenanceInterval)
 		}
 
 		wait := nextRun.Sub(now)

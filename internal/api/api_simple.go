@@ -71,7 +71,7 @@ func (s *simpleResource) downloadUserSubscriptions(
 	}
 
 	switch format := chi.URLParam(r, "format"); format {
-	case "opml": //nolint:goconst
+	case "opml":
 		o := formats.NewOPML("go-gpo")
 		for _, s := range subs {
 			o.AddRSS(s.URL, s.Title, s.Title)
@@ -79,13 +79,13 @@ func (s *simpleResource) downloadUserSubscriptions(
 
 		w.WriteHeader(http.StatusOK)
 		render.XML(w, r, &o)
-	case "json": //nolint:goconst
+	case "json":
 		w.WriteHeader(http.StatusOK)
 		render.JSON(w, r, subs.ToURLs())
-	case "jsonp": //nolint:goconst
+	case "jsonp":
 		w.WriteHeader(http.StatusOK)
 		render.JSON(newJSONPWriter(r, w), r, subs.ToURLs())
-	case "txt": //nolint:goconst
+	case "txt":
 		w.WriteHeader(http.StatusOK)
 		render.PlainText(w, r, strings.Join(subs.ToURLs(), "\n"))
 	case "xml":

@@ -27,6 +27,8 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/validators"
 )
 
+const maxNumWorkers = 5
+
 type PodcastsSrv struct {
 	dbi          repository.Database
 	usersRepo    repository.Users
@@ -182,7 +184,7 @@ func (p *PodcastsSrv) ResolvePodcastsURL(ctx context.Context, urls []string) map
 	res := make(chan model.ResolvedPodcastURL, len(urls))
 
 	var wg sync.WaitGroup
-	for range min(len(urls), 5) { //nolint:mnd
+	for range min(len(urls), maxNumWorkers) {
 		wg.Go(func() {
 			resolvePodcastsURLTask(ctx, tasks, res)
 		})
@@ -250,7 +252,7 @@ func (p *PodcastsSrv) DownloadPodcastsInfo(ctx context.Context, since time.Time,
 	tasks := make(chan model.PodcastToUpdate, len(urls))
 
 	var wg sync.WaitGroup
-	for range min(len(urls), 5) { //nolint:mnd
+	for range min(len(urls), maxNumWorkers) {
 		wg.Go(func() { p.downloadPodcastInfoWorker(ctx, tasks, since, loadepisodes, eventlog) })
 	}
 
