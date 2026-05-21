@@ -23,7 +23,7 @@ import (
 //nolint:forbidigo,funlen
 func Main() {
 	cli.VersionFlag = &cli.BoolFlag{
-		Name:    "print-version",
+		Name:    "version",
 		Aliases: []string{"V"},
 		Usage:   "Print version",
 	}
@@ -72,6 +72,7 @@ func Main() {
 			usersSubCmd(),
 			devicesSubCmd(),
 			podcastSubCmd(),
+			versionSubCmd(),
 		},
 	}
 
@@ -133,6 +134,18 @@ func podcastSubCmd() *cli.Command {
 		Usage: "Manage podcasts",
 		Commands: []*cli.Command{
 			newDownloadPodcastsInfoCmd(),
+		},
+	}
+}
+
+func versionSubCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "version",
+		Usage: "Show the version.",
+		Action: func(_ context.Context, cmd *cli.Command) error {
+			cli.ShowVersion(cmd.Root())
+
+			return nil
 		},
 	}
 }
