@@ -1,5 +1,48 @@
 # Changelog
 
+## v1.4.0 2026-06-02
+
+### Bug Fixes
+
+- Use constant for locked user password
+- Fix Content-Security-Policy header
+- Do not expose internal details in AppError.Error,String()
+- Separate type for tags
+- Fix url to main.css file; add missing webroot
+- Protect login form by token; add message on failed login
+- Fix regenerating session id on login/logout
+- Show simple errors for not logged users
+- Fix multiple cookie on login
+- Fix invalid regenerating session
+- Add /health on main listener
+- Do not clear session on call invalid resources.
+- Create new session when decode existing session failed
+
+### Features
+
+- Export subscriptions as opml file
+- Add logout
+- Dedicated pages for not found/method not allowed errors
+- Return xml errors for opml requests
+- Add form to login in web interface
+- Support flash messages
+
+### Miscellaneous Tasks
+
+- Update deps
+- Limit body size for post requests
+- Add sid to requests log, log requests for static files
+- Fix log message for authenticatedwebonly
+
+### Refactor
+
+- Improve errors handling; remove duplicated code
+- Simplify web/auth routes
+- Move /web/logout to /web/auth/logout
+- Migrate to code.forgejo.org/go-chi/session
+- Clean linter directives/errors
+
+
 ## v1.3.0 2026-01-31
 
 ### Bug Fixes
