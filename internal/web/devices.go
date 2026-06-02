@@ -26,12 +26,14 @@ import (
 type devicePages struct {
 	deviceSrv *service.DevicesSrv
 	renderer  *nt.Renderer
+	webroot   string
 }
 
 func newDevicePages(i do.Injector) (devicePages, error) {
 	return devicePages{
 		deviceSrv: do.MustInvoke[*service.DevicesSrv](i),
 		renderer:  do.MustInvoke[*nt.Renderer](i),
+		webroot:   do.MustInvokeNamed[string](i, "server.webroot"),
 	}, nil
 }
 
@@ -49,31 +51,31 @@ func (d devicePages) list(ctx context.Context, w http.ResponseWriter, r *http.Re
 
 	devices, err := d.deviceSrv.ListDevices(ctx, &query.GetDevicesQuery{UserName: user})
 	if err != nil {
-		srvsupport.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
 			Msgf("web.Devices: list user_name=%s devices error=%q", user, err)
+		d.renderer.WriteError(w, r, err)
 
 		return
 	}
 
-	d.renderer.WritePage(w, &nt.DevicesPage{Devices: devices})
+	d.renderer.WritePage(w, r, &nt.DevicesPage{Devices: devices})
 }
 
 func (d devicePages) deleteGet(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
 	devicename := chi.URLParam(r, "devicename")
 	if devicename == "" {
-		srvsupport.WriteError(w, r, http.StatusBadRequest, "")
+		d.renderer.WriteBadRequestError(w, r, "Missing device name.")
 
 		return
 	}
 
-	d.renderer.WritePage(w, &nt.DeviceDeletePage{DeviceName: devicename})
+	d.renderer.WritePage(w, r, &nt.DeviceDeletePage{DeviceName: devicename})
 }
 
 func (d devicePages) deletePost(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
 	devicename := chi.URLParam(r, "devicename")
 	if devicename == "" {
-		srvsupport.WriteError(w, r, http.StatusBadRequest, "")
+		d.renderer.WriteBadRequestError(w, r, "Missing device name.")
 
 		return
 	}
@@ -85,12 +87,12 @@ func (d devicePages) deletePost(ctx context.Context, w http.ResponseWriter, r *h
 
 	err := d.deviceSrv.DeleteDevice(ctx, &cmd)
 	if err != nil {
-		srvsupport.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Object("cmd", &cmd).
 			Msgf("web.Devices: delete device_name=%s for user_name=%s error=%q", devicename, cmd.UserName, err)
-
-		return
+		nt.AddFlashError(w, r, err)
+	} else {
+		nt.AddFlash(r, "success", "Device "+devicename+" deleted")
 	}
 
-	d.list(ctx, w, r, logger)
+	http.Redirect(w, r, d.webroot+"/web/device/", http.StatusFound)
 }

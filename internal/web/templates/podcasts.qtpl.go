@@ -73,33 +73,34 @@ func (p *PodcastsPage) StreamBody(qw422016 *qt422016.Writer, pctx *PageContext) 
 	</form>
 </section>
 
+
 <section>
 	`)
-//line internal/web/templates/podcasts.qtpl:24
+//line internal/web/templates/podcasts.qtpl:25
 	if p.SubscribedOnly {
-//line internal/web/templates/podcasts.qtpl:24
+//line internal/web/templates/podcasts.qtpl:25
 		qw422016.N().S(`
 		<h1>Subscribed podcasts</h1>
 		<a href="`)
-//line internal/web/templates/podcasts.qtpl:26
+//line internal/web/templates/podcasts.qtpl:27
 		qw422016.E().S(pctx.Webroot)
-//line internal/web/templates/podcasts.qtpl:26
+//line internal/web/templates/podcasts.qtpl:27
 		qw422016.N().S(`/web/podcast/?showall">Show all podcasts</a>
 	`)
-//line internal/web/templates/podcasts.qtpl:27
+//line internal/web/templates/podcasts.qtpl:28
 	} else {
-//line internal/web/templates/podcasts.qtpl:27
+//line internal/web/templates/podcasts.qtpl:28
 		qw422016.N().S(`
 		<h1>All user podcasts</h1>
 		<a href="`)
-//line internal/web/templates/podcasts.qtpl:29
+//line internal/web/templates/podcasts.qtpl:30
 		qw422016.E().S(pctx.Webroot)
-//line internal/web/templates/podcasts.qtpl:29
+//line internal/web/templates/podcasts.qtpl:30
 		qw422016.N().S(`/web/podcast/">Show subscribed only</a>
 	`)
-//line internal/web/templates/podcasts.qtpl:30
+//line internal/web/templates/podcasts.qtpl:31
 	}
-//line internal/web/templates/podcasts.qtpl:30
+//line internal/web/templates/podcasts.qtpl:31
 	qw422016.N().S(`
 
 	<table>
@@ -113,135 +114,144 @@ func (p *PodcastsPage) StreamBody(qw422016 *qt422016.Writer, pctx *PageContext) 
 		</thead>
 		<tbody>
 			`)
-//line internal/web/templates/podcasts.qtpl:42
+//line internal/web/templates/podcasts.qtpl:43
 	for _, po := range p.Podcasts {
-//line internal/web/templates/podcasts.qtpl:42
+//line internal/web/templates/podcasts.qtpl:43
 		qw422016.N().S(`
 				<tr>
 					<td>
 						<a href="`)
-//line internal/web/templates/podcasts.qtpl:45
+//line internal/web/templates/podcasts.qtpl:46
 		qw422016.E().S(pctx.Webroot)
-//line internal/web/templates/podcasts.qtpl:45
+//line internal/web/templates/podcasts.qtpl:46
 		qw422016.N().S(`/web/podcast/`)
-//line internal/web/templates/podcasts.qtpl:45
+//line internal/web/templates/podcasts.qtpl:46
 		qw422016.N().D(int(po.PodcastID))
-//line internal/web/templates/podcasts.qtpl:45
+//line internal/web/templates/podcasts.qtpl:46
 		qw422016.N().S(`/">
 							`)
-//line internal/web/templates/podcasts.qtpl:46
+//line internal/web/templates/podcasts.qtpl:47
 		if po.Title != "" {
-//line internal/web/templates/podcasts.qtpl:46
+//line internal/web/templates/podcasts.qtpl:47
 			qw422016.E().S(po.Title)
-//line internal/web/templates/podcasts.qtpl:46
+//line internal/web/templates/podcasts.qtpl:47
 		} else {
-//line internal/web/templates/podcasts.qtpl:46
+//line internal/web/templates/podcasts.qtpl:47
 			qw422016.E().S(po.URL)
-//line internal/web/templates/podcasts.qtpl:46
+//line internal/web/templates/podcasts.qtpl:47
 		}
-//line internal/web/templates/podcasts.qtpl:46
+//line internal/web/templates/podcasts.qtpl:47
 		qw422016.N().S(`
 						</a>
 					</td>
 					<td>
 						`)
-//line internal/web/templates/podcasts.qtpl:50
+//line internal/web/templates/podcasts.qtpl:51
 		if !po.Subscribed {
-//line internal/web/templates/podcasts.qtpl:50
+//line internal/web/templates/podcasts.qtpl:51
 			qw422016.N().S(`<small><b>Not subscribed</b></small><br/>`)
-//line internal/web/templates/podcasts.qtpl:50
+//line internal/web/templates/podcasts.qtpl:51
 		}
-//line internal/web/templates/podcasts.qtpl:50
+//line internal/web/templates/podcasts.qtpl:51
 		qw422016.N().S(`
 						`)
-//line internal/web/templates/podcasts.qtpl:51
+//line internal/web/templates/podcasts.qtpl:52
 		qw422016.E().S(shortString(po.Description, 200))
-//line internal/web/templates/podcasts.qtpl:51
+//line internal/web/templates/podcasts.qtpl:52
 		qw422016.N().S(`
 					</td>
 					<td>
 						`)
-//line internal/web/templates/podcasts.qtpl:54
+//line internal/web/templates/podcasts.qtpl:55
 		if po.LastEpisode != nil {
-//line internal/web/templates/podcasts.qtpl:54
+//line internal/web/templates/podcasts.qtpl:55
 			qw422016.N().S(`
 							`)
-//line internal/web/templates/podcasts.qtpl:55
+//line internal/web/templates/podcasts.qtpl:56
 			qw422016.E().S(formatDateTime(po.LastEpisode.Timestamp))
-//line internal/web/templates/podcasts.qtpl:55
+//line internal/web/templates/podcasts.qtpl:56
 			qw422016.N().S(`
 							(`)
-//line internal/web/templates/podcasts.qtpl:56
+//line internal/web/templates/podcasts.qtpl:57
 			qw422016.E().S(po.LastEpisode.Action)
-//line internal/web/templates/podcasts.qtpl:56
+//line internal/web/templates/podcasts.qtpl:57
 			qw422016.N().S(`)
 						`)
-//line internal/web/templates/podcasts.qtpl:57
+//line internal/web/templates/podcasts.qtpl:58
 		}
-//line internal/web/templates/podcasts.qtpl:57
+//line internal/web/templates/podcasts.qtpl:58
 		qw422016.N().S(`
 					</td>
 					<td>
 						`)
-//line internal/web/templates/podcasts.qtpl:60
+//line internal/web/templates/podcasts.qtpl:61
 		if po.Website != "" {
-//line internal/web/templates/podcasts.qtpl:60
+//line internal/web/templates/podcasts.qtpl:61
 			qw422016.N().S(`<a href="`)
-//line internal/web/templates/podcasts.qtpl:60
+//line internal/web/templates/podcasts.qtpl:61
 			qw422016.E().S(po.Website)
-//line internal/web/templates/podcasts.qtpl:60
+//line internal/web/templates/podcasts.qtpl:61
 			qw422016.N().S(`">Website</a><br/>`)
-//line internal/web/templates/podcasts.qtpl:60
+//line internal/web/templates/podcasts.qtpl:61
 		}
-//line internal/web/templates/podcasts.qtpl:60
+//line internal/web/templates/podcasts.qtpl:61
 		qw422016.N().S(`
 						<a href="`)
-//line internal/web/templates/podcasts.qtpl:61
+//line internal/web/templates/podcasts.qtpl:62
 		qw422016.E().S(pctx.Webroot)
-//line internal/web/templates/podcasts.qtpl:61
+//line internal/web/templates/podcasts.qtpl:62
 		qw422016.N().S(`/web/episode/?podcast=`)
-//line internal/web/templates/podcasts.qtpl:61
+//line internal/web/templates/podcasts.qtpl:62
 		qw422016.N().D(int(po.PodcastID))
-//line internal/web/templates/podcasts.qtpl:61
+//line internal/web/templates/podcasts.qtpl:62
 		qw422016.N().S(`">Episodes</a>
 					</td>
 				</tr>
 			`)
-//line internal/web/templates/podcasts.qtpl:64
+//line internal/web/templates/podcasts.qtpl:65
 	}
-//line internal/web/templates/podcasts.qtpl:64
+//line internal/web/templates/podcasts.qtpl:65
 	qw422016.N().S(`
 		</tbody>
 	</table>
 </section>
 
+<section>
+	<h1>Tools</h1>
+	<a href="`)
+//line internal/web/templates/podcasts.qtpl:72
+	qw422016.E().S(pctx.Webroot)
+//line internal/web/templates/podcasts.qtpl:72
+	qw422016.N().S(`/web/podcast/export">Export subscriptions as OPML file</a>
+</section>
+
 
 `)
-//line internal/web/templates/podcasts.qtpl:70
+//line internal/web/templates/podcasts.qtpl:76
 }
 
-//line internal/web/templates/podcasts.qtpl:70
+//line internal/web/templates/podcasts.qtpl:76
 func (p *PodcastsPage) WriteBody(qq422016 qtio422016.Writer, pctx *PageContext) {
-//line internal/web/templates/podcasts.qtpl:70
+//line internal/web/templates/podcasts.qtpl:76
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line internal/web/templates/podcasts.qtpl:70
+//line internal/web/templates/podcasts.qtpl:76
 	p.StreamBody(qw422016, pctx)
-//line internal/web/templates/podcasts.qtpl:70
+//line internal/web/templates/podcasts.qtpl:76
 	qt422016.ReleaseWriter(qw422016)
-//line internal/web/templates/podcasts.qtpl:70
+//line internal/web/templates/podcasts.qtpl:76
 }
 
-//line internal/web/templates/podcasts.qtpl:70
+//line internal/web/templates/podcasts.qtpl:76
 func (p *PodcastsPage) Body(pctx *PageContext) string {
-//line internal/web/templates/podcasts.qtpl:70
+//line internal/web/templates/podcasts.qtpl:76
 	qb422016 := qt422016.AcquireByteBuffer()
-//line internal/web/templates/podcasts.qtpl:70
+//line internal/web/templates/podcasts.qtpl:76
 	p.WriteBody(qb422016, pctx)
-//line internal/web/templates/podcasts.qtpl:70
+//line internal/web/templates/podcasts.qtpl:76
 	qs422016 := string(qb422016.B)
-//line internal/web/templates/podcasts.qtpl:70
+//line internal/web/templates/podcasts.qtpl:76
 	qt422016.ReleaseByteBuffer(qb422016)
-//line internal/web/templates/podcasts.qtpl:70
+//line internal/web/templates/podcasts.qtpl:76
 	return qs422016
-//line internal/web/templates/podcasts.qtpl:70
+//line internal/web/templates/podcasts.qtpl:76
 }

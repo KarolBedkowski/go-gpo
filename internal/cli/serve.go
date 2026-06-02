@@ -8,6 +8,7 @@ package cli
 //
 import (
 	"context"
+	"fmt"
 	"os/signal"
 	"strings"
 	"syscall"
@@ -29,6 +30,8 @@ import (
 	"gitlab.com/kabes/go-gpo/internal/service"
 	gpoweb "gitlab.com/kabes/go-gpo/internal/web"
 )
+
+const maintenanceInterval = 24 * time.Hour
 
 func newStartServerCmd() *cli.Command { //nolint:funlen
 	const (
@@ -121,7 +124,7 @@ func newStartServerCmd() *cli.Command { //nolint:funlen
 			&cli.StringFlag{
 				Name:     "mgmt-access-list",
 				Value:    "",
-				Usage:    "List of ip or networks separated by ',' allowed to connected to management endpoints.",
+				Usage:    "List of IP or networks separated by ',' allowed to connected to management endpoints.",
 				Category: managementCategory,
 				Sources:  cli.EnvVars("GOGPO_MGMT_SERVER_ACCESS_LIST"),
 				Config:   cli.StringConfig{TrimSpace: true},
@@ -171,12 +174,6 @@ func newStartServerCmd() *cli.Command { //nolint:funlen
 }
 
 func startServerCmd(ctx context.Context, clicmd *cli.Command, rootInjector do.Injector) error {
-	injector := rootInjector.Scope("server",
-		gpoweb.Package,
-		gpoapi.Package,
-		server.Package,
-	)
-
 	serverConf := config.ServerConf{
 		MainServer: config.ListenConf{
 			Address:      strings.TrimSpace(clicmd.String("address")),
@@ -201,8 +198,14 @@ func startServerCmd(ctx context.Context, clicmd *cli.Command, rootInjector do.In
 	}
 
 	if err := serverConf.Validate(); err != nil {
-		return aerr.Wrapf(err, "server config validation failed")
+		return fmt.Errorf("server config validation failed:\n%w", err)
 	}
+
+	injector := rootInjector.Scope("server",
+		gpoweb.Package,
+		gpoapi.Package,
+		server.Package,
+	)
 
 	do.ProvideNamedValue(injector, "server.webroot", serverConf.MainServer.WebRoot)
 	do.ProvideValue(injector, &serverConf)
@@ -257,12 +260,12 @@ func (s *Server) start(ctx context.Context, injector do.Injector, cfg *config.Se
 			clicmd.Bool("podcast-load-only-missing"))
 	}
 
-	systemd.NotifyReady()           //nolint:errcheck
-	systemd.NotifyStatus("running") //nolint:errcheck
+	_ = systemd.NotifyReady()
+	_ = systemd.NotifyStatus("running")
 
 	<-ctx.Done()
 
-	systemd.NotifyStatus("stopped") //nolint:errcheck
+	_ = systemd.NotifyStatus("stopped")
 
 	return nil
 }
@@ -327,7 +330,7 @@ func (s *Server) runBackgroundMaintenance(ctx context.Context, maintSrv *service
 		nextRun := time.Date(now.Year(), now.Month(), now.Day(), startHour, 0, 0, 0, time.UTC)
 
 		if nextRun.Before(now) {
-			nextRun = nextRun.Add(time.Duration(60*60*24) * time.Second) //nolint:mnd
+			nextRun = nextRun.Add(maintenanceInterval)
 		}
 
 		wait := nextRun.Sub(now)

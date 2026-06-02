@@ -28,9 +28,9 @@ import (
 )
 
 const (
-	sessionMaxLifetime    = (15 * 60) * time.Second //nolint:mnd
-	defaultReadTimeout    = 60 * time.Second
-	defaultWriteTimeout   = 60 * time.Second
+	sessionMaxLifetime    = 15 * time.Minute
+	defaultReadTimeout    = 1 * time.Minute
+	defaultWriteTimeout   = 1 * time.Minute
 	defaultMaxHeaderBytes = 1 << 20
 )
 
@@ -48,6 +48,7 @@ func New(injector do.Injector) (*Server, error) {
 	// routes
 	router := chi.NewRouter()
 	router.Use(middleware.Heartbeat(webroot + "/livez"))
+	router.Use(middleware.Heartbeat(webroot + "/health"))
 
 	if cfg.SetSecurityHeaders {
 		router.Use(SecHeadersMiddleware)
@@ -144,9 +145,9 @@ func createRoutes(injector do.Injector, router chi.Router, cfg *config.ServerCon
 		group.Use(newRecoverMiddleware)
 		group.Use(middleware.CleanPath)
 		group.Use(sessionMW)
-		group.Use(authMW.handle)
-		group.Use(AuthenticatedOnly)
 		group.
+			With(authMW.handle).
+			With(AuthenticatedOnly).
 			With(newPromMiddleware("api", nil)).
 			With(middleware.NoCache).
 			Mount(webroot+"/", api.Routes())

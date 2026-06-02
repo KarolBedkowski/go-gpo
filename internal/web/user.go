@@ -25,12 +25,14 @@ import (
 type userPages struct {
 	usersSrv *service.UsersSrv
 	renderer *nt.Renderer
+	webroot  string
 }
 
 func newUserPages(i do.Injector) (userPages, error) {
 	return userPages{
 		usersSrv: do.MustInvoke[*service.UsersSrv](i),
 		renderer: do.MustInvoke[*nt.Renderer](i),
+		webroot:  do.MustInvokeNamed[string](i, "server.webroot"),
 	}, nil
 }
 
@@ -49,7 +51,7 @@ func (u userPages) userPage(
 	r *http.Request,
 	logger *zerolog.Logger,
 ) {
-	u.renderer.WritePage(w, &nt.UserPage{})
+	u.renderer.WritePage(w, r, &nt.UserPage{})
 }
 
 func (u userPages) changePassword(
@@ -58,26 +60,35 @@ func (u userPages) changePassword(
 	r *http.Request,
 	logger *zerolog.Logger,
 ) {
-	var msg string
-
 	if r.Method == http.MethodPost {
+		const maxBody = 1024 * 1024 // 1k
+
+		r.Body = http.MaxBytesReader(w, r.Body, maxBody)
 		if err := r.ParseForm(); err != nil {
 			logger.Info().Err(err).Msgf("web.User: bad request - parse form error=%q", err)
-			srvsupport.WriteError(w, r, http.StatusBadRequest, "")
+			u.renderer.WriteBadRequestError(w, r, "Invalid form data.")
 
 			return
 		}
 
-		msg = u.doChangePassword(ctx, r, logger)
+		switch msg, ok := u.doChangePassword(ctx, r, logger); {
+		case ok:
+			nt.AddFlash(r, "success", "Password changed.")
+			http.Redirect(w, r, u.webroot+"/web/user/", http.StatusFound)
+
+			return
+		case msg != "":
+			nt.AddFlash(r, "error", msg)
+		}
 	}
 
-	u.renderer.WritePage(w, &nt.UserChangePassPage{Msg: msg})
+	u.renderer.WritePage(w, r, &nt.UserChangePassPage{})
 }
 
-func (u userPages) doChangePassword(ctx context.Context, r *http.Request, logger *zerolog.Logger) string {
+func (u userPages) doChangePassword(ctx context.Context, r *http.Request, logger *zerolog.Logger) (string, bool) {
 	cpass, npass, msg := u.getChangePasswordParams(r)
 	if msg != "" {
-		return "Error: " + msg
+		return "Error: " + msg, false
 	}
 
 	username := common.ContextUser(ctx)
@@ -87,15 +98,15 @@ func (u userPages) doChangePassword(ctx context.Context, r *http.Request, logger
 
 	err := u.usersSrv.ChangePassword(ctx, &up)
 	if errors.Is(err, command.ErrChangePasswordOldNotMatch) {
-		return "Error: invalid current password"
+		return "Error: invalid current password", false
 	} else if err != nil {
 		logger.Info().Err(err).Str("user_name", username).
 			Msgf("web.User: change user_name=%s password error=%q", username, err)
 
-		return "Error: change password failed"
+		return "Error: change password failed", false
 	}
 
-	return "Password changed"
+	return "Password changed", true
 }
 
 func (userPages) getChangePasswordParams(r *http.Request) (string, string, string) {

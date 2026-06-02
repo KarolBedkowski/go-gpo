@@ -44,7 +44,8 @@ func SanitizeURL(u string) string {
 	su := strings.TrimSpace(u)
 
 	// like mygpo
-	if len(su) < 8 { //nolint:mnd
+	const minULRLen = 8
+	if len(su) < minULRLen {
 		return ""
 	}
 

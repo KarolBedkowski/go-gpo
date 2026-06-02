@@ -13,20 +13,23 @@ import (
 	"github.com/rs/zerolog"
 )
 
-type AppError struct {
-	err     error
-	tags    []string
-	msg     string
-	userMsg string
-	meta    map[string]any
-	stack   []string
-}
+type Tag string
 
-func NewWStack(msg string, args ...any) AppError {
-	return AppError{
-		stack: getStack(),
-		msg:   fmt.Sprintf(msg, args...),
-	}
+type AppError struct {
+	// err is base error
+	err error
+	// error message (short); may be exposed to user if no userMsg
+	msg string
+	// detailed information about error (internal)
+	details string
+	// information about error that is exposed externally
+	userMsg string
+	// any data related to error (context)
+	meta map[string]any
+	// stack when error occurred
+	stack []string
+	// tags related to error
+	tags []Tag
 }
 
 func New(msg string, args ...any) AppError {
@@ -35,7 +38,7 @@ func New(msg string, args ...any) AppError {
 	}
 }
 
-func Newf(msg string, args ...any) AppError {
+func Errorf(msg string, args ...any) AppError {
 	return AppError{
 		stack: getStack(),
 		msg:   fmt.Sprintf(msg, args...),
@@ -64,13 +67,31 @@ func (a AppError) WithMsg(msg string, args ...any) AppError {
 	return n
 }
 
-func (a AppError) WithTag(tag string) AppError {
-	if slices.Contains(a.tags, tag) {
+func (a AppError) WithTag(tag ...Tag) AppError {
+	tagsToAdd := make([]Tag, 0, len(tag))
+	for _, t := range tag {
+		if !slices.Contains(a.tags, t) {
+			tagsToAdd = append(tagsToAdd, t)
+		}
+	}
+
+	if len(tagsToAdd) == 0 {
 		return a
 	}
 
 	n := a.clone()
-	n.tags = append(n.tags, tag)
+	n.tags = append(n.tags, tagsToAdd...)
+
+	return n
+}
+
+func (a AppError) WithDetails(msg string, args ...any) AppError {
+	n := a.clone()
+	if len(args) == 1 {
+		n.details = fmt.Sprintf("%s", args[0])
+	} else {
+		n.details = fmt.Sprintf(msg, args...)
+	}
 
 	return n
 }
@@ -99,7 +120,7 @@ func (a AppError) WithMeta(keyval ...any) AppError {
 			key = fmt.Sprintf("%v", keyval[i])
 		}
 
-		nerr.meta[key] = keyval[i+1]
+		nerr.meta[key] = keyval[i+1] //nolint:gosec
 	}
 
 	return nerr
@@ -128,17 +149,38 @@ func (a AppError) Is(target error) bool {
 		maps.Equal(tapperr.meta, a.meta)
 }
 
+// Error return string representing error; hide internal error; return only userMsg or msg.
 func (a AppError) Error() string {
+	if a.userMsg != "" {
+		return a.userMsg
+	}
+
+	if a.msg != "" {
+		return a.msg
+	}
+
+	return "error"
+}
+
+func (a AppError) LogString() string {
+	var msg string
+
 	switch {
 	case a.msg != "" && a.err != nil:
-		return a.msg + "(" + a.err.Error() + ")"
+		msg = a.msg + "(" + a.err.Error() + ")"
 	case a.msg != "":
-		return a.msg
+		msg = a.msg
 	case a.err != nil:
-		return a.err.Error()
+		msg = a.err.Error()
 	default:
-		return fmt.Sprintf("%v", a)
+		msg = fmt.Sprintf("%v", a)
 	}
+
+	if a.details != "" {
+		msg = a.msg + " [" + a.details + "]"
+	}
+
+	return msg
 }
 
 func (a AppError) Unwrap() error {
@@ -146,16 +188,7 @@ func (a AppError) Unwrap() error {
 }
 
 func (a AppError) String() string {
-	msg := a.userMsg
-	if msg == "" {
-		msg = a.msg
-	}
-
-	if msg != "" {
-		return msg
-	}
-
-	return a.err.Error()
+	return a.Error()
 }
 
 func (a AppError) Format(s fmt.State, verb rune) {
@@ -180,6 +213,7 @@ func (a AppError) clone() AppError {
 		stack:   a.stack,
 		msg:     a.msg,
 		tags:    slices.Clone(a.tags),
+		details: a.details,
 		userMsg: a.userMsg,
 		meta:    maps.Clone(a.meta),
 		err:     a.err,
@@ -227,18 +261,21 @@ func AsAppError(err error) (AppError, bool) {
 
 //-------------------------------------------------------------
 
-func HasTag(err error, tag string) bool {
+// HasTag check is any error in error hierarchy has any of tag.
+func HasTag(err error, tag ...Tag) bool {
 	for _, ae := range Flatten(err) {
-		if slices.Contains(ae.tags, tag) {
-			return true
+		for _, t := range tag {
+			if slices.Contains(ae.tags, t) {
+				return true
+			}
 		}
 	}
 
 	return false
 }
 
-func GetTags(err error) []string {
-	tags := []string{}
+func GetTags(err error) []Tag {
+	tags := []Tag{}
 
 	for _, ae := range Flatten(err) {
 		for _, t := range ae.tags {
@@ -261,6 +298,26 @@ func GetUserMessages(err error) []string {
 	}
 
 	return msgs
+}
+
+func GetLogString(err error) string {
+	for _, ae := range Flatten(err) {
+		if s := ae.LogString(); s != "" {
+			return s
+		}
+	}
+
+	return err.Error()
+}
+
+func GetDetails(err error) string {
+	for _, ae := range Flatten(err) {
+		if ae.details != "" {
+			return ae.details
+		}
+	}
+
+	return err.Error()
 }
 
 func GetUserMessage(err error) string {
@@ -355,14 +412,27 @@ func CollectErrors(err error) []string {
 
 //-------------------------------------------------------------
 
-type uniqueList []string
+type uniqueList[T ~string] []T
 
-func (u *uniqueList) append(value ...string) {
+func (u *uniqueList[T]) append(value ...T) {
 	for _, v := range value {
+		if v == "" {
+			continue
+		}
+
 		if !slices.Contains(*u, v) {
 			*u = append(*u, v) //nolint:nilaway
 		}
 	}
+}
+
+func (u *uniqueList[T]) asStrs() []string {
+	res := make([]string, 0, len(*u))
+	for _, v := range *u {
+		res = append(res, string(v))
+	}
+
+	return res
 }
 
 //-------------------------------------------------------------
@@ -371,43 +441,12 @@ type zerologErrorMarshaller struct {
 	err error
 }
 
-func (m zerologErrorMarshaller) MarshalZerologObject(event *zerolog.Event) { //nolint:cyclop
-	var (
-		stack, errs []string
-		meta        map[string]any
-	)
+func (m zerologErrorMarshaller) MarshalZerologObject(event *zerolog.Event) {
+	stack, errs, details, meta, usermsg, tags := m.build()
 
-	usermsg := make(uniqueList, 0)
-	tags := make(uniqueList, 0)
-
-	for err := m.err; err != nil; err = errors.Unwrap(err) {
-		if apperr, ok := err.(AppError); ok { //nolint:errorlint,nestif
-			if apperr.userMsg != "" {
-				usermsg.append(apperr.userMsg)
-			}
-
-			if apperr.stack != nil {
-				stack = apperr.stack
-			}
-
-			if apperr.msg != "" {
-				errs = append(errs, apperr.msg)
-			}
-
-			if apperr.tags != nil {
-				tags.append(apperr.tags...)
-			}
-
-			if apperr.meta != nil {
-				if meta == nil {
-					meta = make(map[string]any)
-				}
-
-				maps.Copy(meta, apperr.meta)
-			}
-		} else {
-			errs = append(errs, err.Error())
-		}
+	if len(details) > 0 {
+		slices.Reverse(details)
+		event.Strs("details", details)
 	}
 
 	if len(usermsg) > 0 {
@@ -431,6 +470,49 @@ func (m zerologErrorMarshaller) MarshalZerologObject(event *zerolog.Event) { //n
 	if meta != nil {
 		event.Any("meta", meta)
 	}
+}
+
+func (m zerologErrorMarshaller) build() (
+	[]string, []string, []string, map[string]any, []string, []string,
+) {
+	var (
+		stack, errs, details []string
+		meta                 map[string]any
+	)
+
+	usermsg := make(uniqueList[string], 0)
+	tags := make(uniqueList[Tag], 0)
+
+	for err := m.err; err != nil; err = errors.Unwrap(err) {
+		if apperr, ok := err.(AppError); ok { //nolint:errorlint,nestif
+			usermsg.append(apperr.userMsg)
+			tags.append(apperr.tags...)
+
+			if apperr.stack != nil {
+				stack = apperr.stack
+			}
+
+			if apperr.msg != "" {
+				errs = append(errs, apperr.msg)
+			}
+
+			if apperr.details != "" {
+				details = append(details, apperr.details)
+			}
+
+			if apperr.meta != nil {
+				if meta == nil {
+					meta = make(map[string]any)
+				}
+
+				maps.Copy(meta, apperr.meta)
+			}
+		} else {
+			errs = append(errs, err.Error())
+		}
+	}
+
+	return stack, errs, details, meta, usermsg, tags.asStrs()
 }
 
 func ErrorMarshalFunc(err error) any {

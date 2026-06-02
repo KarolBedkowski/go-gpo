@@ -12,7 +12,7 @@ const UserLockedPassword = "LOCKED"
 type User struct {
 	ID       int64
 	UserName string
-	Password string
+	Password string `json:"-"`
 	Email    string
 	Name     string
 

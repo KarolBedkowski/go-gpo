@@ -1,10 +1,10 @@
 go-gpo 1.x
 ==========
 
-Simple, self-hosted webserver that can handle podcast subscriptions for clients
-that use gpodder protocol. Replacement and based on [mygpo] and [gpodder2go].
+Simple self-hosted web server that can handle podcast subscriptions for clients
+that use gpodder protocol. It can replace and is based on [mygpo] and [gpodder2go].
 
-Implement most useful api's and tested with gPodder and AntennaPod.
+Implement most useful APIs and tested with gPodder and AntennaPod.
 
 [mygpo]: https://github.com/gpodder/mygpo
 [gpodder2go]: https://github.com/oxtyped/gpodder2go

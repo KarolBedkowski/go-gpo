@@ -6,16 +6,11 @@ package api
 // Distributed under terms of the GPLv3 license.
 
 import (
-	"errors"
-	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
-	"github.com/go-chi/render"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
-	"gitlab.com/kabes/go-gpo/internal/common"
 )
 
 // getSinceParameter from request url query.
@@ -25,50 +20,14 @@ func getSinceParameter(r *http.Request) (time.Time, error) {
 	if s := r.URL.Query().Get("since"); s != "" {
 		se, err := strconv.ParseInt(s, 10, 64)
 		if err != nil {
-			return since, fmt.Errorf("parse error: %w", err)
+			return since, aerr.Wrapf(err, "parse since parameter error").WithMeta("since", s).
+				WithTag(aerr.ValidationError)
 		}
 
 		since = time.Unix(se, 0).UTC()
 	}
 
 	return since, nil
-}
-
-// checkAndWriteError decode and write error to ResponseWriter.
-func checkAndWriteError(w http.ResponseWriter, r *http.Request, err error) {
-	status := http.StatusInternalServerError
-
-	switch {
-	case errors.Is(err, common.ErrUnknownDevice):
-		status = http.StatusNotFound
-
-	case aerr.HasTag(err, aerr.InternalError):
-		status = http.StatusInternalServerError
-
-	case aerr.HasTag(err, aerr.ValidationError):
-		status = http.StatusBadRequest
-
-	case aerr.HasTag(err, aerr.DataError):
-		status = http.StatusBadRequest
-	}
-
-	writeError(w, r, status)
-}
-
-func writeError(w http.ResponseWriter, r *http.Request, status int) {
-	msg := http.StatusText(status)
-	if strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-		res := struct {
-			Error string `json:"error"`
-		}{msg}
-
-		render.Status(r, status)
-		render.JSON(w, r, &res)
-
-		return
-	}
-
-	http.Error(w, msg, status)
 }
 
 // jsonpWriter wrap response with jsonp function when this function name is given in `jsonp` url parameter.

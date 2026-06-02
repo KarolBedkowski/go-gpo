@@ -22,11 +22,11 @@ import (
 func newDownloadPodcastsInfoCmd() *cli.Command {
 	return &cli.Command{
 		Name:  "download-info",
-		Usage: "download podcast metadata",
+		Usage: "Download podcast metadata",
 		Flags: []cli.Flag{
 			&cli.DurationFlag{
 				Name:  "max-age",
-				Usage: "max age of existing podcast metadata to update",
+				Usage: "Maximum age of existing podcast metadata to update",
 			},
 			&cli.BoolFlag{
 				Name:  "load-episodes",

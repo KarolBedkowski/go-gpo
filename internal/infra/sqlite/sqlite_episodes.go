@@ -17,7 +17,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
-	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
 )
@@ -129,22 +128,22 @@ func (s Repository) listEpisodeActions(
 
 	if !since.IsZero() {
 		query += " AND eh.updated_at > ? "
-		args = append(args, since) //nolint:wsl_v5
+		args = append(args, since)
 	}
 
 	if deviceid != nil {
 		query += " AND (eh.device_id != ? OR eh.device_id is NULL) "
-		args = append(args, *deviceid) //nolint:wsl_v5
+		args = append(args, *deviceid)
 	}
 
 	if podcastid != nil {
 		query += " AND p.id = ?"
-		args = append(args, *podcastid) //nolint:wsl_v5
+		args = append(args, *podcastid)
 	}
 
 	query += " ORDER BY eh.updated_at"
 	if inverse {
-		query += " DESC" //nolint:goconst
+		query += " DESC"
 	}
 
 	if limit > 0 {
@@ -168,12 +167,12 @@ func (s Repository) listEpisodeActionsAggregated(
 
 	if !since.IsZero() {
 		epArgs += " AND e.updated_at > ? "
-		args = append(args, since) //nolint:wsl_v5
+		args = append(args, since)
 	}
 
 	if podcastid != nil {
 		epArgs += " AND p.id = ?"
-		args = append(args, *podcastid) //nolint:wsl_v5
+		args = append(args, *podcastid)
 	}
 
 	query := `
@@ -213,12 +212,12 @@ func (s Repository) listEpisodeActionsAggregatedDev(
 
 	if !since.IsZero() {
 		epArgs += " AND e.updated_at > ? "
-		args = append(args, since) //nolint:wsl_v5
+		args = append(args, since)
 	}
 
 	if podcastid != nil {
 		epArgs += " AND e.podcast_id = ?"
-		args = append(args, *podcastid) //nolint:wsl_v5
+		args = append(args, *podcastid)
 	}
 
 	query := `
@@ -306,7 +305,7 @@ func (Repository) GetLastEpisodeAction(ctx context.Context,
 
 	err := dbctx.GetContext(ctx, &res, query, userid, podcastid)
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, common.ErrNoData
+		return nil, aerr.ErrNoData
 	} else if err != nil {
 		return nil, aerr.Wrapf(err, "query episode failed").WithTag(aerr.InternalError)
 	}

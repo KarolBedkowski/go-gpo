@@ -60,7 +60,7 @@ func (s *SubscriptionsSrv) GetSubscriptions(ctx context.Context, query *query.Ge
 }
 
 // ReplaceSubscriptions replace all subscriptions for given user. Create device when no exists.
-func (s *SubscriptionsSrv) ReplaceSubscriptions( //nolint:cyclop
+func (s *SubscriptionsSrv) ReplaceSubscriptions(
 	ctx context.Context,
 	cmd *command.ReplaceSubscriptionsCmd,
 ) error {
@@ -77,7 +77,7 @@ func (s *SubscriptionsSrv) ReplaceSubscriptions( //nolint:cyclop
 
 		// check dev
 		_, err = s.getUserDevice(ctx, user.ID, cmd.DeviceName)
-		if errors.Is(err, common.ErrUnknownDevice) {
+		if errors.Is(err, aerr.ErrNoData) {
 			_, err = s.createUserDevice(ctx, user, cmd.DeviceName)
 		}
 
@@ -88,47 +88,48 @@ func (s *SubscriptionsSrv) ReplaceSubscriptions( //nolint:cyclop
 		// get all podcasts for user
 		subscribed, err := s.podcastsRepo.ListPodcasts(ctx, user.ID, time.Time{})
 		if err != nil {
-			return aerr.ApplyFor(ErrRepositoryError, err)
+			return aerr.Wrapf(err, "list podcasts error")
 		}
 
-		changes := make([]model.Podcast, 0, len(cmd.Subscriptions))
-		// remove subscriptions found in db but not in currentSubs
-		for _, sub := range subscribed {
-			if sub.Subscribed && !slices.Contains(cmd.Subscriptions, sub.URL) {
-				sub.SetUnsubscribed(cmd.Timestamp)
-				changes = append(changes, sub)
-			}
-		}
-
-		// add or set subscribed flag for podcast in currentSubs; update updated_at
-		for _, sub := range cmd.Subscriptions {
-			podcast, ok := subscribed.FindPodcastByURL(sub)
-			if !ok {
-				podcast = model.Podcast{User: user, URL: sub}
-			} else if podcast.Subscribed {
-				continue
-			}
-
-			if podcast.SetSubscribed(cmd.Timestamp) {
-				changes = append(changes, podcast)
-			}
-		}
-
-		common.TraceLazyPrintf(ctx, "ReplaceSubscriptions: changes prepared")
-
-		for _, p := range changes {
+		for _, p := range prepareReplaceSubscriptions(subscribed, cmd) {
+			p.User = user
 			if _, err := s.podcastsRepo.SavePodcast(ctx, &p); err != nil {
 				return aerr.ApplyFor(ErrRepositoryError, err)
 			}
 		}
 
-		common.TraceLazyPrintf(ctx, "ReplaceSubscriptions: podcasts saved")
-
 		return nil
 	})
 }
 
-func (s *SubscriptionsSrv) ChangeSubscriptions( //nolint:cyclop,gocognit,funlen
+func prepareReplaceSubscriptions(subscribed model.Podcasts, cmd *command.ReplaceSubscriptionsCmd) []model.Podcast {
+	changes := make([]model.Podcast, 0, len(cmd.Subscriptions))
+	// remove subscriptions found in db but not in currentSubs
+	for _, sub := range subscribed {
+		if sub.Subscribed && !slices.Contains(cmd.Subscriptions, sub.URL) {
+			sub.SetUnsubscribed(cmd.Timestamp)
+			changes = append(changes, sub)
+		}
+	}
+
+	// add or set subscribed flag for podcast in currentSubs; update updated_at
+	for _, sub := range cmd.Subscriptions {
+		podcast, ok := subscribed.FindPodcastByURL(sub)
+		if !ok {
+			podcast = model.Podcast{URL: sub}
+		} else if podcast.Subscribed {
+			continue
+		}
+
+		if podcast.SetSubscribed(cmd.Timestamp) {
+			changes = append(changes, podcast)
+		}
+	}
+
+	return changes
+}
+
+func (s *SubscriptionsSrv) ChangeSubscriptions(
 	ctx context.Context, cmd *command.ChangeSubscriptionsCmd,
 ) (command.ChangeSubscriptionsCmdResult, error) {
 	res := command.ChangeSubscriptionsCmdResult{
@@ -154,49 +155,53 @@ func (s *SubscriptionsSrv) ChangeSubscriptions( //nolint:cyclop,gocognit,funlen
 
 		userpodcasts, err := s.podcastsRepo.ListPodcasts(ctx, user.ID, time.Time{})
 		if err != nil {
-			return aerr.ApplyFor(ErrRepositoryError, err)
+			return aerr.Wrapf(err, "list podcasts error")
 		}
 
-		common.TraceLazyPrintf(ctx, "ChangeSubscriptions: podcasts loaded")
-
-		podchanges := make([]model.Podcast, 0, len(cmd.Add)+len(cmd.Remove))
-
-		// removed
-		for _, sub := range cmd.Remove {
-			if podcast, ok := userpodcasts.FindPodcastByURL(sub); ok {
-				if podcast.SetUnsubscribed(cmd.Timestamp) {
-					podchanges = append(podchanges, podcast)
-				}
-			}
-		}
-
-		for _, sub := range cmd.Add {
-			podcast, ok := userpodcasts.FindPodcastByURL(sub)
-			if !ok { // new
-				podcast = model.Podcast{User: user, URL: sub}
-			} else if podcast.Subscribed {
-				continue
-			}
-
-			if podcast.SetSubscribed(cmd.Timestamp) {
-				podchanges = append(podchanges, podcast)
-			}
-		}
-
-		common.TraceLazyPrintf(ctx, "ChangeSubscriptions: changes prepared")
-
-		for _, p := range podchanges {
+		for _, p := range preparePodcastChanges(userpodcasts, cmd) {
+			p.User = user
 			if _, err := s.podcastsRepo.SavePodcast(ctx, &p); err != nil {
-				return aerr.ApplyFor(ErrRepositoryError, err)
-			}
-		}
+				res.PodcastsModified = 0
 
-		common.TraceLazyPrintf(ctx, "ChangeSubscriptions: podcast saved")
+				return aerr.Wrapf(err, "save podcast error")
+			}
+
+			res.PodcastsModified += 1
+		}
 
 		return nil
 	})
 
 	return res, err //nolint:wrapcheck
+}
+
+func preparePodcastChanges(userpodcasts model.Podcasts, cmd *command.ChangeSubscriptionsCmd) []model.Podcast {
+	podchanges := make([]model.Podcast, 0, len(cmd.Add)+len(cmd.Remove))
+
+	// removed
+	for _, sub := range cmd.Remove {
+		if podcast, ok := userpodcasts.FindPodcastByURL(sub); ok {
+			if podcast.SetUnsubscribed(cmd.Timestamp) {
+				podchanges = append(podchanges, podcast)
+			}
+		}
+	}
+
+	for _, sub := range cmd.Add {
+		podcast, ok := userpodcasts.FindPodcastByURL(sub)
+		if !ok { // new
+			// user is set on save
+			podcast = model.Podcast{URL: sub}
+		} else if podcast.Subscribed {
+			continue
+		}
+
+		if podcast.SetSubscribed(cmd.Timestamp) {
+			podchanges = append(podchanges, podcast)
+		}
+	}
+
+	return podchanges
 }
 
 func (s *SubscriptionsSrv) GetSubscriptionChanges(ctx context.Context, query *query.GetSubscriptionChangesQuery) (
@@ -236,23 +241,21 @@ func (s *SubscriptionsSrv) getSubsctiptions(ctx context.Context, username, devic
 	//nolint:wrapcheck
 	return db.InConnectionR(ctx, s.dbi, func(ctx context.Context) (model.Podcasts, error) {
 		user, err := s.usersRepo.GetUser(ctx, username)
-		if errors.Is(err, common.ErrNoData) {
-			return nil, common.ErrUnknownUser
-		} else if err != nil {
-			return nil, aerr.ApplyFor(ErrRepositoryError, err)
+		if err != nil {
+			return nil, aerr.Wrapf(err, "get user error")
 		}
 
 		if devicename != "" {
 			// validate is device exists when device name is given and mark is seen.
 			_, err := s.getUserDevice(ctx, user.ID, devicename)
 			if err != nil {
-				return nil, err
+				return nil, aerr.Wrapf(err, "get device error")
 			}
 		}
 
 		podcasts, err := s.podcastsRepo.ListSubscribedPodcasts(ctx, user.ID, since)
 		if err != nil {
-			return nil, aerr.ApplyFor(ErrRepositoryError, err)
+			return nil, aerr.Wrapf(err, "list podcasts error")
 		}
 
 		return podcasts, nil
@@ -261,10 +264,8 @@ func (s *SubscriptionsSrv) getSubsctiptions(ctx context.Context, username, devic
 
 func (s *SubscriptionsSrv) getUser(ctx context.Context, username string) (*model.User, error) {
 	user, err := s.usersRepo.GetUser(ctx, username)
-	if errors.Is(err, common.ErrNoData) {
-		return nil, common.ErrUnknownUser
-	} else if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err)
+	if err != nil {
+		return nil, aerr.Wrapf(err, "get user error")
 	}
 
 	common.TraceLazyPrintf(ctx, "getUser: user loaded")
@@ -279,10 +280,8 @@ func (s *SubscriptionsSrv) getUserDevice(
 	devicename string,
 ) (*model.Device, error) {
 	device, err := s.devicesRepo.GetDevice(ctx, userid, devicename)
-	if errors.Is(err, common.ErrNoData) {
-		return device, common.ErrUnknownDevice
-	} else if err != nil {
-		return device, aerr.ApplyFor(ErrRepositoryError, err)
+	if err != nil {
+		return device, aerr.Wrapf(err, "get device error")
 	}
 
 	common.TraceLazyPrintf(ctx, "getUserDevice: devices loaded")
@@ -302,7 +301,7 @@ func (s *SubscriptionsSrv) createUserDevice(
 
 	_, err := s.devicesRepo.SaveDevice(ctx, &device)
 	if err != nil {
-		return nil, aerr.ApplyFor(ErrRepositoryError, err, "save device failed")
+		return nil, aerr.Wrapf(err, "save device failed")
 	}
 
 	common.TraceLazyPrintf(ctx, "createUserDevice: device created")
@@ -326,12 +325,12 @@ func (s *SubscriptionsSrv) getPodcasts(
 
 		_, err = s.getUserDevice(ctx, user.ID, devicename)
 		if err != nil {
-			return nil, err
+			return nil, aerr.Wrapf(err, "get device failed")
 		}
 
 		podcasts, err := s.podcastsRepo.ListPodcasts(ctx, user.ID, since)
 		if err != nil {
-			return nil, aerr.ApplyFor(ErrRepositoryError, err, "list podcasts failed")
+			return nil, aerr.Wrapf(err, "list podcasts failed")
 		}
 
 		return podcasts, nil

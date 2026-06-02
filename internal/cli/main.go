@@ -23,9 +23,9 @@ import (
 //nolint:forbidigo,funlen
 func Main() {
 	cli.VersionFlag = &cli.BoolFlag{
-		Name:    "print-version",
+		Name:    "version",
 		Aliases: []string{"V"},
-		Usage:   "Print version.",
+		Usage:   "Print version",
 	}
 
 	cli := &cli.Command{
@@ -72,6 +72,7 @@ func Main() {
 			usersSubCmd(),
 			devicesSubCmd(),
 			podcastSubCmd(),
+			versionSubCmd(),
 		},
 	}
 
@@ -91,7 +92,7 @@ func Main() {
 func usersSubCmd() *cli.Command {
 	return &cli.Command{
 		Name:  "user",
-		Usage: "manage users",
+		Usage: "Manage users",
 		Commands: []*cli.Command{
 			newAddUserCmd(),
 			newDeleteUsersCmd(),
@@ -105,7 +106,7 @@ func usersSubCmd() *cli.Command {
 func databaseSubCmd() *cli.Command {
 	return &cli.Command{
 		Name:  "database",
-		Usage: "manage database",
+		Usage: "Manage database",
 		Commands: []*cli.Command{
 			newMigrateCmd(),
 			newMaintenanceCmd(),
@@ -118,7 +119,7 @@ func databaseSubCmd() *cli.Command {
 func devicesSubCmd() *cli.Command {
 	return &cli.Command{
 		Name:  "device",
-		Usage: "manage devices",
+		Usage: "Manage devices",
 		Commands: []*cli.Command{
 			newUpdateDeviceCmd(),
 			newDeleteDeviceCmd(),
@@ -130,9 +131,21 @@ func devicesSubCmd() *cli.Command {
 func podcastSubCmd() *cli.Command {
 	return &cli.Command{
 		Name:  "podcast",
-		Usage: "manage podcasts",
+		Usage: "Manage podcasts",
 		Commands: []*cli.Command{
 			newDownloadPodcastsInfoCmd(),
+		},
+	}
+}
+
+func versionSubCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "version",
+		Usage: "Show the version.",
+		Action: func(_ context.Context, cmd *cli.Command) error {
+			cli.ShowVersion(cmd.Root())
+
+			return nil
 		},
 	}
 }

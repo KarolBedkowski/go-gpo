@@ -23,13 +23,13 @@ const ListSupportedObjects = "devices, subs"
 func newListCmd() *cli.Command {
 	return &cli.Command{
 		Name:  "list",
-		Usage: "list user objects.",
+		Usage: "List user objects.",
 		Flags: []cli.Flag{
 			&cli.StringFlag{Name: "username", Required: true, Aliases: []string{"u"}},
 			&cli.StringFlag{
 				Name:     "object",
 				Required: true,
-				Usage:    "object to list (" + ListSupportedObjects + ")",
+				Usage:    "Object to list (" + ListSupportedObjects + ")",
 				Aliases:  []string{"o"},
 			},
 			&cli.StringFlag{Name: "device", Aliases: []string{"d"}},

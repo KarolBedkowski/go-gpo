@@ -24,7 +24,7 @@ type SettingsQuery struct {
 
 func (s *SettingsQuery) Validate() error {
 	if !validators.IsValidUserName(s.UserName) {
-		return common.ErrInvalidUser.WithUserMsg("invalid username")
+		return common.ErrInvalidUser.WithMeta("username", s.UserName)
 	}
 
 	switch s.Scope {
@@ -32,20 +32,20 @@ func (s *SettingsQuery) Validate() error {
 		// no extra check
 	case "device":
 		if !validators.IsValidDevName(s.DeviceName) {
-			return common.ErrInvalidDevice.WithUserMsg("invalid device name")
+			return common.ErrInvalidDevice.WithMeta("devicename", s.DeviceName)
 		}
 	case "episode":
 		if s.Episode == "" {
-			return common.ErrInvalidEpisode.WithUserMsg("episode can't be empty")
+			return common.ErrInvalidEpisode.WithDetails("episode is empty")
 		}
 
 		fallthrough
 	case "podcast":
 		if s.Podcast == "" {
-			return common.ErrInvalidPodcast.WithUserMsg("podcast can't be empty")
+			return common.ErrInvalidPodcast.WithDetails("podcast is empty")
 		}
 	default:
-		return aerr.ErrValidation.WithUserMsg("invalid scope")
+		return aerr.ErrValidation.WithMsg("invalid scope").WithMeta("scope", s.Scope)
 	}
 
 	return nil

@@ -19,7 +19,7 @@ import (
 func newMigrateCmd() *cli.Command {
 	return &cli.Command{
 		Name:   "migrate",
-		Usage:  "update database",
+		Usage:  "Update database",
 		Action: wrap(migrateCmd),
 	}
 }

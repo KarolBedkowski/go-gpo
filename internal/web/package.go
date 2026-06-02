@@ -20,5 +20,7 @@ var Package = do.Package(
 	do.Lazy(newPodcastPages),
 	do.Lazy(newUserPages),
 	do.Lazy(newIndexPage),
+	do.Lazy(newErrorPages),
+	do.Lazy(newAuthPages),
 	do.Lazy(templates.NewRenderer),
 )

@@ -9,6 +9,7 @@ package cli
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/rs/zerolog/log"
 	"github.com/samber/do/v2"
@@ -29,9 +30,8 @@ func wrap(
 		ctx = log.Logger.WithContext(ctx)
 
 		dbconf := config.NewDBConfig(clicmd.String("db.driver"), clicmd.String("db.connstr"))
-
 		if err := dbconf.Validate(); err != nil {
-			return aerr.Wrapf(err, "invalid database configuration")
+			return fmt.Errorf("invalid database configuration:\n%w", err)
 		}
 
 		injector := createInjector(ctx)

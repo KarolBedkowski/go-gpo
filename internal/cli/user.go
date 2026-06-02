@@ -22,7 +22,7 @@ import (
 func newAddUserCmd() *cli.Command {
 	return &cli.Command{
 		Name:  "add",
-		Usage: "add new user",
+		Usage: "Add new user",
 		Flags: []cli.Flag{
 			&cli.StringFlag{Name: "username", Required: true, Aliases: []string{"u"}},
 			&cli.StringFlag{Name: "password", Required: true, Aliases: []string{"p"}},
@@ -63,9 +63,9 @@ func addUserCmd(ctx context.Context, clicmd *cli.Command, injector do.Injector) 
 func newListUsersCmd() *cli.Command {
 	return &cli.Command{
 		Name:  "list",
-		Usage: "list user accounts",
+		Usage: "List user accounts",
 		Flags: []cli.Flag{
-			&cli.BoolFlag{Name: "active-only", Usage: "show active only accounts", Aliases: []string{"a"}},
+			&cli.BoolFlag{Name: "active-only", Usage: "Show active only accounts", Aliases: []string{"a"}},
 		},
 		Action: wrap(listUsersCmd),
 	}
@@ -102,7 +102,7 @@ func listUsersCmd(ctx context.Context, clicmd *cli.Command, injector do.Injector
 func newDeleteUsersCmd() *cli.Command {
 	return &cli.Command{
 		Name:  "delete",
-		Usage: "delete user account",
+		Usage: "Delete user account",
 		Flags: []cli.Flag{
 			&cli.StringFlag{Name: "username", Required: true, Aliases: []string{"u"}},
 		},

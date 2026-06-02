@@ -20,6 +20,7 @@ type PodcastsPage struct {
 	</form>
 </section>
 
+
 <section>
 	{% if p.SubscribedOnly %}
 		<h1>Subscribed podcasts</h1>
@@ -64,6 +65,11 @@ type PodcastsPage struct {
 			{% endfor %}
 		</tbody>
 	</table>
+</section>
+
+<section>
+	<h1>Tools</h1>
+	<a href="{%s pctx.Webroot %}/web/podcast/export">Export subscriptions as OPML file</a>
 </section>
 
 

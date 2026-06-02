@@ -25,23 +25,38 @@ LDFLAGSR="-w -s\
 	-X gitlab.com/kabes/go-gpo/internal/config.BuildUser=$(USER) \
 	-X gitlab.com/kabes/go-gpo/internal/config.Branch=$(BRANCH)"
 
+SRC := $(shell find . -type f -name '*.go' -or -name '*.qtpl' -or -name 'go.mod')
+
 .PHONY: build
-build: generate
+build: generate go-gpo
+
+go-gpo: $(SRC)
 	GOEXPERIMENT=jsonv2 \
-	go build $(GOTAGS) -v -o go-gpo -ldflags $(LDFLAGS) \
+	go build $(GOTAGS) -v \
+		-trimpath \
+		-o go-gpo \
+		-ldflags $(LDFLAGS) \
+		./cli
+
+# release
+go-gpo-amd64: $(SRC)
+	GOEXPERIMENT=jsonv2 \
+	go build $(GOTAGS) -v \
+		-trimpath \
+		-o go-gpo-amd64 \
+		-ldflags $(LDFLAGSR) \
 		./cli
 
 .PHONY: build_arm64
-build_arm64: generate
-	GOEXPERIMENT=jsonv2 \
-	CGO_ENABLED=1 \
-	GOGCCFLAGS="-fPIC -O4 -Ofast -pipe -march=native -s" \
-		GOARCH=arm64 GOOS=linux \
-		go build $(GOTAGS)-v -o go-gpo-arm64 --ldflags $(LDFLAGS) \
-		./cli
+build_arm64: generate go-gpo-arm64
 
 .PHONY: build_arm64_release
-build_arm64_release: generate
+build_arm64_release: generate go-gpo-arm64 
+
+.PHONY: build_amd64_release
+build_amd64_release: generate go-gpo-amd64 
+
+go-gpo-arm64: $(SRC)
 	CGO_ENABLED=1 \
 	GOEXPERIMENT=jsonv2 \
 	GOGCCFLAGS="-fPIC -O4 -Ofast -pipe -march=native -s" \
@@ -74,6 +89,9 @@ lint:
 	typos
 	# go install go.uber.org/nilaway/cmd/nilaway@latest
 	nilaway ./...
+	# go install golang.org/x/vuln/cmd/govulncheck@lates
+	govulncheck ./...
+	detect-secrets-hook --baseline .secrets.baseline
 
 .PHONY: format
 format:
@@ -104,6 +122,7 @@ deps:
 QTPLS := $(shell find . -type f -name '*.qtpl')
 QTPLSC := $(QTPLS:%=%.go)
 
+.PHONY: generate
 generate: $(QTPLSC)
 
 %.qtpl.go: %.qtpl

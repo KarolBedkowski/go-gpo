@@ -16,7 +16,7 @@ import (
 )
 
 func TestUniqueList(t *testing.T) {
-	var ulist uniqueList
+	var ulist uniqueList[string]
 
 	assert.Equal(t, ulist, nil)
 
@@ -57,7 +57,7 @@ func TestUniqueList(t *testing.T) {
 }
 
 func TestUniqueList2(t *testing.T) {
-	ul := make(uniqueList, 0)
+	ul := make(uniqueList[string], 0)
 	ul.append("1")
 	ul.append("2")
 	ul.append("3")
@@ -79,7 +79,8 @@ func TestAppErrorWrap(t *testing.T) {
 	assert.True(t, errors.Is(aerr1, err))
 	assert.Equal(t, errors.Unwrap(aerr1), err)
 	assert.True(t, aerr1.stack != nil)
-	assert.Equal(t, aerr1.String(), "error1")
+	assert.Equal(t, aerr1.LogString(), "error1")
+	assert.Equal(t, aerr1.String(), "error")
 }
 
 func TestAppErrorSimple(t *testing.T) {
@@ -89,7 +90,8 @@ func TestAppErrorSimple(t *testing.T) {
 	assert.True(t, errors.Is(aerr1, err))
 	assert.True(t, errors.Is(errors.Unwrap(aerr1), err))
 	assert.True(t, aerr1.stack != nil)
-	assert.Equal(t, aerr1.String(), "error1")
+	assert.Equal(t, aerr1.String(), "error")
+	assert.Equal(t, aerr1.LogString(), "error1")
 }
 
 func TestAppErrorMsg(t *testing.T) {
@@ -142,39 +144,39 @@ func TestAppErrorMeta(t *testing.T) {
 }
 
 func TestAppErrorTags(t *testing.T) {
-	aerr0 := NewWStack("error1")
+	aerr0 := Errorf("error1")
 
 	aerr1 := aerr0.WithTag("k1")
-	assert.Equal(t, GetTags(aerr1), []string{"k1"})
+	assert.Equal(t, GetTags(aerr1), []Tag{"k1"})
 
 	aerr1 = aerr1.WithTag("k2")
-	assert.Equal(t, GetTags(aerr1), []string{"k1", "k2"})
+	assert.Equal(t, GetTags(aerr1), []Tag{"k1", "k2"})
 	assert.True(t, HasTag(aerr1, "k1"))
 	assert.True(t, HasTag(aerr1, "k2"))
 	assert.True(t, !HasTag(aerr1, "k3"))
 
 	aerr2 := aerr1.WithTag("k3")
-	assert.Equal(t, GetTags(aerr2), []string{"k1", "k2", "k3"})
-	assert.Equal(t, GetTags(aerr1), []string{"k1", "k2"})
+	assert.Equal(t, GetTags(aerr2), []Tag{"k1", "k2", "k3"})
+	assert.Equal(t, GetTags(aerr1), []Tag{"k1", "k2"})
 	assert.True(t, HasTag(aerr2, "k1"))
 	assert.True(t, HasTag(aerr2, "k2"))
 
 	aerr3 := aerr2.WithUserMsg("user msg")
-	assert.Equal(t, GetTags(aerr3), []string{"k1", "k2", "k3"})
+	assert.Equal(t, GetTags(aerr3), []Tag{"k1", "k2", "k3"})
 
 	other := New("simple")
 	aerr4 := ApplyFor(aerr3, other)
-	assert.Equal(t, GetTags(aerr4), []string{"k1", "k2", "k3"})
+	assert.Equal(t, GetTags(aerr4), []Tag{"k1", "k2", "k3"})
 
 	gerr := errors.New("new base")
 	other2 := Wrapf(gerr, "new error").WithMeta("aa", "vv")
 	aerr5 := ApplyFor(aerr3, other2)
-	assert.Equal(t, GetTags(aerr5), []string{"k1", "k2", "k3"})
+	assert.Equal(t, GetTags(aerr5), []Tag{"k1", "k2", "k3"})
 }
 
 func TestAppErrorErr(t *testing.T) {
 	err := New("simple error%d", 1)
-	err0 := Newf("error %s-%d", "1", 2)
+	err0 := Errorf("error %s-%d", "1", 2)
 
 	aerr1 := err.WithError(err0)
 	assert.True(t, errors.Is(aerr1.err, err0))

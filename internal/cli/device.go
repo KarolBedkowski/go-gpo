@@ -22,13 +22,13 @@ import (
 func newUpdateDeviceCmd() *cli.Command {
 	return &cli.Command{
 		Name:  "update",
-		Usage: "add or update device",
+		Usage: "Add or update device",
 		Flags: []cli.Flag{
 			&cli.StringFlag{Name: "username", Required: true, Aliases: []string{"u"}},
 			&cli.StringFlag{Name: "device", Required: true, Aliases: []string{"d"}},
 			&cli.StringFlag{
 				Name: "type", Required: false, Aliases: []string{"t"}, Value: "mobile",
-				Usage: "device type (desktop, laptop, mobile, server, other)",
+				Usage: "Device type (desktop, laptop, mobile, server, other)",
 			},
 			&cli.StringFlag{Name: "caption", Required: false, Aliases: []string{"c"}},
 		},
@@ -60,7 +60,7 @@ func updateDeviceCmd(ctx context.Context, clicmd *cli.Command, injector do.Injec
 func newDeleteDeviceCmd() *cli.Command {
 	return &cli.Command{
 		Name:  "delete",
-		Usage: "delete device",
+		Usage: "Delete device",
 		Flags: []cli.Flag{
 			&cli.StringFlag{Name: "username", Required: true, Aliases: []string{"u"}},
 			&cli.StringFlag{Name: "device", Required: true, Aliases: []string{"d"}},
@@ -88,7 +88,7 @@ func deleteDeviceCmd(ctx context.Context, clicmd *cli.Command, injector do.Injec
 func newListDeviceCmd() *cli.Command {
 	return &cli.Command{
 		Name:  "list",
-		Usage: "list devices",
+		Usage: "List devices",
 		Flags: []cli.Flag{
 			&cli.StringFlag{Name: "username", Required: true, Aliases: []string{"u"}},
 		},

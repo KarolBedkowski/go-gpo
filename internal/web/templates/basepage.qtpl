@@ -12,7 +12,7 @@ Page {
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<link rel="stylesheet" href="/web/static/main.css" type="text/css">
+	<link rel="stylesheet" href="{%s pctx.Webroot %}/web/static/main.css" type="text/css">
 	{% code t := p.Title() %}
 	{% if t != "" %}
 	<title>go-gpo - {%s t %}</title>
@@ -26,10 +26,26 @@ Page {
 		&emsp;
 		<a href="{%s pctx.Webroot %}/web/device/">Devices</a> |
 		<a href="{%s pctx.Webroot %}/web/podcast/">Podcasts</a> |
-		<a href="{%s pctx.Webroot %}/web/user/">User</a>
+		<a href="{%s pctx.Webroot %}/web/user/">User</a> |
+		<a href="{%s pctx.Webroot %}/web/auth/logout">Logout</a>
 	</header>
 	<br/>
 	<content>
+
+	{% for _, f := range pctx.Flash() %}
+		<div class="flash flash-{%s f.Level %}">
+			{% if len(f.Messages) > 1 %}
+				<ul>
+					{% for _, m := range f.Messages %}
+						<li>{%s m %}</li>
+					{% endfor %}
+				</ul>
+			{% else %}
+				<p>{%s f.Messages[0] %}</p>
+			{% endif %}
+		</div>
+	{% endfor %}
+
 	{%= p.Body(pctx) %}
 	</content>
 </body>

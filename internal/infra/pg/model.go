@@ -223,7 +223,7 @@ func (e *EpisodeDB) toModel() *model.Episode {
 		episode.GUID = &e.GUID.String
 	}
 
-	if e.Action == "play" { //nolint:goconst
+	if e.Action == "play" {
 		episode.Started = &e.Started.Int32
 		episode.Position = &e.Position.Int32
 		episode.Total = &e.Total.Int32
@@ -364,7 +364,7 @@ type UserDB struct {
 	CreatedAt time.Time `db:"created_at"`
 	UpdatedAt time.Time `db:"updated_at"`
 	UserName  string    `db:"username"`
-	Password  string    `db:"password"`
+	Password  string    `db:"password"   json:"-"`
 	Email     string    `db:"email"`
 	Name      string    `db:"name"`
 }

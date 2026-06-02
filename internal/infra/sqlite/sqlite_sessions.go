@@ -16,7 +16,7 @@ import (
 	"fmt"
 	"time"
 
-	"gitea.com/go-chi/session"
+	"code.forgejo.org/go-chi/session"
 	"github.com/rs/zerolog/log"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
 	"gitlab.com/kabes/go-gpo/internal/db"
@@ -183,7 +183,9 @@ func (Repository) ReadOrCreate(
 	if session.IsValid(maxLifeTime) {
 		session.Data, err = decodeSession(data)
 		if err != nil {
-			return nil, err
+			logger.Error().Err(err).Str("sid", sid).Msgf("sqlite.Repository: decode session error=%q sid=%s", err, sid)
+
+			session.Data = make(map[any]any)
 		}
 	} else {
 		logger.Debug().

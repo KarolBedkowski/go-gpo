@@ -44,16 +44,14 @@ func (d *DevicesSrv) UpdateDevice(ctx context.Context, cmd *command.UpdateDevice
 	//nolint:wrapcheck
 	return db.InTransaction(ctx, d.dbi, func(ctx context.Context) error {
 		user, err := d.usersRepo.GetUser(ctx, cmd.UserName)
-		if errors.Is(err, common.ErrNoData) {
-			return common.ErrUnknownUser
-		} else if err != nil {
-			return aerr.ApplyFor(ErrRepositoryError, err)
+		if err != nil {
+			return aerr.Wrapf(err, "get user error")
 		}
 
 		common.TraceLazyPrintf(ctx, "UpdateDevice: user loaded")
 
 		device, err := d.devicesRepo.GetDevice(ctx, user.ID, cmd.DeviceName)
-		if errors.Is(err, common.ErrNoData) {
+		if errors.Is(err, aerr.ErrNoData) {
 			// new device
 			device = &model.Device{Name: cmd.DeviceName, User: &model.User{ID: user.ID}}
 		} else if err != nil {
@@ -85,15 +83,13 @@ func (d *DevicesSrv) ListDevices(ctx context.Context, query *query.GetDevicesQue
 
 	devices, err := db.InConnectionR(ctx, d.dbi, func(ctx context.Context) ([]model.Device, error) {
 		user, err := d.usersRepo.GetUser(ctx, query.UserName)
-		if errors.Is(err, common.ErrNoData) {
-			return nil, common.ErrUnknownUser
-		} else if err != nil {
-			return nil, aerr.ApplyFor(ErrRepositoryError, err)
+		if err != nil {
+			return nil, aerr.Wrapf(err, "get user error")
 		}
 
 		devices, err := d.devicesRepo.ListDevices(ctx, user.ID)
 		if err != nil {
-			return nil, aerr.ApplyFor(ErrRepositoryError, err, "get devices from db failed")
+			return nil, aerr.Wrapf(err, "get devices from db failed")
 		}
 
 		return devices, nil
@@ -113,21 +109,17 @@ func (d *DevicesSrv) DeleteDevice(ctx context.Context, cmd *command.DeleteDevice
 	//nolint:wrapcheck
 	return db.InTransaction(ctx, d.dbi, func(ctx context.Context) error {
 		user, err := d.usersRepo.GetUser(ctx, cmd.UserName)
-		if errors.Is(err, common.ErrNoData) {
-			return common.ErrUnknownUser
-		} else if err != nil {
-			return aerr.ApplyFor(ErrRepositoryError, err)
+		if err != nil {
+			return aerr.Wrapf(err, "get user error")
 		}
 
 		device, err := d.devicesRepo.GetDevice(ctx, user.ID, cmd.DeviceName)
-		if errors.Is(err, common.ErrNoData) {
-			return common.ErrUnknownDevice
-		} else if err != nil {
-			return aerr.Wrapf(err, "get device from repo failed")
+		if err != nil {
+			return aerr.Wrapf(err, "get devices from repo failed")
 		}
 
 		if err = d.devicesRepo.DeleteDevice(ctx, device.ID); err != nil {
-			return aerr.Wrapf(err, "save device failed")
+			return aerr.Wrapf(err, "delete device failed")
 		}
 
 		return nil

@@ -64,7 +64,7 @@ func (sr subscriptionsResource) devSubscriptions(
 	if err != nil {
 		logger.Debug().Err(err).Msgf("SubscriptionsResource: parse since=%q to time error=%q",
 			r.URL.Query().Get("since"), err)
-		w.WriteHeader(http.StatusBadRequest)
+		srvsupport.WriteError(w, r, err)
 
 		return
 	}
@@ -73,10 +73,10 @@ func (sr subscriptionsResource) devSubscriptions(
 
 	state, err := sr.subsSrv.GetSubscriptionChanges(ctx, &q)
 	if err != nil {
-		checkAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
 			Msgf("SubscriptionsResource: get user_name=%s device_name=%s subscriptions changes error=%q",
 				user, devicename, err)
+		srvsupport.WriteError(w, r, err)
 
 		return
 	}
@@ -111,9 +111,9 @@ func (sr subscriptionsResource) userSubscriptions(
 
 	subs, err := sr.subsSrv.GetUserSubscriptions(ctx, &query.GetUserSubscriptionsQuery{UserName: user})
 	if err != nil {
-		checkAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
 			Msgf("SubscriptionsResource: get user_name=%s subscriptions error=%q", user, err)
+		srvsupport.WriteError(w, r, err)
 
 		return
 	}
@@ -145,7 +145,7 @@ func (sr subscriptionsResource) uploadSubscriptionChanges(
 
 	if err := render.DecodeJSON(r.Body, &changes); err != nil {
 		logger.Debug().Err(err).Msgf("SubscriptionsResource: parse json error=%q", err)
-		writeError(w, r, http.StatusBadRequest)
+		srvsupport.WriteSimpleError(w, r, http.StatusBadRequest, "")
 
 		return
 	}
@@ -164,9 +164,9 @@ func (sr subscriptionsResource) uploadSubscriptionChanges(
 
 	res, err := sr.subsSrv.ChangeSubscriptions(ctx, &cmd)
 	if err != nil {
-		checkAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
 			Msgf("SubscriptionsResource: update device subscription changes error=%q", err)
+		srvsupport.WriteError(w, r, err)
 
 		return
 	}

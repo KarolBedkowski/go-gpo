@@ -10,6 +10,8 @@ linters:
     - exhaustruct
     - wsl
     - noinlineerr
+    - gomodguard
+    - goconst
   settings:
     depguard:
       rules:
@@ -83,6 +85,8 @@ linters:
       allow-first-in-block: true
       allow-whole-block: false
       branch-max-lines: 2
+      disable:
+        - append
     tagliatelle:
       case:
         extended-rules:

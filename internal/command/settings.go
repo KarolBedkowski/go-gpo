@@ -40,7 +40,7 @@ func NewSetFavoriteEpisodeCmd(username, podcast, episode string) ChangeSettingsC
 
 func (c *ChangeSettingsCmd) Validate() error {
 	if !validators.IsValidUserName(c.UserName) {
-		return common.ErrInvalidUser.WithUserMsg("invalid username").WithMeta("cmd", c)
+		return common.ErrInvalidUser.WithMeta("cmd", c)
 	}
 
 	switch c.Scope {
@@ -52,13 +52,13 @@ func (c *ChangeSettingsCmd) Validate() error {
 		}
 	case "episode":
 		if c.Episode == "" {
-			return common.ErrInvalidEpisode.WithUserMsg("episode can't be empty").WithMeta("cmd", c)
+			return common.ErrInvalidEpisode.WithMeta("cmd", c)
 		}
 
 		fallthrough
 	case "podcast":
 		if c.Podcast == "" {
-			return common.ErrInvalidPodcast.WithUserMsg("podcast can't be empty").WithMeta("cmd", c)
+			return common.ErrInvalidPodcast.WithMeta("cmd", c)
 		}
 	default:
 		return aerr.ErrValidation.WithMsg("invalid scope").WithMeta("cmd", c)

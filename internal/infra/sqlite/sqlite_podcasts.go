@@ -15,7 +15,6 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"gitlab.com/kabes/go-gpo/internal/aerr"
-	"gitlab.com/kabes/go-gpo/internal/common"
 	"gitlab.com/kabes/go-gpo/internal/db"
 	"gitlab.com/kabes/go-gpo/internal/model"
 )
@@ -39,7 +38,7 @@ func (Repository) ListSubscribedPodcasts(ctx context.Context, userid int64, sinc
 
 	if !since.IsZero() {
 		query += " AND p.updated_at > ? "
-		args = append(args, since) //nolint:wsl_v5
+		args = append(args, since)
 	}
 
 	query += " ORDER BY p.title, p.url"
@@ -70,7 +69,7 @@ func (Repository) ListPodcasts(ctx context.Context, userid int64, since time.Tim
 
 	if !since.IsZero() {
 		query += " AND p.updated_at > ? "
-		args = append(args, since) //nolint:wsl_v5
+		args = append(args, since)
 	}
 
 	query += " ORDER BY p.title, p.url"
@@ -103,7 +102,7 @@ func (Repository) GetPodcastByID(
 	case err == nil:
 		return podcast.toModel(), nil
 	case errors.Is(err, sql.ErrNoRows):
-		return nil, common.ErrNoData
+		return nil, aerr.ErrNoData
 	default:
 		return nil, aerr.Wrapf(err, "query podcast failed").WithMeta("podcastid", podcastid)
 	}
@@ -130,7 +129,7 @@ func (Repository) GetPodcast(
 	case err == nil:
 		return podcast.toModel(), nil
 	case errors.Is(err, sql.ErrNoRows):
-		return nil, common.ErrNoData
+		return nil, aerr.ErrNoData
 	default:
 		return nil, aerr.Wrapf(err, "query podcast failed").WithMeta("podcasturl", podcasturl)
 	}

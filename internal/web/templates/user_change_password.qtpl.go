@@ -19,63 +19,47 @@ var (
 
 //line internal/web/templates/user_change_password.qtpl:2
 type UserChangePassPage struct {
-	Msg string
 }
 
-//line internal/web/templates/user_change_password.qtpl:7
+//line internal/web/templates/user_change_password.qtpl:6
 func (p *UserChangePassPage) StreamTitle(qw422016 *qt422016.Writer) {
-//line internal/web/templates/user_change_password.qtpl:7
+//line internal/web/templates/user_change_password.qtpl:6
 	qw422016.N().S(`Change password`)
-//line internal/web/templates/user_change_password.qtpl:7
+//line internal/web/templates/user_change_password.qtpl:6
 }
 
-//line internal/web/templates/user_change_password.qtpl:7
+//line internal/web/templates/user_change_password.qtpl:6
 func (p *UserChangePassPage) WriteTitle(qq422016 qtio422016.Writer) {
-//line internal/web/templates/user_change_password.qtpl:7
+//line internal/web/templates/user_change_password.qtpl:6
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line internal/web/templates/user_change_password.qtpl:7
+//line internal/web/templates/user_change_password.qtpl:6
 	p.StreamTitle(qw422016)
-//line internal/web/templates/user_change_password.qtpl:7
+//line internal/web/templates/user_change_password.qtpl:6
 	qt422016.ReleaseWriter(qw422016)
-//line internal/web/templates/user_change_password.qtpl:7
+//line internal/web/templates/user_change_password.qtpl:6
 }
 
-//line internal/web/templates/user_change_password.qtpl:7
+//line internal/web/templates/user_change_password.qtpl:6
 func (p *UserChangePassPage) Title() string {
-//line internal/web/templates/user_change_password.qtpl:7
+//line internal/web/templates/user_change_password.qtpl:6
 	qb422016 := qt422016.AcquireByteBuffer()
-//line internal/web/templates/user_change_password.qtpl:7
+//line internal/web/templates/user_change_password.qtpl:6
 	p.WriteTitle(qb422016)
-//line internal/web/templates/user_change_password.qtpl:7
+//line internal/web/templates/user_change_password.qtpl:6
 	qs422016 := string(qb422016.B)
-//line internal/web/templates/user_change_password.qtpl:7
+//line internal/web/templates/user_change_password.qtpl:6
 	qt422016.ReleaseByteBuffer(qb422016)
-//line internal/web/templates/user_change_password.qtpl:7
+//line internal/web/templates/user_change_password.qtpl:6
 	return qs422016
-//line internal/web/templates/user_change_password.qtpl:7
+//line internal/web/templates/user_change_password.qtpl:6
 }
 
-//line internal/web/templates/user_change_password.qtpl:9
+//line internal/web/templates/user_change_password.qtpl:8
 func (p *UserChangePassPage) StreamBody(qw422016 *qt422016.Writer, pctx *PageContext) {
-//line internal/web/templates/user_change_password.qtpl:9
+//line internal/web/templates/user_change_password.qtpl:8
 	qw422016.N().S(`
 <section>
 	<h1>Change password</h1>
-	`)
-//line internal/web/templates/user_change_password.qtpl:12
-	if p.Msg != "" {
-//line internal/web/templates/user_change_password.qtpl:12
-		qw422016.N().S(`
-		<p><b>`)
-//line internal/web/templates/user_change_password.qtpl:13
-		qw422016.E().S(p.Msg)
-//line internal/web/templates/user_change_password.qtpl:13
-		qw422016.N().S(`</b></p>
-	`)
-//line internal/web/templates/user_change_password.qtpl:14
-	}
-//line internal/web/templates/user_change_password.qtpl:14
-	qw422016.N().S(`
 
 	<form method="post">
 		<fieldset>
@@ -89,31 +73,31 @@ func (p *UserChangePassPage) StreamBody(qw422016 *qt422016.Writer, pctx *PageCon
 
 
 `)
-//line internal/web/templates/user_change_password.qtpl:27
+//line internal/web/templates/user_change_password.qtpl:23
 }
 
-//line internal/web/templates/user_change_password.qtpl:27
+//line internal/web/templates/user_change_password.qtpl:23
 func (p *UserChangePassPage) WriteBody(qq422016 qtio422016.Writer, pctx *PageContext) {
-//line internal/web/templates/user_change_password.qtpl:27
+//line internal/web/templates/user_change_password.qtpl:23
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line internal/web/templates/user_change_password.qtpl:27
+//line internal/web/templates/user_change_password.qtpl:23
 	p.StreamBody(qw422016, pctx)
-//line internal/web/templates/user_change_password.qtpl:27
+//line internal/web/templates/user_change_password.qtpl:23
 	qt422016.ReleaseWriter(qw422016)
-//line internal/web/templates/user_change_password.qtpl:27
+//line internal/web/templates/user_change_password.qtpl:23
 }
 
-//line internal/web/templates/user_change_password.qtpl:27
+//line internal/web/templates/user_change_password.qtpl:23
 func (p *UserChangePassPage) Body(pctx *PageContext) string {
-//line internal/web/templates/user_change_password.qtpl:27
+//line internal/web/templates/user_change_password.qtpl:23
 	qb422016 := qt422016.AcquireByteBuffer()
-//line internal/web/templates/user_change_password.qtpl:27
+//line internal/web/templates/user_change_password.qtpl:23
 	p.WriteBody(qb422016, pctx)
-//line internal/web/templates/user_change_password.qtpl:27
+//line internal/web/templates/user_change_password.qtpl:23
 	qs422016 := string(qb422016.B)
-//line internal/web/templates/user_change_password.qtpl:27
+//line internal/web/templates/user_change_password.qtpl:23
 	qt422016.ReleaseByteBuffer(qb422016)
-//line internal/web/templates/user_change_password.qtpl:27
+//line internal/web/templates/user_change_password.qtpl:23
 	return qs422016
-//line internal/web/templates/user_change_password.qtpl:27
+//line internal/web/templates/user_change_password.qtpl:23
 }

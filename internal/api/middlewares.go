@@ -10,7 +10,7 @@ package api
 import (
 	"net/http"
 
-	"gitea.com/go-chi/session"
+	"code.forgejo.org/go-chi/session"
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog/hlog"
 	"gitlab.com/kabes/go-gpo/internal/common"

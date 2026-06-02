@@ -26,11 +26,11 @@ type GetEpisodesQuery struct {
 
 func (q *GetEpisodesQuery) Validate() error {
 	if !validators.IsValidUserName(q.UserName) {
-		return common.ErrInvalidUser.WithUserMsg("invalid username")
+		return common.ErrInvalidUser
 	}
 
 	if q.DeviceName != "" && !validators.IsValidDevName(q.DeviceName) {
-		return common.ErrInvalidDevice.WithUserMsg("invalid device name")
+		return common.ErrInvalidDevice
 	}
 
 	return nil
@@ -58,11 +58,11 @@ type GetEpisodesByPodcastQuery struct {
 
 func (q *GetEpisodesByPodcastQuery) Validate() error {
 	if !validators.IsValidUserName(q.UserName) {
-		return common.ErrInvalidUser.WithUserMsg("invalid username")
+		return common.ErrInvalidUser
 	}
 
 	if q.PodcastID < 0 {
-		return common.ErrInvalidPodcast.WithUserMsg("invalid podcast id")
+		return common.ErrInvalidPodcast
 	}
 
 	return nil
@@ -88,11 +88,11 @@ type GetEpisodeUpdatesQuery struct {
 
 func (q *GetEpisodeUpdatesQuery) Validate() error {
 	if !validators.IsValidUserName(q.UserName) {
-		return common.ErrInvalidUser.WithUserMsg("invalid username")
+		return common.ErrInvalidUser
 	}
 
 	if q.DeviceName != "" && !validators.IsValidDevName(q.DeviceName) {
-		return common.ErrInvalidDevice.WithUserMsg("invalid device name")
+		return common.ErrInvalidDevice
 	}
 
 	return nil
@@ -116,7 +116,7 @@ type GetLastEpisodesActionsQuery struct {
 
 func (q *GetLastEpisodesActionsQuery) Validate() error {
 	if !validators.IsValidUserName(q.UserName) {
-		return common.ErrInvalidUser.WithUserMsg("invalid username")
+		return common.ErrInvalidUser
 	}
 
 	return nil

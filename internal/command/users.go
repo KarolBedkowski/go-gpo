@@ -18,14 +18,14 @@ import (
 // NewUserCmd define new user to add.
 type NewUserCmd struct {
 	UserName string
-	Password string
+	Password string `json:"-"`
 	Email    string
 	Name     string
 }
 
 func (n *NewUserCmd) Validate() error {
 	if !validators.IsValidUserName(n.UserName) {
-		return common.ErrInvalidUser.WithUserMsg("invalid username")
+		return common.ErrInvalidUser
 	}
 
 	if n.Password == "" {
@@ -52,14 +52,14 @@ var ErrChangePasswordOldNotMatch = errors.New("invalid current password")
 // ChangeUserPasswordCmd define new user to add.
 type ChangeUserPasswordCmd struct {
 	UserName         string
-	Password         string
+	Password         string `json:"-"`
 	CurrentPassword  string
 	CheckCurrentPass bool
 }
 
 func (c *ChangeUserPasswordCmd) Validate() error {
 	if !validators.IsValidUserName(c.UserName) {
-		return common.ErrInvalidUser.WithUserMsg("invalid username")
+		return common.ErrInvalidUser
 	}
 
 	if c.Password == "" {
@@ -82,7 +82,7 @@ type LockAccountCmd struct {
 
 func (l *LockAccountCmd) Validate() error {
 	if !validators.IsValidUserName(l.UserName) {
-		return common.ErrInvalidUser.WithUserMsg("invalid username")
+		return common.ErrInvalidUser
 	}
 
 	return nil
@@ -97,7 +97,7 @@ type DeleteUserCmd struct {
 
 func (d *DeleteUserCmd) Validate() error {
 	if !validators.IsValidUserName(d.UserName) {
-		return common.ErrInvalidUser.WithUserMsg("invalid username")
+		return common.ErrInvalidUser
 	}
 
 	return nil

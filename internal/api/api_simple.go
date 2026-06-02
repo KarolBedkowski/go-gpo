@@ -62,7 +62,7 @@ func (s *simpleResource) downloadUserSubscriptions(
 
 	subs, err := s.subServ.GetUserSubscriptions(ctx, &query.GetUserSubscriptionsQuery{UserName: user})
 	if err != nil {
-		checkAndWriteError(w, r, err)
+		srvsupport.WriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).
 			Err(err).
 			Msgf("SimpleResource: get user subscriptions error=%q", err)
@@ -71,7 +71,7 @@ func (s *simpleResource) downloadUserSubscriptions(
 	}
 
 	switch format := chi.URLParam(r, "format"); format {
-	case "opml": //nolint:goconst
+	case "opml":
 		o := formats.NewOPML("go-gpo")
 		for _, s := range subs {
 			o.AddRSS(s.URL, s.Title, s.Title)
@@ -79,13 +79,13 @@ func (s *simpleResource) downloadUserSubscriptions(
 
 		w.WriteHeader(http.StatusOK)
 		render.XML(w, r, &o)
-	case "json": //nolint:goconst
+	case "json":
 		w.WriteHeader(http.StatusOK)
 		render.JSON(w, r, subs.ToURLs())
-	case "jsonp": //nolint:goconst
+	case "jsonp":
 		w.WriteHeader(http.StatusOK)
 		render.JSON(newJSONPWriter(r, w), r, subs.ToURLs())
-	case "txt": //nolint:goconst
+	case "txt":
 		w.WriteHeader(http.StatusOK)
 		render.PlainText(w, r, strings.Join(subs.ToURLs(), "\n"))
 	case "xml":
@@ -95,7 +95,7 @@ func (s *simpleResource) downloadUserSubscriptions(
 		render.XML(w, r, &xmlsubs)
 	default:
 		logger.Info().Msgf("SimpleResource: unknown format=%q", format)
-		writeError(w, r, http.StatusNotFound)
+		srvsupport.WriteSimpleError(w, r, http.StatusNotFound, "")
 	}
 }
 
@@ -110,10 +110,10 @@ func (s *simpleResource) downloadDevSubscriptions(
 
 	subs, err := s.subServ.GetSubscriptions(ctx, &query.GetSubscriptionsQuery{UserName: user, DeviceName: devicename})
 	if err != nil {
-		checkAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).
 			Err(err).
 			Msgf("SimpleResource: get device subscriptions error=%q", err)
+		srvsupport.WriteError(w, r, err)
 
 		return
 	}
@@ -143,7 +143,7 @@ func (s *simpleResource) downloadDevSubscriptions(
 		render.PlainText(w, r, strings.Join(subs.ToURLs(), "\n"))
 	default:
 		logger.Info().Msgf("SimpleResource: unknown format=%q", format)
-		writeError(w, r, http.StatusNotFound)
+		srvsupport.WriteSimpleError(w, r, http.StatusNotFound, "")
 	}
 }
 
@@ -171,14 +171,14 @@ func (s *simpleResource) uploadSubscriptions(
 		subs, err = parseTextSubs(r.Body)
 	default:
 		logger.Debug().Msgf("SimpleResource: unknown format=%q", format)
-		writeError(w, r, http.StatusNotFound)
+		srvsupport.WriteSimpleError(w, r, http.StatusNotFound, "")
 
 		return
 	}
 
 	if err != nil {
 		logger.Debug().Err(err).Msgf("SimpleResource: parse format=%q error=%q", format, err)
-		writeError(w, r, http.StatusBadRequest)
+		srvsupport.WriteError(w, r, err)
 
 		return
 	}
@@ -190,8 +190,8 @@ func (s *simpleResource) uploadSubscriptions(
 		Timestamp:     time.Now().UTC(),
 	}
 	if err := s.subServ.ReplaceSubscriptions(ctx, &cmd); err != nil {
-		checkAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).Msgf("SimpleResource: update subscriptions error=%q", err)
+		srvsupport.WriteError(w, r, err)
 	} else {
 		w.WriteHeader(http.StatusOK)
 	}

@@ -24,16 +24,14 @@ func TestSessionsService(t *testing.T) {
 
 	sessProvider := NewSessionProvider(db, repo, 60*time.Second)
 
-	exists, err := sessProvider.Exist("123")
-	assert.NoErr(t, err)
+	exists := sessProvider.Exist("123")
 	assert.True(t, !exists)
 
 	store, err := sessProvider.Read("123")
 	assert.NoErr(t, err)
 	assert.Equal(t, store.ID(), "123")
 
-	exists, err = sessProvider.Exist("123")
-	assert.NoErr(t, err)
+	exists = sessProvider.Exist("123")
 	assert.True(t, exists)
 
 	assert.NoErr(t, store.Set("abc", 123))
@@ -89,8 +87,7 @@ func TestSessionsServiceRegenerate(t *testing.T) {
 	assert.Equal(t, store2.Get("abc"), 123)
 	assert.Equal(t, store2.Get("qwe"), "zxc")
 
-	exists, err := sessProvider.Exist("123")
-	assert.NoErr(t, err)
+	exists := sessProvider.Exist("123")
 	assert.True(t, !exists)
 
 	// re-read
@@ -100,7 +97,6 @@ func TestSessionsServiceRegenerate(t *testing.T) {
 	assert.Equal(t, store3.Get("qwe"), "zxc")
 
 	// should be 1 session
-	cnt, err := sessProvider.Count()
-	assert.NoErr(t, err)
+	cnt := sessProvider.Count()
 	assert.Equal(t, cnt, 1)
 }

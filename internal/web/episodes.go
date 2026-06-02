@@ -10,7 +10,6 @@ package web
 import (
 	"context"
 	"net/http"
-	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
@@ -45,18 +44,10 @@ func (e episodePages) Routes() *chi.Mux {
 func (e episodePages) list(ctx context.Context, w http.ResponseWriter, r *http.Request, logger *zerolog.Logger) {
 	user := common.ContextUser(ctx)
 
-	podcast := r.URL.Query().Get("podcast")
-	if podcast == "" {
-		logger.Debug().Msgf("web.Episodes: bad request empty podcast user_name=%s", user)
-		w.WriteHeader(http.StatusBadRequest)
-
-		return
-	}
-
-	podcastid, err := strconv.ParseInt(podcast, 10, 32)
+	podcastid, err := queryParamAsInt(r, "podcast")
 	if err != nil {
-		logger.Debug().Err(err).Msgf("web.Episodes: bad request: invalid_podcast_id=%q parse error=%q", podcast, err)
-		w.WriteHeader(http.StatusBadRequest)
+		logger.Debug().Err(err).Msgf("web.Episodes: bad request: invalid podcast; error=%q", err)
+		e.renderer.WriteBadRequestError(w, r, "Invalid podcast.")
 
 		return
 	}
@@ -69,12 +60,12 @@ func (e episodePages) list(ctx context.Context, w http.ResponseWriter, r *http.R
 
 	episodes, err := e.episodeSrv.GetEpisodesByPodcast(ctx, &query)
 	if err != nil {
-		srvsupport.CheckAndWriteError(w, r, err)
 		logger.WithLevel(aerr.LogLevelForError(err)).Err(err).
 			Msgf("web.Episodes: get podcast episodes user_name=%s error=%q", user, err)
+		e.renderer.WriteError(w, r, err)
 
 		return
 	}
 
-	e.renderer.WritePage(w, &nt.EpisodesPage{Episodes: episodes})
+	e.renderer.WritePage(w, r, &nt.EpisodesPage{Episodes: episodes})
 }

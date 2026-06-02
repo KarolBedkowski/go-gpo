@@ -42,7 +42,7 @@ func initializeLogger(level, format string) error {
 	case "journald":
 		writer = journald.NewJournalDWriter()
 
-	case "logfmt": //nolint:goconst
+	case "logfmt":
 		writer = setupLogfmtConsoleWriter()
 
 	default: // (console)

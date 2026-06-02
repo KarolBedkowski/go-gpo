@@ -26,7 +26,7 @@ import (
 func newChangeUserPasswordCmd() *cli.Command {
 	return &cli.Command{
 		Name:  "password",
-		Usage: "set new user password / unlock account",
+		Usage: "Set new user password / unlock account",
 		Flags: []cli.Flag{
 			&cli.StringFlag{Name: "username", Required: true, Aliases: []string{"u"}},
 			&cli.StringFlag{Name: "password", Aliases: []string{"p"}},
@@ -86,7 +86,7 @@ func readValidatePassword(pass string) (string, error) {
 func newLockUserCmd() *cli.Command {
 	return &cli.Command{
 		Name:  "lock",
-		Usage: "lock user account",
+		Usage: "Lock user account",
 		Flags: []cli.Flag{
 			&cli.StringFlag{Name: "username", Required: true, Aliases: []string{"u"}},
 		},
